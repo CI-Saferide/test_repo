@@ -1,7 +1,0 @@
-obj= packetdump.o
-packetdump: $(obj) 
-	cc -o packetdump packetdump.o 
-packetdump.o:
-
-clean:
-	rm packetdump $(obj)
