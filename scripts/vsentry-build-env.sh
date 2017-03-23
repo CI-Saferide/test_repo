@@ -45,10 +45,12 @@ for app in agl-3.0.2 ; do
 						echo -n "the directories already exist... " 
 						echo -e "" 
 						while true; do
-							read -p "Do you wish to overwrite??" yn
+							read -p "Do you wish to overwrite?" yn
 							case $yn in
 								[Yy]* )
  									rm -rf agl-3.0.2/ yocto-kernel-cache/
+									echo -n "Removing the existed dirs first..." 
+									echo -e ""
 									pv agl-3.0.2.tar.gz | tar -xzmp
 									pv yocto-kernel-cache.tar.gz | tar -xzmp
 						
@@ -71,12 +73,23 @@ for app in agl-3.0.2 ; do
 
 sed -i 's|'PATH-NAME'|'${kernel_dir}'|g' $script_dir/../../agl-3.0.2/poky/meta/recipes-kernel/linux/linux-yocto_4.4.bb
 
-echo $PWD
 
-ln -s src/vsentry-mod agl-3.0.2/poky/meta/recipes-kernel/vsentry-mod
-ln -s src/vsentry-userspace agl-3.0.2/poky/meta/recipes-kernel/vsentry-userspace
-ln -s src/vsentry-cpu agl-3.0.2/poky/meta/recipes-kernel/vsentry-cpu
-ln -s src/vsentry-netdump agl-3.0.2/poky/meta/recipes-kernel/vsentry-netdump
+
+cp -R vsentry/src/vsentry-mod/ agl-3.0.2/poky/meta/recipes-kernel/
+cp -R vsentry/src/vsentry-userspace/ agl-3.0.2/poky/meta/recipes-kernel/
+cp -R vsentry/src/vsentry-cpu/ agl-3.0.2/poky/meta/recipes-kernel/
+cp -R vsentry/src/vsentry-netdump/ agl-3.0.2/poky/meta/recipes-kernel/
+
+echo -n "made copies of the Vsentry source for the AGL build." 
+echo -e ""
+
+cd agl-3.0.2/
+echo $PWD
+source meta-agl/scripts/aglsetup.sh -m qemux86-64 agl-demo agl-netboot agl-appfw-smack
+
+bitbake agl-demo-platform
+
+bitbake agl-demo-platform
 
 done 
 
@@ -84,4 +97,3 @@ exit 0
 
 #echo -n "Enter the domain for apache: "
 #read domain
-
