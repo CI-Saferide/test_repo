@@ -13,7 +13,7 @@ SRC_URI = "file://packetdump.c"
 S = "${WORKDIR}"
 
 do_compile() {
-	     ${CC} packetdump -o vsentryNET
+	     ${CC} packetdump.c -o vsentryNET
 }
 
 do_install() {
