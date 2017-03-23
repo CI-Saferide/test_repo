@@ -73,10 +73,10 @@ sed -i 's|'PATH-NAME'|'${kernel_dir}'|g' $script_dir/../../agl-3.0.2/poky/meta/r
 
 echo $PWD
 
-ln -s src/vsentry-mod agl-3.0.2/poky/meta/recipes-kernel/vsentry-mod
-ln -s src/vsentry-userspace agl-3.0.2/poky/meta/recipes-kernel/vsentry-userspace
-ln -s src/vsentry-cpu agl-3.0.2/poky/meta/recipes-kernel/vsentry-cpu
-ln -s src/vsentry-netdump agl-3.0.2/poky/meta/recipes-kernel/vsentry-netdump
+ln -s src/vsentry-mod/ agl-3.0.2/poky/meta/recipes-kernel/vsentry-mod/
+ln -s src/vsentry-userspace/ agl-3.0.2/poky/meta/recipes-kernel/vsentry-userspace/
+ln -s src/vsentry-cpu/ agl-3.0.2/poky/meta/recipes-kernel/vsentry-cpu/
+ln -s src/vsentry-netdump/ agl-3.0.2/poky/meta/recipes-kernel/vsentry-netdump/
 
 done 
 
