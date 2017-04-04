@@ -68,7 +68,7 @@
 #include <linux/xfrm.h>
 #endif
 
-MODULE_LICENSE("GPL");
+MODULE_LICENSE("proprietary");
 MODULE_DESCRIPTION("vSentry Kernel Module");
 
 #define SYSCALL_CONNECT		__NR_connect
@@ -79,7 +79,7 @@ MODULE_DESCRIPTION("vSentry Kernel Module");
 #define SYSCALL_RMDIR		__NR_rmdir
 #define SYSCALL_CHMOD		__NR_chmod
 #define SYSCALL_CREATE		__NR_creat
-#define SYSCALL_OPEN            __NR_open
+#define SYSCALL_OPEN        __NR_open
 
 #define BUFF_SIZE 512
 
@@ -202,7 +202,8 @@ void dbg_print(char *func){
 	//printk("[VSENTRY]: entered function %s\n", func);
 	//printk("[VSENTRY]: Check \"%s\" permission PID:%d UID:%d GID:%d\n",current->comm,current->pid,ruid,guid);
 
-	sprintf(buff, "**************************************************************************\n[VSENTRY]: entered function %s\n[VSENTRY]: Check \"%s\" permission PID:%d UID:%d GID:%d\n", func,current->comm,current->pid,ruid,guid);
+	//sprintf(buff, "[VSENTRY]: entered function %s\nCheck \"%s\" permission PID:%d UID:%d GID:%d\n", func,current->comm,current->pid,ruid,guid);
+	sprintf(buff, "entered function %s\nCheck \"%s\" permission PID:%d UID:%d GID:%d\n", func,current->comm,current->pid,ruid,guid);
 	sr_netlink_send_up(buff, strlen(buff));
 }
 
@@ -261,7 +262,8 @@ int check_connect_perm(perm_info_t *info){
 	//printk("[VSENTRY]: IP:PORT = %s:%d\n",ipAddress,port);
 
 	//buff = kmalloc(BUFF_SIZE,GFP_KERNEL);
-	sprintf(buff,"[VSENTRY]: IP:PORT = %s:%d\n",ipAddress,port);	
+	//sprintf(buff,"[VSENTRY]: IP:PORT = %s:%d\n",ipAddress,port);
+	sprintf(buff,"IP:PORT = %s:%d\n",ipAddress,port);	
 	sr_netlink_send_up(buff, strlen(buff));
 
 	//kfree(buff);
@@ -290,7 +292,8 @@ int check_link_perm(perm_info_t *info){
 
 	//buff = kmalloc(BUFF_SIZE,GFP_KERNEL);
 
-	sprintf(buff,"[VSENTRY]: link file %s\n[VSENTRY]: old path %s\n[VSENTRY]: new path %s\n",file,old_path,new_path);	
+	//sprintf(buff,"[VSENTRY]: link file %s\nold path %s\nnew path %s\n",file,old_path,new_path);
+	sprintf(buff,"link file %s\nold path %s\nnew path %s\n",file,old_path,new_path);	
 	sr_netlink_send_up(buff, strlen(buff));
 
 	//kfree(buff);
@@ -316,7 +319,8 @@ int check_unlink_perm(perm_info_t *info){
 	//printk("[VSENTRY]: from path %s\n", path);
 
 	//buff = kmalloc(BUFF_SIZE,GFP_KERNEL);
-	sprintf(buff,"[VSENTRY]: unlink %s\n[VSENTRY]: from path %s\n",file,path);	
+	//sprintf(buff,"[VSENTRY]: unlink %s\nfrom path %s\n",file,path);
+	sprintf(buff,"unlink %s\nfrom path %s\n",file,path);	
 	sr_netlink_send_up(buff, strlen(buff));
 
 	//kfree(buff);
@@ -342,7 +346,8 @@ int check_symlink_perm(perm_info_t *info){
 	//printk("[VSENTRY]: from path %s\n",path);
 
 	//buff = kmalloc(BUFF_SIZE,GFP_KERNEL);
-	sprintf(buff,"[VSENTRY]: symlink %s\n[VSENTRY]: from path %s\n",file,path);
+	//sprintf(buff,"[VSENTRY]: symlink %s\nfrom path %s\n",file,path);
+	sprintf(buff,"symlink %s\nfrom path %s\n",file,path);
 	sr_netlink_send_up(buff, strlen(buff));
 
 	//kfree(buff);
@@ -366,7 +371,8 @@ int check_mkdir_perm(perm_info_t *info){
 	//printk("[VSENTRY]: in directory %s\n",path);
 
 	//buff = kmalloc(BUFF_SIZE,GFP_KERNEL);
-	sprintf(buff,"[VSENTRY]: mkdir %s\n[VSENTRY]: in directory %s\n",file,path);	
+	//sprintf(buff,"[VSENTRY]: mkdir %s\nin directory %s\n",file,path);
+	sprintf(buff,"mkdir %s\nin directory %s\n",file,path);	
 	sr_netlink_send_up(buff, strlen(buff));
 
 	//kfree(buff);
@@ -389,7 +395,8 @@ int check_rmdir_perm(perm_info_t *info){
 	//printk("[VSENTRY]: from directory %s\n",path);
 	
 	//buff = kmalloc(BUFF_SIZE,GFP_KERNEL);
-	sprintf(buff,"[VSENTRY]: rmdir %s\n[VSENTRY]: from directory %s\n",file,path);	
+	//sprintf(buff,"[VSENTRY]: rmdir %s\nfrom directory %s\n",file,path);
+	sprintf(buff,"rmdir %s\nfrom directory %s\n",file,path);
 	sr_netlink_send_up(buff, strlen(buff));
 
 	//kfree(buff);
@@ -411,7 +418,8 @@ int check_chmod_perm(perm_info_t *info){
 	//printk("[VSENTRY]: chmod %s\n",path);
 
 	//buff = kmalloc(BUFF_SIZE,GFP_KERNEL);
-	sprintf(buff, "[VSENTRY]: chmod %s\n",path);	
+	//sprintf(buff, "[VSENTRY]: chmod %s\n",path);
+	sprintf(buff, "chmod %s\n",path);	
 	sr_netlink_send_up(buff, strlen(buff));
 
 	//kfree(buff);
@@ -434,7 +442,8 @@ int check_create_perm(perm_info_t *info){
 	//printk("[VSENTRY]: create %s\n",path);
 
 	//buff = kmalloc(BUFF_SIZE,GFP_KERNEL);
-	sprintf(buff,"[VSENTRY]: create %s\n",path);	
+	//sprintf(buff,"[VSENTRY]: create %s\n",path);
+	sprintf(buff,"create %s\n",path);	
 	sr_netlink_send_up(buff, strlen(buff));
 
 	//kfree(buff);
@@ -456,7 +465,8 @@ int check_file_open(perm_info_t *info){
 	//printk(KERN_WARNING "[VSENTRY]: file %s\n",path);
 
 	//buff = kmalloc(BUFF_SIZE,GFP_KERNEL);
-	sprintf(buff,"[VSENTRY]: file %s\n",path);	
+	//sprintf(buff,"[VSENTRY]: file %s\n",path);
+	sprintf(buff,"file %s\n",path);	
 	sr_netlink_send_up(buff, strlen(buff));
 
 	//kfree(buff);
@@ -834,7 +844,7 @@ static void vsentry_task_free(struct task_struct *task){
 
 	return ;
 }
-/*
+
 static int vsentry_kernel_fw_from_file(struct file *file,char * buf,size_t size){
 
 	perm_info_t perm_info;
@@ -842,7 +852,7 @@ static int vsentry_kernel_fw_from_file(struct file *file,char * buf,size_t size)
 	dbg_print(__FUNCTION__);
 
 	return 0;
-}*/
+}
 
 static int vsentry_kernel_module_request(char *kmod_name){
 
@@ -852,7 +862,7 @@ static int vsentry_kernel_module_request(char *kmod_name){
 
 	return 0;
 }
-/*
+
 static int vsentry_kernel_module_from_file(struct file *file){
 
 	perm_info_t perm_info;
@@ -860,7 +870,8 @@ static int vsentry_kernel_module_from_file(struct file *file){
 	dbg_print(__FUNCTION__);
 
 	return 0;
-}*/
+}
+
 static int vsentry_task_fix_setuid(struct cred *new, const struct cred *old, int flags){
 
 	perm_info_t perm_info;
@@ -1142,7 +1153,7 @@ static struct security_hook_list vsentry_hooks[] = {
 	LSM_HOOK_INIT(inode_mknod, vsentry_inode_mknod),
     LSM_HOOK_INIT(inode_rename, vsentry_inode_rename),
 	LSM_HOOK_INIT(inode_readlink, vsentry_inode_readlink),
-	LSM_HOOK_INIT(inode_follow_link, vsentry_inode_follow_link),
+	//LSM_HOOK_INIT(inode_follow_link, vsentry_inode_follow_link),
 /*
     LSM_HOOK_INIT(file_open, vsentry_file_open),
 	LSM_HOOK_INIT(file_permission, vsentry_file_permission),
@@ -1170,7 +1181,7 @@ static struct security_hook_list vsentry_hooks[] = {
 	LSM_HOOK_INIT(unix_may_send, vsentry_unix_may_send),
 	
 	//LSM_HOOK_INIT(kernel_fw_from_file, vsentry_kernel_fw_from_file), /*not in every kern version*/
-	LSM_HOOK_INIT(kernel_module_request, vsentry_kernel_module_request),
+	//LSM_HOOK_INIT(kernel_module_request, vsentry_kernel_module_request),
 	//LSM_HOOK_INIT(kernel_module_from_file, vsentry_kernel_module_from_file), /*not in every kern version*/
 
     LSM_HOOK_INIT(socket_connect, vsentry_socket_connect),
@@ -1182,22 +1193,22 @@ static struct security_hook_list vsentry_hooks[] = {
 	//LSM_HOOK_INIT(socket_recvmsg, vsentry_socket_recvmsg),
 	//LSM_HOOK_INIT(socket_shutdown, vsentry_socket_shutdown),
 
-	LSM_HOOK_INIT(sk_alloc_security, vsentry_sk_alloc_security),
-	LSM_HOOK_INIT(sk_free_security, vsentry_sk_free_security),
-	LSM_HOOK_INIT(sk_clone_security, vsentry_sk_clone_security),
+	//LSM_HOOK_INIT(sk_alloc_security, vsentry_sk_alloc_security),
+	//LSM_HOOK_INIT(sk_free_security, vsentry_sk_free_security),
+	//LSM_HOOK_INIT(sk_clone_security, vsentry_sk_clone_security),
 
-	LSM_HOOK_INIT(shm_alloc_security, vsentry_shm_alloc_security),
-	LSM_HOOK_INIT(shm_free_security, vsentry_shm_free_security),
-	LSM_HOOK_INIT(shm_associate, vsentry_shm_associate),
-	LSM_HOOK_INIT(shm_shmctl, vsentry_shm_shmctl),
-	LSM_HOOK_INIT(shm_shmat, vsentry_shm_shmat),
+	//LSM_HOOK_INIT(shm_alloc_security, vsentry_shm_alloc_security),
+	//LSM_HOOK_INIT(shm_free_security, vsentry_shm_free_security),
+	//LSM_HOOK_INIT(shm_associate, vsentry_shm_associate),
+	//LSM_HOOK_INIT(shm_shmctl, vsentry_shm_shmctl),
+	//LSM_HOOK_INIT(shm_shmat, vsentry_shm_shmat),
 
-	LSM_HOOK_INIT(ptrace_access_check, vsentry_ptrace_access_check),
-	LSM_HOOK_INIT(ptrace_traceme, vsentry_ptrace_traceme),
+	//LSM_HOOK_INIT(ptrace_access_check, vsentry_ptrace_access_check),
+	//LSM_HOOK_INIT(ptrace_traceme, vsentry_ptrace_traceme),
 
-	LSM_HOOK_INIT(syslog, vsentry_syslog),
-	LSM_HOOK_INIT(settime, vsentry_settime),
-	LSM_HOOK_INIT(vm_enough_memory, vsentry_vm_enough_memory),
+	//LSM_HOOK_INIT(syslog, vsentry_syslog),
+	//LSM_HOOK_INIT(settime, vsentry_settime),
+	//LSM_HOOK_INIT(vm_enough_memory, vsentry_vm_enough_memory),
 	
 	LSM_HOOK_INIT(bprm_committing_creds, vsentry_bprm_committing_creds), 
 
@@ -1286,6 +1297,7 @@ static struct security_operations vsentry_ops = {
 
 };
 #endif /*LINUX_VERSION_CODE >= KERNEL_VERSION(4,2,0)*/
+
 static int __init vsentry_init(void){
 	
 	int rc = 0;
@@ -1308,6 +1320,7 @@ static int __init vsentry_init(void){
 
 	return rc;//Non-zero return means that the module couldn't be loaded.
 }
+
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4,2,0)
 static inline void security_delete_hooks(struct security_hook_list *hooks,int count){
 
@@ -1317,6 +1330,7 @@ static inline void security_delete_hooks(struct security_hook_list *hooks,int co
                 list_del_rcu(&hooks[i].list);
 }
 #endif
+
 static void __exit vsentry_cleanup(void){
 	
 	sr_netlink_exit();	
