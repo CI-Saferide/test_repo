@@ -44,7 +44,7 @@ int __sr_print (enum SR_LOG_PRIORITY priority, int line, const char *file, const
     va_end(args);
     msg[MAX_MSG_LEN - 1] = 0;
     /* create final message */
-    snprintf(output_msg, MAX_MSG_LEN-1, "%d-%d-%d %d:%d:%d %s[%d] %s\n", tm.tm_mday, tm.tm_mon + 1,tm.tm_year + 1900, tm.tm_hour, tm.tm_min, tm.tm_sec,file_basename(file), line, msg);
+    snprintf(output_msg, MAX_MSG_LEN-1, "%d-%d-%d %d:%d:%d %s %s[%d] %s\n", tm.tm_mday, tm.tm_mon + 1,tm.tm_year + 1900, tm.tm_hour, tm.tm_min, tm.tm_sec,g_app_name,file_basename(file), line, msg);
     
     output_msg[MAX_MSG_LEN - 1] = 0;
     fprintf (stderr, "[%s] %s", log_level_str[priority], output_msg);
