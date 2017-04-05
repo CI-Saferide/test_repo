@@ -1,193 +1,7 @@
-#include <linux/module.h>    // included for all kernel modules
-#include <linux/kernel.h>    // included for KERN_INFO
-#include <linux/version.h>   // for LINUX_VERSION_CODE macro
-#include <linux/init.h>      // included for __init and __exit macros
-#include <linux/utsname.h>   // for the utsname() release feature
-#include <linux/kd.h>
-#include <linux/tracehook.h>
-#include <linux/errno.h>
-#include <linux/sched.h>
-#include <linux/xattr.h>
-#include <linux/capability.h>
-#include <linux/unistd.h>
-#include <linux/mm.h>
-#include <linux/mman.h>
-#include <linux/slab.h>
-#include <linux/pagemap.h>
-#include <linux/proc_fs.h>
-#include <linux/swap.h>
-#include <linux/spinlock.h>
-#include <linux/syscalls.h>
-#include <linux/dcache.h>
-#include <linux/file.h>
-#include <linux/fdtable.h>
-#include <linux/namei.h>
-#include <linux/mount.h>
-#include <linux/netfilter_ipv4.h>
-#include <linux/netfilter_ipv6.h>
-#include <linux/tty.h>
-#include <net/icmp.h>
-#include <net/ip.h>		/* for local_port_range[] */
-#include <net/tcp.h>		/* struct or_callable used in sock_rcv_skb */
-#include <net/net_namespace.h>
-#include <net/netlabel.h>
-#include <linux/uaccess.h>
-#include <asm/ioctls.h>
-#include <linux/atomic.h>
-#include <linux/bitops.h>
-#include <linux/interrupt.h>
-#include <linux/netdevice.h>	/* for network interface checks */
-#include <net/netlink.h>
-#include <linux/tcp.h>
-#include <linux/udp.h>
-#include <linux/dccp.h>
-#include <linux/quota.h>
-#include <linux/un.h>		/* for Unix socket types */
-#include <net/af_unix.h>	/* for Unix socket types */
-#include <linux/parser.h>
-#include <linux/nfs_mount.h>
-#include <net/ipv6.h>
-#include <linux/hugetlb.h>
-#include <linux/personality.h>
-#include <linux/audit.h>
-#include <linux/string.h>
-#include <linux/mutex.h>
-#include <linux/posix-timers.h>
-#include <linux/syslog.h>
-#include <linux/user_namespace.h>
-
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,2,0)
-#include <linux/lsm_hooks.h>
-#include <net/inet_connection_sock.h>
-#include <linux/inet.h>
-#include <linux/lsm_audit.h>
-#include <linux/export.h>
-#include <linux/msg.h>
-#include <linux/shm.h>
-#include <net/xfrm.h>
-#include <linux/xfrm.h>
-#endif
+#include "sr_netlink.h"
 
 MODULE_LICENSE("proprietary");
 MODULE_DESCRIPTION("vSentry Kernel Module");
-
-#define SYSCALL_CONNECT		__NR_connect
-#define SYSCALL_LINK		__NR_link
-#define SYSCALL_UNLINK		__NR_unlink
-#define SYSCALL_SYMLINK		__NR_symlink
-#define SYSCALL_MKDIR		__NR_mkdir
-#define SYSCALL_RMDIR		__NR_rmdir
-#define SYSCALL_CHMOD		__NR_chmod
-#define SYSCALL_CREATE		__NR_creat
-#define SYSCALL_OPEN        __NR_open
-
-#define BUFF_SIZE 512
-
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,2,0)
-extern struct security_hook_heads security_hook_heads;
-#else
-extern struct security_operations *security_ops;
-#endif
-typedef union {
-
-	struct _file_open_info{
-		struct file *file;
-		const struct cred *cred;
-	}file_open_info;
-
-	struct _inode_create_info{
-		struct inode *dir;
-		struct dentry *dentry;
-		umode_t mode;
-	}inode_create_info;
-
-	struct _chmod_info{
-		struct path *path;
-		umode_t mode;
-	}chmod_info;
-
-	struct _link_info {
-		struct dentry *old_dentry;
-		struct inode *dir;
-		struct dentry *new_dentry;
-	}link_info;
-
-	struct _unlink_info {
-		struct inode *dir;
-		struct dentry *dentry;
-	}unlink_info;
-
-	struct _symlink_info {
-		struct inode *dir;
-		struct dentry *dentry;
-		const char *name;
-	}symlink_info;
-
-	struct _mkdir_info {
-		struct inode *dir;
-		struct dentry *dentry;
-		int mask;
-	}mkdir_info;
-
-	struct _rmdir_info {
-		struct inode *dir;
-		struct dentry *dentry;
-	}rmdir_info;
-/******** SECURITY_NETWORK *************/
-
-	struct _socket_connect_info {
-		struct socket *sock;
-		struct sockaddr *address;
-		int addrlen;
-	}socket_connect_info;
-
-	struct _socket_create_info {
-		int family;
-		int type; 
-		int protocol; 
-		int kern;
-	}socket_create_info;
-
-	struct _socket_bind_info {
-		struct socket *sock; 
-		struct sockaddr *address;
-		int addrlen;
-	}socket_bind_info;
-
-	struct _socket_listen_info {
-		struct socket *sock; 
-		int backlog;
-	}socket_listen_info;
-
-	struct _socket_accept_info {
-		struct socket *sock; 
-		struct socket *newsock;
-	}socket_accept_info;
-
-	struct _socket_sendmsg_info {
-		struct socket *sock;
-		struct msghdr *msg; 
-		int size;
-	}socket_sendmsg_info;
-
-	struct _socket_recvmsg_info {
-		struct socket *sock;
-		struct msghdr *msg;
-		int size;
-		int flags;
-	}socket_recvmsg_info;
-
-	struct _socket_shutdown_info {
-		struct socket *sock;
-		int how;
-	}socket_shutdown_info;
-
-
-}perm_info_t;
-
-int sr_netlink_init(void);
-void sr_netlink_exit(void);
-int sr_netlink_send_up(char *msg, int msg_len);
 
 /*kernel debug printing*/
 void dbg_print(char *func){
@@ -197,13 +11,8 @@ void dbg_print(char *func){
 	const struct cred *rcred= ts->real_cred;
 	int ruid = (int)rcred->uid.val;
 	int guid = (int)rcred->gid.val;
-
-	//printk("**************************************************************************\n");
-	//printk("[VSENTRY]: entered function %s\n", func);
-	//printk("[VSENTRY]: Check \"%s\" permission PID:%d UID:%d GID:%d\n",current->comm,current->pid,ruid,guid);
-
-	//sprintf(buff, "[VSENTRY]: entered function %s\nCheck \"%s\" permission PID:%d UID:%d GID:%d\n", func,current->comm,current->pid,ruid,guid);
-	sprintf(buff, "entered function %s\nCheck \"%s\" permission PID:%d UID:%d GID:%d\n", func,current->comm,current->pid,ruid,guid);
+	
+	sprintf(buff, "entered function %s\ncheck \"%s\" permission PID:%d UID:%d GID:%d\n", func,current->comm,current->pid,ruid,guid);
 	sr_netlink_send_up(buff, strlen(buff));
 }
 
@@ -258,15 +67,9 @@ int check_connect_perm(perm_info_t *info){
 	port = (int)ntohs(ipv4->sin_port);
 
 	dbg_print(__FUNCTION__);
-
-	//printk("[VSENTRY]: IP:PORT = %s:%d\n",ipAddress,port);
-
-	//buff = kmalloc(BUFF_SIZE,GFP_KERNEL);
-	//sprintf(buff,"[VSENTRY]: IP:PORT = %s:%d\n",ipAddress,port);
+	
 	sprintf(buff,"IP:PORT = %s:%d\n",ipAddress,port);	
 	sr_netlink_send_up(buff, strlen(buff));
-
-	//kfree(buff);
 
 	return 0;
 }
@@ -289,10 +92,9 @@ int check_link_perm(perm_info_t *info){
 	//printk("[VSENTRY]: link file %s\n",file);
 	//printk("[VSENTRY]: old path %s\n", old_path);
 	//printk("[VSENTRY]: new path %s\n", new_path);
-
 	//buff = kmalloc(BUFF_SIZE,GFP_KERNEL);
-
 	//sprintf(buff,"[VSENTRY]: link file %s\nold path %s\nnew path %s\n",file,old_path,new_path);
+	
 	sprintf(buff,"link file %s\nold path %s\nnew path %s\n",file,old_path,new_path);	
 	sr_netlink_send_up(buff, strlen(buff));
 
@@ -305,125 +107,77 @@ int check_link_perm(perm_info_t *info){
 
 int check_unlink_perm(perm_info_t *info){
 
-	//char *file, *path,*buff;
 	char *file, path[BUFF_SIZE],buff[BUFF_SIZE];
 
 	file = info->unlink_info.dentry->d_iname;
 
-	//path = kmalloc(strlen(get_path(info->unlink_info.dentry))+1,GFP_KERNEL);
 	strcpy(path,get_path(info->unlink_info.dentry));
 
 	dbg_print(__FUNCTION__);
-
-	//printk("[VSENTRY]: unlink file %s\n",file);
-	//printk("[VSENTRY]: from path %s\n", path);
-
-	//buff = kmalloc(BUFF_SIZE,GFP_KERNEL);
-	//sprintf(buff,"[VSENTRY]: unlink %s\nfrom path %s\n",file,path);
+	
 	sprintf(buff,"unlink %s\nfrom path %s\n",file,path);	
 	sr_netlink_send_up(buff, strlen(buff));
-
-	//kfree(buff);
-	//kfree(path);
 
 	return 0;
 }
 
 int check_symlink_perm(perm_info_t *info){
 
-	//char *file, *path,*buff;
 	char *file, path[BUFF_SIZE],buff[BUFF_SIZE];
-
 
 	file =(char *)info->symlink_info.name;
 
-	//path = kmalloc(strlen(get_path(info->symlink_info.dentry))+1,GFP_KERNEL);
 	strcpy(path,get_path(info->symlink_info.dentry));
 	
 	dbg_print(__FUNCTION__);
-
-	//printk("[VSENTRY]: symlink file %s\n",file);
-	//printk("[VSENTRY]: from path %s\n",path);
-
-	//buff = kmalloc(BUFF_SIZE,GFP_KERNEL);
-	//sprintf(buff,"[VSENTRY]: symlink %s\nfrom path %s\n",file,path);
+	
 	sprintf(buff,"symlink %s\nfrom path %s\n",file,path);
 	sr_netlink_send_up(buff, strlen(buff));
-
-	//kfree(buff);
-	//kfree(path);
 
 	return 0;
 }
 
 int check_mkdir_perm(perm_info_t *info){
 
-	//char *file, *path,*buff;
 	char *file, path[BUFF_SIZE],buff[BUFF_SIZE];
 
 	file = info->mkdir_info.dentry->d_iname;
 
-	//path = kmalloc(strlen(get_path(info->mkdir_info.dentry->d_parent))+1,GFP_KERNEL);
 	strcpy(path,get_path(info->mkdir_info.dentry->d_parent));
 
 	dbg_print(__FUNCTION__);
-	//printk("[VSENTRY]: mkdir %s\n",file);
-	//printk("[VSENTRY]: in directory %s\n",path);
-
-	//buff = kmalloc(BUFF_SIZE,GFP_KERNEL);
-	//sprintf(buff,"[VSENTRY]: mkdir %s\nin directory %s\n",file,path);
+	
 	sprintf(buff,"mkdir %s\nin directory %s\n",file,path);	
 	sr_netlink_send_up(buff, strlen(buff));
-
-	//kfree(buff);
-	//kfree(path);
 
 	return 0;
 }
 
 int check_rmdir_perm(perm_info_t *info){
 
-	//char *file, *path,*buff;
 	char *file, path[BUFF_SIZE],buff[BUFF_SIZE];
 
 	file = info->rmdir_info.dentry->d_iname;
-	//path = kmalloc(strlen(get_path(info->rmdir_info.dentry->d_parent))+1,GFP_KERNEL);
 	strcpy(path,get_path(info->rmdir_info.dentry->d_parent));
 
 	dbg_print(__FUNCTION__);
-	//printk("[VSENTRY]: rmdir %s\n", file);
-	//printk("[VSENTRY]: from directory %s\n",path);
 	
-	//buff = kmalloc(BUFF_SIZE,GFP_KERNEL);
-	//sprintf(buff,"[VSENTRY]: rmdir %s\nfrom directory %s\n",file,path);
 	sprintf(buff,"rmdir %s\nfrom directory %s\n",file,path);
 	sr_netlink_send_up(buff, strlen(buff));
-
-	//kfree(buff);
-	//kfree(path);
 
 	return 0;
 }
 
 int check_chmod_perm(perm_info_t *info){
 
-	//char *path,*buff;
 	char path[BUFF_SIZE],buff[BUFF_SIZE];
 
-	//path = kmalloc(strlen(get_path(info->chmod_info.path->dentry))+1,GFP_KERNEL);
 	strcpy(path,get_path(info->chmod_info.path->dentry));
 
 	dbg_print(__FUNCTION__);
 
-	//printk("[VSENTRY]: chmod %s\n",path);
-
-	//buff = kmalloc(BUFF_SIZE,GFP_KERNEL);
-	//sprintf(buff, "[VSENTRY]: chmod %s\n",path);
 	sprintf(buff, "chmod %s\n",path);	
 	sr_netlink_send_up(buff, strlen(buff));
-
-	//kfree(buff);
-	//kfree(path);
 
 	return 0;
 
@@ -431,46 +185,28 @@ int check_chmod_perm(perm_info_t *info){
 
 int check_create_perm(perm_info_t *info){
 
-	//char *path,*buff;
 	char path[BUFF_SIZE],buff[BUFF_SIZE];
 
-	//path = kmalloc(strlen(get_path(info->inode_create_info.dentry))+1,GFP_KERNEL);
 	strcpy(path,get_path(info->inode_create_info.dentry));
 
 	dbg_print(__FUNCTION__);
-
-	//printk("[VSENTRY]: create %s\n",path);
-
-	//buff = kmalloc(BUFF_SIZE,GFP_KERNEL);
-	//sprintf(buff,"[VSENTRY]: create %s\n",path);
+	
 	sprintf(buff,"create %s\n",path);	
 	sr_netlink_send_up(buff, strlen(buff));
-
-	//kfree(buff);
-	//kfree(path);
 
 	return 0;
 }
 
 int check_file_open(perm_info_t *info){
 
-	//char *path,*buff;
 	char path[BUFF_SIZE],buff[BUFF_SIZE];
 
-	//path = kmalloc(strlen(get_path(info->file_open_info.file->f_path.dentry))+1,GFP_KERNEL);
 	strcpy(path,get_path(info->file_open_info.file->f_path.dentry));
 
 	dbg_print(__FUNCTION__);
 
-	//printk(KERN_WARNING "[VSENTRY]: file %s\n",path);
-
-	//buff = kmalloc(BUFF_SIZE,GFP_KERNEL);
-	//sprintf(buff,"[VSENTRY]: file %s\n",path);
 	sprintf(buff,"file %s\n",path);	
 	sr_netlink_send_up(buff, strlen(buff));
-
-	//kfree(buff);
-	//kfree(path);
 
 	return 0;
 }

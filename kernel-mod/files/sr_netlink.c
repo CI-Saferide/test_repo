@@ -1,13 +1,8 @@
-#include <linux/module.h>
-#include <net/sock.h> 
-#include <linux/netlink.h>
-#include <linux/skbuff.h>
+#include "sr_netlink.h"
  
 MODULE_LICENSE("proprietary");
 MODULE_DESCRIPTION("vSentry Kernel Module");
  
-#define NETLINK_USER 31
-
 struct sock *nl_sk = NULL;
 int sr_vsentryd_pid = 0;
 
