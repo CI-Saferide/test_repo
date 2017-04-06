@@ -47,7 +47,7 @@ int sr_netlink_send_up(char *msg, int msg_len){
 	int ret;
 
     if (!sr_vsentryd_pid) { // Daemon not connected
-	return 0; 
+		return 0; 
     }
 
     skb_out = nlmsg_new(msg_len, 0);

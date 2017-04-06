@@ -33,27 +33,18 @@ extern "C" {
 #include <linux/netfilter_ipv4.h>
 #include <linux/netfilter_ipv6.h>
 #include <linux/tty.h>
-#include <net/icmp.h>
-#include <net/ip.h>		/* for local_port_range[] */
-#include <net/tcp.h>		/* struct or_callable used in sock_rcv_skb */
-#include <net/net_namespace.h>
-#include <net/netlabel.h>
 #include <linux/uaccess.h>
-#include <asm/ioctls.h>
 #include <linux/atomic.h>
 #include <linux/bitops.h>
 #include <linux/interrupt.h>
 #include <linux/netdevice.h>	/* for network interface checks */
-#include <net/netlink.h>
 #include <linux/tcp.h>
 #include <linux/udp.h>
 #include <linux/dccp.h>
 #include <linux/quota.h>
 #include <linux/un.h>		/* for Unix socket types */
-#include <net/af_unix.h>	/* for Unix socket types */
 #include <linux/parser.h>
 #include <linux/nfs_mount.h>
-#include <net/ipv6.h>
 #include <linux/hugetlb.h>
 #include <linux/personality.h>
 #include <linux/audit.h>
@@ -62,35 +53,37 @@ extern "C" {
 #include <linux/posix-timers.h>
 #include <linux/syslog.h>
 #include <linux/user_namespace.h>
+#include <linux/netlink.h>
+#include <linux/skbuff.h>
+
+#include <net/sock.h> 
+#include <net/af_unix.h>	/* for Unix socket types */
+#include <net/ipv6.h>
+#include <net/netlink.h>
+#include <net/icmp.h>
+#include <net/ip.h>		/* for local_port_range[] */
+#include <net/tcp.h>		/* struct or_callable used in sock_rcv_skb */
+#include <net/net_namespace.h>
+#include <net/netlabel.h>
+
+#include <asm/ioctls.h>
+
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4,2,0)
 #include <linux/lsm_hooks.h>
-#include <net/inet_connection_sock.h>
+
 #include <linux/inet.h>
 #include <linux/lsm_audit.h>
 #include <linux/export.h>
 #include <linux/msg.h>
 #include <linux/shm.h>
-#include <net/xfrm.h>
 #include <linux/xfrm.h>
-#endif
+#include <net/inet_connection_sock.h>
+#include <net/xfrm.h>
 
-#include <linux/module.h>
-#include <net/sock.h> 
-#include <linux/netlink.h>
-#include <linux/skbuff.h>
+#endif /* LINUX_VERSION_CODE >= KERNEL_VERSION(4,2,0) */
 
 #define NETLINK_USER 31
-
-#define SYSCALL_CONNECT		__NR_connect
-#define SYSCALL_LINK		__NR_link
-#define SYSCALL_UNLINK		__NR_unlink
-#define SYSCALL_SYMLINK		__NR_symlink
-#define SYSCALL_MKDIR		__NR_mkdir
-#define SYSCALL_RMDIR		__NR_rmdir
-#define SYSCALL_CHMOD		__NR_chmod
-#define SYSCALL_CREATE		__NR_creat
-#define SYSCALL_OPEN        __NR_open
 
 #define BUFF_SIZE 512
 
@@ -98,7 +91,8 @@ extern "C" {
 extern struct security_hook_heads security_hook_heads;
 #else
 extern struct security_operations *security_ops;
-#endif
+#endif/*LINUX_VERSION_CODE >= KERNEL_VERSION(4,2,0)*/
+
 typedef union {
 
 	struct _file_open_info{

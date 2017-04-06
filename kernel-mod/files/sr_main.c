@@ -12,9 +12,12 @@ void dbg_print(char *func){
 	int ruid = (int)rcred->uid.val;
 	int guid = (int)rcred->gid.val;
 	
-	sprintf(buff, "entered function %s\ncheck \"%s\" permission PID:%d UID:%d GID:%d\n", func,current->comm,current->pid,ruid,guid);
+	sprintf(buff, "entered function %s\ncheck \"%s\" permission PID:%d UID:%d GID:%d\n", 
+		func,current->comm,current->pid,ruid,guid);
+		
 	sr_netlink_send_up(buff, strlen(buff));
 }
+
 
 /*parsing data helper functions*/
 char* parse_sinaddr(const struct in_addr saddr){
@@ -28,7 +31,8 @@ char* parse_sinaddr(const struct in_addr saddr){
         ((saddr.s_addr&0xFF0000)>>16),
         ((saddr.s_addr&0xFF000000)>>24));
 
-    if (printed_bytes > sizeof(ip_str)) return NULL;
+    if (printed_bytes > sizeof(ip_str))
+    	return NULL;
 
     return ip_str;
 }
@@ -38,54 +42,30 @@ char* get_path(struct dentry *dentry){
 	char *buffer, *path;
 
 	buffer = (char *)__get_free_page(GFP_KERNEL);
-
 	if (!buffer)
 		return NULL;
 
 	path = dentry_path_raw(dentry, buffer, PAGE_SIZE);
-
-	if (IS_ERR(path)){
-
+	if (IS_ERR(path))
 		return NULL;
-	}
-
+	
 	free_page((unsigned long)buffer);
 
 	return path;
 }
-/*following functions used only inside check_perm()*/
-int check_connect_perm(perm_info_t *info){
 
-	struct sockaddr_in *ipv4;
-	char *ipAddress;
-	//char *buff;
-	char buff[BUFF_SIZE];
-	int port;
-
-	ipv4= (struct sockaddr_in *)info->socket_connect_info.address;
-	ipAddress = parse_sinaddr(ipv4->sin_addr);
-	port = (int)ntohs(ipv4->sin_port);
-
-	dbg_print(__FUNCTION__);
-	
-	sprintf(buff,"IP:PORT = %s:%d\n",ipAddress,port);	
-	sr_netlink_send_up(buff, strlen(buff));
-
-	return 0;
-}
-
-int check_link_perm(perm_info_t *info){
+static int vsentry_inode_link(struct dentry *old_dentry, struct inode *dir, struct dentry *new_dentry){
 
 	//char *file, *old_path, *new_path,*buff;
 	char *file, old_path[BUFF_SIZE], new_path[BUFF_SIZE],buff[BUFF_SIZE];
 
-	file = info->link_info.old_dentry->d_iname;
+	file = old_dentry->d_iname;
 
 	//old_path = kmalloc(strlen(get_path(info->link_info.old_dentry))+1,GFP_KERNEL);
 	//new_path = kmalloc(strlen(get_path(info->link_info.new_dentry))+1,GFP_KERNEL);
 
-	strcpy(old_path,get_path(info->link_info.old_dentry));
-	strcpy(new_path,get_path(info->link_info.new_dentry));
+	strcpy(old_path,get_path(old_dentry));
+	strcpy(new_path,get_path(new_dentry));
 
 	dbg_print(__FUNCTION__);
 
@@ -101,261 +81,144 @@ int check_link_perm(perm_info_t *info){
 	//kfree(buff);
 	//kfree(old_path);
 	//kfree(new_path);
-
+	
+	//TODO: handle permission for sys call
 	return 0;
 }
 
-int check_unlink_perm(perm_info_t *info){
+static int vsentry_inode_unlink(struct inode *dir, struct dentry *dentry){
 
 	char *file, path[BUFF_SIZE],buff[BUFF_SIZE];
 
-	file = info->unlink_info.dentry->d_iname;
+	file = dentry->d_iname;
 
-	strcpy(path,get_path(info->unlink_info.dentry));
+	strcpy(path,get_path(dentry));
 
 	dbg_print(__FUNCTION__);
 	
 	sprintf(buff,"unlink %s\nfrom path %s\n",file,path);	
 	sr_netlink_send_up(buff, strlen(buff));
 
+	//TODO: handle permission for sys call
 	return 0;
 }
 
-int check_symlink_perm(perm_info_t *info){
+static int vsentry_inode_symlink(struct inode *dir, struct dentry *dentry, const char *name){
 
 	char *file, path[BUFF_SIZE],buff[BUFF_SIZE];
 
-	file =(char *)info->symlink_info.name;
+	file =(char *)name;
 
-	strcpy(path,get_path(info->symlink_info.dentry));
+	strcpy(path,get_path(dentry));
 	
 	dbg_print(__FUNCTION__);
 	
 	sprintf(buff,"symlink %s\nfrom path %s\n",file,path);
 	sr_netlink_send_up(buff, strlen(buff));
 
+	//TODO: handle permission for sys call
 	return 0;
 }
 
-int check_mkdir_perm(perm_info_t *info){
+static int vsentry_inode_mkdir(struct inode *dir, struct dentry *dentry, umode_t mask){
 
 	char *file, path[BUFF_SIZE],buff[BUFF_SIZE];
 
-	file = info->mkdir_info.dentry->d_iname;
+	file = dentry->d_iname;
 
-	strcpy(path,get_path(info->mkdir_info.dentry->d_parent));
+	strcpy(path,get_path(dentry->d_parent));
 
 	dbg_print(__FUNCTION__);
-	
+		
 	sprintf(buff,"mkdir %s\nin directory %s\n",file,path);	
 	sr_netlink_send_up(buff, strlen(buff));
 
-	return 0;
+	//TODO: handle permission for sys call  
+	return 0;	
 }
 
-int check_rmdir_perm(perm_info_t *info){
+static int vsentry_inode_rmdir(struct inode *dir, struct dentry *dentry){
 
 	char *file, path[BUFF_SIZE],buff[BUFF_SIZE];
 
-	file = info->rmdir_info.dentry->d_iname;
-	strcpy(path,get_path(info->rmdir_info.dentry->d_parent));
+	file = dentry->d_iname;
+	strcpy(path,get_path(dentry->d_parent));
 
 	dbg_print(__FUNCTION__);
 	
 	sprintf(buff,"rmdir %s\nfrom directory %s\n",file,path);
 	sr_netlink_send_up(buff, strlen(buff));
 
+	//TODO: handle permission for sys call
 	return 0;
 }
 
-int check_chmod_perm(perm_info_t *info){
 
-	char path[BUFF_SIZE],buff[BUFF_SIZE];
+static int vsentry_socket_connect(struct socket *sock, struct sockaddr *address, int addrlen){
 
-	strcpy(path,get_path(info->chmod_info.path->dentry));
+	struct sockaddr_in *ipv4;
+	char *ipAddress;
+	//char *buff;
+	char buff[BUFF_SIZE];
+	int port;
+
+	ipv4= (struct sockaddr_in *)address;
+	ipAddress = parse_sinaddr(ipv4->sin_addr);
+	port = (int)ntohs(ipv4->sin_port);
+
+	dbg_print(__FUNCTION__);
+	
+	sprintf(buff,"IP:PORT = %s:%d\n",ipAddress,port);	
+	sr_netlink_send_up(buff, strlen(buff));
+
+	//TODO: handle permission for sys call
+	return 0;
+}
+
+
+static int vsentry_path_chmod(struct path *path, umode_t mode){
+
+	char path_d[BUFF_SIZE],buff[BUFF_SIZE];
+
+	strcpy(path_d,get_path(path->dentry));
 
 	dbg_print(__FUNCTION__);
 
-	sprintf(buff, "chmod %s\n",path);	
+	sprintf(buff, "chmod %s\n",path_d);	
 	sr_netlink_send_up(buff, strlen(buff));
 
+	//TODO: handle permission for sys call
 	return 0;
-
 }
 
-int check_create_perm(perm_info_t *info){
+static int vsentry_inode_create(struct inode *dir, struct dentry *dentry, umode_t mode){
 
 	char path[BUFF_SIZE],buff[BUFF_SIZE];
 
-	strcpy(path,get_path(info->inode_create_info.dentry));
+	strcpy(path,get_path(dentry));
 
 	dbg_print(__FUNCTION__);
 	
 	sprintf(buff,"create %s\n",path);	
 	sr_netlink_send_up(buff, strlen(buff));
 
+	//TODO: handle permission for sys call
 	return 0;
 }
 
-int check_file_open(perm_info_t *info){
-
+static int vsentry_file_open(struct file *file, const struct cred *cred){
+	
 	char path[BUFF_SIZE],buff[BUFF_SIZE];
 
-	strcpy(path,get_path(info->file_open_info.file->f_path.dentry));
+	strcpy(path,get_path(file->f_path.dentry));
 
 	dbg_print(__FUNCTION__);
 
 	sprintf(buff,"file %s\n",path);	
 	sr_netlink_send_up(buff, strlen(buff));
 
+	//TODO: handle permission for sys call
 	return 0;
-}
-/**/
-static int check_perm(int syscall_type, perm_info_t *perm_info){
-
-	int ret=0;
-	//printk(KERN_WARNING "____Check Permission___::%s\n", __FUNCTION__);
-
-	switch (syscall_type) {
-
-		case SYSCALL_CONNECT:
-			ret = check_connect_perm(perm_info);
-			break;
-
-		case SYSCALL_LINK:
-			ret = check_link_perm(perm_info);
-			break;
-
-		case SYSCALL_UNLINK:
-			ret = check_unlink_perm(perm_info);
-			break;
-
-		case SYSCALL_SYMLINK:
-			ret = check_symlink_perm(perm_info);
-			break;
-
-		case SYSCALL_MKDIR:
-			ret = check_mkdir_perm(perm_info);
-			break;
-
-		case SYSCALL_RMDIR:
-			ret = check_rmdir_perm(perm_info);
-			break;
-
-		case SYSCALL_CHMOD:
-			ret = check_chmod_perm(perm_info);
-			break;
-
-		case SYSCALL_CREATE:
-			ret = check_create_perm(perm_info);
-			break;
-
-		case SYSCALL_OPEN:
-			ret = check_file_open(perm_info);
-			break;
-	}
-
-	return ret;
-}
-
-/* Hook functions begin here. */
-
-static int vsentry_inode_link(struct dentry *old_dentry, struct inode *dir, struct dentry *new_dentry){
-
-	perm_info_t perm_info;
-
-	perm_info.link_info.old_dentry = old_dentry;
-	perm_info.link_info.dir = dir;
-	perm_info.link_info.new_dentry = new_dentry;
-
-	return check_perm(SYSCALL_LINK, &perm_info);
-}
-
-static int vsentry_inode_unlink(struct inode *dir, struct dentry *dentry){
-
-	perm_info_t perm_info;
-
-	perm_info.unlink_info.dir = dir;
-	perm_info.unlink_info.dentry = dentry;
-
-	return check_perm(SYSCALL_UNLINK, &perm_info);
-}
-
-static int vsentry_inode_symlink(struct inode *dir, struct dentry *dentry, const char *name){
-
-	perm_info_t perm_info;
-
-	perm_info.symlink_info.dir = dir;
-	perm_info.symlink_info.dentry = dentry;
-	perm_info.symlink_info.name = name;
-
-	return check_perm(SYSCALL_SYMLINK, &perm_info);
-}
-
-static int vsentry_inode_mkdir(struct inode *dir, struct dentry *dentry, umode_t mask){
-
-	perm_info_t perm_info;
-
-	perm_info.mkdir_info.dir = dir;
-	perm_info.mkdir_info.dentry = dentry;
-	perm_info.mkdir_info.mask = mask;
-
-	return check_perm(SYSCALL_MKDIR, &perm_info);
-}
-
-static int vsentry_inode_rmdir(struct inode *dir, struct dentry *dentry){
-
-	perm_info_t perm_info;
-
-	perm_info.rmdir_info.dir = dir;
-	perm_info.rmdir_info.dentry = dentry;
-
-	return check_perm(SYSCALL_RMDIR, &perm_info);
-}
-
-
-static int vsentry_socket_connect(struct socket *sock, struct sockaddr *address, int addrlen){
-
-	perm_info_t perm_info;
-
-	perm_info.socket_connect_info.sock = sock;
-	perm_info.socket_connect_info.address = address;
-	perm_info.socket_connect_info.addrlen = addrlen;
-
-	return check_perm(SYSCALL_CONNECT, &perm_info);
-
-}
-
-
-static int vsentry_path_chmod(struct path *path, umode_t mode){
-
-	perm_info_t perm_info;
-
-	perm_info.chmod_info.path = path;
-	perm_info.chmod_info.mode = mode;
-
-	return check_perm(SYSCALL_CHMOD, &perm_info);
-}
-
-static int vsentry_inode_create(struct inode *dir, struct dentry *dentry, umode_t mode){
-
-	perm_info_t perm_info;
-
-	perm_info.inode_create_info.dir = dir;
-	perm_info.inode_create_info.dentry = dentry;
-	perm_info.inode_create_info.mode = mode;
-
-	return check_perm(SYSCALL_CREATE, &perm_info);
-}
-
-static int vsentry_file_open(struct file *file, const struct cred *cred){
-	
-	perm_info_t perm_info;
-
-	perm_info.file_open_info.file = file;
-	perm_info.file_open_info.cred = cred;
-
-	return check_perm(SYSCALL_OPEN, &perm_info);
 }
 
 static void vsentry_bprm_committing_creds(struct linux_binprm *bprm){
@@ -373,6 +236,7 @@ static int vsentry_path_unlink(struct path *path, struct dentry *dentry){
 
 	dbg_print(__FUNCTION__);
 
+	//TODO: handle permission for sys call
 	return 0;
 }
 
@@ -382,6 +246,7 @@ static int vsentry_path_mkdir(struct path *dir, struct dentry *dentry, umode_t m
 
 	dbg_print(__FUNCTION__);
 
+	//TODO: handle permission for sys call
 	return 0;
 }
 
@@ -391,6 +256,7 @@ static int vsentry_path_rmdir(struct path *dir, struct dentry *dentry){
 
 	dbg_print(__FUNCTION__);
 
+	//TODO: handle permission for sys call
 	return 0;
 }
 
@@ -400,6 +266,7 @@ static int vsentry_path_symlink(struct path *dir, struct dentry *dentry, const c
 
 	dbg_print(__FUNCTION__);
 
+	//TODO: handle permission for sys call
 	return 0;
 }
 
@@ -409,6 +276,7 @@ static int vsentry_inode_mknod(struct inode *dir, struct dentry *dentry, umode_t
 
 	dbg_print(__FUNCTION__);
 
+	//TODO: handle permission for sys call
 	return 0;
 }
 
@@ -418,6 +286,7 @@ static int vsentry_path_mknod(struct path *dir, struct dentry *dentry, umode_t m
 
 	dbg_print(__FUNCTION__);
 
+	//TODO: handle permission for sys call
 	return 0;
 }
 
@@ -427,6 +296,7 @@ static int vsentry_inode_rename(struct inode *old_dir, struct dentry *old_dentry
 
 	dbg_print(__FUNCTION__);
 
+	//TODO: handle permission for sys call
 	return 0;
 }
 
@@ -435,7 +305,8 @@ static int vsentry_path_rename(struct path *old_dir, struct dentry *old_dentry, 
 	perm_info_t perm_info;
 
 	dbg_print(__FUNCTION__);
-
+	
+	//TODO: handle permission for sys call
 	return 0;
 }
 
@@ -445,6 +316,7 @@ static int vsentry_path_chown(struct path *old_dir,kuid_t uid,kgid_t gid){
 
 	dbg_print(__FUNCTION__);
 
+	//TODO: handle permission for sys call
 	return 0;
 }
 
@@ -454,6 +326,7 @@ static int vsentry_path_chroot(struct path *old_dir,kuid_t uid,kgid_t gid){
 
 	dbg_print(__FUNCTION__);
 
+	//TODO: handle permission for sys call
 	return 0;
 }
 
@@ -463,6 +336,7 @@ static int vsentry_inode_readlink(struct dentry *dentry){
 
 	dbg_print(__FUNCTION__);
 
+	//TODO: handle permission for sys call
 	return 0;
 }
 
@@ -472,6 +346,7 @@ static int vsentry_inode_follow_link(struct dentry *dentry, struct inode *inode,
 
 	dbg_print(__FUNCTION__);
 
+	//TODO: handle permission for sys call
 	return 0;
 }
 
@@ -481,6 +356,7 @@ static int vsentry_path_truncate(struct path *path){
 
 	dbg_print(__FUNCTION__);
 
+	//TODO: handle permission for sys call
 	return 0;
 }
 
@@ -490,6 +366,7 @@ static int vsentry_file_permission(struct file *file, int mask){
 	
 	dbg_print(__FUNCTION__);
 
+	//TODO: handle permission for sys call
 	return 0;
 }
 
@@ -499,6 +376,7 @@ static int vsentry_file_alloc_security(struct file *file){
 
 	dbg_print(__FUNCTION__);
 
+	//TODO: handle permission for sys call
 	return 0;
 }
 
@@ -507,6 +385,7 @@ static void vsentry_file_free_security(struct file *file){
 	perm_info_t perm_info;
 
 	dbg_print(__FUNCTION__);
+
 
 	return ;
 }
@@ -517,6 +396,7 @@ static int vsentry_file_ioctl(struct file *file, unsigned int cmd,unsigned long 
 	
 	dbg_print(__FUNCTION__);
 
+	//TODO: handle permission for sys call
 	return 0;
 }
 
@@ -526,6 +406,7 @@ static int vsentry_mmap_addr(unsigned long addr){
 
 	dbg_print(__FUNCTION__);
 
+	//TODO: handle permission for sys call
 	return 0;
 }
 static int vsentry_mmap_file(struct file *file, unsigned long reqport,unsigned long port,unsigned long flags){
@@ -534,6 +415,7 @@ static int vsentry_mmap_file(struct file *file, unsigned long reqport,unsigned l
 
 	dbg_print(__FUNCTION__);
 
+	//TODO: handle permission for sys call
 	return 0;
 }
 
@@ -551,6 +433,7 @@ static int vsentry_file_lock(struct file *file, unsigned int cmd){
 
 	dbg_print(__FUNCTION__);
 
+	//TODO: handle permission for sys call
 	return 0;
 }
 
@@ -569,6 +452,7 @@ static int vsentry_task_create(unsigned long clone_flags){
 
 	dbg_print(__FUNCTION__);
 
+	//TODO: handle permission for sys call
 	return 0;
 }
 
@@ -587,6 +471,7 @@ static int vsentry_kernel_fw_from_file(struct file *file,char * buf,size_t size)
 
 	dbg_print(__FUNCTION__);
 
+	//TODO: handle permission for sys call
 	return 0;
 }
 
@@ -596,6 +481,7 @@ static int vsentry_kernel_module_request(char *kmod_name){
 
 	dbg_print(__FUNCTION__);
 
+	//TODO: handle permission for sys call
 	return 0;
 }
 
@@ -605,6 +491,7 @@ static int vsentry_kernel_module_from_file(struct file *file){
 
 	dbg_print(__FUNCTION__);
 
+	//TODO: handle permission for sys call
 	return 0;
 }
 
@@ -614,6 +501,7 @@ static int vsentry_task_fix_setuid(struct cred *new, const struct cred *old, int
 
 	dbg_print(__FUNCTION__);
 
+	//TODO: handle permission for sys call
 	return 0;
 }
 
@@ -632,6 +520,7 @@ static int vsentry_task_setnice(struct task_struct *p,int nice){
 	
 	dbg_print(__FUNCTION__);
 
+	//TODO: handle permission for sys call
 	return 0;
 }
 
@@ -641,6 +530,7 @@ static int vsentry_task_setrlimit(struct task_struct *p,unsigned int resource, s
 	
 	dbg_print(__FUNCTION__);
 
+	//TODO: handle permission for sys call
 	return 0;
 }
 
@@ -649,7 +539,8 @@ static int vsentry_task_movememory(struct task_struct *p){
 	perm_info_t perm_info;
 	
 	dbg_print(__FUNCTION__);
-
+	
+	//TODO: handle permission for sys call
 	return 0;
 }
 
@@ -659,6 +550,7 @@ static int vsentry_task_kill(struct task_struct *p,struct siginfo *info, int sig
 	
 	dbg_print(__FUNCTION__);
 
+	//TODO: handle permission for sys call
 	return 0;
 }
 
@@ -676,7 +568,8 @@ static int vsentry_unix_stream_connect(struct sock *sock,struct sock *other, str
 	perm_info_t perm_info;
 	
 	dbg_print(__FUNCTION__);
-
+	
+	//TODO: handle permission for sys call
 	return 0;
 }
 
@@ -685,7 +578,8 @@ static int vsentry_unix_may_send(struct sock *sock,struct sock *other){
 	perm_info_t perm_info;
 	
 	dbg_print(__FUNCTION__);
-
+	
+	//TODO: handle permission for sys call
 	return 0;
 }
 
@@ -695,6 +589,7 @@ static int vsentry_socket_create(int family, int type, int protocol, int kern){
 	
 	dbg_print(__FUNCTION__);
 
+	//TODO: handle permission for sys call
 	return 0;
 }
 
@@ -713,6 +608,7 @@ static int vsentry_socket_listen(struct socket *sock,int backlog){
 	
 	dbg_print(__FUNCTION__);
 
+	//TODO: handle permission for sys call
 	return 0;
 }
 
@@ -722,6 +618,7 @@ static int vsentry_socket_accept(struct socket *sock,struct socket *newsock){
 	
 	dbg_print(__FUNCTION__);
 
+	//TODO: handle permission for sys call
 	return 0;
 }
 
@@ -731,6 +628,7 @@ static int vsentry_socket_sendmsg(struct socket *sock,struct msghdr *msg,int siz
 	
 	dbg_print(__FUNCTION__);
 
+	//TODO: handle permission for sys call
 	return 0;
 }
 
@@ -740,6 +638,7 @@ static int vsentry_socket_recvmsg(struct socket *sock,struct msghdr *msg,int siz
 	
 	dbg_print(__FUNCTION__);
 
+	//TODO: handle permission for sys call
 	return 0;
 }
 
@@ -749,6 +648,7 @@ static int vsentry_socket_shutdown(struct socket *sock,int how){
 	
 	dbg_print(__FUNCTION__);
 
+	//TODO: handle permission for sys call
 	return 0;
 }
 
@@ -758,6 +658,7 @@ static int vsentry_sk_alloc_security(struct socket *sk,int family, gfp_t priorit
 	
 	dbg_print(__FUNCTION__);
 
+	//TODO: handle permission for sys call
 	return 0;
 }
 
@@ -785,6 +686,7 @@ static int vsentry_shm_alloc_security(struct shmid_kernel *shp){
 	
 	dbg_print(__FUNCTION__);
 
+	//TODO: handle permission for sys call
 	return 0;
 }
 static void vsentry_shm_free_security(struct shmid_kernel *shp){
@@ -801,6 +703,7 @@ static int vsentry_shm_associate(struct shmid_kernel *shp, int shmflg){
 	
 	dbg_print(__FUNCTION__);
 
+	//TODO: handle permission for sys call
 	return 0;
 }
 static int vsentry_shm_shmctl(struct shmid_kernel *shp, int cmd){
@@ -809,6 +712,7 @@ static int vsentry_shm_shmctl(struct shmid_kernel *shp, int cmd){
 	
 	dbg_print(__FUNCTION__);
 
+	//TODO: handle permission for sys call
 	return 0;
 }
 static int vsentry_shm_shmat(struct shmid_kernel *shp, char __user *shmaddr,int shmflg){
@@ -826,6 +730,7 @@ static int vsentry_ptrace_access_check(struct task_struct *child,unsigned int mo
 	
 	dbg_print(__FUNCTION__);
 
+	//TODO: handle permission for sys call
 	return 0;
 }
 
@@ -836,6 +741,7 @@ static int vsentry_ptrace_traceme(struct task_struct *parent){
 	
 	dbg_print(__FUNCTION__);
 
+	//TODO: handle permission for sys call
 	return 0;
 }
 
@@ -845,6 +751,7 @@ static int vsentry_syslog(int type){
 	
 	dbg_print(__FUNCTION__);
 
+	//TODO: handle permission for sys call
 	return 0;
 }
 
@@ -854,6 +761,7 @@ static int vsentry_settime(const struct timespec64 *ts, const struct timezone *t
 	
 	dbg_print(__FUNCTION__);
 
+	//TODO: handle permission for sys call
 	return 0;
 }
 
@@ -863,6 +771,7 @@ static int vsentry_vm_enough_memory(struct mm_struct *mm, long pages){
 	
 	dbg_print(__FUNCTION__);
 
+	//TODO: handle permission for sys call
 	return 0;
 }
 
@@ -946,8 +855,7 @@ static struct security_hook_list vsentry_hooks[] = {
 	//LSM_HOOK_INIT(settime, vsentry_settime),
 	//LSM_HOOK_INIT(vm_enough_memory, vsentry_vm_enough_memory),
 	
-	LSM_HOOK_INIT(bprm_committing_creds, vsentry_bprm_committing_creds), 
-
+	//LSM_HOOK_INIT(bprm_committing_creds, vsentry_bprm_committing_creds), 
 };
 #else
 static struct security_operations vsentry_ops = {
@@ -1029,8 +937,6 @@ static struct security_operations vsentry_ops = {
 	//.vm_enough_memory = 		vsentry_vm_enough_memory,
 
 	.bprm_committing_creds =	vsentry_bprm_committing_creds,
-
-
 };
 #endif /*LINUX_VERSION_CODE >= KERNEL_VERSION(4,2,0)*/
 
