@@ -1,9 +1,11 @@
 TARGET = vsentry
 obj-m += $(TARGET).o 
-$(TARGET)-objs := sr_main.o \
-				  sr_netlink.o
+$(TARGET)-objs := sal/platform/linux/lsm/src/sr_main.o \
+				  sal/platform/linux/lsm/src/sr_netlink.o
 
 	SRC := $(shell pwd)
+
+EXTRA_CFLAGS := -I$(PWD)/sal/platform/linux/lsm/include
 
 all:
 	$(MAKE) -C $(KERNEL_SRC) M=$(SRC)

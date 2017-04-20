@@ -8,8 +8,9 @@ PR = "r0"
 PV = "0.1"
 
 SRC_URI = "file://Makefile \
-           file://sr_main.c \
-           file://sr_netlink.c \
+           file://sal/platform/linux/lsm/src/sr_main.c \
+           file://sal/platform/linux/lsm/src/sr_netlink.c \
+           file://sal/platform/linux/lsm/include/sr_netlink.h \
            file://COPYING \
           "
 
