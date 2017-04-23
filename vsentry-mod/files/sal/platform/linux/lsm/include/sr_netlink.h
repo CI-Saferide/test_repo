@@ -85,7 +85,7 @@ extern "C" {
 
 #define NETLINK_USER 31
 
-#define BUFF_SIZE 512
+#define BUFF_SIZE 256
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4,2,0)
 extern struct security_hook_heads security_hook_heads;

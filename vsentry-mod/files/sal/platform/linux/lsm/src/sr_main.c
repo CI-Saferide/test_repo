@@ -4,7 +4,7 @@ MODULE_LICENSE("proprietary");
 MODULE_DESCRIPTION("vSentry Kernel Module");
 
 /*kernel debug printing*/
-void dbg_print(char *func){
+void dbg_print(const char *func){
 
 	char buff[BUFF_SIZE];
 	struct task_struct *ts = current;
@@ -206,6 +206,7 @@ static int vsentry_inode_create(struct inode *dir, struct dentry *dentry, umode_
 	return 0;
 }
 
+__attribute__ ((unused))
 static int vsentry_file_open(struct file *file, const struct cred *cred){
 	
 	char path[BUFF_SIZE],buff[BUFF_SIZE];
@@ -221,18 +222,20 @@ static int vsentry_file_open(struct file *file, const struct cred *cred){
 	return 0;
 }
 
+__attribute__ ((unused))
 static void vsentry_bprm_committing_creds(struct linux_binprm *bprm){
 	
-	perm_info_t perm_info;
+	//perm_info_t perm_info;
 
 	dbg_print(__FUNCTION__);
 
 	return ;
 }
 
+__attribute__ ((unused))
 static int vsentry_path_unlink(struct path *path, struct dentry *dentry){
 
-	perm_info_t perm_info;
+	//perm_info_t perm_info;
 
 	dbg_print(__FUNCTION__);
 
@@ -240,9 +243,10 @@ static int vsentry_path_unlink(struct path *path, struct dentry *dentry){
 	return 0;
 }
 
+__attribute__ ((unused))
 static int vsentry_path_mkdir(struct path *dir, struct dentry *dentry, umode_t mode){
 
-	perm_info_t perm_info;
+	//perm_info_t perm_info;
 
 	dbg_print(__FUNCTION__);
 
@@ -250,9 +254,10 @@ static int vsentry_path_mkdir(struct path *dir, struct dentry *dentry, umode_t m
 	return 0;
 }
 
+__attribute__ ((unused))
 static int vsentry_path_rmdir(struct path *dir, struct dentry *dentry){
 
-	perm_info_t perm_info;
+	//perm_info_t perm_info;
 
 	dbg_print(__FUNCTION__);
 
@@ -260,9 +265,10 @@ static int vsentry_path_rmdir(struct path *dir, struct dentry *dentry){
 	return 0;
 }
 
+__attribute__ ((unused))
 static int vsentry_path_symlink(struct path *dir, struct dentry *dentry, const char *old_name){
 
-	perm_info_t perm_info;
+	//perm_info_t perm_info;
 
 	dbg_print(__FUNCTION__);
 
@@ -270,9 +276,10 @@ static int vsentry_path_symlink(struct path *dir, struct dentry *dentry, const c
 	return 0;
 }
 
+__attribute__ ((unused))
 static int vsentry_inode_mknod(struct inode *dir, struct dentry *dentry, umode_t mode, dev_t dev){
 
-	perm_info_t perm_info;
+	//perm_info_t perm_info;
 
 	dbg_print(__FUNCTION__);
 
@@ -280,9 +287,10 @@ static int vsentry_inode_mknod(struct inode *dir, struct dentry *dentry, umode_t
 	return 0;
 }
 
+__attribute__ ((unused))
 static int vsentry_path_mknod(struct path *dir, struct dentry *dentry, umode_t mode,unsigned int dev){
 
-	perm_info_t perm_info;
+	//perm_info_t perm_info;
 
 	dbg_print(__FUNCTION__);
 
@@ -290,9 +298,10 @@ static int vsentry_path_mknod(struct path *dir, struct dentry *dentry, umode_t m
 	return 0;
 }
 
+__attribute__ ((unused))
 static int vsentry_inode_rename(struct inode *old_dir, struct dentry *old_dentry, struct inode *new_dir,struct dentry *new_dentry){
 
-	perm_info_t perm_info;
+	//perm_info_t perm_info;
 
 	dbg_print(__FUNCTION__);
 
@@ -300,9 +309,10 @@ static int vsentry_inode_rename(struct inode *old_dir, struct dentry *old_dentry
 	return 0;
 }
 
+__attribute__ ((unused))
 static int vsentry_path_rename(struct path *old_dir, struct dentry *old_dentry, struct path *new_dir,struct dentry *new_dentry){
 
-	perm_info_t perm_info;
+	//perm_info_t perm_info;
 
 	dbg_print(__FUNCTION__);
 	
@@ -310,9 +320,10 @@ static int vsentry_path_rename(struct path *old_dir, struct dentry *old_dentry, 
 	return 0;
 }
 
+__attribute__ ((unused))
 static int vsentry_path_chown(struct path *old_dir,kuid_t uid,kgid_t gid){
 
-	perm_info_t perm_info;
+	//perm_info_t perm_info;
 
 	dbg_print(__FUNCTION__);
 
@@ -320,9 +331,10 @@ static int vsentry_path_chown(struct path *old_dir,kuid_t uid,kgid_t gid){
 	return 0;
 }
 
+__attribute__ ((unused))
 static int vsentry_path_chroot(struct path *old_dir,kuid_t uid,kgid_t gid){
 
-	perm_info_t perm_info;
+	//perm_info_t perm_info;
 
 	dbg_print(__FUNCTION__);
 
@@ -330,9 +342,10 @@ static int vsentry_path_chroot(struct path *old_dir,kuid_t uid,kgid_t gid){
 	return 0;
 }
 
+__attribute__ ((unused))
 static int vsentry_inode_readlink(struct dentry *dentry){
 
-	perm_info_t perm_info;
+	//perm_info_t perm_info;
 
 	dbg_print(__FUNCTION__);
 
@@ -340,9 +353,10 @@ static int vsentry_inode_readlink(struct dentry *dentry){
 	return 0;
 }
 
+__attribute__ ((unused))
 static int vsentry_inode_follow_link(struct dentry *dentry, struct inode *inode, bool rcu){
 
-	perm_info_t perm_info;
+	//perm_info_t perm_info;
 
 	dbg_print(__FUNCTION__);
 
@@ -350,9 +364,10 @@ static int vsentry_inode_follow_link(struct dentry *dentry, struct inode *inode,
 	return 0;
 }
 
+__attribute__ ((unused))
 static int vsentry_path_truncate(struct path *path){
 
-	perm_info_t perm_info;
+	//perm_info_t perm_info;
 
 	dbg_print(__FUNCTION__);
 
@@ -360,9 +375,10 @@ static int vsentry_path_truncate(struct path *path){
 	return 0;
 }
 
+__attribute__ ((unused))
 static int vsentry_file_permission(struct file *file, int mask){
 
-	perm_info_t perm_info;
+	//perm_info_t perm_info;
 	
 	dbg_print(__FUNCTION__);
 
@@ -370,9 +386,10 @@ static int vsentry_file_permission(struct file *file, int mask){
 	return 0;
 }
 
+__attribute__ ((unused))
 static int vsentry_file_alloc_security(struct file *file){
 
-	perm_info_t perm_info;
+	//perm_info_t perm_info;
 
 	dbg_print(__FUNCTION__);
 
@@ -380,9 +397,10 @@ static int vsentry_file_alloc_security(struct file *file){
 	return 0;
 }
 
+__attribute__ ((unused))
 static void vsentry_file_free_security(struct file *file){
 
-	perm_info_t perm_info;
+	//perm_info_t perm_info;
 
 	dbg_print(__FUNCTION__);
 
@@ -390,9 +408,10 @@ static void vsentry_file_free_security(struct file *file){
 	return ;
 }
 
+__attribute__ ((unused))
 static int vsentry_file_ioctl(struct file *file, unsigned int cmd,unsigned long arg){
 
-	perm_info_t perm_info;
+	//perm_info_t perm_info;
 	
 	dbg_print(__FUNCTION__);
 
@@ -400,18 +419,21 @@ static int vsentry_file_ioctl(struct file *file, unsigned int cmd,unsigned long 
 	return 0;
 }
 
+__attribute__ ((unused))
 static int vsentry_mmap_addr(unsigned long addr){
 
-	perm_info_t perm_info;
+	//perm_info_t perm_info;
 
 	dbg_print(__FUNCTION__);
 
 	//TODO: handle permission for sys call
 	return 0;
 }
+
+__attribute__ ((unused))
 static int vsentry_mmap_file(struct file *file, unsigned long reqport,unsigned long port,unsigned long flags){
 
-	perm_info_t perm_info;
+	//perm_info_t perm_info;
 
 	dbg_print(__FUNCTION__);
 
@@ -419,17 +441,20 @@ static int vsentry_mmap_file(struct file *file, unsigned long reqport,unsigned l
 	return 0;
 }
 
+__attribute__ ((unused))
 static int vsentry_file_mprotect(struct vm_area_struct *vma, unsigned long reqport,unsigned long port){
 
-	perm_info_t perm_info;
+	//perm_info_t perm_info;
 
 	dbg_print(__FUNCTION__);
 
 	return 0;
 }
+
+__attribute__ ((unused))
 static int vsentry_file_lock(struct file *file, unsigned int cmd){
 
-	perm_info_t perm_info;
+	//perm_info_t perm_info;
 
 	dbg_print(__FUNCTION__);
 
@@ -437,18 +462,20 @@ static int vsentry_file_lock(struct file *file, unsigned int cmd){
 	return 0;
 }
 
+__attribute__ ((unused))
 static int vsentry_file_fcntl(struct file *file, unsigned int cmd,unsigned long arg){
 
-	perm_info_t perm_info;
+	//perm_info_t perm_info;
 
 	dbg_print(__FUNCTION__);
 
 	return 0;
 }
 
+__attribute__ ((unused))
 static int vsentry_task_create(unsigned long clone_flags){
 
-	perm_info_t perm_info;
+	//perm_info_t perm_info;
 
 	dbg_print(__FUNCTION__);
 
@@ -456,18 +483,20 @@ static int vsentry_task_create(unsigned long clone_flags){
 	return 0;
 }
 
+__attribute__ ((unused))
 static void vsentry_task_free(struct task_struct *task){
 
-	perm_info_t perm_info;
+	//perm_info_t perm_info;
 
 	dbg_print(__FUNCTION__);
 
 	return ;
 }
 
+__attribute__ ((unused))
 static int vsentry_kernel_fw_from_file(struct file *file,char * buf,size_t size){
 
-	perm_info_t perm_info;
+	//perm_info_t perm_info;
 
 	dbg_print(__FUNCTION__);
 
@@ -475,9 +504,10 @@ static int vsentry_kernel_fw_from_file(struct file *file,char * buf,size_t size)
 	return 0;
 }
 
+__attribute__ ((unused))
 static int vsentry_kernel_module_request(char *kmod_name){
 
-	perm_info_t perm_info;
+	//perm_info_t perm_info;
 
 	dbg_print(__FUNCTION__);
 
@@ -485,9 +515,10 @@ static int vsentry_kernel_module_request(char *kmod_name){
 	return 0;
 }
 
+__attribute__ ((unused))
 static int vsentry_kernel_module_from_file(struct file *file){
 
-	perm_info_t perm_info;
+	//perm_info_t perm_info;
 
 	dbg_print(__FUNCTION__);
 
@@ -495,9 +526,10 @@ static int vsentry_kernel_module_from_file(struct file *file){
 	return 0;
 }
 
+__attribute__ ((unused))
 static int vsentry_task_fix_setuid(struct cred *new, const struct cred *old, int flags){
 
-	perm_info_t perm_info;
+	//perm_info_t perm_info;
 
 	dbg_print(__FUNCTION__);
 
@@ -505,18 +537,20 @@ static int vsentry_task_fix_setuid(struct cred *new, const struct cred *old, int
 	return 0;
 }
 
+__attribute__ ((unused))
 static int vsentry_task_setpgid(struct task_struct *p,pid_t pgid){
 
-	perm_info_t perm_info;
+	//perm_info_t perm_info;
 
 	dbg_print(__FUNCTION__);
 
 	return 0;
 }
 
+__attribute__ ((unused))
 static int vsentry_task_setnice(struct task_struct *p,int nice){
 
-	perm_info_t perm_info;
+	//perm_info_t perm_info;
 	
 	dbg_print(__FUNCTION__);
 
@@ -524,9 +558,10 @@ static int vsentry_task_setnice(struct task_struct *p,int nice){
 	return 0;
 }
 
+__attribute__ ((unused))
 static int vsentry_task_setrlimit(struct task_struct *p,unsigned int resource, struct rlimit *new_rlim){
 
-	perm_info_t perm_info;
+	//perm_info_t perm_info;
 	
 	dbg_print(__FUNCTION__);
 
@@ -534,9 +569,10 @@ static int vsentry_task_setrlimit(struct task_struct *p,unsigned int resource, s
 	return 0;
 }
 
+__attribute__ ((unused))
 static int vsentry_task_movememory(struct task_struct *p){
 
-	perm_info_t perm_info;
+	//perm_info_t perm_info;
 	
 	dbg_print(__FUNCTION__);
 	
@@ -544,9 +580,10 @@ static int vsentry_task_movememory(struct task_struct *p){
 	return 0;
 }
 
+__attribute__ ((unused))
 static int vsentry_task_kill(struct task_struct *p,struct siginfo *info, int sig, u32 secid){
 
-	perm_info_t perm_info;
+	//perm_info_t perm_info;
 	
 	dbg_print(__FUNCTION__);
 
@@ -554,18 +591,20 @@ static int vsentry_task_kill(struct task_struct *p,struct siginfo *info, int sig
 	return 0;
 }
 
+__attribute__ ((unused))
 static void vsentry_task_to_inode(struct task_struct *p,struct inode *inode){
 
-	perm_info_t perm_info;
+	//perm_info_t perm_info;
 	
 	dbg_print(__FUNCTION__);
 
 	return ;
 }
 
+__attribute__ ((unused))
 static int vsentry_unix_stream_connect(struct sock *sock,struct sock *other, struct sock *newsk){
 
-	perm_info_t perm_info;
+	//perm_info_t perm_info;
 	
 	dbg_print(__FUNCTION__);
 	
@@ -573,9 +612,10 @@ static int vsentry_unix_stream_connect(struct sock *sock,struct sock *other, str
 	return 0;
 }
 
+__attribute__ ((unused))
 static int vsentry_unix_may_send(struct sock *sock,struct sock *other){
 
-	perm_info_t perm_info;
+	//perm_info_t perm_info;
 	
 	dbg_print(__FUNCTION__);
 	
@@ -583,9 +623,10 @@ static int vsentry_unix_may_send(struct sock *sock,struct sock *other){
 	return 0;
 }
 
+__attribute__ ((unused))
 static int vsentry_socket_create(int family, int type, int protocol, int kern){
 
-	perm_info_t perm_info;
+	//perm_info_t perm_info;
 	
 	dbg_print(__FUNCTION__);
 
@@ -593,18 +634,20 @@ static int vsentry_socket_create(int family, int type, int protocol, int kern){
 	return 0;
 }
 
+__attribute__ ((unused))
 static int vsentry_socket_bind(struct socket *sock, struct sockaddr *address,int addrlen){
 
-	perm_info_t perm_info;
+	//perm_info_t perm_info;
 	
 	dbg_print(__FUNCTION__);
 
 	return 0;
 }
 
+__attribute__ ((unused))
 static int vsentry_socket_listen(struct socket *sock,int backlog){
 
-	perm_info_t perm_info;
+	//perm_info_t perm_info;
 	
 	dbg_print(__FUNCTION__);
 
@@ -612,9 +655,10 @@ static int vsentry_socket_listen(struct socket *sock,int backlog){
 	return 0;
 }
 
+__attribute__ ((unused))
 static int vsentry_socket_accept(struct socket *sock,struct socket *newsock){
 
-	perm_info_t perm_info;
+	//perm_info_t perm_info;
 	
 	dbg_print(__FUNCTION__);
 
@@ -622,9 +666,10 @@ static int vsentry_socket_accept(struct socket *sock,struct socket *newsock){
 	return 0;
 }
 
+__attribute__ ((unused))
 static int vsentry_socket_sendmsg(struct socket *sock,struct msghdr *msg,int size){
 
-	perm_info_t perm_info;
+	//perm_info_t perm_info;
 	
 	dbg_print(__FUNCTION__);
 
@@ -632,9 +677,10 @@ static int vsentry_socket_sendmsg(struct socket *sock,struct msghdr *msg,int siz
 	return 0;
 }
 
+__attribute__ ((unused))
 static int vsentry_socket_recvmsg(struct socket *sock,struct msghdr *msg,int size,int flags){
 
-	perm_info_t perm_info;
+	//perm_info_t perm_info;
 	
 	dbg_print(__FUNCTION__);
 
@@ -642,9 +688,10 @@ static int vsentry_socket_recvmsg(struct socket *sock,struct msghdr *msg,int siz
 	return 0;
 }
 
+__attribute__ ((unused))
 static int vsentry_socket_shutdown(struct socket *sock,int how){
 
-	perm_info_t perm_info;
+	//perm_info_t perm_info;
 	
 	dbg_print(__FUNCTION__);
 
@@ -652,9 +699,10 @@ static int vsentry_socket_shutdown(struct socket *sock,int how){
 	return 0;
 }
 
+__attribute__ ((unused))
 static int vsentry_sk_alloc_security(struct socket *sk,int family, gfp_t priority){
 
-	perm_info_t perm_info;
+	//perm_info_t perm_info;
 	
 	dbg_print(__FUNCTION__);
 
@@ -662,71 +710,83 @@ static int vsentry_sk_alloc_security(struct socket *sk,int family, gfp_t priorit
 	return 0;
 }
 
+__attribute__ ((unused))
 static void vsentry_sk_free_security(struct socket *sk){
 
-	perm_info_t perm_info;
+	//perm_info_t perm_info;
 	
 	dbg_print(__FUNCTION__);
 
 	return ;
 }
 
+__attribute__ ((unused))
 static void vsentry_sk_clone_security(struct socket *sk,struct sock *newsk){
 
-	perm_info_t perm_info;
+	//perm_info_t perm_info;
 	
 	dbg_print(__FUNCTION__);
 
 	return ;
 }
 
+__attribute__ ((unused))
 static int vsentry_shm_alloc_security(struct shmid_kernel *shp){
 
-	perm_info_t perm_info;
+	//perm_info_t perm_info;
 	
 	dbg_print(__FUNCTION__);
 
 	//TODO: handle permission for sys call
 	return 0;
 }
+
+__attribute__ ((unused))
 static void vsentry_shm_free_security(struct shmid_kernel *shp){
 
-	perm_info_t perm_info;
+	//perm_info_t perm_info;
 	
 	dbg_print(__FUNCTION__);
 
 	return ;
 }
+
+__attribute__ ((unused))
 static int vsentry_shm_associate(struct shmid_kernel *shp, int shmflg){
 
-	perm_info_t perm_info;
+	//perm_info_t perm_info;
 	
 	dbg_print(__FUNCTION__);
 
 	//TODO: handle permission for sys call
 	return 0;
 }
+
+__attribute__ ((unused))
 static int vsentry_shm_shmctl(struct shmid_kernel *shp, int cmd){
 
-	perm_info_t perm_info;
+	//perm_info_t perm_info;
 	
 	dbg_print(__FUNCTION__);
 
 	//TODO: handle permission for sys call
 	return 0;
 }
+
+__attribute__ ((unused))
 static int vsentry_shm_shmat(struct shmid_kernel *shp, char __user *shmaddr,int shmflg){
 
-	perm_info_t perm_info;
+	//perm_info_t perm_info;
 	
 	dbg_print(__FUNCTION__);
 
 	return 0;
 }
 
+__attribute__ ((unused))
 static int vsentry_ptrace_access_check(struct task_struct *child,unsigned int mode){
 
-	perm_info_t perm_info;
+	//perm_info_t perm_info;
 	
 	dbg_print(__FUNCTION__);
 
@@ -734,10 +794,10 @@ static int vsentry_ptrace_access_check(struct task_struct *child,unsigned int mo
 	return 0;
 }
 
-
+__attribute__ ((unused))
 static int vsentry_ptrace_traceme(struct task_struct *parent){
 
-	perm_info_t perm_info;
+	//perm_info_t perm_info;
 	
 	dbg_print(__FUNCTION__);
 
@@ -745,9 +805,10 @@ static int vsentry_ptrace_traceme(struct task_struct *parent){
 	return 0;
 }
 
+__attribute__ ((unused))
 static int vsentry_syslog(int type){
 
-	perm_info_t perm_info;
+	//perm_info_t perm_info;
 	
 	dbg_print(__FUNCTION__);
 
@@ -755,9 +816,10 @@ static int vsentry_syslog(int type){
 	return 0;
 }
 
+__attribute__ ((unused))
 static int vsentry_settime(const struct timespec64 *ts, const struct timezone *tz){
 
-	perm_info_t perm_info;
+	//perm_info_t perm_info;
 	
 	dbg_print(__FUNCTION__);
 
@@ -765,9 +827,10 @@ static int vsentry_settime(const struct timespec64 *ts, const struct timezone *t
 	return 0;
 }
 
+__attribute__ ((unused))
 static int vsentry_vm_enough_memory(struct mm_struct *mm, long pages){
 
-	perm_info_t perm_info;
+	//perm_info_t perm_info;
 	
 	dbg_print(__FUNCTION__);
 
@@ -786,7 +849,7 @@ static struct security_hook_list vsentry_hooks[] = {
 	LSM_HOOK_INIT(path_mknod, vsentry_path_mknod),
 	LSM_HOOK_INIT(path_rename, vsentry_path_rename),
 	LSM_HOOK_INIT(path_chown, vsentry_path_chown),
-	LSM_HOOK_INIT(path_chroot, vsentry_path_chroot),
+	//LSM_HOOK_INIT(path_chroot, vsentry_path_chroot),
 	LSM_HOOK_INIT(path_truncate, vsentry_path_truncate),
 
 	LSM_HOOK_INIT(inode_link, vsentry_inode_link),
@@ -799,7 +862,7 @@ static struct security_hook_list vsentry_hooks[] = {
     LSM_HOOK_INIT(inode_rename, vsentry_inode_rename),
 	LSM_HOOK_INIT(inode_readlink, vsentry_inode_readlink),
 	//LSM_HOOK_INIT(inode_follow_link, vsentry_inode_follow_link),
-/*
+#if(0)
     LSM_HOOK_INIT(file_open, vsentry_file_open),
 	LSM_HOOK_INIT(file_permission, vsentry_file_permission),
 	LSM_HOOK_INIT(file_alloc_security, vsentry_file_alloc_security),
@@ -824,10 +887,11 @@ static struct security_hook_list vsentry_hooks[] = {
 
 	LSM_HOOK_INIT(unix_stream_connect, vsentry_unix_stream_connect),
 	LSM_HOOK_INIT(unix_may_send, vsentry_unix_may_send),
+#endif
 	
-	//LSM_HOOK_INIT(kernel_fw_from_file, vsentry_kernel_fw_from_file), /*not in every kern version*/
+	//LSM_HOOK_INIT(kernel_fw_from_file, vsentry_kernel_fw_from_file), //not in every kern version
 	//LSM_HOOK_INIT(kernel_module_request, vsentry_kernel_module_request),
-	//LSM_HOOK_INIT(kernel_module_from_file, vsentry_kernel_module_from_file), /*not in every kern version*/
+	//LSM_HOOK_INIT(kernel_module_from_file, vsentry_kernel_module_from_file), //not in every kern version
 
     LSM_HOOK_INIT(socket_connect, vsentry_socket_connect),
 	//LSM_HOOK_INIT(socket_create, vsentry_socket_create),

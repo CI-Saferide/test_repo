@@ -1,8 +1,5 @@
 #include "sr_netlink.h"
- 
-MODULE_LICENSE("proprietary");
-MODULE_DESCRIPTION("vSentry Kernel Module");
- 
+
 struct sock *nl_sk = NULL;
 int sr_vsentryd_pid = 0;
 

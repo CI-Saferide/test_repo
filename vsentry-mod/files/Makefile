@@ -7,9 +7,11 @@ $(TARGET)-objs := sal/platform/linux/lsm/src/sr_main.o \
 
 EXTRA_CFLAGS := -I$(PWD)/sal/platform/linux/lsm/include
 
+x86:
+	make -C /lib/modules/$(shell uname -r)/build M=$(PWD) modules
+
 all:
 	$(MAKE) -C $(KERNEL_SRC) M=$(SRC)
-#	make -C /lib/modules/$(shell uname -r)/build M=$(PWD) modules
 
 
 modules_install:
