@@ -11,7 +11,8 @@ SRC_URI = "file://Makefile \
            file://sal/platform/linux/lsm/src/module_init.c \
            file://sal/platform/linux/lsm/src/sr_netlink.c \
            file://sal/platform/linux/lsm/include/sr_netlink.h \
-           file://sal/platform/linux/lsm/src/sr_lsm_hooks.h \
+           file://sal/platform/linux/lsm/include/sr_lsm_hooks.h \
+           file://sal/platform/linux/lsm/src/sr_lsm_hooks.c \
            file://multiplexer/src/multiplexer.c \
            file://multiplexer/include/multiplexer.h \
            file://COPYING \
