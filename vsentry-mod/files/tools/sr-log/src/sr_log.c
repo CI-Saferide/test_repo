@@ -1,4 +1,5 @@
 #include "include/sr_log.h"
+#include "sr_sal.h"
 
 const static char    *log_level_str[8] = {
 "EMERGENCY", /* LOG_EMERG   = system is unusable               */
@@ -58,7 +59,7 @@ int sr_net_init (/*hardcoded for now...*/){
     int idle_timer, msg_len;
     nlh = NULL; //Dangling pointer ;)
 
-    sock_fd = socket(PF_NETLINK, SOCK_RAW, NETLINK_USER);
+    sock_fd = sal_socket(SOCKET_RAW, NETLINK_USER);
     if (sock_fd < 0)
         return -1;
 
