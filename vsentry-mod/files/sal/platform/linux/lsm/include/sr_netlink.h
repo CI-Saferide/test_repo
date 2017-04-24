@@ -192,7 +192,7 @@ typedef union {
 
 int sr_netlink_init(void);
 void sr_netlink_exit(void);
-int sr_netlink_send_up(char *msg, int msg_len);
+int nl_tx_msg(char *msg, int msg_len);
 
 
 #ifdef __cplusplus

@@ -1,11 +1,14 @@
 TARGET = vsentry
 obj-m += $(TARGET).o 
-$(TARGET)-objs := sal/platform/linux/lsm/src/sr_main.o \
-				  sal/platform/linux/lsm/src/sr_netlink.o
+$(TARGET)-objs := sal/platform/linux/lsm/src/module_init.o \
+				  sal/platform/linux/lsm/src/sr_netlink.o \
+				  sal/platform/linux/lsm/src/sr_lsm_hooks.o \
+				  multiplexer/src/multiplexer.o
 
 	SRC := $(shell pwd)
 
-EXTRA_CFLAGS := -I$(PWD)/sal/platform/linux/lsm/include
+EXTRA_CFLAGS := -I$(PWD)/sal/platform/linux/lsm/include 
+EXTRA_CFLAGS += -I$(PWD)/multiplexer/include
 
 x86:
 	make -C /lib/modules/$(shell uname -r)/build M=$(PWD) modules

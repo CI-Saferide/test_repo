@@ -1,7 +1,5 @@
 #include "sr_netlink.h"
-
-MODULE_LICENSE("proprietary");
-MODULE_DESCRIPTION("vSentry Kernel Module");
+#include "multiplexer.h"
 
 /*kernel debug printing*/
 void dbg_print(const char *func){
@@ -15,7 +13,7 @@ void dbg_print(const char *func){
 	sprintf(buff, "entered function %s\ncheck \"%s\" permission PID:%d UID:%d GID:%d\n", 
 		func,current->comm,current->pid,ruid,guid);
 		
-	sr_netlink_send_up(buff, strlen(buff));
+	nl_tx_msg(buff, strlen(buff));
 }
 
 
@@ -76,7 +74,7 @@ static int vsentry_inode_link(struct dentry *old_dentry, struct inode *dir, stru
 	//sprintf(buff,"[VSENTRY]: link file %s\nold path %s\nnew path %s\n",file,old_path,new_path);
 	
 	sprintf(buff,"link file %s\nold path %s\nnew path %s\n",file,old_path,new_path);	
-	sr_netlink_send_up(buff, strlen(buff));
+	nl_tx_msg(buff, strlen(buff));
 
 	//kfree(buff);
 	//kfree(old_path);
@@ -97,7 +95,7 @@ static int vsentry_inode_unlink(struct inode *dir, struct dentry *dentry){
 	dbg_print(__FUNCTION__);
 	
 	sprintf(buff,"unlink %s\nfrom path %s\n",file,path);	
-	sr_netlink_send_up(buff, strlen(buff));
+	nl_tx_msg(buff, strlen(buff));
 
 	//TODO: handle permission for sys call
 	return 0;
@@ -114,7 +112,7 @@ static int vsentry_inode_symlink(struct inode *dir, struct dentry *dentry, const
 	dbg_print(__FUNCTION__);
 	
 	sprintf(buff,"symlink %s\nfrom path %s\n",file,path);
-	sr_netlink_send_up(buff, strlen(buff));
+	nl_tx_msg(buff, strlen(buff));
 
 	//TODO: handle permission for sys call
 	return 0;
@@ -123,6 +121,7 @@ static int vsentry_inode_symlink(struct inode *dir, struct dentry *dentry, const
 static int vsentry_inode_mkdir(struct inode *dir, struct dentry *dentry, umode_t mask){
 
 	char *file, path[BUFF_SIZE],buff[BUFF_SIZE];
+	fileinfo info;
 
 	file = dentry->d_iname;
 
@@ -131,10 +130,15 @@ static int vsentry_inode_mkdir(struct inode *dir, struct dentry *dentry, umode_t
 	dbg_print(__FUNCTION__);
 		
 	sprintf(buff,"mkdir %s\nin directory %s\n",file,path);	
-	sr_netlink_send_up(buff, strlen(buff));
-
-	//TODO: handle permission for sys call  
-	return 0;	
+	nl_tx_msg(buff, strlen(buff));
+	
+	
+	strcpy(info.filename, "shay");
+	strcpy(info.fullpath, "daniel");
+	info.gid = 12;
+	info.tid = 433;
+	
+	return (mpx_mkdir(&info));
 }
 
 static int vsentry_inode_rmdir(struct inode *dir, struct dentry *dentry){
@@ -147,7 +151,7 @@ static int vsentry_inode_rmdir(struct inode *dir, struct dentry *dentry){
 	dbg_print(__FUNCTION__);
 	
 	sprintf(buff,"rmdir %s\nfrom directory %s\n",file,path);
-	sr_netlink_send_up(buff, strlen(buff));
+	nl_tx_msg(buff, strlen(buff));
 
 	//TODO: handle permission for sys call
 	return 0;
@@ -169,7 +173,7 @@ static int vsentry_socket_connect(struct socket *sock, struct sockaddr *address,
 	dbg_print(__FUNCTION__);
 	
 	sprintf(buff,"IP:PORT = %s:%d\n",ipAddress,port);	
-	sr_netlink_send_up(buff, strlen(buff));
+	nl_tx_msg(buff, strlen(buff));
 
 	//TODO: handle permission for sys call
 	return 0;
@@ -185,7 +189,7 @@ static int vsentry_path_chmod(struct path *path, umode_t mode){
 	dbg_print(__FUNCTION__);
 
 	sprintf(buff, "chmod %s\n",path_d);	
-	sr_netlink_send_up(buff, strlen(buff));
+	nl_tx_msg(buff, strlen(buff));
 
 	//TODO: handle permission for sys call
 	return 0;
@@ -200,7 +204,7 @@ static int vsentry_inode_create(struct inode *dir, struct dentry *dentry, umode_
 	dbg_print(__FUNCTION__);
 	
 	sprintf(buff,"create %s\n",path);	
-	sr_netlink_send_up(buff, strlen(buff));
+	nl_tx_msg(buff, strlen(buff));
 
 	//TODO: handle permission for sys call
 	return 0;
@@ -216,7 +220,7 @@ static int vsentry_file_open(struct file *file, const struct cred *cred){
 	dbg_print(__FUNCTION__);
 
 	sprintf(buff,"file %s\n",path);	
-	sr_netlink_send_up(buff, strlen(buff));
+	nl_tx_msg(buff, strlen(buff));
 
 	//TODO: handle permission for sys call
 	return 0;
@@ -1004,29 +1008,6 @@ static struct security_operations vsentry_ops = {
 };
 #endif /*LINUX_VERSION_CODE >= KERNEL_VERSION(4,2,0)*/
 
-static int __init vsentry_init(void){
-	
-	int rc = 0;
-	
-	printk(KERN_INFO "[VSENTRY]: RUNNING ON VERSION %s\n",utsname()->release);
-
-	#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,2,0)
-	security_add_hooks(vsentry_hooks, ARRAY_SIZE(vsentry_hooks));
-	printk(KERN_INFO "[VSENTRY]: Kernel Module Initialized!\n");
-	sr_netlink_init();
-	#else
-	reset_security_ops();
-	printk(KERN_INFO "[VSENTRY]: Kernel Module Initialized!\n");
-	if (register_security (&vsentry_ops)){
-		printk("[VSENTRY]: Unable to register with kernel.\n");
-		rc = -EPERM;
-	}
-	sr_netlink_init();
-	#endif
-
-	return rc;//Non-zero return means that the module couldn't be loaded.
-}
-
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4,2,0)
 static inline void security_delete_hooks(struct security_hook_list *hooks,int count){
 
@@ -1037,16 +1018,14 @@ static inline void security_delete_hooks(struct security_hook_list *hooks,int co
 }
 #endif
 
-static void __exit vsentry_cleanup(void){
-	
-	sr_netlink_exit();	
-	#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,2,0)
-	security_delete_hooks(vsentry_hooks, ARRAY_SIZE(vsentry_hooks));
-	#else
-	reset_security_ops();
-	#endif
-	printk(KERN_INFO "[VSENTRY]: Cleaning up module.\n");
+int register_lsm_hooks (void)
+{
+	security_add_hooks(vsentry_hooks, ARRAY_SIZE(vsentry_hooks));
+	return 0;
 }
 
-module_init(vsentry_init);
-module_exit(vsentry_cleanup);
+int unregister_lsm_hooks (void)
+{
+	security_delete_hooks(vsentry_hooks, ARRAY_SIZE(vsentry_hooks));
+	return 0;
+}
