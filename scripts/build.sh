@@ -35,5 +35,6 @@ while true; do
 done
 
 
+#gcc ../../files/src/main.c -static -L.  -lsr_log -o ../../tools/sr-log/main
 
 

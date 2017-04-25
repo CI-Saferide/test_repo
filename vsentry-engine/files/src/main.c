@@ -1,4 +1,4 @@
-#include "include/sr_log.h"
+#include "sr_log.h"
 
 int main(int argc, char *argv[]){
 
@@ -6,7 +6,7 @@ int main(int argc, char *argv[]){
 	
     sr_log_init("[VSENTRY]", 0);
 	//sr_print(LOG_ERR, "failed to init ha_fpga %d %c %f", 10, 'e', 2.32);
-	
+	printf ("stam\n");
 	err = sr_net_init();
 	
 	return err;

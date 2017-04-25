@@ -1,4 +1,4 @@
-#include "include/sr_log.h"
+#include "sr_log.h"
 
 const static char    *log_level_str[8] = {
 "EMERGENCY", /* LOG_EMERG   = system is unusable               */

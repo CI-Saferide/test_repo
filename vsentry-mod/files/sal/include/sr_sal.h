@@ -11,6 +11,7 @@ enum SR_SOCKET_TYPE {
     SOCKET_UDP,
     SOCKET_RAW		
 };
+
 int sal_socket(enum SR_SOCKET_TYPE type, int protocol);
 
 #endif /* SR_SAL_H*/
