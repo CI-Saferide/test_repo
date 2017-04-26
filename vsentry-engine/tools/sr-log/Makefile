@@ -8,7 +8,7 @@ $(TARGET)-objs := src/sr_log.o \
 all:
 	@mkdir -p $(ROOT_DIR)/../../build/lib/
 #$(CC) -lm -o sr_log -L. -lsr_log
-	$(CC) -I$(ROOT_DIR)/include -DPLATFORM_LINUX -O -c -static $(ROOT_DIR)/src/sr_log.c
+	$(CC) -I$(ROOT_DIR)/include -I$(ROOT_DIR)/../../../vsentry-mod/files/tools/sr-log/include/  -DPLATFORM_LINUX -O -c -static $(ROOT_DIR)/src/sr_log.c
 	$(AR) rcs $(ROOT_DIR)/../../build/lib/libsr_log.a sr_log.o
 
 x86:

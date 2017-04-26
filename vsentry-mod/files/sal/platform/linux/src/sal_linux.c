@@ -18,7 +18,8 @@ int sal_socket(enum SR_SOCKET_TYPE type, int protocol)
 		case SOCKET_UDP: socket_type = SOCK_DGRAM; break;
 		case SOCKET_RAW: socket_type = SOCK_RAW; break;
 	};	
-	return (socket(PF_NETLINK, socket_type, protocol));	
+	//return (socket(PF_NETLINK, socket_type, protocol));
+	return 0;	
 }
 
 

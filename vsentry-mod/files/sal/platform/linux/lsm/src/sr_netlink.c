@@ -15,7 +15,7 @@ static void nl_recv_msg(struct sk_buff *skb)
     msg_size = strlen(msg);
 
     nlh = (struct nlmsghdr *)skb->data;
-    //printk(KERN_DEBUG "Netlink received msg payload:%s\n", (char *)nlmsg_data(nlh));
+    printk(KERN_DEBUG "Netlink received msg payload:%s\n", (char *)nlmsg_data(nlh));
     pid = nlh->nlmsg_pid; /*pid of sending process */
 
     sr_vsentryd_pid = nlh->nlmsg_pid;
