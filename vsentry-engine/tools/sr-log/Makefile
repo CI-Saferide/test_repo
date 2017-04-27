@@ -21,3 +21,5 @@ libsr_log.a: sr_log.o
 
 clean:
 	rm -f $(ROOT_DIR)/../../build/lib/libsr_log.a
+	find . -name "*.o" -type f -delete
+	find ../ -name "*~" -type f -delete

@@ -18,4 +18,7 @@ libsr_log.a:
 	$(MAKE) -C ../tools/sr-log all MAKEFLAGS=-I../tools/sr-log/include
 	
 clean:
+	find ../ -name "*~" -type f -delete
+	find ../ -name "*.o" -type f -delete
 	rm -rf $(ROOT_DIR)/../build
+	
