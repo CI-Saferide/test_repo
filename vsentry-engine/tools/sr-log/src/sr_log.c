@@ -44,7 +44,8 @@ int __sr_print (enum SR_LOG_PRIORITY priority, int line, const char *file, const
     va_end(args);
     msg[MAX_MSG_LEN - 1] = 0;
     /* create final message */
-    snprintf(output_msg, MAX_MSG_LEN-1, "%d-%d-%d %d:%d:%d %s %s[%d] %s\n", tm.tm_mday, tm.tm_mon + 1,tm.tm_year + 1900, tm.tm_hour, tm.tm_min, tm.tm_sec,g_app_name,file_basename(file), line, msg);
+    snprintf(output_msg, MAX_MSG_LEN-1, "%d-%d-%d %d:%d:%d %s %s[%d] %s\n",
+		tm.tm_mday, tm.tm_mon + 1,tm.tm_year + 1900, tm.tm_hour, tm.tm_min, tm.tm_sec,g_app_name,file_basename(file), line, msg);
     
     output_msg[MAX_MSG_LEN - 1] = 0;
     fprintf (stderr, "[%s] %s", log_level_str[priority], output_msg);
@@ -56,7 +57,7 @@ int sr_net_init (/*hardcoded for now...*/){
     int idle_timer, msg_len;
     nlh = NULL; //Dangling pointer ;)
 
-    sock_fd = socket(PF_NETLINK, SOCK_RAW, NETLINK_USER);
+    sock_fd = socket(PF_NETLINK, SOCK_RAW, NETLINK_USER); //socket function for userspace only, cannot be used in kernel module!!
     if (sock_fd < 0)
         return -1;
 

@@ -4,7 +4,7 @@
  *          hooks registration
 */
 #include "multiplexer.h"
-#include "sr_sal.h"
+#include "sal_linux.h"
 
 int mpx_mkdir(fileinfo* info)
 {

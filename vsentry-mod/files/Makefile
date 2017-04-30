@@ -1,10 +1,9 @@
 TARGET = vsentry
 obj-m += $(TARGET).o 
-$(TARGET)-objs := sal/platform/linux/src/sal_linux.o \
-				  sal/platform/linux/lsm/src/module_init.o \
-				  sal/platform/linux/lsm/src/sr_netlink.o \
+$(TARGET)-objs := sal/platform/linux/lsm/src/module_init.o \
 				  sal/platform/linux/lsm/src/sr_lsm_hooks.o \
-				  multiplexer/src/multiplexer.o
+				  multiplexer/src/multiplexer.o \
+				  sal/platform/linux/src/sal_linux.o \
 
 	SRC := $(shell pwd)
 

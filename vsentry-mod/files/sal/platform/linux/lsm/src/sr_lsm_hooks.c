@@ -1,5 +1,77 @@
-#include "sr_netlink.h"
+#include <linux/version.h>
+#include <linux/utsname.h>   // for the utsname() release feature
+#include <linux/kd.h>
+#include <linux/tracehook.h>
+#include <linux/errno.h>
+#include <linux/sched.h>
+#include <linux/xattr.h>
+#include <linux/capability.h>
+#include <linux/unistd.h>
+#include <linux/mm.h>
+#include <linux/mman.h>
+#include <linux/slab.h>
+#include <linux/pagemap.h>
+#include <linux/proc_fs.h>
+#include <linux/swap.h>
+#include <linux/spinlock.h>
+#include <linux/syscalls.h>
+#include <linux/dcache.h>
+#include <linux/file.h>
+#include <linux/fdtable.h>
+#include <linux/namei.h>
+#include <linux/mount.h>
+#include <linux/netfilter_ipv4.h>
+#include <linux/netfilter_ipv6.h>
+#include <linux/tty.h>
+#include <linux/uaccess.h>
+#include <linux/atomic.h>
+#include <linux/bitops.h>
+#include <linux/interrupt.h>
+#include <linux/netdevice.h>	/* for network interface checks */
+#include <linux/tcp.h>
+#include <linux/udp.h>
+#include <linux/dccp.h>
+#include <linux/quota.h>
+#include <linux/un.h>		/* for Unix socket types */
+#include <linux/parser.h>
+#include <linux/nfs_mount.h>
+#include <linux/hugetlb.h>
+#include <linux/personality.h>
+#include <linux/audit.h>
+#include <linux/string.h>
+#include <linux/mutex.h>
+#include <linux/posix-timers.h>
+#include <linux/syslog.h>
+#include <linux/user_namespace.h>
+#include <linux/netlink.h>
+#include <linux/skbuff.h>
+#include <net/sock.h> 
+#include <net/af_unix.h>	/* for Unix socket types */
+#include <net/ipv6.h>
+#include <net/netlink.h>
+#include <net/icmp.h>
+#include <net/ip.h>		/* for local_port_range[] */
+#include <net/tcp.h>		/* struct or_callable used in sock_rcv_skb */
+#include <net/net_namespace.h>
+#include <net/netlabel.h>
+#include <asm/ioctls.h>
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,2,0)
+#include <linux/lsm_hooks.h>
+#include <linux/inet.h>
+#include <linux/lsm_audit.h>
+#include <linux/export.h>
+#include <linux/msg.h>
+#include <linux/shm.h>
+#include <linux/xfrm.h>
+#include <net/inet_connection_sock.h>
+#include <net/xfrm.h>
+#endif /* LINUX_VERSION_CODE >= KERNEL_VERSION(4,2,0) */
+
 #include "multiplexer.h"
+#include "sal_linux.h"
+
+#define BUFF_SIZE 256
 
 /*kernel debug printing*/
 void dbg_print(const char *func){
@@ -13,7 +85,7 @@ void dbg_print(const char *func){
 	sprintf(buff, "entered function %s\ncheck \"%s\" permission PID:%d UID:%d GID:%d\n", 
 		func,current->comm,current->pid,ruid,guid);
 		
-	nl_tx_msg(buff, strlen(buff));
+	sal_socket_tx_msg(0,buff, strlen(buff));
 }
 
 
@@ -74,7 +146,7 @@ static int vsentry_inode_link(struct dentry *old_dentry, struct inode *dir, stru
 	//sprintf(buff,"[VSENTRY]: link file %s\nold path %s\nnew path %s\n",file,old_path,new_path);
 	
 	sprintf(buff,"link file %s\nold path %s\nnew path %s\n",file,old_path,new_path);	
-	nl_tx_msg(buff, strlen(buff));
+	sal_socket_tx_msg(0,buff, strlen(buff));
 
 	//kfree(buff);
 	//kfree(old_path);
@@ -95,7 +167,7 @@ static int vsentry_inode_unlink(struct inode *dir, struct dentry *dentry){
 	dbg_print(__FUNCTION__);
 	
 	sprintf(buff,"unlink %s\nfrom path %s\n",file,path);	
-	nl_tx_msg(buff, strlen(buff));
+	sal_socket_tx_msg(0,buff, strlen(buff));
 
 	//TODO: handle permission for sys call
 	return 0;
@@ -112,7 +184,7 @@ static int vsentry_inode_symlink(struct inode *dir, struct dentry *dentry, const
 	dbg_print(__FUNCTION__);
 	
 	sprintf(buff,"symlink %s\nfrom path %s\n",file,path);
-	nl_tx_msg(buff, strlen(buff));
+	sal_socket_tx_msg(0,buff, strlen(buff));
 
 	//TODO: handle permission for sys call
 	return 0;
@@ -130,7 +202,7 @@ static int vsentry_inode_mkdir(struct inode *dir, struct dentry *dentry, umode_t
 	dbg_print(__FUNCTION__);
 		
 	sprintf(buff,"mkdir %s\nin directory %s\n",file,path);	
-	nl_tx_msg(buff, strlen(buff));
+	sal_socket_tx_msg(0,buff, strlen(buff));
 	
 	
 	strcpy(info.filename, "shay");
@@ -151,7 +223,7 @@ static int vsentry_inode_rmdir(struct inode *dir, struct dentry *dentry){
 	dbg_print(__FUNCTION__);
 	
 	sprintf(buff,"rmdir %s\nfrom directory %s\n",file,path);
-	nl_tx_msg(buff, strlen(buff));
+	sal_socket_tx_msg(0,buff, strlen(buff));
 
 	//TODO: handle permission for sys call
 	return 0;
@@ -173,7 +245,7 @@ static int vsentry_socket_connect(struct socket *sock, struct sockaddr *address,
 	dbg_print(__FUNCTION__);
 	
 	sprintf(buff,"IP:PORT = %s:%d\n",ipAddress,port);	
-	nl_tx_msg(buff, strlen(buff));
+	sal_socket_tx_msg(0,buff, strlen(buff));
 
 	//TODO: handle permission for sys call
 	return 0;
@@ -189,7 +261,7 @@ static int vsentry_path_chmod(struct path *path, umode_t mode){
 	dbg_print(__FUNCTION__);
 
 	sprintf(buff, "chmod %s\n",path_d);	
-	nl_tx_msg(buff, strlen(buff));
+	sal_socket_tx_msg(0,buff, strlen(buff));
 
 	//TODO: handle permission for sys call
 	return 0;
@@ -204,7 +276,7 @@ static int vsentry_inode_create(struct inode *dir, struct dentry *dentry, umode_
 	dbg_print(__FUNCTION__);
 	
 	sprintf(buff,"create %s\n",path);	
-	nl_tx_msg(buff, strlen(buff));
+	sal_socket_tx_msg(0,buff, strlen(buff));
 
 	//TODO: handle permission for sys call
 	return 0;
@@ -220,7 +292,7 @@ static int vsentry_file_open(struct file *file, const struct cred *cred){
 	dbg_print(__FUNCTION__);
 
 	sprintf(buff,"file %s\n",path);	
-	nl_tx_msg(buff, strlen(buff));
+	sal_socket_tx_msg(0,buff, strlen(buff));
 
 	//TODO: handle permission for sys call
 	return 0;

@@ -3,6 +3,8 @@
 struct sock *nl_sk = NULL;
 int sr_vsentryd_pid = 0;
 
+struct netlink_kernel_cfg cfg;
+
 static void nl_recv_msg(struct sk_buff *skb)
 {
     struct nlmsghdr *nlh;
@@ -66,20 +68,20 @@ int nl_tx_msg(char *msg, int msg_len)
 
 }
 
-struct netlink_kernel_cfg cfg = {
-	.input = nl_recv_msg,
-};
-
 int sr_netlink_init(void)
 {
-    //nl_sk = netlink_kernel_create(&init_net, NETLINK_USER, 0, nl_recv_msg, NULL, THIS_MODULE);
+    //nl_sk = netlink_kernel_create(&init_net, NETLINK_USER, 0, nl_recv_msg, NULL, THIS_MODULE); //convention for very old kernels...
 
+
+	cfg.input = nl_recv_msg;
+	
     nl_sk = netlink_kernel_create(&init_net, NETLINK_USER, &cfg);
     if (!nl_sk) {
         printk(KERN_ALERT "error creating socket.\n");
         return -10;
     }
 
+	//sal_kernel_socket_init(0, NETLINK_USER, &nl_recv_msg);
     return 0;
 }
 
