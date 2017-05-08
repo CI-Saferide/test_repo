@@ -16,7 +16,6 @@ int sr_vsentryd_pid = 0;
 
 static void sal_recv_msg(struct sk_buff *skb)
 {
-    printk(KERN_ALERT "sal msg received!!!!\n");
 
     //int index = 0;
     
@@ -30,6 +29,7 @@ static void sal_recv_msg(struct sk_buff *skb)
     char *msg = "vSentry Kernel Module Alive\n";
     int res;
 
+    printk(KERN_ALERT "sal msg received!!!!\n");
     msg_size = strlen(msg);
 
     nlh = (struct nlmsghdr *)skb->data;
@@ -54,7 +54,7 @@ static void sal_recv_msg(struct sk_buff *skb)
         printk(KERN_INFO "error while sending keepalive to user\n");
 
 
-	//_sal_sock_recv_cb[index]();
+	//_sal_sock_recv_cb[index]((char *)nlmsg_data(nlh));
 }
 
 int sal_socket_tx_msg(int socket_index, char *msg, int msg_len)

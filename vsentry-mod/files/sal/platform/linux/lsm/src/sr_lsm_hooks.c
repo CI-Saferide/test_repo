@@ -202,7 +202,7 @@ static int vsentry_inode_mkdir(struct inode *dir, struct dentry *dentry, umode_t
 	dbg_print(__FUNCTION__);
 		
 	sprintf(buff,"mkdir %s\nin directory %s\n",file,path);	
-	sal_socket_tx_msg(0,buff, strlen(buff));
+//	sal_socket_tx_msg(0,buff, strlen(buff));
 	
 	
 	strcpy(info.filename, "shay");

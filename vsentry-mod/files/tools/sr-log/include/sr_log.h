@@ -32,14 +32,14 @@ extern "C" {
 #define SR_LOG_DEBUG			1
 
 enum SR_LOG_PRIORITY {
-    LOG_EMERG,	
-    LOG_ALERT,	
+    LOG_EMERG,
+    LOG_ALERT,
     LOG_CRIT,
-    LOG_ERR,	
-    LOG_WARN,		
-    LOG_NOTICE,	
-    LOG_INFO,	
-    LOG_DEBUG		
+    LOG_ERR,
+    LOG_WARN,
+    LOG_NOTICE,
+    LOG_INFO,
+    LOG_DEBUG
 };
 
 int sr_log_init (const char* app_name, int flags);

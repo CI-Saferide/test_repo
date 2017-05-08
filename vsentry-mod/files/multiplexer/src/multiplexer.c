@@ -8,7 +8,11 @@
 
 int mpx_mkdir(fileinfo* info)
 {
-	sal_kernel_print_info ("mkdir hook called. filename = %s, path = %s, gid = %ld, tid = %ld\n", 
+	char buff[256];
+	sprintf(buff,"mkdir hook called. filename = %s, path = %s, gid = %ld, tid = %ld\n", 
 			info->filename, info->fullpath, info->gid, info->tid);
+	sal_socket_tx_msg(0,buff, strlen(buff));
+	//sal_kernel_print_info ("mkdir hook called. filename = %s, path = %s, gid = %ld, tid = %ld\n", 
+	//		info->filename, info->fullpath, info->gid, info->tid);
 	return 0;
 }
