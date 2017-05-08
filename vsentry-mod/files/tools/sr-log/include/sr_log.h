@@ -6,15 +6,6 @@ extern "C" {
 #endif
 
 #include <stdio.h>
-#include <stdarg.h>
-#include <string.h>
-#include <errno.h>
-#include <time.h>
-
-#include <stdlib.h>
-#include <sys/socket.h>
-#include <linux/netlink.h>
-#include <poll.h>
 
 #define NETLINK_USER 31
 
@@ -45,18 +36,11 @@ enum SR_LOG_PRIORITY {
 int sr_log_init (const char* app_name, int flags);
 int sr_net_init (/*hardcoded for now...*/);
 int __sr_print (enum SR_LOG_PRIORITY priority, int line, const char *file, const char *fmt, ...);
-#define sr_print(priority, ...) __sr_print(priority, __LINE__, __FILE__, __VA_ARGS__)
 
+#define sr_print(priority, ...) __sr_print(priority, __LINE__, __FILE__, __VA_ARGS__)
 
 /* global variables */
 char g_app_name[20];
-
-struct sockaddr_nl src_addr, dest_addr;
-struct nlmsghdr *nlh;
-struct iovec iov;
-int sock_fd;
-struct msghdr msg;
-
 
 #ifdef __cplusplus
 }

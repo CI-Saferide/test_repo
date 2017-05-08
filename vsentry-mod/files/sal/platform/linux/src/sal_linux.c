@@ -6,6 +6,7 @@
 #include "sal_linux.h"
 
 #ifdef PLATFORM_LINUX
+
 _sock_recv_cb_t _sal_sock_recv_cb[MAX_SUPPORTED_SOCKETS];
 
 struct sock *sal_sock = NULL;
@@ -16,11 +17,7 @@ int sr_vsentryd_pid = 0;
 
 static void sal_recv_msg(struct sk_buff *skb)
 {
-
-    //int index = 0;
-    
-	//while (skb->sk != &sal_sock[index])
-	//	index++;
+    int index = 0;
 
 	struct nlmsghdr *nlh;
     int pid;
@@ -28,8 +25,10 @@ static void sal_recv_msg(struct sk_buff *skb)
     int msg_size;
     char *msg = "vSentry Kernel Module Alive\n";
     int res;
+    
+    //while (skb->sk != &sal_sock[index])
+	//index++;
 
-    printk(KERN_ALERT "sal msg received!!!!\n");
     msg_size = strlen(msg);
 
     nlh = (struct nlmsghdr *)skb->data;
@@ -54,17 +53,15 @@ static void sal_recv_msg(struct sk_buff *skb)
         printk(KERN_INFO "error while sending keepalive to user\n");
 
 
-	//_sal_sock_recv_cb[index]((char *)nlmsg_data(nlh));
+	_sal_sock_recv_cb[index]((char *)nlmsg_data(nlh)); //TESTING THE CALLBACK
 }
 
 int sal_socket_tx_msg(int socket_index, char *msg, int msg_len)
 {
-
     struct nlmsghdr *nlh;
     struct sk_buff *skb_out;
 	int ret;
 
-    //printk (KERN_EMERG "tx called. msg = %s\n", msg);
     if (!sr_vsentryd_pid) { // Daemon not connected
 		return 0; 
     }
@@ -80,23 +77,24 @@ int sal_socket_tx_msg(int socket_index, char *msg, int msg_len)
 
     ret = nlmsg_unicast(sal_sock, skb_out, sr_vsentryd_pid);
     if (ret < 0) {
-	sr_vsentryd_pid = 0;	
+		sr_vsentryd_pid = 0;	
         printk(KERN_INFO "error while sending msg to user (%d)\n", ret);
-	return -1;
+		return -1;
     }
 
     return 0;
 
 }
 
-int sal_kernel_socket_init(int socket_index, int port, _sock_recv_cb_t *sal_sock_recv_cb)
+int sal_kernel_socket_init(int socket_index, int port, _sock_recv_cb_t sal_sock_recv_cb)
 {
-	printk(KERN_ALERT "THE PORT IS %d \n",port);
 	cfg.input = sal_recv_msg;
+	
+	_sal_sock_recv_cb[0] = sal_sock_recv_cb; /*Registering the callback*/
 		
 	sal_sock = netlink_kernel_create(&init_net, port, &cfg);
 	if (!sal_sock) {
-        printk(KERN_ALERT "error creating socket.\n");
+        printk(KERN_ALERT "error creating socket on port:%d.\n",port);
         return -10;
     }
 
@@ -106,6 +104,13 @@ int sal_kernel_socket_init(int socket_index, int port, _sock_recv_cb_t *sal_sock
 void sal_kernel_socket_exit(int socket_index)
 {
 	netlink_kernel_release(sal_sock);
+}
+
+void sal_event_cb(void *data)
+{
+    /* do stuff and things with the event */
+    printk(KERN_INFO "TESTING_CALLBACK: %s",(char*)data);
+    
 }
 
 #endif /* #ifdef PLATFORM_LINUX */

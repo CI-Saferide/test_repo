@@ -7,6 +7,7 @@
 #include <linux/kernel.h>
 #include <linux/version.h>
 #include <linux/utsname.h>
+
 #include "sr_lsm_hooks.h"
 #include "sal_linux.h"
 
@@ -16,6 +17,7 @@
 MODULE_LICENSE("proprietary");
 MODULE_DESCRIPTION("vSentry Kernel Module");
 #define MODULE_NAME	"vsentry"
+
 
 static int __init vsentry_init(void)
 {	
@@ -38,7 +40,7 @@ static int __init vsentry_init(void)
 		printk(KERN_INFO "[%s]: registration to lsm succeedded\n", MODULE_NAME);
 	}
 	#endif
-	sal_kernel_socket_init(0, MAIN_SOCKET_PORT, NULL);
+	sal_kernel_socket_init(0, MAIN_SOCKET_PORT, sal_event_cb);
 	return rc; //Non-zero return means that the module couldn't be loaded.
 }
 
