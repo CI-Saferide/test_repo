@@ -10,6 +10,7 @@
 
 #include "sr_lsm_hooks.h"
 #include "sal_linux.h"
+#include "multiplexer.h"
 
 #define MAIN_SOCKET_PORT		31
 
@@ -40,13 +41,13 @@ static int __init vsentry_init(void)
 		printk(KERN_INFO "[%s]: registration to lsm succeedded\n", MODULE_NAME);
 	}
 	#endif
-	sal_kernel_socket_init(0, MAIN_SOCKET_PORT, sal_event_cb);
+	sal_kernel_socket_init(MAIN_SOCKET_INDEX, MAIN_SOCKET_PORT, main_socket_process_cb);
 	return rc; //Non-zero return means that the module couldn't be loaded.
 }
 
 static void __exit vsentry_cleanup(void)
 {
-	sal_kernel_socket_exit(0);
+	sal_kernel_socket_exit(MAIN_SOCKET_INDEX);
 	#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,2,0)
 		unregister_lsm_hooks();
 	#else

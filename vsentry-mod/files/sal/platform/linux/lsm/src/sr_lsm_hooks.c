@@ -73,6 +73,7 @@
 
 #define BUFF_SIZE 256
 
+extern int sr_vsentryd_pid;
 /*kernel debug printing*/
 void dbg_print(const char *func){
 
@@ -81,10 +82,13 @@ void dbg_print(const char *func){
 	const struct cred *rcred= ts->real_cred;
 	int ruid = (int)rcred->uid.val;
 	int guid = (int)rcred->gid.val;
-	
-	sprintf(buff, "entered function %s\ncheck \"%s\" permission PID:%d UID:%d GID:%d\n", 
-		func,current->comm,current->pid,ruid,guid);
-		
+	/* implement filter for our sr-engine */
+    //printk("sr_vsentryd_pid = %d, current-pid = %d\n", sr_vsentryd_pid, current->pid);
+    if ((sr_vsentryd_pid) == (current->pid)-1)
+		return;
+
+	sprintf(buff, "%s HOOK\ncheck \"%s\" permission PID:%d UID:%d GID:%d\n", 
+		func,current->comm,current->pid,ruid,guid);	
 	sal_socket_tx_msg(0,buff, strlen(buff));
 }
 
@@ -203,7 +207,6 @@ static int vsentry_inode_mkdir(struct inode *dir, struct dentry *dentry, umode_t
 		
 	sprintf(buff,"mkdir %s\nin directory %s\n",file,path);	
 //	sal_socket_tx_msg(0,buff, strlen(buff));
-	
 	
 	strcpy(info.filename, "shay");
 	strcpy(info.fullpath, "daniel");
@@ -936,7 +939,7 @@ static struct security_hook_list vsentry_hooks[] = {
 	LSM_HOOK_INIT(inode_create, vsentry_inode_create),
 	LSM_HOOK_INIT(inode_mknod, vsentry_inode_mknod),
     LSM_HOOK_INIT(inode_rename, vsentry_inode_rename),
-	LSM_HOOK_INIT(inode_readlink, vsentry_inode_readlink),
+	//LSM_HOOK_INIT(inode_readlink, vsentry_inode_readlink),
 	//LSM_HOOK_INIT(inode_follow_link, vsentry_inode_follow_link),
 #if(0)
     LSM_HOOK_INIT(file_open, vsentry_file_open),
@@ -966,7 +969,7 @@ static struct security_hook_list vsentry_hooks[] = {
 #endif
 	
 	//LSM_HOOK_INIT(kernel_fw_from_file, vsentry_kernel_fw_from_file), //not in every kern version
-	//LSM_HOOK_INIT(kernel_module_request, vsentry_kernel_module_request),
+	LSM_HOOK_INIT(kernel_module_request, vsentry_kernel_module_request),
 	//LSM_HOOK_INIT(kernel_module_from_file, vsentry_kernel_module_from_file), //not in every kern version
 
     LSM_HOOK_INIT(socket_connect, vsentry_socket_connect),
@@ -988,14 +991,14 @@ static struct security_hook_list vsentry_hooks[] = {
 	//LSM_HOOK_INIT(shm_shmctl, vsentry_shm_shmctl),
 	//LSM_HOOK_INIT(shm_shmat, vsentry_shm_shmat),
 
-	//LSM_HOOK_INIT(ptrace_access_check, vsentry_ptrace_access_check),
-	//LSM_HOOK_INIT(ptrace_traceme, vsentry_ptrace_traceme),
+	LSM_HOOK_INIT(ptrace_access_check, vsentry_ptrace_access_check),
+	LSM_HOOK_INIT(ptrace_traceme, vsentry_ptrace_traceme),
 
 	//LSM_HOOK_INIT(syslog, vsentry_syslog),
-	//LSM_HOOK_INIT(settime, vsentry_settime),
+	LSM_HOOK_INIT(settime, vsentry_settime),
 	//LSM_HOOK_INIT(vm_enough_memory, vsentry_vm_enough_memory),
 	
-	//LSM_HOOK_INIT(bprm_committing_creds, vsentry_bprm_committing_creds), 
+	LSM_HOOK_INIT(bprm_committing_creds, vsentry_bprm_committing_creds), 
 };
 #else
 static struct security_operations vsentry_ops = {

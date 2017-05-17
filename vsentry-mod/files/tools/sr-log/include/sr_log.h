@@ -7,11 +7,12 @@ extern "C" {
 
 #include <stdio.h>
 
+
 #define NETLINK_USER 31
 
 #define MAX_PAYLOAD 1024 /* maximum payload size*/
 
-#define MAX_MSG_LEN             240
+#define MAX_MSG_LEN             256
 
 #define SR_LOG_EMERG			1
 #define SR_LOG_ALERT			1
@@ -34,8 +35,10 @@ enum SR_LOG_PRIORITY {
 };
 
 int sr_log_init (const char* app_name, int flags);
-int sr_net_init (/*hardcoded for now...*/);
+
 int __sr_print (enum SR_LOG_PRIORITY priority, int line, const char *file, const char *fmt, ...);
+
+int sr_net_init (/*hardcoded for now...*/);//netlink userspace init
 
 #define sr_print(priority, ...) __sr_print(priority, __LINE__, __FILE__, __VA_ARGS__)
 

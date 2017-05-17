@@ -3,6 +3,7 @@ obj-m += $(TARGET).o
 $(TARGET)-objs := sal/platform/linux/lsm/src/module_init.o \
 				  sal/platform/linux/lsm/src/sr_lsm_hooks.o \
 				  multiplexer/src/multiplexer.o \
+				  multiplexer/src/msg_process.o \
 				  sal/platform/linux/src/sal_linux.o \
 
 	SRC := $(shell pwd)

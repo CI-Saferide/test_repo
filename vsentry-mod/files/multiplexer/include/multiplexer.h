@@ -1,7 +1,8 @@
 #ifndef _MULTIPLEXER_H
 #define _MULTIPLEXER_H
 
-
+#define MAIN_SOCKET_INDEX		0
+void main_socket_process_cb(void *data);
 
 /* FS related functions */
 typedef struct _fileinfo {
