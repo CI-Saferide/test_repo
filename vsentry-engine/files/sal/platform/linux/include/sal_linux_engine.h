@@ -16,6 +16,8 @@
 
 #include <sys/socket.h>
 
+#include <pthread.h>
+
 struct sockaddr_nl src_addr, dest_addr;
 struct nlmsghdr *nlh;
 struct iovec iov;

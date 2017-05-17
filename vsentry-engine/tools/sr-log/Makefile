@@ -11,7 +11,7 @@ EXTRA_CFLAGS += -I$(ROOT_DIR)/../../../vsentry-mod/files/tools/sr-log/include
 EXTRA_CFLAGS += -I$(ROOT_DIR)/../../files/sal/platform/linux/include
 EXTRA_CFLAGS += -I$(ROOT_DIR)/include
 EXTRA_CFLAGS += -I$(ROOT_DIR)/../../../vsentry-mod/files/tools/sr-log/include
-
+EXTRA_CFLAGS +=	-lpthread
 EXTRA_CFLAGS += -DPLATFORM_LINUX
 
 all:

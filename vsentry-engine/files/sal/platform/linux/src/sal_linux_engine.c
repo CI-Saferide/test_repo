@@ -57,6 +57,7 @@ int sal_bind(int fd)
     msg.msg_iov = &iov;
     msg.msg_iovlen = 1;	
     
+    return 0;// invent some feedback or error code...
 }
 
 void sal_sendmsg(int fd,char *data)
@@ -70,42 +71,5 @@ int sal_recvmsg(int fd)
 {
 	 return recvmsg(fd, &msg, 0);
 }
-
-int sal_recvmsg_loop()
-{
-		int fd_index, numfds=0;
-    int idle_timer, msg_len; 
-	struct pollfd poll_set[2];
-	poll_set[0].fd = sock_fd;
-	poll_set[0].events = POLLIN;
-	numfds++;
-	
-	idle_timer = 30; // total time in 10 seconds multiples - 5 Minutes
-
-	while (idle_timer) {
-		int fd_index;
-
-		if (poll(poll_set, numfds, 10000)) {
-			for (fd_index = 0; fd_index < numfds; fd_index++) {
-				if ((poll_set[fd_index].revents & POLLIN ) && 
-						(poll_set[fd_index].fd == sock_fd)) {
-					/* Read message from kernel */
-					msg_len = sal_recvmsg(sock_fd);
-					sr_print(LOG_INFO, "%s",NLMSG_DATA(nlh));
-				} else {
-					sr_print(LOG_ERR,"Poll failure - event %d\n", poll_set[fd_index].revents); 
-				}
-			}
-		} else { // timed out
-			idle_timer --;
-		}
-	}
-	sr_print(LOG_ERR,"Poll timed out\n");
-	close(sock_fd);
-	
-	return 0;
-}
-
-
 
 #endif /* #ifdef PLATFORM_LINUX */

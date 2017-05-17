@@ -12,8 +12,11 @@ const static char    *log_level_str[8] = {
 "DEBUG",     /* LOG_DEBUG   = debug-level messages             */
 };
 
-char* file_basename(const char* file){
+unsigned long  tid[2];
+typedef void (*sal_thread_cb_t)(void*);
 
+char* file_basename(const char* file)
+{
     char* pattern;
     char* tmp = (char*)file;
     
@@ -31,8 +34,8 @@ int sr_log_init (const char* app_name, int flags)
     strcpy(g_app_name, app_name);
 }
 
-int __sr_print (enum SR_LOG_PRIORITY priority, int line, const char *file, const char *fmt, ...){
-
+int __sr_print (enum SR_LOG_PRIORITY priority, int line, const char *file, const char *fmt, ...)
+{
     char     msg[MAX_MSG_LEN];
     char     output_msg[MAX_MSG_LEN];
     va_list  args;
@@ -46,18 +49,22 @@ int __sr_print (enum SR_LOG_PRIORITY priority, int line, const char *file, const
     msg[MAX_MSG_LEN - 1] = 0;
     /* create final message */
     snprintf(output_msg, MAX_MSG_LEN-1, "%d-%d-%d %d:%d:%d %s %s[%d] %s\n",
-		tm.tm_mday, tm.tm_mon + 1,tm.tm_year + 1900, tm.tm_hour, tm.tm_min, tm.tm_sec,g_app_name,file_basename(file), line, msg);
+		tm.tm_mday, tm.tm_mon + 1,tm.tm_year + 1900, 
+		tm.tm_hour, tm.tm_min, tm.tm_sec,
+		g_app_name,file_basename(file), line, msg);
     
     output_msg[MAX_MSG_LEN - 1] = 0;
     fprintf (stderr, "[%s] %s", log_level_str[priority], output_msg);
 }
 
-int sr_net_init (/*hardcoded for now...*/){
-
+int sr_net_init (/*hardcoded for now...*/)
+{
     char *sr_msg;
+    int err;
+	sal_thread_cb_t sal_thread_process_msg;
 	
-    sock_fd = sal_socket(PROTOCOL_RAW, NETLINK_USER); //this function for userspace only, cannot be used in kernel module!!
-    if (sock_fd < 0)
+    sock_fd = sal_socket(PROTOCOL_RAW, NETLINK_USER);//this function for userspace only, cannot be used in kernel module!!
+    if (sock_fd < 0)								  
         return -1;
 
     sal_bind(sock_fd);
@@ -65,6 +72,72 @@ int sr_net_init (/*hardcoded for now...*/){
 	sr_msg = "Ping from userspcae!!";
 	
     sal_sendmsg(sock_fd,sr_msg); //sending msg to kernel space
+    
+    err = pthread_create(&(tid[0]), NULL, sal_recvmsg_loop, NULL);
+        if (err != 0){
+            printf("\ncan't create thread :[%s]", strerror(err));
+            return err;
+        }else
+            printf("\n Thread created successfully\n");
+            
+	return err;
+	//return sal_recvmsg_loop(); // Receive loop from kernel
+}
+
+int sal_recvmsg_loop()
+{	
+	unsigned int ctr = 0;
+	int fd_index, numfds=0; 
+    int idle_timer, msg_len; 
+	struct pollfd poll_set[2];
+	/*
+	struct pollfd {
+	int fd;             * file descriptor for an open file. 
+						  in poll function if this is neg value 'events' will be ignored, revents will return as 0
+						  possible to use this for temporary stop monitoring one of the fds
+						   
+	short events;       * The input event flags . 
+						* bit mask (flag) to determine the type of events of intrest,
+						  example: events =0; 
+						  revents will return : POLLHUP || POLLERR || POLLNVAL 
+						 						
+	short revents;      * The output event flags 
+						  filled by the kernel with the events that actually occurred.
+  	}; */
+			
+	poll_set[0].fd = sock_fd; 
+	poll_set[0].events = POLLIN; // flag that means "There is data to read"
+	numfds++; //num of actual fds in poll_set (in our case it's just 1)
 	
-	return sal_recvmsg_loop(); // Receive loop from kernel
+	while (1) {
+		
+		/*If none of the events requested (and no error) has occurred for any of the fds in poll_set
+			poll() blocks until one of the events occurs. -- this could cause an infinite block 
+			timeout : number of milliseconds that poll() should block waiting for any fds to become ready.
+				The call will block until either:
+					* a file descriptor becomes ready;
+					* the call is interrupted by a signal handler; or
+					* the timeout expires.
+		*/	
+		//timeout > 0 : will be in millsecs
+		//timeout < 0 :infinite timeout 
+		//timeout == 0 : return immediately, even if no file descriptors are ready.		
+		if (poll(poll_set, numfds, 0)) {  
+			for (fd_index = 0; fd_index < numfds; fd_index++) {
+				if ((poll_set[fd_index].revents & POLLIN ))   //check POLLIN specific bit 
+					//	&&(poll_set[fd_index].fd == sock_fd))
+					{					
+					/* Read message from kernel */
+					msg_len = sal_recvmsg(sock_fd); //also cleans the msghdr!!
+					sr_print(LOG_INFO, "%s",NLMSG_DATA(nlh));
+
+				}else{
+					sr_print(LOG_ERR,"Poll failure - event %d\n", poll_set[fd_index].revents); 
+				}
+			}
+		} 
+	}
+	//close(sock_fd);
+	
+	return 0; //NEED TO RETURN FIXED ERROR CODE
 }

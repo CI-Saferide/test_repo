@@ -8,6 +8,11 @@ int main(int argc, char *argv[]){
 	//sr_print(LOG_ERR, "failed to init ha_fpga %d %c %f", 10, 'e', 2.32);
 	printf ("Welcome to sr-engine App!\n");
 	err = sr_net_init();
-	
-	return err;
+	if (err <0){
+		printf ("ERROR: %d\n",err);
+		return err;
+	}
+
+	while(1);
+	return 0;
 }
