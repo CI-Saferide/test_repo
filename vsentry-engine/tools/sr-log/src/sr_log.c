@@ -129,6 +129,25 @@ int sal_recvmsg_loop()
 					* the call is interrupted by a signal handler; or
 					* the timeout expires.
 		*/	
+		/**
+cef example:
+
+CEF:Version|Device Vendor|Device Product|Device Version|Device Event Class ID|Name|Severity|[Extension]
+
+CEF:1.2|SafeRide|vSentry|1.0|100|Malware stopped|10|src=10.0.0.1 dst=2.1.2.2 spt=1232
+
+typedef struct CEF_payload
+{   
+    float						cef_version;
+    char						dev_vendor[32];
+    char						dev_product[32];
+    float						dev_version;			
+	enum dev_event_class_ID		class;
+	char						name[32];
+    enum severity				sev;
+    char 						extension[256]; 
+}CEF_payload;
+ * **/
 		//timeout > 0 : will be in millsecs
 		//timeout < 0 :infinite timeout 
 		//timeout == 0 : return immediately, even if no file descriptors are ready.		
@@ -141,7 +160,14 @@ int sal_recvmsg_loop()
 					msg_len = sal_recvmsg(main_sock_fd); //also cleans the msghdr!!
 					cef = NLMSG_DATA(nlh);
 					//sr_print(LOG_INFO, "%s",cef->extension);
-					printf("%s",cef->extension);
+					printf("CEF:%.1f|%s|%s|%.1f|%d|%s|%d|%s\n", cef->cef_version,
+																cef->dev_vendor,
+																cef->dev_product,
+																cef->dev_version,
+																cef->class,
+																cef->name,
+																cef->sev,
+																cef->extension);
 				}else{
 					sr_print(LOG_ERR,"Poll failure - event %d\n", poll_set[fd_index].revents); 
 				}
