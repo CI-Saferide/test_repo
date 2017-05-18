@@ -21,8 +21,14 @@
 struct sockaddr_nl src_addr, dest_addr;
 struct nlmsghdr *nlh;
 struct iovec iov;
-int sock_fd;
 struct msghdr msg;
+
+struct sockaddr_nl src_addr_log, dest_addr_log;
+struct nlmsghdr *nlh_log;
+struct iovec iov_log;
+struct msghdr msg_log;
+
+int main_sock_fd,log_sock_fd;
 
 typedef enum {
 	PROTOCOL_UDP,
@@ -33,6 +39,7 @@ typedef enum {
 int sal_socket(SAL_PROTOCOL protocol, int port);
 
 int sal_bind(int fd);
+int sal_bind_log(int fd);
 
 void sal_sendmsg(int fd,char *data);
 

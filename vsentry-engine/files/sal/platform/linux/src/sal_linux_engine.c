@@ -35,8 +35,12 @@ int sal_bind(int fd)
 	memset(&src_addr, 0, sizeof(src_addr));
     src_addr.nl_family = AF_NETLINK;
     src_addr.nl_pid = getpid(); /* self pid */
- 
-	bind(fd, (struct sockaddr *)&src_addr, sizeof(src_addr));
+
+	if (bind(fd, (struct sockaddr *)&src_addr, sizeof(src_addr))<0) 
+    {
+        perror("bind failed");
+        exit(EXIT_FAILURE);
+    }
 	
 	memset(&dest_addr, 0, sizeof(dest_addr));
     dest_addr.nl_family = AF_NETLINK;
@@ -59,7 +63,40 @@ int sal_bind(int fd)
     
     return 0;// invent some feedback or error code...
 }
+/*
+int sal_bind_log(int fd)
+{
+	nlh_log = NULL; //Dangling pointer ;)
+	
+	memset(&src_addr_log, 0, sizeof(src_addr_log));
+    src_addr_log.nl_family = AF_NETLINK;
+    src_addr_log.nl_pid = getpid(); //self pid 
+ 
+	bind(fd, (struct sockaddr *)&src_addr_log, sizeof(src_addr_log));
+	
+	
+	
+	memset(&dest_addr_log, 0, sizeof(dest_addr_log));
+    dest_addr_log.nl_family = AF_NETLINK;
+    dest_addr_log.nl_pid = 0; // For Linux Kernel
+    dest_addr_log.nl_groups = 0; //unicast 
 
+    nlh_log = (struct nlmsghdr *)malloc(NLMSG_SPACE(MAX_PAYLOAD));
+    memset(nlh_log, 0, NLMSG_SPACE(MAX_PAYLOAD));
+    nlh_log->nlmsg_len = NLMSG_SPACE(MAX_PAYLOAD);
+    nlh_log->nlmsg_pid = getpid();
+    nlh_log->nlmsg_flags = 0;
+    
+    iov_log.iov_base = (void *)nlh;
+    iov_log.iov_len = nlh->nlmsg_len;
+    
+    msg_log.msg_name = (void *)&dest_addr;
+    msg_log.msg_namelen = sizeof(dest_addr);
+    msg_log.msg_iov = &iov;
+    msg_log.msg_iovlen = 1;	
+    
+    return 0;// invent some feedback or error code...
+}*/
 void sal_sendmsg(int fd,char *data)
 {
 	strcpy(NLMSG_DATA(nlh), data);

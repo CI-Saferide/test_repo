@@ -63,15 +63,24 @@ int sr_net_init (/*hardcoded for now...*/)
     int err;
 	sal_thread_cb_t sal_thread_process_msg;
 	
-    sock_fd = sal_socket(PROTOCOL_RAW, NETLINK_USER);//this function for userspace only, cannot be used in kernel module!!
-    if (sock_fd < 0)								  
-        return -1;
-
-    sal_bind(sock_fd);
-	
+    main_sock_fd = sal_socket(PROTOCOL_RAW, NETLINK_USER);//this function for userspace only, cannot be used in kernel module!! 
+    if(main_sock_fd < 0){
+		sr_print(LOG_ERR, "failed to create socket on port: %d\n",NETLINK_USER);
+		return -1;
+	}
+	/*
+	log_sock_fd = sal_socket(PROTOCOL_RAW, NETLINK_LOG_USER);//this function for userspace only, cannot be used in kernel module!!
+	if(log_sock_fd < 0){
+		sr_print(LOG_ERR, "failed to create socket on port: %d\n",NETLINK_LOG_USER);
+		return -1;
+	}	*/							  
+  
+    sal_bind(main_sock_fd);
+    //sal_bind_log(log_sock_fd);
+    
 	sr_msg = "Ping from userspcae!!";
 	
-    sal_sendmsg(sock_fd,sr_msg); //sending msg to kernel space
+    sal_sendmsg(main_sock_fd,sr_msg); //sending msg to kernel space
     
     err = pthread_create(&(tid[0]), NULL, sal_recvmsg_loop, NULL);
         if (err != 0){
@@ -90,6 +99,7 @@ int sal_recvmsg_loop()
 	int fd_index, numfds=0; 
     int idle_timer, msg_len; 
 	struct pollfd poll_set[2];
+	struct CEF_payload *cef;
 	/*
 	struct pollfd {
 	int fd;             * file descriptor for an open file. 
@@ -105,7 +115,7 @@ int sal_recvmsg_loop()
 						  filled by the kernel with the events that actually occurred.
   	}; */
 			
-	poll_set[0].fd = sock_fd; 
+	poll_set[0].fd = main_sock_fd; 
 	poll_set[0].events = POLLIN; // flag that means "There is data to read"
 	numfds++; //num of actual fds in poll_set (in our case it's just 1)
 	
@@ -128,16 +138,17 @@ int sal_recvmsg_loop()
 					//	&&(poll_set[fd_index].fd == sock_fd))
 					{					
 					/* Read message from kernel */
-					msg_len = sal_recvmsg(sock_fd); //also cleans the msghdr!!
-					sr_print(LOG_INFO, "%s",NLMSG_DATA(nlh));
-
+					msg_len = sal_recvmsg(main_sock_fd); //also cleans the msghdr!!
+					cef = NLMSG_DATA(nlh);
+					//sr_print(LOG_INFO, "%s",cef->extension);
+					printf("%s",cef->extension);
 				}else{
 					sr_print(LOG_ERR,"Poll failure - event %d\n", poll_set[fd_index].revents); 
 				}
 			}
 		} 
 	}
-	//close(sock_fd);
+	//close(main_sock_fd);
 	
 	return 0; //NEED TO RETURN FIXED ERROR CODE
 }
