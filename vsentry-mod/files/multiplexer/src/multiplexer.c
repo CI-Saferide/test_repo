@@ -8,16 +8,20 @@
 
 int mpx_mkdir(fileinfo* info)
 {
-	int i=0;
-	char buff[256];
-
+	struct CEF_payload payload;
 	
-	sprintf(buff,"[%d]mkdir hook called. filename = %s, path = %s, gid = %ld, tid = %ld\n",i, 
-			info->filename, info->fullpath, info->gid, info->tid);
-	sal_socket_tx_msg(0,buff, strlen(buff));	
+	payload.cef_version		= 1;		
+	sprintf(payload.dev_vendor,"SafeRide");
+	sprintf(payload.dev_product,"vSentry");		
+	payload.sev 			= EIGHT;
+	payload.module			= LSM;
+	payload.class 			= FS;
+	sprintf(payload.extension,"mkdir hook called. filename = %s, path = %s,pid = %ld, gid = %ld, tid = %ld\n", 
+			info->filename, info->fullpath, info->pid,info->gid, info->tid);
+	payload.extension_size	= strlen(payload.extension);
+			
+	sal_socket_tx_msg(0,payload, sizeof(CEF_payload));	
 
-	
-	//sal_kernel_print_info ("mkdir hook called. filename = %s, path = %s, gid = %ld, tid = %ld\n", 
-	//		info->filename, info->fullpath, info->gid, info->tid);
 	return 0;
 }
+

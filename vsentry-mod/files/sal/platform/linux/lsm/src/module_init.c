@@ -13,6 +13,7 @@
 #include "multiplexer.h"
 
 #define MAIN_SOCKET_PORT		31
+#define LOG_SOCKET_PORT			18
 
 
 MODULE_LICENSE("proprietary");
@@ -42,6 +43,7 @@ static int __init vsentry_init(void)
 	}
 	#endif
 	sal_kernel_socket_init(MAIN_SOCKET_INDEX, MAIN_SOCKET_PORT, main_socket_process_cb);
+	//sal_kernel_socket_init(LOG_SOCKET_INDEX, LOG_SOCKET_PORT, log_socket_process_cb);
 	return rc; //Non-zero return means that the module couldn't be loaded.
 }
 

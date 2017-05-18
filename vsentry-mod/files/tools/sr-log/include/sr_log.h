@@ -7,8 +7,8 @@ extern "C" {
 
 #include <stdio.h>
 
-
-#define NETLINK_USER 31
+#define NETLINK_USER		 31
+#define NETLINK_LOG_USER 	 18
 
 #define MAX_PAYLOAD 1024 /* maximum payload size*/
 
@@ -33,6 +33,35 @@ enum SR_LOG_PRIORITY {
     LOG_INFO,
     LOG_DEBUG
 };
+
+/**
+cef example:
+
+CEF:Version|Device Vendor|Device Product|Device Version|Device Event Class ID|Name|Severity|[Extension]
+
+CEF:1.2|SafeRide|vSentry|1.0|100|Malware stopped|10|src=10.0.0.1 dst=2.1.2.2 spt=1232
+
+CEF:1.0|SafeRide|vSentry|1.0|0|None|None| 
+ * **/
+
+enum module_name 	{LSM, LOG};
+enum class_ID   	{NETWORK, FS, PROC};
+enum severity		{
+	ONE = 1,TWO,THREE,FOUR,FIVE,SIX,SEVEN,EIGHT,NINE,TEN};
+
+typedef struct CEF_payload
+{   
+    int		 cef_version;
+    char 	 dev_vendor[32];
+    char 	 dev_product[32];
+
+    enum severity		sev;
+    enum module_name	module;
+	enum class_ID		class;
+	
+	int extension_size;
+    char extension[256]; 
+}CEF_payload;
 
 int sr_log_init (const char* app_name, int flags);
 

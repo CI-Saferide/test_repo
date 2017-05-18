@@ -8,5 +8,11 @@
 void main_socket_process_cb(void *data)
 {
     /* do stuff and things with the event */
-    sal_kernel_print_info("TESTING_CALLBACK: %s",(char*)data);   
+    sal_kernel_print_info("TESTING_CALLBACK: %s %s",__FUNCTION__,(char*)data);   
+}
+
+void log_socket_process_cb(void *data)
+{
+    /* do stuff and things with the event */
+    sal_kernel_print_info("TESTING_CALLBACK: %s %s",__FUNCTION__,(char*)data);   
 }

@@ -1,6 +1,7 @@
 #ifndef SAL_LINUX_H
 #define SAL_LINUX_H
 
+#include "multiplexer.h"
 
 #ifdef PLATFORM_LINUX
 #include <linux/kernel.h>
@@ -43,7 +44,8 @@ typedef void (*_sock_recv_cb_t)(void*);
 
 int  sal_kernel_socket_init(int socket_index, int port, _sock_recv_cb_t sal_sock_recv_cb);
 void sal_kernel_socket_exit(int socket_index);
-int sal_socket_tx_msg(int socket_index, char *msg, int msg_len);
+
+int sal_socket_tx_msg(int socket_index, CEF_payload payload, int payload_size);
 
 
 #endif /* SAL_LINUX_H*/
