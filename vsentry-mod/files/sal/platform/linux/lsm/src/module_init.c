@@ -18,7 +18,6 @@
 
 MODULE_LICENSE("proprietary");
 MODULE_DESCRIPTION("vSentry Kernel Module");
-#define MODULE_NAME	"vsentry"
 
 
 static int __init vsentry_init(void)
