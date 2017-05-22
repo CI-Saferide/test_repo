@@ -94,11 +94,11 @@ int sr_net_init (/*hardcoded for now...*/)
 }
 
 int sal_recvmsg_loop()
-{	
+{		
 	unsigned int ctr = 0;
 	int fd_index, numfds=0; 
     int idle_timer, msg_len; 
-	struct pollfd poll_set[2];
+	struct pollfd poll_set[2];	
 	struct CEF_payload *cef;
 	/*
 	struct pollfd {
