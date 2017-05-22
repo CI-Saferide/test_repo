@@ -40,8 +40,7 @@ enum severity {
 	DEBUG
 };
 										
-typedef struct CEF_payload
-{   
+typedef struct CEF_payload {   
     float						cef_version;
     char						dev_vendor[32];
     char						dev_product[32];
@@ -52,114 +51,42 @@ typedef struct CEF_payload
     char 						extension[256]; 
 }CEF_payload;
 
-/* FS related functions */
-typedef struct _fileinfo {
-        unsigned char filename[128];
-        unsigned char fullpath[128];
-        unsigned long gid; /* group id */
-        unsigned long tid; /* thread id */
-        unsigned long pid; /* pid */
-}fileinfo;
-
-
-int mpx_mkdir(fileinfo* info);
-
+typedef struct _identifier {
 /*
+the kernel doesn't make a real distinction between pid and tid: 
+threads are just like processes but they share some things (memory, fds...) with other instances of the same group.
+a tid is actually the identifier of the schedulable object in the kernel (thread), 
+while the pid is the identifier of the group of schedulable objects that share memory and fds (process).
+*/	
+	unsigned char event_name[32];
+	unsigned long gid; /* group identifier */
+	unsigned long tid; /* thread identifier */
+	unsigned long pid; /* process identifier */
+}identifier;
+
+
 typedef union {
 
-	struct _file_open_info{
-		struct file *file;
-		const struct cred *cred;
-	}file_open_info;
+/* FS related functions  */
+	struct _fileinfo {
+		identifier id;
+		unsigned char filename[128];
+		unsigned char fullpath[128];
+	}fileinfo;
 
-	struct _inode_create_info{
-		struct inode *dir;
-		struct dentry *dentry;
-		umode_t mode;
-	}inode_create_info;
+/* socket related functions */
+	struct _sock_info {
+		identifier id;
+		unsigned char ipv4[32];
+		unsigned char ipv6[32];
+		unsigned int port;
+	}sock_info;
 
-	struct _chmod_info{
-		struct path *path;
-		umode_t mode;
-	}chmod_info;
+}mpx_info_t;
 
-	struct _link_info {
-		struct dentry *old_dentry;
-		struct inode *dir;
-		struct dentry *new_dentry;
-	}link_info;
-
-	struct _unlink_info {
-		struct inode *dir;
-		struct dentry *dentry;
-	}unlink_info;
-
-	struct _symlink_info {
-		struct inode *dir;
-		struct dentry *dentry;
-		const char *name;
-	}symlink_info;
-
-	struct _mkdir_info {
-		struct inode *dir;
-		struct dentry *dentry;
-		int mask;
-	}mkdir_info;
-
-	struct _rmdir_info {
-		struct inode *dir;
-		struct dentry *dentry;
-	}rmdir_info;
-	
-	struct _socket_connect_info {
-		struct socket *sock;
-		struct sockaddr *address;
-		int addrlen;
-	}socket_connect_info;
-
-	struct _socket_create_info {
-		int family;
-		int type; 
-		int protocol; 
-		int kern;
-	}socket_create_info;
-
-	struct _socket_bind_info {
-		struct socket *sock; 
-		struct sockaddr *address;
-		int addrlen;
-	}socket_bind_info;
-
-	struct _socket_listen_info {
-		struct socket *sock; 
-		int backlog;
-	}socket_listen_info;
-
-	struct _socket_accept_info {
-		struct socket *sock; 
-		struct socket *newsock;
-	}socket_accept_info;
-
-	struct _socket_sendmsg_info {
-		struct socket *sock;
-		struct msghdr *msg; 
-		int size;
-	}socket_sendmsg_info;
-
-	struct _socket_recvmsg_info {
-		struct socket *sock;
-		struct msghdr *msg;
-		int size;
-		int flags;
-	}socket_recvmsg_info;
-
-	struct _socket_shutdown_info {
-		struct socket *sock;
-		int how;
-	}socket_shutdown_info;
-
-}perm_info_t;
-*/
+int mpx_mkdir(mpx_info_t* info);
+int mpx_rmdir(mpx_info_t* info);
+int mpx_sk_connect(mpx_info_t* info);
 
 
 #endif /* _MULTIPLEXER_H */

@@ -185,10 +185,45 @@ static int vsentry_inode_symlink(struct inode *dir, struct dentry *dentry, const
 	//TODO: handle permission for sys call
 	return 0;
 }
+/*
+	perm_info_t perm_info;
 
+	perm_info.link_info.old_dentry = old_dentry;
+	perm_info.link_info.dir = dir;
+	perm_info.link_info.new_dentry = new_dentry;
+
+	return check_perm(SYSCALL_LINK, &perm_info);
+ */
 static int vsentry_inode_mkdir(struct inode *dir, struct dentry *dentry, umode_t mask){
 	
-	fileinfo info;
+	mpx_info_t mpx;
+	char *file, path[BUFF_SIZE];
+	
+	struct task_struct *ts = current;
+	const struct cred *rcred= ts->real_cred;		
+	int ruid = (int)rcred->uid.val;
+	int guid = (int)rcred->gid.val;
+	
+	if(hook_filter()) return 0;
+
+	file = dentry->d_iname;
+
+	strcpy(path,get_path(dentry->d_parent));
+	strcpy(mpx.fileinfo.id.event_name,__FUNCTION__);
+	strcpy(mpx.fileinfo.filename,file);
+	strcpy(mpx.fileinfo.fullpath, path);
+
+	mpx.fileinfo.id.gid = guid;
+	mpx.fileinfo.id.tid = ruid;
+	mpx.fileinfo.id.pid = current->pid;
+	
+	//TODO: handle permission for sys call
+	return (mpx_mkdir(&mpx));
+}
+
+static int vsentry_inode_rmdir(struct inode *dir, struct dentry *dentry){
+
+	mpx_info_t mpx;
 	char *file, path[BUFF_SIZE];
 	
 	struct task_struct *ts = current;
@@ -202,53 +237,44 @@ static int vsentry_inode_mkdir(struct inode *dir, struct dentry *dentry, umode_t
 
 	strcpy(path,get_path(dentry->d_parent));
 
-	strcpy(info.filename,file);
-	strcpy(info.fullpath, path);
+	strcpy(mpx.fileinfo.id.event_name,__FUNCTION__);
+	strcpy(mpx.fileinfo.filename,file);
+	strcpy(mpx.fileinfo.fullpath, path);
 
-	info.gid = guid;
-	info.tid = ruid;
-	info.pid = current->pid;
+	mpx.fileinfo.id.gid = guid;
+	mpx.fileinfo.id.tid = ruid;
+	mpx.fileinfo.id.pid = current->pid;
 	
-	return (mpx_mkdir(&info));
-}
-
-static int vsentry_inode_rmdir(struct inode *dir, struct dentry *dentry){
-
-	char *file, path[BUFF_SIZE],buff[BUFF_SIZE];
-	
-	if(hook_filter()) return 0;
-
-	file = dentry->d_iname;
-	strcpy(path,get_path(dentry->d_parent));
-	
-	sprintf(buff,"rmdir %s\nfrom directory %s\n",file,path);
-	//sal_socket_tx_msg(0,buff, strlen(buff));
-
 	//TODO: handle permission for sys call
-	return 0;
+	return (mpx_rmdir(&mpx));
 }
 
 
 static int vsentry_socket_connect(struct socket *sock, struct sockaddr *address, int addrlen){
 
+	mpx_info_t mpx;
 	struct sockaddr_in *ipv4;
 	char *ipAddress;
-	//char *buff;
-	char buff[BUFF_SIZE];
-	int port;
 
+	struct task_struct *ts = current;
+	const struct cred *rcred= ts->real_cred;		
+	int ruid = (int)rcred->uid.val;
+	int guid = (int)rcred->gid.val;
+	
 	if(hook_filter()) return 0;
 	
-	ipv4= (struct sockaddr_in *)address;
+	ipv4 = (struct sockaddr_in *)address;
 	ipAddress = parse_sinaddr(ipv4->sin_addr);
-	port = (int)ntohs(ipv4->sin_port);
-
 	
-	sprintf(buff,"IP:PORT = %s:%d\n",ipAddress,port);	
-	//sal_socket_tx_msg(0,buff, strlen(buff));
+	strcpy(mpx.fileinfo.id.event_name,__FUNCTION__);
+	strcpy(mpx.sock_info.ipv4,ipAddress);
+	mpx.sock_info.port = (int)ntohs(ipv4->sin_port);	
+	mpx.sock_info.id.gid = guid;
+	mpx.sock_info.id.tid = ruid;
+	mpx.sock_info.id.pid = current->pid;
 
 	//TODO: handle permission for sys call
-	return 0;
+	return (mpx_sk_connect(&mpx));
 }
 
 
