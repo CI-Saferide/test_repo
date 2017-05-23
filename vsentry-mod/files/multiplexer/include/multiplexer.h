@@ -19,9 +19,9 @@ a tid is actually the identifier of the schedulable object in the kernel (thread
 while the pid is the identifier of the group of schedulable objects that share memory and fds (process).
 */	
 	unsigned char event_name[32];
-	unsigned long gid; /* group identifier */
-	unsigned long tid; /* thread identifier */
-	unsigned long pid; /* process identifier */
+	unsigned int gid; /* group identifier */
+	unsigned int tid; /* thread identifier */
+	unsigned int pid; /* process identifier */
 }identifier;
 
 

@@ -26,7 +26,7 @@ int mpx_mkdir(mpx_info_t* info)
 	struct CEF_payload payload = cef_init(info->fileinfo.id.event_name,sev,class);
 	
 	sprintf(payload.extension,
-			"dir = %s, path = %s, pid = %ld, gid = %ld, tid = %ld", 
+			"dir = %s, path = %s, pid = %d, gid = %d, tid = %d", 
 			info->fileinfo.filename, 
 			info->fileinfo.fullpath, 
 			info->fileinfo.id.pid,
@@ -44,7 +44,7 @@ int mpx_rmdir(mpx_info_t* info)
 	struct CEF_payload payload = cef_init(info->fileinfo.id.event_name,sev,class);
 
 	sprintf(payload.extension,
-			"dir = %s, path = %s, pid = %ld, gid = %ld, tid = %ld", 
+			"dir = %s, path = %s, pid = %d, gid = %d, tid = %d", 
 			info->fileinfo.filename, 
 			info->fileinfo.fullpath, 
 			info->fileinfo.id.pid,
@@ -62,7 +62,7 @@ int mpx_sk_connect(mpx_info_t* info)
 	struct CEF_payload payload = cef_init(info->fileinfo.id.event_name,sev,class);
 
 	sprintf(payload.extension,
-			"IP:PORT = %s:%d, pid = %ld, gid = %ld, tid = %ld", 
+			"IP:PORT = %s:%d, pid = %d, gid = %d, tid = %d", 
 			info->sock_info.ipv4, 
 			info->sock_info.port, 
 			info->sock_info.id.pid,
@@ -80,7 +80,7 @@ int mpx_inode_create(mpx_info_t* info)
 	struct CEF_payload payload = cef_init(info->fileinfo.id.event_name,sev,class);
 
 	sprintf(payload.extension,
-			"dir = %s, path = %s, pid = %ld, gid = %ld, tid = %ld", 
+			"dir = %s, path = %s, pid = %d, gid = %d, tid = %d", 
 			info->fileinfo.filename, 
 			info->fileinfo.fullpath, 
 			info->fileinfo.id.pid,
@@ -98,7 +98,7 @@ int mpx_path_chmod(mpx_info_t* info)
 	struct CEF_payload payload = cef_init(info->fileinfo.id.event_name,sev,class);
 
 	sprintf(payload.extension,
-			"path = %s, pid = %ld, gid = %ld, tid = %ld",  
+			"path = %s, pid = %d, gid = %d, tid = %d",  
 			info->fileinfo.fullpath, 
 			info->fileinfo.id.pid,
 			info->fileinfo.id.gid, 
@@ -115,7 +115,7 @@ int mpx_file_open(mpx_info_t* info)
 	struct CEF_payload payload = cef_init(info->fileinfo.id.event_name,sev,class);
 
 	sprintf(payload.extension,
-			"file = %s, pid = %ld, gid = %ld, tid = %ld", 
+			"file = %s, pid = %d, gid = %d, tid = %d", 
 			info->fileinfo.filename, 
 			info->fileinfo.id.pid,
 			info->fileinfo.id.gid, 
@@ -132,7 +132,7 @@ int mpx_inode_link(mpx_info_t* info)
 	struct CEF_payload payload = cef_init(info->fileinfo.id.event_name,sev,class);
 
 	sprintf(payload.extension,
-			"file = %s, new path = %s,\nold path = %s, pid = %ld, gid = %ld, tid = %ld", 
+			"file = %s, new path = %s,\nold path = %s, pid = %d, gid = %d, tid = %d", 
 			info->fileinfo.filename, 
 			info->fileinfo.fullpath, 
 			info->fileinfo.old_path, 
@@ -151,7 +151,7 @@ int mpx_inode_unlink(mpx_info_t* info)
 	struct CEF_payload payload = cef_init(info->fileinfo.id.event_name,sev,class);
 
 	sprintf(payload.extension,
-			"file = %s, from path = %s, pid = %ld, gid = %ld, tid = %ld", 
+			"file = %s, from path = %s, pid = %d, gid = %d, tid = %d", 
 			info->fileinfo.filename, 
 			info->fileinfo.fullpath,  
 			info->fileinfo.id.pid,
@@ -169,7 +169,7 @@ int mpx_inode_symlink(mpx_info_t* info){
 	struct CEF_payload payload = cef_init(info->fileinfo.id.event_name,sev,class);
 
 	sprintf(payload.extension,
-			"file = %s, from path = %s, pid = %ld, gid = %ld, tid = %ld", 
+			"file = %s, from path = %s, pid = %d, gid = %d, tid = %d", 
 			info->fileinfo.filename, 
 			info->fileinfo.fullpath,  
 			info->fileinfo.id.pid,

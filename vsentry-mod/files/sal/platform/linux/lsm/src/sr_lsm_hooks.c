@@ -181,10 +181,10 @@ static int vsentry_inode_rmdir(struct inode *dir, struct dentry *dentry){
 static int vsentry_socket_connect(struct socket *sock, struct sockaddr *address, int addrlen){
 
 	mpx_info_t mpx;
-	struct sockaddr_in *ipv4;
-
 	struct task_struct *ts = current;
-	const struct cred *rcred= ts->real_cred;		
+	const struct cred *rcred= ts->real_cred;
+			
+	struct sockaddr_in *ipv4;
 	
 	if(hook_filter()) return 0;
 	
