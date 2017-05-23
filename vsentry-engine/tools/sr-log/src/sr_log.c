@@ -153,7 +153,7 @@ typedef struct CEF_payload
 		//timeout > 0 : will be in millsecs
 		//timeout < 0 :infinite timeout 
 		//timeout == 0 : return immediately, even if no file descriptors are ready.		
-		if (poll(poll_set, numfds, 0)) {  
+		if (poll(poll_set, numfds, 10000)) {  
 			for (fd_index = 0; fd_index < numfds; fd_index++) {
 				if ((poll_set[fd_index].revents & POLLIN ))   //check POLLIN specific bit 
 					//	&&(poll_set[fd_index].fd == sock_fd))

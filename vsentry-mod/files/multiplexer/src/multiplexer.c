@@ -73,3 +73,109 @@ int mpx_sk_connect(mpx_info_t* info)
 	return 0;
 }
 
+int mpx_inode_create(mpx_info_t* info)
+{
+	enum dev_event_class_ID	class = FS;
+	enum severity sev = NOTICE;
+	struct CEF_payload payload = cef_init(info->fileinfo.id.event_name,sev,class);
+
+	sprintf(payload.extension,
+			"dir = %s, path = %s, pid = %ld, gid = %ld, tid = %ld", 
+			info->fileinfo.filename, 
+			info->fileinfo.fullpath, 
+			info->fileinfo.id.pid,
+			info->fileinfo.id.gid, 
+			info->fileinfo.id.tid);
+			
+	sal_socket_tx_msg(0,payload, sizeof(CEF_payload));	
+	return 0;
+}
+
+int mpx_path_chmod(mpx_info_t* info)
+{
+	enum dev_event_class_ID	class = FS;
+	enum severity sev = WARNING;
+	struct CEF_payload payload = cef_init(info->fileinfo.id.event_name,sev,class);
+
+	sprintf(payload.extension,
+			"path = %s, pid = %ld, gid = %ld, tid = %ld",  
+			info->fileinfo.fullpath, 
+			info->fileinfo.id.pid,
+			info->fileinfo.id.gid, 
+			info->fileinfo.id.tid);
+			
+	sal_socket_tx_msg(0,payload, sizeof(CEF_payload));	
+	return 0;
+}
+
+int mpx_file_open(mpx_info_t* info)
+{
+	enum dev_event_class_ID	class = FS;
+	enum severity sev = NOTICE;
+	struct CEF_payload payload = cef_init(info->fileinfo.id.event_name,sev,class);
+
+	sprintf(payload.extension,
+			"file = %s, pid = %ld, gid = %ld, tid = %ld", 
+			info->fileinfo.filename, 
+			info->fileinfo.id.pid,
+			info->fileinfo.id.gid, 
+			info->fileinfo.id.tid);
+			
+	sal_socket_tx_msg(0,payload, sizeof(CEF_payload));	
+	return 0;
+}
+
+int mpx_inode_link(mpx_info_t* info)
+{
+	enum dev_event_class_ID	class = FS;
+	enum severity sev = NOTICE;
+	struct CEF_payload payload = cef_init(info->fileinfo.id.event_name,sev,class);
+
+	sprintf(payload.extension,
+			"file = %s, new path = %s,\nold path = %s, pid = %ld, gid = %ld, tid = %ld", 
+			info->fileinfo.filename, 
+			info->fileinfo.fullpath, 
+			info->fileinfo.old_path, 
+			info->fileinfo.id.pid,
+			info->fileinfo.id.gid, 
+			info->fileinfo.id.tid);
+			
+	sal_socket_tx_msg(0,payload, sizeof(CEF_payload));	
+	return 0;
+}
+
+int mpx_inode_unlink(mpx_info_t* info)
+{
+	enum dev_event_class_ID	class = FS;
+	enum severity sev = NOTICE;
+	struct CEF_payload payload = cef_init(info->fileinfo.id.event_name,sev,class);
+
+	sprintf(payload.extension,
+			"file = %s, from path = %s, pid = %ld, gid = %ld, tid = %ld", 
+			info->fileinfo.filename, 
+			info->fileinfo.fullpath,  
+			info->fileinfo.id.pid,
+			info->fileinfo.id.gid, 
+			info->fileinfo.id.tid);
+			
+	sal_socket_tx_msg(0,payload, sizeof(CEF_payload));	
+	return 0;
+}
+
+int mpx_inode_symlink(mpx_info_t* info){
+	
+	enum dev_event_class_ID	class = FS;
+	enum severity sev = NOTICE;
+	struct CEF_payload payload = cef_init(info->fileinfo.id.event_name,sev,class);
+
+	sprintf(payload.extension,
+			"file = %s, from path = %s, pid = %ld, gid = %ld, tid = %ld", 
+			info->fileinfo.filename, 
+			info->fileinfo.fullpath,  
+			info->fileinfo.id.pid,
+			info->fileinfo.id.gid, 
+			info->fileinfo.id.tid);
+			
+	sal_socket_tx_msg(0,payload, sizeof(CEF_payload));	
+	return 0;	
+}
