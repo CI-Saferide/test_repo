@@ -5,8 +5,6 @@
 extern "C" {
 #endif
 
-#include <stdio.h>
-
 #define NETLINK_USER		 31
 #define NETLINK_LOG_USER 	 18
 
@@ -77,12 +75,9 @@ int sr_log_init (const char* app_name, int flags);
 
 int __sr_print (enum SR_LOG_PRIORITY priority, int line, const char *file, const char *fmt, ...);
 
-int sr_net_init (/*hardcoded for now...*/);//netlink userspace init
+int sr_net_init (void/*hardcoded for now...*/);//netlink userspace init
 
 #define sr_print(priority, ...) __sr_print(priority, __LINE__, __FILE__, __VA_ARGS__)
-
-/* global variables */
-char g_app_name[20];
 
 #ifdef __cplusplus
 }

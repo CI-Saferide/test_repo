@@ -1,73 +1,7 @@
-#include <linux/version.h>
-#include <linux/utsname.h>   // for the utsname() release feature
-#include <linux/kd.h>
-#include <linux/tracehook.h>
-#include <linux/errno.h>
-#include <linux/sched.h>
-#include <linux/xattr.h>
-#include <linux/capability.h>
-#include <linux/unistd.h>
-#include <linux/mm.h>
-#include <linux/mman.h>
-#include <linux/slab.h>
-#include <linux/pagemap.h>
-#include <linux/proc_fs.h>
-#include <linux/swap.h>
-#include <linux/spinlock.h>
-#include <linux/syscalls.h>
-#include <linux/dcache.h>
-#include <linux/file.h>
-#include <linux/fdtable.h>
-#include <linux/namei.h>
-#include <linux/mount.h>
-#include <linux/netfilter_ipv4.h>
-#include <linux/netfilter_ipv6.h>
-#include <linux/tty.h>
-#include <linux/uaccess.h>
-#include <linux/atomic.h>
-#include <linux/bitops.h>
-#include <linux/interrupt.h>
-#include <linux/netdevice.h>	/* for network interface checks */
-#include <linux/tcp.h>
-#include <linux/udp.h>
-#include <linux/dccp.h>
-#include <linux/quota.h>
-#include <linux/un.h>		/* for Unix socket types */
-#include <linux/parser.h>
-#include <linux/nfs_mount.h>
-#include <linux/hugetlb.h>
-#include <linux/personality.h>
-#include <linux/audit.h>
-#include <linux/string.h>
-#include <linux/mutex.h>
-#include <linux/posix-timers.h>
-#include <linux/syslog.h>
-#include <linux/user_namespace.h>
-#include <linux/netlink.h>
-#include <linux/skbuff.h>
-#include <net/sock.h> 
-#include <net/af_unix.h>	/* for Unix socket types */
-#include <net/ipv6.h>
-#include <net/netlink.h>
-#include <net/icmp.h>
-#include <net/ip.h>		/* for local_port_range[] */
-#include <net/tcp.h>		/* struct or_callable used in sock_rcv_skb */
-#include <net/net_namespace.h>
-#include <net/netlabel.h>
-#include <asm/ioctls.h>
-
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,2,0)
-#include <linux/lsm_hooks.h>
-#include <linux/inet.h>
-#include <linux/lsm_audit.h>
-#include <linux/export.h>
-#include <linux/msg.h>
-#include <linux/shm.h>
-#include <linux/xfrm.h>
-#include <net/inet_connection_sock.h>
-#include <net/xfrm.h>
-#endif /* LINUX_VERSION_CODE >= KERNEL_VERSION(4,2,0) */
-
+/* file: sr_lsm_hooks.c
+ * purpose: this file registering the vsentry hooks into the linux os sys_calls
+*/
+#include "sr_lsm_hooks.h"
 #include "multiplexer.h"
 #include "sal_linux.h"
 
@@ -83,7 +17,6 @@ int hook_filter(void){
 		
 	return FALSE;
 }
-
 
 /*parsing data helper functions*/
 char* parse_sinaddr(const struct in_addr saddr){
@@ -1013,14 +946,14 @@ static struct security_hook_list vsentry_hooks[] = {
 	//LSM_HOOK_INIT(shm_shmctl, vsentry_shm_shmctl),
 	//LSM_HOOK_INIT(shm_shmat, vsentry_shm_shmat),
 
-	LSM_HOOK_INIT(ptrace_access_check, vsentry_ptrace_access_check),
-	LSM_HOOK_INIT(ptrace_traceme, vsentry_ptrace_traceme),
+	//LSM_HOOK_INIT(ptrace_access_check, vsentry_ptrace_access_check),
+	//LSM_HOOK_INIT(ptrace_traceme, vsentry_ptrace_traceme),
 
 	//LSM_HOOK_INIT(syslog, vsentry_syslog),
 	LSM_HOOK_INIT(settime, vsentry_settime),
 	//LSM_HOOK_INIT(vm_enough_memory, vsentry_vm_enough_memory),
 	
-	LSM_HOOK_INIT(bprm_committing_creds, vsentry_bprm_committing_creds), 
+	//LSM_HOOK_INIT(bprm_committing_creds, vsentry_bprm_committing_creds), 
 };
 #else
 static struct security_operations vsentry_ops = {

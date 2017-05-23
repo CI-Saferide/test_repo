@@ -34,7 +34,6 @@ int mpx_mkdir(mpx_info_t* info)
 			info->fileinfo.id.tid);
 			
 	sal_socket_tx_msg(0,payload, sizeof(CEF_payload));	
-
 	return 0;
 }
 
@@ -53,7 +52,6 @@ int mpx_rmdir(mpx_info_t* info)
 			info->fileinfo.id.tid);
 			
 	sal_socket_tx_msg(0,payload, sizeof(CEF_payload));	
-
 	return 0;
 }
 

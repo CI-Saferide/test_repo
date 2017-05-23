@@ -12,7 +12,7 @@ EXTRA_CFLAGS := -I$(PWD)/sal/platform/linux/lsm/include
 EXTRA_CFLAGS += -I$(PWD)/multiplexer/include
 EXTRA_CFLAGS += -I$(PWD)/sal/include
 EXTRA_CFLAGS += -I$(PWD)/sal/platform/linux/include
-#EXTRA_CFLAGS += -I$(PWD)/tools/sr-log/include
+EXTRA_CFLAGS += -I$(PWD)/tools/sr-log/include
 
 EXTRA_CFLAGS += -DPLATFORM_LINUX
 

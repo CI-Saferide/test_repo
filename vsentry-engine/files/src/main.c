@@ -1,5 +1,5 @@
-#include "sr_log.h" /* this file comes from kernel folder. mutual file between kernel and user space */
-
+//#include "sr_log.h" /* this file comes from kernel folder. mutual file between kernel and user space */
+#include <stdio.h>
 int main(int argc, char *argv[]){
 
 	int err;

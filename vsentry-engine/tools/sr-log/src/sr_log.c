@@ -15,6 +15,8 @@ const static char    *log_level_str[8] = {
 unsigned long  tid[2];
 typedef void (*sal_thread_cb_t)(void*);
 
+char g_app_name[20];
+
 char* file_basename(const char* file)
 {
     char* pattern;
@@ -57,7 +59,7 @@ int __sr_print (enum SR_LOG_PRIORITY priority, int line, const char *file, const
     fprintf (stderr, "[%s] %s", log_level_str[priority], output_msg);
 }
 
-int sr_net_init (/*hardcoded for now...*/)
+int sr_net_init (void/*hardcoded for now...*/)
 {
     char *sr_msg;
     int err;

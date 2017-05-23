@@ -1,6 +1,8 @@
 #ifndef _MULTIPLEXER_H
 #define _MULTIPLEXER_H
 
+#include "sr_log.h"
+
 #define MAIN_SOCKET_INDEX		0
 #define LOG_SOCKET_INDEX		1
 
@@ -22,7 +24,7 @@ CEF:1.2|SafeRide|vSentry|1.0|100|Malware stopped|10|src=10.0.0.1 dst=2.1.2.2 spt
 
 CEF:1.0|SafeRide|vSentry|1.0|0|None|None| 
 */
-
+/*
 enum dev_event_class_ID {
 	NETWORK, 
 	FS, 
@@ -50,7 +52,7 @@ typedef struct CEF_payload {
     enum severity				sev;
     char 						extension[256]; 
 }CEF_payload;
-
+*/
 typedef struct _identifier {
 /*
 the kernel doesn't make a real distinction between pid and tid: 
@@ -84,6 +86,7 @@ typedef union {
 
 }mpx_info_t;
 
+CEF_payload cef_init(char* event_name,enum severity sev,enum dev_event_class_ID	class);
 int mpx_mkdir(mpx_info_t* info);
 int mpx_rmdir(mpx_info_t* info);
 int mpx_sk_connect(mpx_info_t* info);
