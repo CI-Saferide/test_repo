@@ -13,7 +13,7 @@
 #include "multiplexer.h"
 
 #define MAIN_SOCKET_PORT		31
-#define LOG_SOCKET_PORT			18
+//#define LOG_SOCKET_PORT			18
 
 
 MODULE_LICENSE("proprietary");

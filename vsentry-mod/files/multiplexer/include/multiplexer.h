@@ -36,12 +36,20 @@ typedef union {
 	}fileinfo;
 
 /* socket related functions */
-	struct _sock_info {
+	struct _address_info {
 		identifier id;
 		unsigned char ipv4[16];
 		unsigned char ipv6[32];
 		unsigned int port;
-	}sock_info;
+	}address_info;
+	
+	struct _socket_info {
+		identifier id;
+		unsigned char family[16];	//family contains the requested protocol family.
+		unsigned char type[16];		//type contains the requested communications type.
+		unsigned int protocol;		//protocol contains the requested protocol.
+		unsigned int kern;			//kern set to 1 if a kernel socket.
+	}socket_info;
 
 }mpx_info_t;
 
@@ -52,7 +60,7 @@ CEF_payload cef_init(char* event_name,enum severity sev,enum dev_event_class_ID	
 
 int mpx_mkdir(mpx_info_t* info);
 int mpx_rmdir(mpx_info_t* info);
-int mpx_sk_connect(mpx_info_t* info);
+
 int mpx_inode_create(mpx_info_t* info);
 int mpx_path_chmod(mpx_info_t* info);
 int mpx_file_open(mpx_info_t* info);
@@ -60,6 +68,9 @@ int mpx_file_open(mpx_info_t* info);
 int mpx_inode_link(mpx_info_t* info);
 int mpx_inode_unlink(mpx_info_t* info);
 int mpx_inode_symlink(mpx_info_t* info);
+
+int mpx_socket_connect(mpx_info_t* info);
+int mpx_socket_create(mpx_info_t* info);
 
 
 #endif /* _MULTIPLEXER_H */

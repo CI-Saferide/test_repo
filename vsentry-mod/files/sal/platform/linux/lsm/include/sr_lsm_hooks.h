@@ -74,4 +74,56 @@
 int register_lsm_hooks (void);
 int unregister_lsm_hooks (void);
 
+/* Supported address families. */
+#define SR_AF_UNSPEC	0
+#define SR_AF_UNIX		1	/* Unix domain sockets 		*/
+#define SR_AF_LOCAL		1	/* POSIX name for AF_UNIX	*/
+#define SR_AF_INET		2	/* Internet IP Protocol 	*/
+#define SR_AF_AX25		3	/* Amateur Radio AX.25 		*/
+#define SR_AF_IPX		4	/* Novell IPX 			*/
+#define SR_AF_APPLETALK	5	/* AppleTalk DDP 		*/
+#define SR_AF_NETROM	6	/* Amateur Radio NET/ROM 	*/
+#define SR_AF_BRIDGE	7	/* Multiprotocol bridge 	*/
+#define SR_AF_ATMPVC	8	/* ATM PVCs			*/
+#define SR_AF_X25		9	/* Reserved for X.25 project 	*/
+#define SR_AF_INET6		10	/* IP version 6			*/
+#define SR_AF_ROSE		11	/* Amateur Radio X.25 PLP	*/
+#define SR_AF_DECnet	12	/* Reserved for DECnet project	*/
+#define SR_AF_NETBEUI	13	/* Reserved for 802.2LLC project*/
+#define SR_AF_SECURITY	14	/* Security callback pseudo AF */
+#define SR_AF_KEY		15      /* PF_KEY key management API */
+#define SR_AF_NETLINK	16
+#define SR_AF_ROUTE		SR_AF_NETLINK /* Alias to emulate 4.4BSD */
+#define SR_AF_PACKET	17	/* Packet family		*/
+#define SR_AF_ASH		18	/* Ash				*/
+#define SR_AF_ECONET	19	/* Acorn Econet			*/
+#define SR_AF_ATMSVC	20	/* ATM SVCs			*/
+#define SR_AF_RDS		21	/* RDS sockets 			*/
+#define SR_AF_SNA		22	/* Linux SNA Project (nutters!) */
+#define SR_AF_IRDA		23	/* IRDA sockets			*/
+#define SR_AF_PPPOX		24	/* PPPoX sockets		*/
+#define SR_AF_WANPIPE	25	/* Wanpipe API Sockets */
+#define SR_AF_LLC		26	/* Linux LLC			*/
+#define SR_AF_IB		27	/* Native InfiniBand address	*/
+#define SR_AF_MPLS		28	/* MPLS */
+#define SR_AF_CAN		29	/* Controller Area Network      */
+#define SR_AF_TIPC		30	/* TIPC sockets			*/
+#define SR_AF_BLUETOOTH	31	/* Bluetooth sockets 		*/
+#define SR_AF_IUCV		32	/* IUCV sockets			*/
+#define SR_AF_RXRPC		33	/* RxRPC sockets 		*/
+#define SR_AF_ISDN		34	/* mISDN sockets 		*/
+#define SR_AF_PHONET	35	/* Phonet sockets		*/
+#define SR_AF_IEEE802154	36	/* IEEE802154 sockets		*/
+#define SR_AF_CAIF		37	/* CAIF sockets			*/
+#define SR_AF_ALG		38	/* Algorithm sockets		*/
+#define SR_AF_NFC		39	/* NFC sockets			*/
+#define SR_AF_VSOCK		40	/* vSockets			*/
+#define SR_AF_KCM		41	/* Kernel Connection Multiplexor*/
+#define SR_AF_QIPCRTR	42	/* Qualcomm IPC Router          */
+#define SR_AF_SMC		43	/* smc sockets: reserve number for
+								* PF_SMC protocol family that
+								* reuses AF_INET address family
+								*/
+#define SR_AF_MAX		44	/* For now.. */
+							
 #endif /* SR_LSM_HOOKS_H */

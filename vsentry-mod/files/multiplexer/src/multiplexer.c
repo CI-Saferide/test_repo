@@ -26,7 +26,7 @@ int mpx_mkdir(mpx_info_t* info)
 	struct CEF_payload payload = cef_init(info->fileinfo.id.event_name,sev,class);
 	
 	sprintf(payload.extension,
-			"dir = %s, path = %s, pid = %d, gid = %d, tid = %d", 
+			"dir=%s, path=%s, pid=%d, gid=%d, tid=%d", 
 			info->fileinfo.filename, 
 			info->fileinfo.fullpath, 
 			info->fileinfo.id.pid,
@@ -44,7 +44,7 @@ int mpx_rmdir(mpx_info_t* info)
 	struct CEF_payload payload = cef_init(info->fileinfo.id.event_name,sev,class);
 
 	sprintf(payload.extension,
-			"dir = %s, path = %s, pid = %d, gid = %d, tid = %d", 
+			"dir=%s, path=%s, pid=%d, gid=%d, tid=%d", 
 			info->fileinfo.filename, 
 			info->fileinfo.fullpath, 
 			info->fileinfo.id.pid,
@@ -55,24 +55,6 @@ int mpx_rmdir(mpx_info_t* info)
 	return 0;
 }
 
-int mpx_sk_connect(mpx_info_t* info)
-{
-	enum dev_event_class_ID	class = NETWORK;
-	enum severity sev = WARNING;
-	struct CEF_payload payload = cef_init(info->fileinfo.id.event_name,sev,class);
-
-	sprintf(payload.extension,
-			"IP:PORT = %s:%d, pid = %d, gid = %d, tid = %d", 
-			info->sock_info.ipv4, 
-			info->sock_info.port, 
-			info->sock_info.id.pid,
-			info->sock_info.id.gid, 
-			info->sock_info.id.tid);
-			
-	sal_socket_tx_msg(0,payload, sizeof(CEF_payload));
-	return 0;
-}
-
 int mpx_inode_create(mpx_info_t* info)
 {
 	enum dev_event_class_ID	class = FS;
@@ -80,7 +62,7 @@ int mpx_inode_create(mpx_info_t* info)
 	struct CEF_payload payload = cef_init(info->fileinfo.id.event_name,sev,class);
 
 	sprintf(payload.extension,
-			"dir = %s, path = %s, pid = %d, gid = %d, tid = %d", 
+			"dir=%s, path=%s, pid=%d, gid=%d, tid=%d", 
 			info->fileinfo.filename, 
 			info->fileinfo.fullpath, 
 			info->fileinfo.id.pid,
@@ -98,7 +80,7 @@ int mpx_path_chmod(mpx_info_t* info)
 	struct CEF_payload payload = cef_init(info->fileinfo.id.event_name,sev,class);
 
 	sprintf(payload.extension,
-			"path = %s, pid = %d, gid = %d, tid = %d",  
+			"path=%s, pid=%d, gid=%d, tid=%d",  
 			info->fileinfo.fullpath, 
 			info->fileinfo.id.pid,
 			info->fileinfo.id.gid, 
@@ -115,7 +97,7 @@ int mpx_file_open(mpx_info_t* info)
 	struct CEF_payload payload = cef_init(info->fileinfo.id.event_name,sev,class);
 
 	sprintf(payload.extension,
-			"file = %s, pid = %d, gid = %d, tid = %d", 
+			"file=%s, pid=%d, gid=%d, tid=%d", 
 			info->fileinfo.filename, 
 			info->fileinfo.id.pid,
 			info->fileinfo.id.gid, 
@@ -132,7 +114,7 @@ int mpx_inode_link(mpx_info_t* info)
 	struct CEF_payload payload = cef_init(info->fileinfo.id.event_name,sev,class);
 
 	sprintf(payload.extension,
-			"file = %s, new path = %s,\nold path = %s, pid = %d, gid = %d, tid = %d", 
+			"file=%s, new path=%s, old path=%s, pid=%d, gid=%d, tid=%d", 
 			info->fileinfo.filename, 
 			info->fileinfo.fullpath, 
 			info->fileinfo.old_path, 
@@ -151,7 +133,7 @@ int mpx_inode_unlink(mpx_info_t* info)
 	struct CEF_payload payload = cef_init(info->fileinfo.id.event_name,sev,class);
 
 	sprintf(payload.extension,
-			"file = %s, from path = %s, pid = %d, gid = %d, tid = %d", 
+			"file=%s, from path=%s, pid=%d, gid=%d, tid=%d", 
 			info->fileinfo.filename, 
 			info->fileinfo.fullpath,  
 			info->fileinfo.id.pid,
@@ -169,7 +151,7 @@ int mpx_inode_symlink(mpx_info_t* info){
 	struct CEF_payload payload = cef_init(info->fileinfo.id.event_name,sev,class);
 
 	sprintf(payload.extension,
-			"file = %s, from path = %s, pid = %d, gid = %d, tid = %d", 
+			"file=%s, from path=%s, pid=%d, gid=%d, tid=%d", 
 			info->fileinfo.filename, 
 			info->fileinfo.fullpath,  
 			info->fileinfo.id.pid,
@@ -177,5 +159,42 @@ int mpx_inode_symlink(mpx_info_t* info){
 			info->fileinfo.id.tid);
 			
 	sal_socket_tx_msg(0,payload, sizeof(CEF_payload));	
+	return 0;	
+}
+
+int mpx_socket_connect(mpx_info_t* info)
+{
+	enum dev_event_class_ID	class = NETWORK;
+	enum severity sev = WARNING;
+	struct CEF_payload payload = cef_init(info->address_info.id.event_name,sev,class);
+
+	sprintf(payload.extension,
+			"IP:PORT=%s:%d, tpid=%d, gid=%d, tid=%d", 
+			info->address_info.ipv4, 
+			info->address_info.port, 
+			info->address_info.id.pid,
+			info->address_info.id.gid, 
+			info->address_info.id.tid);
+			
+	sal_socket_tx_msg(0,payload, sizeof(CEF_payload));
+	return 0;
+}
+
+int mpx_socket_create(mpx_info_t* info){
+	enum dev_event_class_ID	class = NETWORK;
+	enum severity sev = WARNING;
+	struct CEF_payload payload = cef_init(info->address_info.id.event_name,sev,class);
+
+	sprintf(payload.extension,
+			"family:%s, type:%s, protocol:%d, kern:%d, pid=%d, gid=%d, tid=%d", 
+			info->socket_info.family, 
+			info->socket_info.type,
+			info->socket_info.protocol,
+			info->socket_info.kern,   
+			info->socket_info.id.pid,
+			info->socket_info.id.gid, 
+			info->socket_info.id.tid);
+			
+	sal_socket_tx_msg(0,payload, sizeof(CEF_payload));
 	return 0;	
 }

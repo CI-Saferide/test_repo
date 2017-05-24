@@ -5,7 +5,114 @@
 #include "multiplexer.h"
 #include "sal_linux.h"
 
-#define BUFF_SIZE 256
+/* "Socket"-level control message types: */
+const char static *SCM_type[] = {"UNKNOWN",
+								 "SCM_RIGHTS",		 /* SCM_RIGHTS	0x01	rw: access rights (array of int) */
+								 "SCM_CREDENTIALS", /*SCM_CREDENTIALS 0x02  rw: struct ucred				 */	
+								 "SCM_SECURITY"	 /*SCM_SECURITY	0x03	rw: security label				 */
+								};
+
+/* Supported address families. */
+/*
+const char static *address_family[] = {"AF_UNSPEC",	
+									   "AF_UNIX",		
+									   "AF_LOCAL",	
+									   "AF_INET",		
+									   "AF_AX25",		
+									   "AF_IPX",		
+									   "AF_APPLETALK",
+									   "AF_NETROM",	
+									   "AF_BRIDGE",	
+									   "AF_ATMPVC",	
+									   "AF_X25",		
+									   "AF_INET6",	
+									   "AF_ROSE",		
+									   "AF_DECnet",	
+									   "AF_NETBEUI",	
+									   "AF_SECURITY",	
+									   "AF_KEY",		
+									   "AF_NETLINK",	
+									   "AF_ROUTE",	
+									   "AF_PACKET",	
+									   "AF_ASH",		
+									   "AF_ECONET",	
+									   "AF_ATMSVC",	
+									   "AF_RDS",		
+									   "AF_SNA",		
+									   "AF_IRDA",		
+									   "AF_PPPOX",	
+									   "AF_WANPIPE",	
+									   "AF_LLC",		
+									   "AF_IB",		
+									   "AF_MPLS",		
+									   "AF_CAN",		
+									   "AF_TIPC",		
+									   "AF_BLUETOOTH",
+									   "AF_IUCV",		
+									   "AF_RXRPC",	
+									   "AF_ISDN",		
+									   "AF_PHONET",	
+									   "AF_IEEE802154",
+									   "AF_CAIF",		
+									   "AF_ALG",		 
+									   "AF_NFC",		 
+									   "AF_VSOCK",	 
+									   "AF_KCM",		 
+									   "AF_QIPCRTR",	 
+									   "AF_SMC",
+									   "AF_MAX"
+									   };*/
+/* Protocol families, same as address families. */
+const static char *protocol_family[] = {//"PF_UNSPEC",	
+										"PF_UNIX",		
+										"PF_LOCAL",	
+										"PF_INET",		
+										"PF_AX25",		
+										"PF_IPX",		
+										"PF_APPLETALK",
+										"PF_NETROM",	
+										"PF_BRIDGE",	
+										"PF_ATMPVC",	
+										"PF_X25",		
+										"PF_INET6",	
+										"PF_ROSE",		
+										"PF_DECnet",	
+										"PF_NETBEUI",	
+										"PF_SECURITY",	
+										"PF_KEY",		
+										"PF_NETLINK",	
+//										"PF_ROUTE",	
+										"PF_PACKET",	
+										"PF_ASH",		
+										"PF_ECONET",	
+										"PF_ATMSVC",	
+										"PF_RDS",		
+										"PF_SNA",		
+										"PF_IRDA",		
+										"PF_PPPOX",	
+										"PF_WANPIPE",	
+										"PF_LLC",		
+										"PF_IB",		
+										"PF_MPLS",		
+										"PF_CAN",		
+										"PF_TIPC",		
+										"PF_BLUETOOTH",
+										"PF_IUCV",		
+										"PF_RXRPC",	
+										"PF_ISDN",		
+										"PF_PHONET",	
+										"PF_IEEE802154",
+										"PF_CAIF",		
+										"PF_ALG",		
+										"PF_NFC",		
+										"PF_VSOCK",	
+										"PF_KCM",		
+										"PF_QIPCRTR",	
+										"PF_SMC",		
+										"PF_MAX"
+										};
+
+//#define BUFF_SIZE 256
 
 extern int sr_vsentryd_pid;
 
@@ -190,16 +297,16 @@ static int vsentry_socket_connect(struct socket *sock, struct sockaddr *address,
 	
 	ipv4 = (struct sockaddr_in *)address;
 	
-	strcpy(mpx.fileinfo.id.event_name,__FUNCTION__);
-	strcpy(mpx.sock_info.ipv4,parse_sinaddr(ipv4->sin_addr));
+	strcpy(mpx.address_info.id.event_name,__FUNCTION__);
+	strcpy(mpx.address_info.ipv4,parse_sinaddr(ipv4->sin_addr));
 	
-	mpx.sock_info.port = (int)ntohs(ipv4->sin_port);	
-	mpx.fileinfo.id.gid = (int)rcred->gid.val;
-	mpx.fileinfo.id.tid = (int)rcred->uid.val;
-	mpx.fileinfo.id.pid = current->pid;
+	mpx.address_info.port = (int)ntohs(ipv4->sin_port);	
+	mpx.address_info.id.gid = (int)rcred->gid.val;
+	mpx.address_info.id.tid = (int)rcred->uid.val;
+	mpx.address_info.id.pid = current->pid;
 
 	//TODO: handle permission for sys call
-	return (mpx_sk_connect(&mpx));
+	return (mpx_socket_connect(&mpx));
 }
 
 
@@ -664,16 +771,57 @@ static int vsentry_unix_may_send(struct sock *sock,struct sock *other){
 	//TODO: handle permission for sys call
 	return 0;
 }
-
-__attribute__ ((unused))
+/*
+ * @socket_create:
+ *	Check permissions prior to creating a new socket.
+ *	@family contains the requested protocol family.
+ *	@type contains the requested communications type.
+ *	@protocol contains the requested protocol.
+ *	@kern set to 1 if a kernel socket.
+ */
 static int vsentry_socket_create(int family, int type, int protocol, int kern){
 
-	//perm_info_t perm_info;
+	mpx_info_t mpx;
 	
-	if(hook_filter()) return 0;
-
+	struct task_struct *ts = current;
+	const struct cred *rcred= ts->real_cred;		
+	
+	if(hook_filter()) return 0;	
+	
+		printk(KERN_INFO"family:%s, type:%s, protocol:%d, kern:%d, pid=%d, gid=%d, tid=%d", 
+			protocol_family[family], 
+			SCM_type[type],
+			protocol,
+			kern,   
+			current->pid,
+			(int)rcred->gid.val, 
+			(int)rcred->uid.val);
+			
+	//return 0;
+	
+	strcpy(mpx.socket_info.id.event_name,__FUNCTION__);
+	strcpy(mpx.socket_info.family,protocol_family[family]);
+	strcpy(mpx.socket_info.type, SCM_type[type]);
+	mpx.socket_info.protocol = protocol;
+	mpx.socket_info.kern = kern;
+	
+	mpx.socket_info.id.gid = (int)rcred->gid.val;
+	mpx.socket_info.id.tid = (int)rcred->uid.val;
+	mpx.socket_info.id.pid = current->pid;
+	
+		/*printk(KERN_INFO"family:%s, type:%s, protocol:%d, kern:%d, pid=%d, gid=%d, tid=%d", 
+			mpx.socket_info.family, 
+			mpx.socket_info.type,
+			mpx.socket_info.protocol,
+			mpx.socket_info.kern,   
+			mpx.socket_info.id.pid,
+			mpx.socket_info.id.gid, 
+			mpx.socket_info.id.tid);*/
+			
+	
+	
 	//TODO: handle permission for sys call
-	return 0;
+	return (mpx_socket_create(&mpx));
 }
 
 __attribute__ ((unused))
@@ -708,6 +856,13 @@ static int vsentry_socket_accept(struct socket *sock,struct socket *newsock){
 	return 0;
 }
 
+/* @socket_sendmsg:
+ *	Check permission before transmitting a message to another socket.
+ *	@sock contains the socket structure.
+ *	@msg contains the message to be transmitted.
+ *	@size contains the size of message.
+ *	Return 0 if permission is granted.
+ */
 __attribute__ ((unused))
 static int vsentry_socket_sendmsg(struct socket *sock,struct msghdr *msg,int size){
 
@@ -719,6 +874,14 @@ static int vsentry_socket_sendmsg(struct socket *sock,struct msghdr *msg,int siz
 	return 0;
 }
 
+/* @socket_recvmsg:
+ *	Check permission before receiving a message from a socket.
+ *	@sock contains the socket structure.
+ *	@msg contains the message structure.
+ *	@size contains the size of message structure.
+ *	@flags contains the operational flags.
+ *	Return 0 if permission is granted.
+ */
 __attribute__ ((unused))
 static int vsentry_socket_recvmsg(struct socket *sock,struct msghdr *msg,int size,int flags){
 
@@ -936,7 +1099,7 @@ static struct security_hook_list vsentry_hooks[] = {
 	//LSM_HOOK_INIT(kernel_module_from_file, vsentry_kernel_module_from_file), //not in every kern version
 
     LSM_HOOK_INIT(socket_connect, vsentry_socket_connect),
-	//LSM_HOOK_INIT(socket_create, vsentry_socket_create),
+	LSM_HOOK_INIT(socket_create, vsentry_socket_create),
 	//LSM_HOOK_INIT(socket_bind, vsentry_socket_bind),
 	//LSM_HOOK_INIT(socket_listen, vsentry_socket_listen),
 	//LSM_HOOK_INIT(socket_accept, vsentry_socket_accept),

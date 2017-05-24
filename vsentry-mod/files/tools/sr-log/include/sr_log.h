@@ -8,9 +8,9 @@ extern "C" {
 #define NETLINK_USER		 31
 #define NETLINK_LOG_USER 	 18
 
-#define MAX_PAYLOAD 1024 /* maximum payload size*/
+#define MAX_PAYLOAD 2024 /* maximum payload size*/
 
-#define MAX_MSG_LEN             256
+#define MAX_MSG_LEN             1024
 
 #define SR_LOG_EMERG			1
 #define SR_LOG_ALERT			1
@@ -68,7 +68,7 @@ typedef struct CEF_payload
 	enum dev_event_class_ID		class;
 	char						name[32];
     enum severity				sev;
-    char 						extension[256]; 
+    char 						extension[512]; 
 }CEF_payload;
 
 int sr_log_init (const char* app_name, int flags);
