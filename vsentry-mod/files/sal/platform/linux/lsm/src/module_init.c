@@ -19,6 +19,9 @@
 MODULE_LICENSE("proprietary");
 MODULE_DESCRIPTION("vSentry Kernel Module");
 
+extern int sr_netfilter_init(void);
+extern void sr_netfilter_uninit(void);
+
 
 static int __init vsentry_init(void)
 {	
@@ -42,6 +45,7 @@ static int __init vsentry_init(void)
 	}
 	#endif
 	sal_kernel_socket_init(MAIN_SOCKET_INDEX, MAIN_SOCKET_PORT, main_socket_process_cb);
+	sr_netfilter_init();
 	//sal_kernel_socket_init(LOG_SOCKET_INDEX, LOG_SOCKET_PORT, log_socket_process_cb);
 	return rc; //Non-zero return means that the module couldn't be loaded.
 }
@@ -49,6 +53,7 @@ static int __init vsentry_init(void)
 static void __exit vsentry_cleanup(void)
 {
 	sal_kernel_socket_exit(MAIN_SOCKET_INDEX);
+	sr_netfilter_uninit();
 	#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,2,0)
 		unregister_lsm_hooks();
 	#else
