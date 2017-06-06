@@ -33,11 +33,7 @@
 #ifndef _RADIX_H_
 #define	_RADIX_H_
 
-#ifdef _KERNEL
-#include <sys/_lock.h>
-#include <sys/_mutex.h>
-#include <sys/_rwlock.h>
-#endif
+#include "sal_linux.h"
 
 #ifdef MALLOC_DECLARE
 MALLOC_DECLARE(M_RTABLE);
@@ -52,7 +48,7 @@ struct radix_node {
 	struct	radix_node *rn_parent;	/* parent */
 	short	rn_bit;			/* bit offset; -1-index(netmask) */
 	char	rn_bmask;		/* node: mask for bit test*/
-	u_char	rn_flags;		/* enumerated next */
+	SR_U8	rn_flags;		/* enumerated next */
 #define RNF_NORMAL	1		/* leaf contains normal route */
 #define RNF_ROOT	2		/* leaf is root leaf for tree */
 #define RNF_ACTIVE	4		/* This node is alive (for rtfree) */
@@ -68,6 +64,11 @@ struct radix_node {
 			struct	radix_node *rn_R;/* progeny */
 		} rn_node;
 	}		rn_u;
+	struct {
+		int magic;
+		int unused;
+	} sr_private;
+
 #ifdef RN_DEBUG
 	int rn_info;
 	struct radix_node *rn_twin;
@@ -89,7 +90,7 @@ struct radix_node {
 struct radix_mask {
 	short	rm_bit;			/* bit offset; -1-index(netmask) */
 	char	rm_unused;		/* cf. rn_bmask */
-	u_char	rm_flags;		/* cf. rn_flags */
+	SR_U8	rm_flags;		/* cf. rn_flags */
 	struct	radix_mask *rm_mklist;	/* more masks to try */
 	union	{
 		caddr_t	rmu_mask;		/* the mask */
@@ -136,7 +137,7 @@ struct radix_node_head {
 	rn_close_t	*rnh_close;	/*do something when the last ref drops*/
 	struct	radix_node rnh_nodes[3];	/* empty tree for common case */
 #ifdef _KERNEL
-	struct	rwlock rnh_lock;		/* locks entire radix tree */
+	SR_RWLOCK rnh_lock;		/* locks entire radix tree */
 #endif
 };
 
@@ -148,14 +149,9 @@ struct radix_mask_head {
 void rn_inithead_internal(struct radix_head *rh, struct radix_node *base_nodes,
     int off);
 
-#ifndef _KERNEL
-#define R_Malloc(p, t, n) (p = (t) malloc((unsigned int)(n)))
-#define R_Zalloc(p, t, n) (p = (t) calloc(1,(unsigned int)(n)))
-#define R_Free(p) free((char *)p);
-#else
-#define R_Malloc(p, t, n) (p = (t) malloc((unsigned long)(n), M_RTABLE, M_NOWAIT))
-#define R_Zalloc(p, t, n) (p = (t) malloc((unsigned long)(n), M_RTABLE, M_NOWAIT | M_ZERO))
-#define R_Free(p) free((caddr_t)p, M_RTABLE);
+#define R_Malloc(p, t, n) (p = (t) SR_ALLOC((unsigned long)(n)))
+#define R_Zalloc(p, t, n) (p = (t) SR_ZALLOC((unsigned long)(n)))
+#define R_Free(p) SR_FREE((caddr_t)p);
 
 #define	RADIX_NODE_HEAD_LOCK_INIT(rnh)	\
     rw_init_flags(&(rnh)->rnh_lock, "radix node head", 0)
@@ -169,7 +165,6 @@ void rn_inithead_internal(struct radix_head *rh, struct radix_node *base_nodes,
 #define	RADIX_NODE_HEAD_DESTROY(rnh)	rw_destroy(&(rnh)->rnh_lock)
 #define	RADIX_NODE_HEAD_LOCK_ASSERT(rnh) rw_assert(&(rnh)->rnh_lock, RA_LOCKED)
 #define	RADIX_NODE_HEAD_WLOCK_ASSERT(rnh) rw_assert(&(rnh)->rnh_lock, RA_WLOCKED)
-#endif /* _KERNEL */
 
 int	 rn_inithead(void **, int);
 int	 rn_detachhead(void **);

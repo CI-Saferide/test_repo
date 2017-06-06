@@ -33,28 +33,7 @@
 /*
  * Routines to build and maintain radix trees for routing lookups.
  */
-#include <sys/param.h>
-#ifdef	_KERNEL
-#include <sys/lock.h>
-#include <sys/mutex.h>
-#include <sys/rwlock.h>
-#include <sys/systm.h>
-#include <sys/malloc.h>
-#include <sys/syslog.h>
-#include <net/radix.h>
-#include "opt_mpath.h"
-#ifdef RADIX_MPATH
-#include <net/radix_mpath.h>
-#endif
-#else /* !_KERNEL */
-#include <stdio.h>
-#include <strings.h>
-#include <stdlib.h>
-#define log(x, arg...)	fprintf(stderr, ## arg)
-#define panic(x)	fprintf(stderr, "PANIC: %s", x), exit(1)
-#define min(a, b) ((a) < (b) ? (a) : (b) )
-#include <net/radix.h>
-#endif /* !_KERNEL */
+#include "sr_radix.h"
 
 static struct radix_node
 	 *rn_insert(void *, struct radix_head *, int *,
@@ -128,7 +107,9 @@ static int	rn_satisfies_leaf(char *trial, struct radix_node *leaf,
  * to LEN() as the argument is evaluated only once.
  * We cast the result to int as this is the dominant usage.
  */
-#define LEN(x) ( (int) (*(const u_char *)(x)) )
+//#define LEN(x) ( (int) (*(const u_char *)(x)) )
+#define LEN(x) ( (int) (sizeof(struct sockaddr_in)))
+
 
 /*
  * XXX THIS NEEDS TO BE FIXED
@@ -242,7 +223,7 @@ rn_lookup(void *v_arg, void *m_arg, struct radix_head *head)
 		return (NULL);
 
 	/* Check if found key is the same */
-	if (LEN(x->rn_key) != LEN(v_arg) || bcmp(x->rn_key, v_arg, LEN(v_arg)))
+	if (LEN(x->rn_key) != LEN(v_arg) || memcmp(x->rn_key, v_arg, LEN(v_arg)))
 		return (NULL);
 
 	/* Check if this is not host route */
@@ -293,6 +274,11 @@ rn_match(void *v_arg, struct radix_head *head)
 			t = t->rn_right;
 		else
 			t = t->rn_left;
+		if ((t->rn_flags == RNF_ACTIVE) && (t->rn_bit >= 0)) {
+		// TODO: This is a match, need to OR the bits into aggregator
+			sal_kernel_print_info("[%lx::%d]got match for rule# %d\n", (unsigned long) t, t->rn_flags, t[0].sr_private.magic);
+		}
+
 	}
 	/*
 	 * See if we match exactly as a host destination
@@ -463,7 +449,7 @@ on1:
 				/* x->rn_bit < b && x->rn_bit >= 0 */
 #ifdef RN_DEBUG
 	if (rn_debug)
-		log(LOG_DEBUG, "rn_insert: Going In:\n"), traverse(p);
+		sal_kernel_print_info( "rn_insert: Going In:\n"), traverse(p);
 #endif
 	t = rn_newpair(v_arg, b, nodes); 
 	tt = t->rn_left;
@@ -481,7 +467,7 @@ on1:
 	}
 #ifdef RN_DEBUG
 	if (rn_debug)
-		log(LOG_DEBUG, "rn_insert: Coming Out:\n"), traverse(p);
+		sal_kernel_print_info( "rn_insert: Coming Out:\n"), traverse(p);
 #endif
 	return (tt);
 }
@@ -504,10 +490,10 @@ rn_addmask(void *n_arg, struct radix_mask_head *maskhead, int search, int skip)
 	if (mlen <= skip)
 		return (maskhead->mask_nodes);
 
-	bzero(addmask_key, RADIX_MAX_KEY_LEN);
+	memset(addmask_key, 0, RADIX_MAX_KEY_LEN);
 	if (skip > 1)
-		bcopy(rn_ones + 1, addmask_key + 1, skip - 1);
-	bcopy(netmask + skip, addmask_key + skip, mlen - skip);
+		memcpy(rn_ones + 1, addmask_key + 1, skip - 1);
+	memcpy(netmask + skip, addmask_key + skip, mlen - skip);
 	/*
 	 * Trim trailing zeroes.
 	 */
@@ -518,7 +504,7 @@ rn_addmask(void *n_arg, struct radix_mask_head *maskhead, int search, int skip)
 		return (maskhead->mask_nodes);
 	*addmask_key = mlen;
 	x = rn_search(addmask_key, maskhead->head.rnh_treetop);
-	if (bcmp(addmask_key, x->rn_key, mlen) != 0)
+	if (memcmp(addmask_key, x->rn_key, mlen) != 0)
 		x = NULL;
 	if (x || search)
 		return (x);
@@ -526,10 +512,10 @@ rn_addmask(void *n_arg, struct radix_mask_head *maskhead, int search, int skip)
 	if ((saved_x = x) == NULL)
 		return (0);
 	netmask = cp = (unsigned char *)(x + 2);
-	bcopy(addmask_key, cp, mlen);
+	memcpy(addmask_key, cp, mlen);
 	x = rn_insert(cp, &maskhead->head, &maskduplicated, x);
 	if (maskduplicated) {
-		log(LOG_ERR, "rn_addmask: mask impossibly already in tree");
+		sal_kernel_print_err( "rn_addmask: mask impossibly already in tree");
 		R_Free(saved_x);
 		return (x);
 	}
@@ -579,10 +565,10 @@ rn_new_radix_mask(struct radix_node *tt, struct radix_mask *next)
 
 	R_Malloc(m, struct radix_mask *, sizeof (struct radix_mask));
 	if (m == NULL) {
-		log(LOG_ERR, "Failed to allocate route mask\n");
+		sal_kernel_print_err( "Failed to allocate route mask\n");
 		return (0);
 	}
-	bzero(m, sizeof(*m));
+	memset(m, 0, sizeof(*m));
 	m->rm_bit = tt->rn_bit;
 	m->rm_flags = tt->rn_flags;
 	if (tt->rn_flags & RNF_NORMAL)
@@ -748,7 +734,7 @@ on2:
 			mmask = m->rm_leaf->rn_mask;
 			if (tt->rn_flags & RNF_NORMAL) {
 #if !defined(RADIX_MPATH)
-			    log(LOG_ERR,
+			    sal_kernel_print_err(
 			        "Non-unique normal route, mask not entered\n");
 #endif
 				return (tt);
@@ -786,7 +772,7 @@ rn_delete(void *v_arg, void *netmask_arg, struct radix_head *head)
 	saved_tt = tt;
 	top = x;
 	if (tt == NULL ||
-	    bcmp(v + head_off, tt->rn_key + head_off, vlen - head_off))
+	    memcmp(v + head_off, tt->rn_key + head_off, vlen - head_off))
 		return (0);
 	/*
 	 * Delete our route from mask lists.
@@ -804,12 +790,12 @@ rn_delete(void *v_arg, void *netmask_arg, struct radix_head *head)
 		goto on1;
 	if (tt->rn_flags & RNF_NORMAL) {
 		if (m->rm_leaf != tt || m->rm_refs > 0) {
-			log(LOG_ERR, "rn_delete: inconsistent annotation\n");
+			sal_kernel_print_err( "rn_delete: inconsistent annotation\n");
 			return (0);  /* dangling ref could cause disaster */
 		}
 	} else {
 		if (m->rm_mask != tt->rn_mask) {
-			log(LOG_ERR, "rn_delete: inconsistent annotation\n");
+			sal_kernel_print_err( "rn_delete: inconsistent annotation\n");
 			goto on1;
 		}
 		if (--m->rm_refs >= 0)
@@ -830,7 +816,7 @@ rn_delete(void *v_arg, void *netmask_arg, struct radix_head *head)
 			break;
 		}
 	if (m == NULL) {
-		log(LOG_ERR, "rn_delete: couldn't find our annotation\n");
+		sal_kernel_print_err( "rn_delete: couldn't find our annotation\n");
 		if (tt->rn_flags & RNF_NORMAL)
 			return (0); /* Dangling ref to us */
 	}
@@ -868,7 +854,7 @@ on1:
 				if (tt->rn_dupedkey)		/* parent */
 					tt->rn_dupedkey->rn_parent = p;
 								/* parent */
-			} else log(LOG_ERR, "rn_delete: couldn't find us\n");
+			} else sal_kernel_print_err( "rn_delete: couldn't find us\n");
 		}
 		t = tt + 1;
 		if  (t->rn_flags & RNF_ACTIVE) {
@@ -921,7 +907,7 @@ on1:
 					m = mm;
 				}
 			if (m)
-				log(LOG_ERR,
+				sal_kernel_print_err(
 				    "rn_delete: Orphaned Mask %p at %p\n",
 				    m, x);
 		}
@@ -968,7 +954,8 @@ rn_walktree_from(struct radix_head *h, void *a, void *m,
 	int stopping = 0;
 	int lastb;
 
-	KASSERT(m != NULL, ("%s: mask needs to be specified", __func__));
+	if(m == NULL)
+		sal_kernel_print_crit ("%s: mask needs to be specified", __func__);
 
 	/*
 	 * rn_search_m is sort-of-open-coded here. We cannot use the
@@ -1130,8 +1117,8 @@ static void
 rn_detachhead_internal(struct radix_head *head)
 {
 
-	KASSERT((head != NULL),
-	    ("%s: head already freed", __func__));
+	if(head == NULL)
+	    sal_kernel_print_crit("%s: head already freed", __func__);
 	
 	/* Free <left,root,right> nodes. */
 	R_Free(head);
@@ -1195,8 +1182,8 @@ rn_detachhead(void **head)
 {
 	struct radix_node_head *rnh;
 
-	KASSERT((head != NULL && *head != NULL),
-	    ("%s: head already freed", __func__));
+	if(!(head != NULL && *head != NULL))
+	    sal_kernel_print_crit("%s: head already freed", __func__);
 
 	rnh = (struct radix_node_head *)(*head);
 

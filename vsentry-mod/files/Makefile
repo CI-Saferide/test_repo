@@ -5,17 +5,21 @@ $(TARGET)-objs := sal/platform/linux/lsm/src/module_init.o \
 				  sal/platform/linux/netfilter/src/sr_netfilter.o \
 				  multiplexer/src/multiplexer.o \
 				  multiplexer/src/msg_process.o \
+				  classifier/src/sr_classifier.o \
+				  tools/radix/src/sr_radix.o \
 				  sal/platform/linux/src/sal_linux.o \
 
 	SRC := $(shell pwd)
 
 EXTRA_CFLAGS := -I$(PWD)/sal/platform/linux/lsm/include 
 EXTRA_CFLAGS += -I$(PWD)/multiplexer/include
+EXTRA_CFLAGS += -I$(PWD)/classifier/include
 EXTRA_CFLAGS += -I$(PWD)/sal/include
 EXTRA_CFLAGS += -I$(PWD)/sal/platform/linux/include
 EXTRA_CFLAGS += -I$(PWD)/tools/sr-log/include
+EXTRA_CFLAGS += -I$(PWD)/tools/radix/include
 
-EXTRA_CFLAGS += -DPLATFORM_LINUX
+EXTRA_CFLAGS += -DPLATFORM_LINUX -D_KERNEL
 
 all:
 	$(MAKE) -C $(KERNEL_SRC) M=$(SRC)

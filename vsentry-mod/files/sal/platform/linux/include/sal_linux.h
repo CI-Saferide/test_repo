@@ -6,6 +6,7 @@
 #ifdef PLATFORM_LINUX
 #include <linux/kernel.h>
 #include <net/sock.h> 
+#include <linux/rwlock.h>
 
 /* variables definitions */
 #define SR_U8		unsigned char
@@ -17,6 +18,11 @@
 #define SR_BOOL		SR_U8
 #define TRUE		1
 #define FALSE		0
+#define SR_RWLOCK	rwlock_t
+#define SR_ALLOC(x) kmalloc(x, GFP_KERNEL|GFP_NOWAIT)
+#define SR_ZALLOC(x) kcalloc(1, x, GFP_KERNEL|GFP_NOWAIT)
+#define SR_FREE kfree
+
 
 
 /* kernel print definitions */
