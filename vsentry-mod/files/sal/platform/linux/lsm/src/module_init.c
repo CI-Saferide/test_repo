@@ -15,10 +15,12 @@
 #define MAIN_SOCKET_PORT		31
 //#define LOG_SOCKET_PORT			18
 
+#ifdef UNIT_TEST
+#include "sal_bitops_test.h"
+#endif /* UNIT_TEST */
 
 MODULE_LICENSE("proprietary");
 MODULE_DESCRIPTION("vSentry Kernel Module");
-
 
 static int __init vsentry_init(void)
 {	
@@ -43,6 +45,9 @@ static int __init vsentry_init(void)
 	#endif
 	sal_kernel_socket_init(MAIN_SOCKET_INDEX, MAIN_SOCKET_PORT, main_socket_process_cb);
 	//sal_kernel_socket_init(LOG_SOCKET_INDEX, LOG_SOCKET_PORT, log_socket_process_cb);
+#ifdef UNIT_TEST	
+	sal_bitops_test (0);
+#endif /* UNIT_TEST */
 	return rc; //Non-zero return means that the module couldn't be loaded.
 }
 

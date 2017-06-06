@@ -5,16 +5,20 @@ $(TARGET)-objs := sal/platform/linux/lsm/src/module_init.o \
 				  multiplexer/src/multiplexer.o \
 				  multiplexer/src/msg_process.o \
 				  sal/platform/linux/src/sal_linux.o \
+				  sal/platform/linux/src/sal_bitops_linux.o \
+				  sal/test/sal_bitops_test.o \
 
 	SRC := $(shell pwd)
 
 EXTRA_CFLAGS := -I$(PWD)/sal/platform/linux/lsm/include 
 EXTRA_CFLAGS += -I$(PWD)/multiplexer/include
 EXTRA_CFLAGS += -I$(PWD)/sal/include
+EXTRA_CFLAGS += -I$(PWD)/sal/test
 EXTRA_CFLAGS += -I$(PWD)/sal/platform/linux/include
 EXTRA_CFLAGS += -I$(PWD)/tools/sr-log/include
 
 EXTRA_CFLAGS += -DPLATFORM_LINUX
+#EXTRA_CFLAGS += -DUNIT_TEST
 
 all:
 	$(MAKE) -C $(KERNEL_SRC) M=$(SRC)

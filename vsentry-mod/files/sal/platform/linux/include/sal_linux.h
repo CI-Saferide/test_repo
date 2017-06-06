@@ -7,17 +7,21 @@
 #include <linux/kernel.h>
 #include <net/sock.h> 
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeclaration-after-statement"
 /* variables definitions */
 #define SR_U8		unsigned char
 #define SR_U16		unsigned short
 #define SR_U32		unsigned long
+#define SR_U64		unsigned long long
 #define SR_8		char
 #define SR_16		short
 #define SR_32		long
+#define SR_64		long long
 #define SR_BOOL		SR_U8
 #define TRUE		1
 #define FALSE		0
-
+#pragma GCC diagnostic pop
 
 /* kernel print definitions */
 #define pr_fmt(fmt) fmt
