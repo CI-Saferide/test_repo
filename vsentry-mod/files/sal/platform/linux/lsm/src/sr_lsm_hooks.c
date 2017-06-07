@@ -788,7 +788,7 @@ static int vsentry_socket_create(int family, int type, int protocol, int kern){
 	const struct cred *rcred= ts->real_cred;		
 	
 	if(hook_filter()) return 0;	
-	
+	/*
 		printk(KERN_INFO"family:%s, type:%s, protocol:%d, kern:%d, pid=%d, gid=%d, tid=%d", 
 			protocol_family[family], 
 			SCM_type[type],
@@ -797,7 +797,7 @@ static int vsentry_socket_create(int family, int type, int protocol, int kern){
 			current->pid,
 			(int)rcred->gid.val, 
 			(int)rcred->uid.val);
-			
+	*/		
 	//return 0;
 	
 	strcpy(mpx.socket_info.id.event_name,__FUNCTION__);
