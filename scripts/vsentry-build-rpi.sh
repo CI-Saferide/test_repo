@@ -97,7 +97,7 @@ while true; do
 			sudo cp arch/arm/boot/dts/*.dtb mnt/fat32/
 			sudo cp arch/arm/boot/dts/overlays/*.dtb* mnt/fat32/overlays/
 			sudo cp arch/arm/boot/dts/overlays/README mnt/fat32/overlays/
-			cp -R ../vsentry/ mnt/ext4/home/pi/vsentry/
+#			cp -R ../vsentry/ mnt/ext4/home/pi/vsentry/
 			cd ../vsentry/vsentry-mod/files/
 			echo $PWD
 			make arm
