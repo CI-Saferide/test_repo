@@ -6,6 +6,7 @@
 #ifdef PLATFORM_LINUX
 #include <linux/kernel.h>
 #include <net/sock.h> 
+#include <linux/rwlock.h>
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wdeclaration-after-statement"
@@ -22,6 +23,11 @@
 #define TRUE		1
 #define FALSE		0
 #pragma GCC diagnostic pop
+
+#define SR_RWLOCK	rwlock_t
+#define SR_ALLOC(x) kmalloc(x, GFP_KERNEL|GFP_NOWAIT)
+#define SR_ZALLOC(x) kcalloc(1, x, GFP_KERNEL|GFP_NOWAIT)
+#define SR_FREE kfree
 
 /* kernel print definitions */
 #define pr_fmt(fmt) fmt

@@ -11,6 +11,7 @@
 #include "sr_lsm_hooks.h"
 #include "sal_linux.h"
 #include "multiplexer.h"
+#include "sr_classifier.h"
 
 #define MAIN_SOCKET_PORT		31
 //#define LOG_SOCKET_PORT			18
@@ -22,12 +23,13 @@
 MODULE_LICENSE("proprietary");
 MODULE_DESCRIPTION("vSentry Kernel Module");
 
+extern int sr_netfilter_init(void);
+extern void sr_netfilter_uninit(void);
 static int __init vsentry_init(void)
 {	
 	int rc = 0;
 	
 	printk(KERN_INFO "[%s]: module started. kernel version is %s\n",MODULE_NAME, utsname()->release);
-
 	#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,2,0)
 	rc = register_lsm_hooks();
 	if (rc)		
@@ -44,6 +46,8 @@ static int __init vsentry_init(void)
 	}
 	#endif
 	sal_kernel_socket_init(MAIN_SOCKET_INDEX, MAIN_SOCKET_PORT, main_socket_process_cb);
+	sr_netfilter_init();
+	sr_classifier_init();
 	//sal_kernel_socket_init(LOG_SOCKET_INDEX, LOG_SOCKET_PORT, log_socket_process_cb);
 #ifdef UNIT_TEST	
 	sal_bitops_test (0);
@@ -54,11 +58,13 @@ static int __init vsentry_init(void)
 static void __exit vsentry_cleanup(void)
 {
 	sal_kernel_socket_exit(MAIN_SOCKET_INDEX);
+	sr_netfilter_uninit();
 	#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,2,0)
 		unregister_lsm_hooks();
 	#else
 		reset_security_ops();
 	#endif
+	sr_classifier_uninit();
 	printk(KERN_INFO "[%s]: module released!\n", MODULE_NAME);
 }
 

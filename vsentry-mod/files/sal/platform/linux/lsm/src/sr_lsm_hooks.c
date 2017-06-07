@@ -260,6 +260,7 @@ static int vsentry_inode_mkdir(struct inode *dir, struct dentry *dentry, umode_t
 	mpx.fileinfo.id.pid = current->pid;
 	
 	//TODO: handle permission for sys call
+	//return 1;
 	return (mpx_mkdir(&mpx));
 }
 
@@ -830,17 +831,19 @@ static int vsentry_socket_bind(struct socket *sock, struct sockaddr *address,int
 	//perm_info_t perm_info;
 	
 	if(hook_filter()) return 0;
-
+	
+	if (current->pid == 0)
+		printk(KERN_INFO"%s PID: %d\n",__FUNCTION__,current->pid);
 	return 0;
 }
 
 __attribute__ ((unused))
-static int vsentry_socket_listen(struct socket *sock,int backlog){
-
-	//perm_info_t perm_info;
+static int vsentry_socket_listen(struct socket *sock,int backlog){		
 	
 	if(hook_filter()) return 0;
-
+	
+	if (current->pid == 0)
+		printk(KERN_INFO"%s PID: %d\n",__FUNCTION__,current->pid);
 	//TODO: handle permission for sys call
 	return 0;
 }
@@ -851,7 +854,7 @@ static int vsentry_socket_accept(struct socket *sock,struct socket *newsock){
 	//perm_info_t perm_info;
 	
 	if(hook_filter()) return 0;
-
+	printk(KERN_INFO"%s PID: %d\n",__FUNCTION__,current->pid);
 	//TODO: handle permission for sys call
 	return 0;
 }
@@ -869,7 +872,7 @@ static int vsentry_socket_sendmsg(struct socket *sock,struct msghdr *msg,int siz
 	//perm_info_t perm_info;
 	
 	if(hook_filter()) return 0;
-
+	printk(KERN_INFO"%s PID: %d\n",__FUNCTION__,current->pid);
 	//TODO: handle permission for sys call
 	return 0;
 }
@@ -888,15 +891,65 @@ static int vsentry_socket_recvmsg(struct socket *sock,struct msghdr *msg,int siz
 	//perm_info_t perm_info;
 	
 	if(hook_filter()) return 0;
+	
+	if (current->pid == 0)
+		printk(KERN_INFO"%s PID: %d\n",__FUNCTION__,current->pid);
+	//TODO: handle permission for sys call
+	return 0;
+}
+
+/*
+ * @socket_sock_rcv_skb:
+ *	Check permissions on incoming network packets.  This hook is distinct
+ *	from Netfilter's IP input hooks since it is the first time that the
+ *	incoming sk_buff @skb has been associated with a particular socket, @sk.
+ *	Must not sleep inside this hook because some callers hold spinlocks.
+ *	@sk contains the sock (not socket) associated with the incoming sk_buff.
+ *	@skb contains the incoming network data.
+
+			
+static int vsentry_socket_connect(struct socket *sock, struct sockaddr *address, int addrlen){
+
+	mpx_info_t mpx;
+	struct task_struct *ts = current;
+	const struct cred *rcred= ts->real_cred;
+			
+	struct sockaddr_in *ipv4;
+	
+	if(hook_filter()) return 0;
+	
+	ipv4 = (struct sockaddr_in *)address;
+	
+	strcpy(mpx.address_info.id.event_name,__FUNCTION__);
+	strcpy(mpx.address_info.ipv4,parse_sinaddr(ipv4->sin_addr));
+	
+	mpx.address_info.port = (int)ntohs(ipv4->sin_port);	
+	mpx.address_info.id.gid = (int)rcred->gid.val;
+	mpx.address_info.id.tid = (int)rcred->uid.val;
+	mpx.address_info.id.pid = current->pid;
 
 	//TODO: handle permission for sys call
+	return (mpx_socket_connect(&mpx));
+}
+*/
+
+static int vsentry_socket_sock_rcv_skb(struct sock *sk, struct sk_buff *skb){
+
+	if (current->pid == 0)
+		printk(KERN_INFO"%s PID: %d\n",__FUNCTION__,current->pid);
+	
+	if(hook_filter()) return 0;
+
+	//TODO: handle permission for sys call
+	
 	return 0;
 }
 
 __attribute__ ((unused))
 static int vsentry_socket_shutdown(struct socket *sock,int how){
 
-	//perm_info_t perm_info;
+	if (current->pid == 0)
+		printk(KERN_INFO"%s PID: %d\n",__FUNCTION__,current->pid);
 	
 	if(hook_filter()) return 0;
 
@@ -1104,8 +1157,9 @@ static struct security_hook_list vsentry_hooks[] = {
 	//LSM_HOOK_INIT(socket_listen, vsentry_socket_listen),
 	//LSM_HOOK_INIT(socket_accept, vsentry_socket_accept),
 	//LSM_HOOK_INIT(socket_sendmsg, vsentry_socket_sendmsg),
-	//LSM_HOOK_INIT(socket_recvmsg, vsentry_socket_recvmsg),
+	LSM_HOOK_INIT(socket_recvmsg, vsentry_socket_recvmsg),
 	//LSM_HOOK_INIT(socket_shutdown, vsentry_socket_shutdown),
+	LSM_HOOK_INIT(socket_sock_rcv_skb,vsentry_socket_sock_rcv_skb),
 
 	//LSM_HOOK_INIT(sk_alloc_security, vsentry_sk_alloc_security),
 	//LSM_HOOK_INIT(sk_free_security, vsentry_sk_free_security),

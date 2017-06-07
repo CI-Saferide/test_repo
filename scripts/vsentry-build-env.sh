@@ -1,6 +1,7 @@
 #!/bin/bash
 
 sudo apt-get install libncurses-dev -y
+sudo apt-get install gcc-arm-linux-gnueabi -y
 sudo apt-get install pv -y
 
 script_dir=`cd $(dirname $0); pwd`
