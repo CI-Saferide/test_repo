@@ -107,7 +107,7 @@ while true; do
 			make clean
 			cd ../../vsentry-engine/files/
 			echo $PWD
-			make arm foo=arm
+			make arm arch=arm
 			echo $PWD
 			cp ../build/bin/sr-engine ../../../linux-rpi/mnt/ext4/home/pi/			
 			make clean
