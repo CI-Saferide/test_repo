@@ -9,6 +9,7 @@ $(TARGET)-objs := sal/platform/linux/lsm/src/module_init.o \
 				  tools/radix/src/sr_radix.o \
 				  sal/platform/linux/src/sal_linux.o \
 				  sal/platform/linux/src/sal_bitops_linux.o \
+				  sal/src/sal_bitops.o \
 				  sal/test/sal_bitops_test.o \
 
 	SRC := $(shell pwd)

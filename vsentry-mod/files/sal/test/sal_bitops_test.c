@@ -8,6 +8,11 @@
 #include "sal_bitops.h"
 #include "sal_bitops_test.h"
 
+/* allocate buffers globaly as they exceed the function stack max buffer */
+bit_array	test_arr ={0};
+bit_array	test_arr2 ={0};
+bit_array	test_arr3 ={0};
+	
 #define DELIMITER	4
 void print_bool (SR_U8 bits, SR_U64 num)
 {
@@ -47,50 +52,14 @@ void print_bool (SR_U8 bits, SR_U64 num)
 
 void sal_bitops_test (SR_U32 test_num)
 {
-	SR_U64  decimal64 = 0x0;
-	SR_U32  decimal = 0x0;
-	SR_U8	test;
-	SR_8	result;
-	print_bool (32, decimal);
-	sal_set_bit32(31, &decimal);
-	sal_set_bit32(1, &decimal);
-	print_bool (32, decimal);
-	sal_clear_bit32(1, &decimal);
-	print_bool (32, decimal);
-	sal_change_bit32(30, &decimal);
-	print_bool (32, decimal);
-	test = sal_test_and_set_bit32(29, &decimal);
-	sal_kernel_print_info("bit 29 equals %d\n", test);
-	print_bool (32, decimal);
-	
-	test = sal_test_and_clear_bit32(29, &decimal);
-	sal_kernel_print_info("bit 29 equals %d\n", test);
-	print_bool (32, decimal);
-	
+	SR_U64  	decimal64 = 0x0;
+	SR_U32  	decimal = 0x0;
+	SR_16  	ffs_result;
+	//SR_U8		test;
+	SR_8		result;
+	SR_BOOL		bool_result;
+
 	decimal = 0;
-	result = sal_ffz32(decimal);
-	sal_kernel_print_info("first zero bit is %d\n", result);
-	decimal = 0xffffffff;
-	sal_clear_bit32(17, &decimal);
-	result = sal_ffz32(decimal);
-	sal_kernel_print_info("first zero bit is %d\n", result);
-	
-	decimal = 0;
-	result = sal_ffs32(decimal);
-	sal_kernel_print_info("first set bit is %d\n", result);
-	sal_set_bit32(26, &decimal);
-	result = sal_ffs32(decimal);
-	sal_kernel_print_info("first set bit is %d\n", result);
-	
-	decimal = 0;
-	result = sal_fls32(decimal);
-	sal_kernel_print_info("last set bit is %d\n", result);
-	sal_set_bit32(26, &decimal);
-	sal_set_bit32(22, &decimal);
-	sal_set_bit32(14, &decimal);
-	result = sal_fls32(decimal);
-	sal_kernel_print_info("last set bit is %d\n", result);
-	
 	decimal64 = 0;
 	result = sal_fls64(decimal64);
 	sal_kernel_print_info("last set bit is %d\n", result);
@@ -98,5 +67,121 @@ void sal_bitops_test (SR_U32 test_num)
 	print_bool (64, decimal64);
 	result = sal_fls64(decimal64);
 	sal_kernel_print_info("last set bit is %d\n", result);
+	
+	sal_kernel_print_info("----------------------------\n");
+	decimal64 = 0;
+	print_bool (64, decimal64);
+	sal_set_bit(60, &decimal64);
+	sal_set_bit(54, &decimal64);
+	sal_set_bit(35, &decimal64);
+	sal_set_bit(17, &decimal64);
+	print_bool (64, decimal64);
+	
+	sal_kernel_print_info("----------------------------\n");
+	decimal64 = 0xffffffffffffffff;
+	print_bool (64, decimal64);
+	sal_clear_bit(60, &decimal64);
+	sal_clear_bit(54, &decimal64);
+	sal_clear_bit(35, &decimal64);
+	sal_clear_bit(17, &decimal64);
+	print_bool (64, decimal64);
+	
+	sal_kernel_print_info("----------------------------\n");
+	decimal64 = 0;
+	sal_set_bit(60, &decimal64);
+	sal_set_bit(54, &decimal64);
+	sal_set_bit(35, &decimal64);
+	sal_set_bit(17, &decimal64);
+	sal_set_bit(3, &decimal64);
+	print_bool (64, decimal64);
+	result = sal_ffs64(&decimal64);
+	sal_kernel_print_info("first set bit is %d\n", result);
+	sal_clear_bit(3, &decimal64);
+	result = sal_ffs64(&decimal64);
+	sal_kernel_print_info("first set bit is %d\n", result);
+	decimal64 = 0;
+	result = sal_ffs64(&decimal64);
+	sal_kernel_print_info("first set bit is %d\n", result);
+	
+	sal_kernel_print_info("----------------------------\n");
+	sal_set_bit_array (64, &test_arr);
+	sal_set_bit_array (70, &test_arr);
+	sal_set_bit_array (127, &test_arr);
+	sal_set_bit_array (191, &test_arr);
+	sal_set_bit_array (4094, &test_arr);
+	sal_kernel_print_info("summary register:\n");
+	print_bool (64, test_arr.summary);
+	for (decimal=0; decimal<64; decimal++) {
+		sal_kernel_print_info("level2[%ld] register:\n", decimal);
+		print_bool (64, test_arr.level2[decimal]);
+	}
+	
+	sal_kernel_print_info("----------------------------\n");
+	sal_clear_bit_array (64, &test_arr);
+	sal_clear_bit_array (70, &test_arr);
+	sal_clear_bit_array (127, &test_arr);
+	print_bool (64, test_arr.summary);
+	for (decimal=0; decimal<64; decimal++) {
+		sal_kernel_print_info("level2[%ld] register:\n", decimal);
+		print_bool (64, test_arr.level2[decimal]);
+	}
+	
+	sal_kernel_print_info("----------------------------\n");
+	sal_set_bit_array (728, &test_arr);
+	ffs_result = sal_ffs_and_clear_array(&test_arr);	
+	sal_kernel_print_info("first set bit is %d\n", ffs_result);
+	ffs_result = sal_ffs_and_clear_array(&test_arr);
+	sal_kernel_print_info("first set bit is %d\n", ffs_result);
+	ffs_result = sal_ffs_and_clear_array(&test_arr);
+	sal_kernel_print_info("first set bit is %d\n", ffs_result);
+	ffs_result = sal_ffs_and_clear_array(&test_arr);
+	sal_kernel_print_info("first set bit is %d\n", ffs_result);
+	
+	sal_set_bit_array (32, &test_arr);
+	sal_set_bit_array (43, &test_arr);
+	sal_set_bit_array (3456, &test_arr);
+	sal_set_bit_array (728, &test_arr);
+	
+	sal_set_bit_array (728, &test_arr2);
+	sal_set_bit_array (375, &test_arr2);
+	sal_set_bit_array (1234, &test_arr2);
+	sal_set_bit_array (3478, &test_arr2);
+	
+	//sal_and_op_arrays (&test_arr, &test_arr2, &test_arr3);
+	//ffs_result = sal_ffs_array(&test_arr);	
+	//sal_kernel_print_info("[arr] first set bit is %d\n", ffs_result);
+	//ffs_result = sal_ffs_array(&test_arr2);	
+	//sal_kernel_print_info("[arr2] first set bit is %d\n", ffs_result);
+	//ffs_result = sal_ffs_array(&test_arr3);	
+	//sal_kernel_print_info("[arr3] first set bit is %d\n", ffs_result);
+
+	sal_kernel_print_info("----------------------------\n");
+	sal_kernel_print_info("after OR:\n");
+	sal_or_op_arrays (&test_arr, &test_arr2, &test_arr3);
+	ffs_result = sal_ffs_and_clear_array(&test_arr3);
+	sal_kernel_print_info("first set bit is %d\n", ffs_result);
+	ffs_result = sal_ffs_and_clear_array(&test_arr3);
+	sal_kernel_print_info("first set bit is %d\n", ffs_result);
+	ffs_result = sal_ffs_and_clear_array(&test_arr3);
+	sal_kernel_print_info("first set bit is %d\n", ffs_result);
+	ffs_result = sal_ffs_and_clear_array(&test_arr3);
+	sal_kernel_print_info("first set bit is %d\n", ffs_result);
+	ffs_result = sal_ffs_and_clear_array(&test_arr3);
+	sal_kernel_print_info("first set bit is %d\n", ffs_result);
+	ffs_result = sal_ffs_and_clear_array(&test_arr3);
+	sal_kernel_print_info("first set bit is %d\n", ffs_result);
+	
+	decimal64 = 3;
+	print_bool (64, decimal64);
+	bool_result = sal_test_and_set_bit(60, &decimal64);
+	sal_kernel_print_info("bool_result =  %d\n", bool_result);
+	bool_result = sal_test_and_set_bit(60, &decimal64);
+	sal_kernel_print_info("bool_result =  %d\n", bool_result);
+	print_bool (64, decimal64);
+	
+	bool_result = sal_test_and_clear_bit(60, &decimal64);
+	sal_kernel_print_info("bool_result =  %d\n", bool_result);
+	print_bool (64, decimal64);
+	
 }
 #endif /* UNIT_TEST */
