@@ -30,5 +30,6 @@ SR_16 sal_ffs_array (bit_array *arr);
 SR_16 sal_ffs_and_clear_array (bit_array *arr);
 void sal_and_op_arrays (const bit_array *arr1, const bit_array *arr2, bit_array *result);
 void sal_or_op_arrays (const bit_array *arr1, const bit_array *arr2, bit_array *result);
+void sal_not_op_array (bit_array *arr);
 
 #endif /* SAL_BITOPS_H*/

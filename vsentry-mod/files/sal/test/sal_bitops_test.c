@@ -12,6 +12,7 @@
 bit_array	test_arr ={0};
 bit_array	test_arr2 ={0};
 bit_array	test_arr3 ={0};
+bit_array	test_arr4 ={0};
 	
 #define DELIMITER	4
 void print_bool (SR_U8 bits, SR_U64 num)
@@ -171,6 +172,9 @@ void sal_bitops_test (SR_U32 test_num)
 	ffs_result = sal_ffs_and_clear_array(&test_arr3);
 	sal_kernel_print_info("first set bit is %d\n", ffs_result);
 	
+	sal_not_op_array(&test_arr3);
+	
+	
 	decimal64 = 3;
 	print_bool (64, decimal64);
 	bool_result = sal_test_and_set_bit(60, &decimal64);
@@ -182,6 +186,19 @@ void sal_bitops_test (SR_U32 test_num)
 	bool_result = sal_test_and_clear_bit(60, &decimal64);
 	sal_kernel_print_info("bool_result =  %d\n", bool_result);
 	print_bool (64, decimal64);
+	
+	sal_set_bit_array (32, &test_arr4);
+	sal_set_bit_array (4095, &test_arr4);
+	test_arr4.level2[0] = 0xffffffffffffffff;
+	
+	sal_kernel_print_info("after NOT\n");
+	sal_not_op_array(&test_arr4);
+	sal_kernel_print_info("arr4 summary\n");
+	print_bool (64, test_arr4.summary);
+	for (decimal=0; decimal<64; decimal++) {
+		sal_kernel_print_info("level2[%ld] register:\n", decimal);
+		print_bool (64, test_arr4.level2[decimal]);
+	}
 	
 }
 #endif /* UNIT_TEST */
