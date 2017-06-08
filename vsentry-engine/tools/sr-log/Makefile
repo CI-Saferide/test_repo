@@ -24,6 +24,17 @@ all:
 		  -I$(ROOT_DIR)/../../../vsentry-mod/files/tools/sr-log/include \
 		  -DPLATFORM_LINUX -O -c -static $(ROOT_DIR)/src/sr_log.c $(ROOT_DIR)/../../files/sal/platform/linux/src/sal_linux_engine.c
 	$(AR) rcs $(ROOT_DIR)/../../build/lib/libsr_log.a sr_log.o sal_linux_engine.o
+	
+x86:
+	@mkdir -p $(ROOT_DIR)/../../build/lib/
+	$(CC) -I$(ROOT_DIR)/../../../vsentry-mod/files/sal/include \
+		  -I$(ROOT_DIR)/../../../vsentry-mod/files/tools/sr-log/include \
+		  -I$(ROOT_DIR)/../../files/sal/platform/linux/include \
+		  -I$(ROOT_DIR)/../../../vsentry-mod/files/sal/include \
+		  -I$(ROOT_DIR)/include \
+		  -I$(ROOT_DIR)/../../../vsentry-mod/files/tools/sr-log/include \
+		  -DPLATFORM_LINUX -O -c -static $(ROOT_DIR)/src/sr_log.c $(ROOT_DIR)/../../files/sal/platform/linux/src/sal_linux_engine.c
+	$(AR) rcs $(ROOT_DIR)/../../build/lib/libsr_log.a sr_log.o sal_linux_engine.o
 
 arm:
 	@mkdir -p $(ROOT_DIR)/../../build/lib/
