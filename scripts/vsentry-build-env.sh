@@ -76,10 +76,10 @@ sed -i 's|'PATH-NAME'|'${kernel_dir}'|g' $script_dir/../../agl-3.0.2/poky/meta/r
 
 
 
-cp -R vsentry/src/vsentry-mod/ agl-3.0.2/poky/meta/recipes-kernel/
-cp -R vsentry/src/vsentry-userspace/ agl-3.0.2/poky/meta/recipes-kernel/
-cp -R vsentry/src/vsentry-cpu/ agl-3.0.2/poky/meta/recipes-kernel/
-cp -R vsentry/src/vsentry-netdump/ agl-3.0.2/poky/meta/recipes-kernel/
+cp -R vsentry/vsentry-mod/ agl-3.0.2/poky/meta/recipes-kernel/
+cp -R vsentry/vsentry-engine/ agl-3.0.2/poky/meta/recipes-kernel/
+cp -R vsentry/vsentry-cpu/ agl-3.0.2/poky/meta/recipes-kernel/
+cp -R vsentry/vsentry-netdump/ agl-3.0.2/poky/meta/recipes-kernel/
 
 echo -n "made copies of the Vsentry source for the AGL build." 
 echo -e ""

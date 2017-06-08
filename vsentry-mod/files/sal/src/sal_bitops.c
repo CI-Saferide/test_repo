@@ -1,0 +1,85 @@
+/* file: sal_bitops.c
+ * purpose: this file implements the platform agnostic bit opearations
+ *          the implementation enhances the basic implementation (with
+ *			is platform specific)
+*/
+
+#include "sal_bitops.h"
+
+void sal_set_bit_array (SR_U16 bit, bit_array *arr)
+{
+	SR_U8		pos_in_summary;
+	
+	pos_in_summary = (bit/64);
+	sal_set_bit(pos_in_summary, &arr->summary);
+	sal_set_bit((bit%64), &arr->level2[pos_in_summary]);
+}
+
+void sal_clear_bit_array (SR_U16 bit, bit_array *arr)
+{
+	SR_U8		pos_in_summary;
+	
+	pos_in_summary = (bit/64);
+	sal_clear_bit((bit%64), &arr->level2[pos_in_summary]);
+	if (!arr->level2[pos_in_summary])
+		sal_clear_bit(pos_in_summary, &arr->summary);
+}
+
+SR_16 sal_ffs_array (bit_array *arr)
+{
+	SR_U8		summary_ffs;
+	SR_U8		level2_ffs;
+	
+	/* check if whole structure is empty */
+	if (!arr->summary)
+		return (-1);
+	summary_ffs = sal_ffs64(&arr->summary);
+	level2_ffs = sal_ffs64(&arr->level2[summary_ffs]);
+	return ((summary_ffs * 64) + level2_ffs);
+}
+
+void sal_not_op_array (bit_array *arr)
+{
+	SR_U8 index;
+	arr->summary = 0;
+	for (index=0; index < 64; index++) {
+		arr->level2[index] = ~(arr->level2[index]);
+		if (arr->level2[index]) {
+			sal_set_bit(index, &arr->summary);
+		}
+	}
+}
+
+SR_16 sal_ffs_and_clear_array (bit_array *arr)
+{
+	SR_U8		summary_ffs;
+	SR_U8		level2_ffs;
+	
+	/* check if whole structure is empty */
+	if (!arr->summary)
+		return (-1);
+	summary_ffs = sal_ffs64(&arr->summary);
+	level2_ffs = sal_ffs64(&arr->level2[summary_ffs]);
+	sal_clear_bit(level2_ffs, &arr->level2[summary_ffs]);
+	if (!(arr->level2[summary_ffs]))
+		sal_clear_bit(summary_ffs, &arr->summary);
+	return ((summary_ffs * 64) + level2_ffs);
+}
+
+void sal_and_op_arrays (const bit_array *arr1, const bit_array *arr2, bit_array *result)
+{
+	SR_U8 index;
+	result->summary = ((arr1->summary) & (arr2->summary));
+	for (index=0; index < 64; index++) {
+		result->level2[index] = ((arr1->level2[index]) & (arr2->level2[index]));
+	}
+}
+
+void sal_or_op_arrays (const bit_array *arr1, const bit_array *arr2, bit_array *result)
+{
+	SR_U8 index;
+	result->summary = ((arr1->summary) | (arr2->summary));
+	for (index=0; index < 64; index++) {
+		result->level2[index] = ((arr1->level2[index]) | (arr2->level2[index]));
+	}
+}

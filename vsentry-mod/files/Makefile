@@ -42,4 +42,6 @@ clean:
 	rm -f Module.markers Module.symvers modules.order
 	rm -rf .tmp_versions Modules.symvers
 	find . -name "*.o" -type f -delete
+	find . -name "*.o.cmd" -type f -delete
+	
     
