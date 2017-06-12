@@ -1,15 +1,6 @@
 #ifndef SAL_LINUX_H
 #define SAL_LINUX_H
 
-#include "multiplexer.h"
-
-#ifdef PLATFORM_LINUX
-#include <linux/kernel.h>
-#include <net/sock.h> 
-#include <linux/rwlock.h>
-
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wdeclaration-after-statement"
 /* variables definitions */
 #define SR_U8		unsigned char
 #define SR_U16		unsigned short
@@ -21,10 +12,27 @@
 #define SR_64		long long
 #define SR_BOOL		SR_U8
 #define TRUE		1
+#define SR_SUCCESS	0
+#define SR_ERROR	-1
 #define FALSE		0
+#define SR_MAX_PATH 	1024
+
+#ifdef _KERNEL
+#include "multiplexer.h"
+
+#ifdef PLATFORM_LINUX
+#include <linux/kernel.h>
+#include <net/sock.h> 
+#include <linux/rwlock.h>
+
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeclaration-after-statement"
+
 #pragma GCC diagnostic pop
 
 #define SR_RWLOCK	rwlock_t
+#define SR_LOCK(x) //(x++)
+#define SR_UNLOCK(x) //(x++)
 #define SR_ALLOC(x) kmalloc(x, GFP_KERNEL|GFP_NOWAIT)
 #define SR_ZALLOC(x) kcalloc(1, x, GFP_KERNEL|GFP_NOWAIT)
 #define SR_FREE kfree
@@ -57,5 +65,6 @@ void sal_kernel_socket_exit(int socket_index);
 
 int sal_socket_tx_msg(int socket_index, CEF_payload payload, int payload_size);
 
+#endif // _KERNEL
 
 #endif /* SAL_LINUX_H*/

@@ -18,18 +18,6 @@
 
 #include <pthread.h>
 
-struct sockaddr_nl src_addr, dest_addr;
-struct nlmsghdr *nlh;
-struct iovec iov;
-struct msghdr msg;
-
-struct sockaddr_nl src_addr_log, dest_addr_log;
-struct nlmsghdr *nlh_log;
-struct iovec iov_log;
-struct msghdr msg_log;
-
-int main_sock_fd,log_sock_fd;
-
 typedef enum {
 	PROTOCOL_UDP,
 	PROTOCOL_TCP,
@@ -41,9 +29,10 @@ int sal_socket(SAL_PROTOCOL protocol, int port);
 int sal_bind(int fd);
 int sal_bind_log(int fd);
 
-void sal_sendmsg(int fd,char *data);
+//void sal_sendmsg(int fd,char *data);
+void sal_sendmsg(char *data, int size);
 
-int sal_recvmsg(int fd);
+int sal_recvmsg(struct msghdr *rcv_msg, void *data);
 
 int sal_recvmsg_loop();
 

@@ -6,7 +6,9 @@ $(TARGET)-objs := sal/platform/linux/lsm/src/module_init.o \
 				  multiplexer/src/multiplexer.o \
 				  multiplexer/src/msg_process.o \
 				  classifier/src/sr_classifier.o \
+				  classifier/src/sr_cls_file.o \
 				  tools/radix/src/sr_radix.o \
+				  tools/sr-hash/src/sr_hash.o \
 				  sal/platform/linux/src/sal_linux.o \
 				  sal/platform/linux/src/sal_bitops_linux.o \
 				  sal/src/sal_bitops.o \
@@ -22,6 +24,7 @@ EXTRA_CFLAGS += -I$(PWD)/sal/test
 EXTRA_CFLAGS += -I$(PWD)/sal/platform/linux/include
 EXTRA_CFLAGS += -I$(PWD)/tools/sr-log/include
 EXTRA_CFLAGS += -I$(PWD)/tools/radix/include
+EXTRA_CFLAGS += -I$(PWD)/tools/sr-hash/include
 
 #EXTRA_CFLAGS += -DUNIT_TEST
 EXTRA_CFLAGS += -DPLATFORM_LINUX -D_KERNEL

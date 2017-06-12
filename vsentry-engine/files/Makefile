@@ -8,12 +8,12 @@ $(TARGET)-objs := $(ROOT_DIR)/src/main.o \
 all: libsr_log.a
 	arch=all
 	@mkdir -p $(ROOT_DIR)/../build/bin/
-	$(CC) src/main.c -static -L$(ROOT_DIR)/../build/lib/ -I$(ROOT_DIR)/../../vsentry-mod/files/tools/sr-log/include/ -lsr_log -o $(ROOT_DIR)/../build/bin/$(TARGET) -lpthread
+	$(CC) -g src/main.c src/sr_cls_control.c -static -L$(ROOT_DIR)/../build/lib/ -I$(ROOT_DIR)/include -I$(ROOT_DIR)/../../vsentry-mod/files/tools/sr-log/include/ -I$(ROOT_DIR)/../../vsentry-mod/files/sal/platform/linux/include/ -lsr_log -o $(ROOT_DIR)/../build/bin/$(TARGET) -lpthread
 	
 x86: libsr_log.a
 	arch=x86
 	@mkdir -p $(ROOT_DIR)/../build/bin/
-	$(CC) src/main.c -static -L$(ROOT_DIR)/../build/lib/ -I$(ROOT_DIR)/../../vsentry-mod/files/tools/sr-log/include/ -lsr_log -o $(ROOT_DIR)/../build/bin/$(TARGET) -lpthread
+	$(CC) -g src/main.c -static -L$(ROOT_DIR)/../build/lib/ -I$(ROOT_DIR)/../../vsentry-mod/files/tools/sr-log/include/ -lsr_log -o $(ROOT_DIR)/../build/bin/$(TARGET) -lpthread
 	
 arm: libsr_log.a
 	arch=arm

@@ -31,7 +31,7 @@ static int __init vsentry_init(void)
 	
 	printk(KERN_INFO "[%s]: module started. kernel version is %s\n",MODULE_NAME, utsname()->release);
 	#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,2,0)
-	rc = register_lsm_hooks();
+	//rc = register_lsm_hooks();
 	if (rc)		
 		printk(KERN_INFO "[%s]: registration to lsm failed!\n", MODULE_NAME);
 	else
@@ -46,7 +46,7 @@ static int __init vsentry_init(void)
 	}
 	#endif
 	sal_kernel_socket_init(MAIN_SOCKET_INDEX, MAIN_SOCKET_PORT, main_socket_process_cb);
-	sr_netfilter_init();
+	//sr_netfilter_init();
 	sr_classifier_init();
 	//sal_kernel_socket_init(LOG_SOCKET_INDEX, LOG_SOCKET_PORT, log_socket_process_cb);
 #ifdef UNIT_TEST	
