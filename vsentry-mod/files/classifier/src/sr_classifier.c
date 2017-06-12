@@ -1,6 +1,7 @@
 #include "multiplexer.h"
 #include "sal_linux.h"
 #include "sr_radix.h"
+#include "sr_cls_file.h"
 
 struct radix_head *sr_cls_src_ipv4;
 
@@ -13,7 +14,9 @@ int sr_classifier_init(void)
 	} else {
 		sal_kernel_print_alert("Successfully Initialized radix tree\n");
 	}
-	sr_classifier_ut();
+	sr_cls_init();
+
+	//sr_classifier_ut();
 	return 0;
 }
 

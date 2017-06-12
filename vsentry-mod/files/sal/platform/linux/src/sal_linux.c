@@ -27,6 +27,7 @@ static void sal_recv_msg(struct sk_buff *skb)
     int res;
 
     msg_size = strlen(msg);
+    printk("sal_recv_msg: Entry\n");
 
     nlh = (struct nlmsghdr *)skb->data;
     sr_vsentryd_pid = nlh->nlmsg_pid; /*pid of sending process */

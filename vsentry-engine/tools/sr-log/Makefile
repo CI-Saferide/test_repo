@@ -13,10 +13,11 @@ EXTRA_CFLAGS += -I$(ROOT_DIR)/include
 EXTRA_CFLAGS += -I$(ROOT_DIR)/../../../vsentry-mod/files/tools/sr-log/include
 EXTRA_CFLAGS +=	-lpthread
 EXTRA_CFLAGS += -DPLATFORM_LINUX
+EXTRA_CFLAGS += -g
 
 all:
 	@mkdir -p $(ROOT_DIR)/../../build/lib/
-	$(CC) -I$(ROOT_DIR)/../../../vsentry-mod/files/sal/include \
+	$(CC) -g -I$(ROOT_DIR)/../../../vsentry-mod/files/sal/include \
 		  -I$(ROOT_DIR)/../../../vsentry-mod/files/tools/sr-log/include \
 		  -I$(ROOT_DIR)/../../files/sal/platform/linux/include \
 		  -I$(ROOT_DIR)/../../../vsentry-mod/files/sal/include \
@@ -27,7 +28,7 @@ all:
 	
 x86:
 	@mkdir -p $(ROOT_DIR)/../../build/lib/
-	$(CC) -I$(ROOT_DIR)/../../../vsentry-mod/files/sal/include \
+	$(CC) -g -I$(ROOT_DIR)/../../../vsentry-mod/files/sal/include \
 		  -I$(ROOT_DIR)/../../../vsentry-mod/files/tools/sr-log/include \
 		  -I$(ROOT_DIR)/../../files/sal/platform/linux/include \
 		  -I$(ROOT_DIR)/../../../vsentry-mod/files/sal/include \

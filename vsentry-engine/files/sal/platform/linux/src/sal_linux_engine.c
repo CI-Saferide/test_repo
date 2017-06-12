@@ -8,6 +8,8 @@
 #include "sr_log.h"
 
 #ifdef PLATFORM_LINUX
+int main_sock_fd,log_sock_fd;
+
 
 int sal_socket(SAL_PROTOCOL protocol, int port)
 {
@@ -30,6 +32,15 @@ int sal_socket(SAL_PROTOCOL protocol, int port)
 
 int sal_bind(int fd)
 {
+	struct sockaddr_nl src_addr, dest_addr;
+	struct nlmsghdr *nlh;
+	struct iovec iov;
+	struct msghdr msg;
+
+	struct sockaddr_nl src_addr_log, dest_addr_log;
+	struct nlmsghdr *nlh_log;
+	struct iovec iov_log;
+	struct msghdr msg_log;
 	nlh = NULL; //Dangling pointer ;)
 	
 	memset(&src_addr, 0, sizeof(src_addr));
@@ -97,16 +108,59 @@ int sal_bind_log(int fd)
     
     return 0;// invent some feedback or error code...
 }*/
-void sal_sendmsg(int fd,char *data)
+/*void sal_sendmsg(int fd,char *data)
 {
 	strcpy(NLMSG_DATA(nlh), data);
 	//sr_print(LOG_INFO, "Sending message to kernel...\n");
 	sendmsg(fd, &msg, 0); //sending msg to kernel space
+} */
+
+void sal_sendmsg(char *data, int size)
+{
+	struct sockaddr_nl dest_addr;
+	struct nlmsghdr *nlh;
+	struct iovec iov;
+	struct msghdr msg;
+
+	struct sockaddr_nl src_addr_log, dest_addr_log;
+	struct nlmsghdr *nlh_log;
+	struct iovec iov_log;
+	struct msghdr msg_log;
+	int ret;
+
+	memset(&dest_addr, 0, sizeof(dest_addr));
+	dest_addr.nl_family = AF_NETLINK;
+	dest_addr.nl_pid = 0; // For Linux Kernel
+	dest_addr.nl_groups = 0; //unicast 
+
+	nlh = (struct nlmsghdr *)malloc(NLMSG_SPACE(MAX_PAYLOAD));
+	memset(nlh, 0, NLMSG_SPACE(size));
+	nlh->nlmsg_len = NLMSG_SPACE(size);
+	nlh->nlmsg_pid = getpid();
+	nlh->nlmsg_flags = 0;
+
+	iov.iov_base = (void *)nlh;
+	iov.iov_len = nlh->nlmsg_len;
+
+	msg.msg_name = (void *)&dest_addr;
+	msg.msg_namelen = sizeof(dest_addr);
+	msg.msg_iov = &iov;
+	msg.msg_iovlen = 1;	
+
+	memcpy(NLMSG_DATA(nlh), data, size);
+	//sr_print(LOG_INFO, "Sending message to kernel...\n");
+	ret = sendmsg(main_sock_fd, &msg, 0); //sending msg to kernel space
+	free(nlh);
 }
 
-int sal_recvmsg(int fd)
+int sal_recvmsg(struct msghdr *rcv_msg, void *data)
 {
-	 return recvmsg(fd, &msg, 0);
+	int retval;
+	retval = recvmsg(main_sock_fd, rcv_msg, 0);
+	if (retval > 0) {
+		data = NLMSG_DATA(rcv_msg->msg_iov->iov_base);
+	}
+	return retval;
 }
 
 #endif /* #ifdef PLATFORM_LINUX */
