@@ -66,6 +66,18 @@ SR_16 sal_ffs_and_clear_array (bit_array *arr)
 	return ((summary_ffs * 64) + level2_ffs);
 }
 
+SR_16 sal_ffs_and_clear_bitmask (SR_U64 *bitmask)
+{
+	SR_U8		first_set_bit;
+	
+	/* check if whole structure is empty */
+	if (!bitmask)
+		return (-1);
+	first_set_bit = sal_ffs64(bitmask);
+	sal_clear_bit(first_set_bit, bitmask);
+	return first_set_bit;
+}
+
 void sal_and_op_arrays (const bit_array *arr1, const bit_array *arr2, bit_array *result)
 {
 	SR_U8 index;
@@ -81,5 +93,15 @@ void sal_or_op_arrays (const bit_array *arr1, const bit_array *arr2, bit_array *
 	result->summary = ((arr1->summary) | (arr2->summary));
 	for (index=0; index < 64; index++) {
 		result->level2[index] = ((arr1->level2[index]) | (arr2->level2[index]));
+	}
+}
+
+void sal_or_self_op_arrays (bit_array *base, const bit_array *addon)
+{
+	SR_U8 index;
+	SR_U64 summary = addon->summary;
+	base->summary |= addon->summary;
+	while ((index = sal_ffs_and_clear_bitmask(&summary)) != -1) {
+		base->level2[index] |= addon->level2[index];
 	}
 }
