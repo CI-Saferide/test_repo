@@ -1,6 +1,6 @@
 TARGET = vsentry
 obj-m += $(TARGET).o 
-$(TARGET)-objs := sal/platform/linux/lsm/src/module_init.o \
+$(TARGET)-objs := sal/platform/linux/src/module_init.o \
 				  sal/platform/linux/lsm/src/sr_lsm_hooks.o \
 				  sal/platform/linux/netfilter/src/sr_netfilter.o \
 				  multiplexer/src/multiplexer.o \
