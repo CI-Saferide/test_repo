@@ -71,8 +71,9 @@ SR_16 sal_ffs_and_clear_bitmask (SR_U64 *bitmask)
 	SR_U8		first_set_bit;
 	
 	/* check if whole structure is empty */
-	if (!bitmask)
+	if (*bitmask == 0) {
 		return (-1);
+	} 
 	first_set_bit = sal_ffs64(bitmask);
 	sal_clear_bit(first_set_bit, bitmask);
 	return first_set_bit;
@@ -98,7 +99,7 @@ void sal_or_op_arrays (const bit_array *arr1, const bit_array *arr2, bit_array *
 
 void sal_or_self_op_arrays (bit_array *base, const bit_array *addon)
 {
-	SR_U8 index;
+	SR_8 index;
 	SR_U64 summary = addon->summary;
 	base->summary |= addon->summary;
 	while ((index = sal_ffs_and_clear_bitmask(&summary)) != -1) {

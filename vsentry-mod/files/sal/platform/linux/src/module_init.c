@@ -58,11 +58,11 @@ static int __init vsentry_init(void)
 static void __exit vsentry_cleanup(void)
 {
 	sal_kernel_socket_exit(MAIN_SOCKET_INDEX);
-	sr_netfilter_uninit();
+	//sr_netfilter_uninit();
 	#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,2,0)
-		unregister_lsm_hooks();
+	//	unregister_lsm_hooks();
 	#else
-		reset_security_ops();
+	//	reset_security_ops();
 	#endif
 	sr_classifier_uninit();
 	printk(KERN_INFO "[%s]: module released!\n", MODULE_NAME);

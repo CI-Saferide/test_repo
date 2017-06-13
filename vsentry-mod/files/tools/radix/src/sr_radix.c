@@ -208,7 +208,7 @@ rn_lookup(void *v_arg, void *m_arg, struct radix_head *head)
 			return (NULL);
 		netmask = x->rn_key;
 
-		x = rn_match(v_arg, head);
+		x = rn_match(v_arg, head, NULL);
 
 		while (x != NULL && x->rn_mask != netmask)
 			x = x->rn_dupedkey;
@@ -219,7 +219,7 @@ rn_lookup(void *v_arg, void *m_arg, struct radix_head *head)
 	/*
 	 * Search for host address.
 	 */
-	if ((x = rn_match(v_arg, head)) == NULL)
+	if ((x = rn_match(v_arg, head, NULL)) == NULL)
 		return (NULL);
 
 	/* Check if found key is the same */
@@ -255,7 +255,7 @@ rn_satisfies_leaf(char *trial, struct radix_node *leaf, int skip)
  * Search for longest-prefix match in given @head
  */
 struct radix_node *
-rn_match(void *v_arg, struct radix_head *head)
+rn_match(void *v_arg, struct radix_head *head, bit_array *match_rules)
 {
 	caddr_t v = v_arg;
 	struct radix_node *t = head->rnh_treetop, *x;
@@ -274,9 +274,9 @@ rn_match(void *v_arg, struct radix_head *head)
 			t = t->rn_right;
 		else
 			t = t->rn_left;
-		if ((t->rn_flags == RNF_ACTIVE) && (t->rn_bit >= 0)) {
+		if ((t->rn_flags == RNF_ACTIVE) && (t->rn_bit >= 0) && match_rules) {
 		// TODO: This is a match, need to OR the bits into aggregator
-			sal_kernel_print_info("[%lx::%d]got match for rule# %d\n", (unsigned long) t, t->rn_flags, t[0].sr_private.magic);
+			sal_or_self_op_arrays(match_rules, &t[0].sr_private.rules);
 		}
 
 	}
@@ -601,8 +601,9 @@ rn_addroute(void *v_arg, void *n_arg, struct radix_head *head,
 	 */
 	if (netmask)  {
 		x = rn_addmask(netmask, head->rnh_masks, 0, top->rn_offset);
-		if (x == NULL)
+		if (x == NULL) {
 			return (0);
+		}
 		b_leaf = x->rn_bit;
 		b = -1 - x->rn_bit;
 		netmask = x->rn_key;
@@ -628,8 +629,10 @@ rn_addroute(void *v_arg, void *n_arg, struct radix_head *head,
 				break;
 			}
 #endif
-			if (tt->rn_mask == netmask)
+			if (tt->rn_mask == netmask){
+				sal_or_self_op_arrays(&tt[1].sr_private.rules, &treenodes[1].sr_private.rules);
 				return (0);
+}
 			if (netmask == 0 ||
 			    (tt->rn_mask &&
 			     ((b_leaf < tt->rn_bit) /* index(netmask) > node */
@@ -712,8 +715,9 @@ rn_addroute(void *v_arg, void *n_arg, struct radix_head *head,
 	}
 on2:
 	/* Add new route to highest possible ancestor's list */
-	if ((netmask == 0) || (b > t->rn_bit ))
+	if ((netmask == 0) || (b > t->rn_bit )) {
 		return (tt); /* can't lift at all */
+	}
 	b_leaf = tt->rn_bit;
 	do {
 		x = t;
