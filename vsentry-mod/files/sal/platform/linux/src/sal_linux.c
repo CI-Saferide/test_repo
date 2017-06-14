@@ -119,14 +119,6 @@ int sal_kernel_socket_init(int socket_index, int port, _sock_recv_cb_t sal_sock_
 			return -10;
 		}
 	}	
-	/*
-	if(	socket_index == LOG_SOCKET_INDEX){
-		sal_log_sock = netlink_kernel_create(&init_net, port, &cfg);
-		if (!sal_log_sock ) {
-			printk(KERN_ALERT "error creating socket on port:%d.\n",port);
-			return -10;
-		}		
-	}*/
 
 	return 0;
 }
@@ -134,6 +126,5 @@ int sal_kernel_socket_init(int socket_index, int port, _sock_recv_cb_t sal_sock_
 void sal_kernel_socket_exit(int socket_index)
 {
 	netlink_kernel_release(sal_sock);
-	//netlink_kernel_release(sal_log_sock);
 }
 #endif /* #ifdef PLATFORM_LINUX */

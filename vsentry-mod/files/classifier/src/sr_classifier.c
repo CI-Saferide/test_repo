@@ -17,7 +17,8 @@ int sr_classifier_init(void)
 	}
 	sr_cls_init();
 
-	sr_classifier_ut();
+	//r_classifier_ut();
+
 	return 0;
 }
 
@@ -68,8 +69,8 @@ int sr_cls_add_ipv4(SR_U32 addr, SR_U32 netmask, int rulenum)
 
 int sr_cls_find_ipv4(SR_U32 addr)
 {
-        struct radix_node *node = NULL;
-        struct sockaddr_in *ip;
+    struct radix_node *node = NULL;
+    struct sockaddr_in *ip;
 	bit_array matched_rules;
 	SR_16 rule;
 
