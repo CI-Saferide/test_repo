@@ -9,6 +9,8 @@ struct sr_hash_ent_t{
 	SR_U32 type;
 	struct sr_hash_ent_t *next;
 	char pad[1];
+	SR_U32 rule;
+	struct bit_array *bit_arr;
 };
 
 struct sr_hash_bucket_t{
