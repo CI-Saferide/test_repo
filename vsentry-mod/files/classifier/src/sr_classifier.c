@@ -19,7 +19,7 @@ int sr_classifier_init(void)
 	}
 	sr_cls_init();
 
-	//r_classifier_ut();
+	sr_classifier_ut();
 
 	return 0;
 }
@@ -82,7 +82,7 @@ int sr_cls_add_ipv4(SR_U32 addr, SR_U32 netmask, int rulenum)
           }
 	}
 
-	rn_walktree_from(sr_cls_src_ipv4, ip, mask2, sr_cls_walker_addrule, rulenum);
+	rn_walktree_from(sr_cls_src_ipv4, ip, mask2, sr_cls_walker_addrule, (void*)(long)rulenum);
 	SR_FREE(mask2);
 	
 	//sal_kernel_print_alert("sr_cls_add_ipv4: added node has address %lx\n", (unsigned long)node);
@@ -118,7 +118,7 @@ int sr_cls_del_ipv4(SR_U32 addr, SR_U32 netmask, int rulenum)
 		SR_FREE(mask);
 		return SR_ERROR;
 	}
-	rn_walktree_from(sr_cls_src_ipv4, ip, mask, sr_cls_walker_delrule, rulenum); // Clears the rule from tree
+	rn_walktree_from(sr_cls_src_ipv4, ip, mask, sr_cls_walker_delrule, (void*)(long)rulenum); // Clears the rule from tree
 	if (!node->sr_private.rules.summary) { // removed last rule
 		//sal_kernel_print_alert("Cleared last rule from entry, removing entry\n");
 		node = rn_delete((void*)ip, (void*)mask, sr_cls_src_ipv4);
