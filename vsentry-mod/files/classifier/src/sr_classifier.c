@@ -12,28 +12,24 @@ int sr_cls_walker_delrule(struct radix_node *node, void *rulenum);
 
 int sr_classifier_init(void)
 {
-#if 0
 	if (!rn_inithead((void **)&sr_cls_src_ipv4, (8 * offsetof(struct sockaddr_in, sin_addr)))) {
 		sal_kernel_print_alert("Error Initializing radix tree\n");
 	} else {
 		sal_kernel_print_alert("Successfully Initialized radix tree\n");
 	}
-#endif // 0
 	sr_cls_init();
 
-	//sr_classifier_ut();
+	sr_classifier_ut();
 
 	return 0;
 }
 
 void sr_classifier_uninit(void)
 {
-#if 0
 	if (sr_cls_src_ipv4) {
 		rn_detachhead((void **)&sr_cls_src_ipv4);
 		sr_cls_src_ipv4 = NULL;
 	}
-#endif
 	sr_cls_uninit();
 }
 
