@@ -13,7 +13,7 @@ void print_table(struct sr_hash_table_t *table)
 	
 	for(i = 0; i < HT_PORT_SIZE; i++) {
         if (sr_cls_port_table->buckets[i].head != NULL){
-			sal_kernel_print_alert("KEY: %d rule: %d\n",
+			sal_kernel_print_alert("KEY: %lu rule: %lu\n",
 			sr_cls_port_table->buckets[i].head->key,
 			sr_cls_port_table->buckets[i].head->rule);
 			//((struct port_ent_t*)sr_cls_port_table->buckets[i].head)->rule);
@@ -90,10 +90,10 @@ int sr_cls_port_find(SR_U32 port)
 {
 	struct sr_hash_ent_t *ent=sr_hash_lookup(sr_cls_port_table, port);
 	if (!ent) {
-		sal_kernel_print_alert("Error:%d Port not found\n",port);
+		sal_kernel_print_alert("Error:%lu Port not found\n",port);
 		return SR_ERROR;
 	}
-	sal_kernel_print_alert("%d Port found with rule:%d\n",(SR_U32)ent->key,(SR_U32)ent->rule);
+	sal_kernel_print_alert("%lu Port found with rule:%lu\n",(SR_U32)ent->key,(SR_U32)ent->rule);
 	return SR_SUCCESS;
 }
 
