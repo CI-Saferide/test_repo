@@ -4,12 +4,37 @@
 #include "sr_hash.h"
 #include "sr_cls_port.h"
 
+#include <linux/time.h> // for unit testing
+
 #define HT_PORT_SIZE 32
 struct sr_hash_table_t *sr_cls_port_table;
 
 int sr_cls_port_add_rule(SR_U32 port, SR_U32 rulenum);
 int sr_cls_port_del_rule(SR_U32 port, SR_U32 rulenum);
 struct sr_hash_ent_t *sr_cls_port_find(SR_U32 port);
+
+
+
+int myRandom(int bottom, int top){ // for unit testing
+	
+	unsigned long get_time;
+	//int sec ,hr, min, tmp1,tmp2;
+	int usec;
+	struct timeval tv;
+
+	do_gettimeofday(&tv);
+	//get_time = tv.tv_sec;
+	//sec = get_time % 60;
+	//tmp1 = get_time / 60;
+	//min = tmp1 % 60;
+	//tmp2 = tmp1 / 60;
+	//hr = tmp2 % 24;
+
+	//printk("The time is hr:min:sec  ::  %d:%d:%dn",hr,min,sec);
+	get_time = tv.tv_usec;
+	usec = get_time % 9999;	
+    return (usec % (top - bottom)) + bottom;
+}
 
 int sr_cls_port_init(void)
 {
@@ -126,13 +151,15 @@ struct sr_hash_ent_t *sr_cls_port_find(SR_U32 port)
 
 void sr_cls_port_ut(void)
 {
+	
 	int i;
-	for(i=0;i<HT_PORT_SIZE;i++)
-			sr_cls_port_add_rule(i,i+i);
-		
-	for(i=0;i<HT_PORT_SIZE;i++)
-		sr_cls_port_add_rule(1010+i*8,10+i*4);
-	/*
+	int rand;
+
+	for(i=0;i<HT_PORT_SIZE;i++){
+		rand = myRandom(0, SR_MAX_PORT);
+		sr_cls_port_add_rule(rand,myRandom(0, 4096));
+	}
+	
 	sr_cls_port_add_rule(22,10);
 	sr_cls_port_add_rule(5566,4);
 	sr_cls_port_add_rule(8080,8);
@@ -144,15 +171,13 @@ void sr_cls_port_ut(void)
 	sr_cls_port_add_rule(809,10);
 	sr_cls_port_add_rule(8019,2000);
 	sr_cls_port_add_rule(8019,200);
-	*/
-	//sr_cls_port_add_rule(8083,11);
-	//sr_cls_port_add_rule(809,10);
-	//sr_cls_port_add_rule(8019,2000);
-
 	
-	//sr_cls_port_find(4444);
-	//sr_cls_port_find(8080);
+	sr_cls_port_add_rule(8083,11);
+	sr_cls_port_add_rule(809,10);
+	sr_cls_port_add_rule(8019,2000);
 	
 	print_table(sr_cls_port_table);
+	sr_cls_port_find(4444);
+	sr_cls_port_find(8080);
 
 }
