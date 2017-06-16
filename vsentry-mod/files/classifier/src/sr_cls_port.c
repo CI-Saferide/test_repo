@@ -7,20 +7,9 @@
 #define HT_PORT_SIZE 32
 struct sr_hash_table_t *sr_cls_port_table;
 
-void print_table(struct sr_hash_table_t *table)
-{
-	int i = 0;
-	
-	for(i = 0; i < HT_PORT_SIZE; i++) {
-        if (sr_cls_port_table->buckets[i].head != NULL){
-			sal_kernel_print_alert("KEY: %lu rule: %lu\n",
-			sr_cls_port_table->buckets[i].head->key,
-			sr_cls_port_table->buckets[i].head->rule);
-			//((struct port_ent_t*)sr_cls_port_table->buckets[i].head)->rule);
-        }
-    }
-	
-}
+int sr_cls_port_add_rule(SR_U32 port, SR_U32 rulenum);
+int sr_cls_port_del_rule(SR_U32 port, SR_U32 rulenum);
+struct sr_hash_ent_t *sr_cls_port_find(SR_U32 port);
 
 int sr_cls_port_init(void)
 {
@@ -30,76 +19,120 @@ int sr_cls_port_init(void)
 		return SR_ERROR;
 	}
 	sal_kernel_print_alert("[%s]: Successfully initialized PORT classifier!\n", MODULE_NAME);
+	
 	return SR_SUCCESS;
 }
-/*
-struct port_ent_t {
-	SR_U32 key; //the key is the PORT
-	SR_U32 type;
-	struct sr_hash_ent_t *next;
-	SR_U16 port_num; //the key is the PORT
-	SR_U32 rule;
-	struct bit_array *bit_arr;
-};
-*/
+
+void sr_cls_port_uninit(void)
+{ 
+	int i;
+	struct sr_hash_ent_t* curr;
+	struct sr_hash_ent_t* next;
+	
+	if (sr_cls_port_table != NULL) {
+		sal_kernel_print_alert("DELETEING elements!\n");
+		for(i = 0; i < HT_PORT_SIZE; i++) 
+		{
+			if (sr_cls_port_table->buckets[i].head != NULL){
+				sal_kernel_print_alert("hash_index[%d] - DELETEING\n",i);
+				curr = sr_cls_port_table->buckets[i].head;				
+				while (curr != NULL){
+					sal_kernel_print_alert("\t\tkey: %lu rule: %lu\n",curr->key,curr->rule);
+					next = curr->next;
+					SR_FREE(curr);
+					curr= next;
+				}
+				//sal_kernel_print_alert("\n#############");
+				//SR_FREE(sr_cls_port_table->buckets[i].head);
+			}
+		}
+		
+		if(sr_cls_port_table->buckets != NULL){
+			sal_kernel_print_alert("DELETEING table->bucket\n");
+			SR_FREE(sr_cls_port_table->buckets);
+		}
+		sal_kernel_print_alert("DELETEING table that orig size was: %lu\n",sr_cls_port_table->size);
+		SR_FREE(sr_cls_port_table);
+	}
+}
 int sr_cls_port_add_rule(SR_U32 port, SR_U32 rulenum)
 {
-	//struct port_ent_t *port_ent;
+
 	struct sr_hash_ent_t *ent;
-	
-	//port_ent = SR_ALLOC(sizeof(*port_ent));
-	//port_ent->type = 4;
 
 	// TODO: Check for duplicated rules for same ports
 	ent=sr_hash_lookup(sr_cls_port_table, port);
-	if (!ent) {
-		ent = SR_ALLOC(sizeof(*ent));
+	if (!ent) {		
+		ent = SR_ALLOC(sizeof(*ent)); // <-A MINE!!!
 		if (!ent) {
 			sal_kernel_print_alert("Error: Failed to allocate memory\n");
 			return SR_ERROR;
 		} else {
-			ent->type = 4;
+			ent->type = DST_PORT;
 			ent->key = (SR_U32)port;
 			ent->rule = (SR_U32)rulenum;
+			sr_hash_insert(sr_cls_port_table,ent);
+			return SR_SUCCESS;
 		}	
 	}	
-	//ent->rule = (SR_U32)rulenum;
-	//sal_set_bit_array(rulenum, NULL);
-	//if (ent->type == 4)
-	//	port_ent = (struct port_ent_t*)ent;
-		
-	//sal_kernel_print_alert("Pre-insert port: %d rule: %d\n",(SR_U32)port_ent->key,(SR_U32)port_ent->rule);
-	//sr_hash_insert(sr_cls_port_table,(struct sr_hash_ent_t*)port_ent);
-	sr_hash_insert(sr_cls_port_table,(struct sr_hash_ent_t*)ent);
-	//sal_kernel_print_alert("After insert port: %d rule: %d\n",(SR_U32)port_ent->key,(SR_U32)port_ent->rule);
+	ent->rule = (SR_U32)rulenum;
+	sal_kernel_print_alert("port: %lu exists rule: %lu\n",ent->key,ent->rule);
+	
 	return SR_SUCCESS;
 }
 
-int sr_cls_port_del_rule(SR_U32 port, SR_U32 rulenum)
+void print_table(struct sr_hash_table_t *table)
 {
-	struct sr_hash_ent_t *ent=sr_hash_lookup(sr_cls_port_table, port);
-	if (!ent) {
-		sal_kernel_print_alert("Error: Port rule not found\n");
-		return SR_ERROR;
+	int i;
+	struct sr_hash_ent_t* curr;
+	struct sr_hash_ent_t* next;
+	
+	if (sr_cls_port_table != NULL) {
+		sal_kernel_print_alert("Printing elements!\n");
+		for(i = 0; i < HT_PORT_SIZE; i++) 
+		{
+			if (sr_cls_port_table->buckets[i].head != NULL){
+				sal_kernel_print_alert("hash_index[%d]\n",i);
+				curr = sr_cls_port_table->buckets[i].head;				
+				while (curr != NULL){
+					sal_kernel_print_alert("\t\tkey: %lu rule: %lu\n",curr->key,curr->rule);
+					next = curr->next;
+					curr= next;
+				}
+				//sal_kernel_print_alert("\n#############");
+				//SR_FREE(sr_cls_port_table->buckets[i].head);
+			}
+		}
+		
+		if(sr_cls_port_table->buckets != NULL){
+			sal_kernel_print_alert("Printing table->bucket\n");
+		}
+		sal_kernel_print_alert("Printing table that orig size was: %lu\n",sr_cls_port_table->size);
 	}
-
-	return SR_SUCCESS;
+	
 }
 
-int sr_cls_port_find(SR_U32 port)
+
+struct sr_hash_ent_t *sr_cls_port_find(SR_U32 port)
 {
 	struct sr_hash_ent_t *ent=sr_hash_lookup(sr_cls_port_table, port);
 	if (!ent) {
 		sal_kernel_print_alert("Error:%lu Port not found\n",port);
-		return SR_ERROR;
+		return NULL;
 	}
-	sal_kernel_print_alert("%lu Port found with rule:%lu\n",(SR_U32)ent->key,(SR_U32)ent->rule);
-	return SR_SUCCESS;
+	sal_kernel_print_alert("%lu Port found with rule:%lu\n",ent->key,ent->rule);
+	return ent;
 }
-
 
 void sr_cls_port_ut(void)
 {
+	int i;
+	for(i=0;i<HT_PORT_SIZE;i++)
+			sr_cls_port_add_rule(i,i+i);
+		
+	for(i=0;i<HT_PORT_SIZE;i++)
+		sr_cls_port_add_rule(1010+i*8,10+i*4);
+	/*
 	sr_cls_port_add_rule(22,10);
 	sr_cls_port_add_rule(5566,4);
 	sr_cls_port_add_rule(8080,8);
@@ -109,13 +142,17 @@ void sr_cls_port_ut(void)
 	sr_cls_port_add_rule(8082,12);
 	sr_cls_port_add_rule(8083,11);
 	sr_cls_port_add_rule(809,10);
-	sr_cls_port_add_rule(8019,20);
-	sr_cls_port_add_rule(22,111);
-	sr_cls_port_add_rule(22,112);
+	sr_cls_port_add_rule(8019,2000);
+	sr_cls_port_add_rule(8019,200);
+	*/
+	//sr_cls_port_add_rule(8083,11);
+	//sr_cls_port_add_rule(809,10);
+	//sr_cls_port_add_rule(8019,2000);
+
 	
-	sr_cls_port_find(4444);
-	sr_cls_port_find(8080);
+	//sr_cls_port_find(4444);
+	//sr_cls_port_find(8080);
 	
 	print_table(sr_cls_port_table);
-}
 
+}

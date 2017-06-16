@@ -6,6 +6,21 @@
 
 #define SR_U32 unsigned long
 
+enum policy_cls{
+	SRC_IP,		//Source IP
+	DST_IP,		//Destination IP
+	SRC_PORT,	//Source port
+	DST_PORT,	//Destination port	
+	PROTOCOL,	//Protocol
+	UID,		//User ID
+	PROC_NAME,	//Process name
+	FILE_NAME,	//File name
+	FILE_DIR,	//File directory
+	IO_OP,		//I/O operation type - read/write/open/close
+	CAN_MID,	//CAN message ID
+	TIME		//Time (implicit)
+};
+
 struct sr_hash_ent_t{
 	SR_U32 key;
 	SR_U32 type;
@@ -13,6 +28,7 @@ struct sr_hash_ent_t{
 	SR_U32 rule;
 	bit_array rules;
 	//char pad[1];
+	enum policy_cls ent_type;
 };
 
 struct sr_hash_bucket_t{
