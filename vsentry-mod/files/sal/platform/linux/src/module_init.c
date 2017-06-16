@@ -48,11 +48,12 @@ static int __init vsentry_init(void)
 	}
 	#endif
 	//sal_kernel_socket_init(MAIN_SOCKET_INDEX, MAIN_SOCKET_PORT, main_socket_process_cb);
+	
 	//sr_netfilter_init();
 	sr_classifier_init();
-	//sr_cls_port_init();
-	
+	//sr_cls_port_init();	
 	//sr_cls_port_ut();
+	
 #ifdef UNIT_TEST	
 	sal_bitops_test (0);
 #endif /* UNIT_TEST */
@@ -69,6 +70,7 @@ static void __exit vsentry_cleanup(void)
 		reset_security_ops();
 	#endif
 	sr_classifier_uninit();
+	//sr_cls_port_uninit();
 	printk(KERN_INFO "[%s]: module released!\n", MODULE_NAME);
 }
 
