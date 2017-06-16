@@ -208,7 +208,7 @@ rn_lookup(void *v_arg, void *m_arg, struct radix_head *head)
 			return (NULL);
 		netmask = x->rn_key;
 
-		x = rn_match(v_arg, head, NULL);
+		x = rn_match(v_arg, head);
 
 		while (x != NULL && x->rn_mask != netmask)
 			x = x->rn_dupedkey;
@@ -219,7 +219,7 @@ rn_lookup(void *v_arg, void *m_arg, struct radix_head *head)
 	/*
 	 * Search for host address.
 	 */
-	if ((x = rn_match(v_arg, head, NULL)) == NULL)
+	if ((x = rn_match(v_arg, head)) == NULL)
 		return (NULL);
 
 	/* Check if found key is the same */
@@ -255,7 +255,7 @@ rn_satisfies_leaf(char *trial, struct radix_node *leaf, int skip)
  * Search for longest-prefix match in given @head
  */
 struct radix_node *
-rn_match(void *v_arg, struct radix_head *head, bit_array *match_rules)
+rn_match(void *v_arg, struct radix_head *head)
 {
 	caddr_t v = v_arg;
 	struct radix_node *t = head->rnh_treetop, *x;
@@ -274,11 +274,6 @@ rn_match(void *v_arg, struct radix_head *head, bit_array *match_rules)
 			t = t->rn_right;
 		else
 			t = t->rn_left;
-		if ((t->rn_flags == RNF_ACTIVE) && (t->rn_bit >= 0) && match_rules) {
-		// TODO: This is a match, need to OR the bits into aggregator
-			sal_or_self_op_arrays(match_rules, &t[0].sr_private.rules);
-		}
-
 	}
 	/*
 	 * See if we match exactly as a host destination

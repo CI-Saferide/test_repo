@@ -33,8 +33,8 @@
 #define SR_RWLOCK	rwlock_t
 #define SR_LOCK(x) //(x++)
 #define SR_UNLOCK(x) //(x++)
-#define SR_ALLOC(x) kmalloc(x, GFP_KERNEL|GFP_NOWAIT)
-#define SR_ZALLOC(x) kcalloc(1, x, GFP_KERNEL|GFP_NOWAIT)
+#define SR_ALLOC(x) kmalloc(x, GFP_KERNEL|GFP_ATOMIC)
+#define SR_ZALLOC(x) kcalloc(1, x, GFP_KERNEL|GFP_ATOMIC)
 #define SR_FREE kfree
 
 /* kernel print definitions */

@@ -47,12 +47,12 @@ static int __init vsentry_init(void)
 		printk(KERN_INFO "[%s]: registration to lsm succeedded\n", MODULE_NAME);
 	}
 	#endif
-	sal_kernel_socket_init(MAIN_SOCKET_INDEX, MAIN_SOCKET_PORT, main_socket_process_cb);
+	//sal_kernel_socket_init(MAIN_SOCKET_INDEX, MAIN_SOCKET_PORT, main_socket_process_cb);
 	//sr_netfilter_init();
 	sr_classifier_init();
-	sr_cls_port_init();
+	//sr_cls_port_init();
 	
-	sr_cls_port_ut();
+	//sr_cls_port_ut();
 #ifdef UNIT_TEST	
 	sal_bitops_test (0);
 #endif /* UNIT_TEST */
@@ -61,7 +61,7 @@ static int __init vsentry_init(void)
 
 static void __exit vsentry_cleanup(void)
 {
-	sal_kernel_socket_exit(MAIN_SOCKET_INDEX);
+	//sal_kernel_socket_exit(MAIN_SOCKET_INDEX);
 	//sr_netfilter_uninit();
 	#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,2,0)
 	//	unregister_lsm_hooks();

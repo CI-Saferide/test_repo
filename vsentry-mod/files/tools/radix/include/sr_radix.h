@@ -106,7 +106,7 @@ struct radix_head;
 
 typedef int walktree_f_t(struct radix_node *, void *);
 typedef struct radix_node *rn_matchaddr_f_t(void *v,
-    struct radix_head *head, bit_array *match_rules);
+    struct radix_head *head);
 typedef struct radix_node *rn_addaddr_f_t(void *v, void *mask,
     struct radix_head *head, struct radix_node nodes[]);
 typedef struct radix_node *rn_deladdr_f_t(void *v, void *mask,
@@ -174,7 +174,7 @@ struct radix_node *rn_addroute(void *, void *, struct radix_head *,
 struct radix_node *rn_delete(void *, void *, struct radix_head *);
 struct radix_node *rn_lookup (void *v_arg, void *m_arg,
     struct radix_head *head);
-struct radix_node *rn_match(void *, struct radix_head *, bit_array *);
+struct radix_node *rn_match(void *, struct radix_head *);
 int rn_walktree_from(struct radix_head *h, void *a, void *m,
     walktree_f_t *f, void *w);
 int rn_walktree(struct radix_head *, walktree_f_t *, void *);

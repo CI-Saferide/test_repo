@@ -1,6 +1,7 @@
 #include "sal_linux.h"
 #include "sr_hash.h"
 
+
 static inline int IsPowerOfTwo(SR_U32 num)
 {
 	SR_U32 power;
@@ -21,7 +22,7 @@ struct sr_hash_table_t *sr_hash_new_table(int count)
 		sal_kernel_print_alert("Error: Please initialize hash table to a power of two size\n");
 		return NULL;
 	}
-	table = SR_ALLOC(sizeof(sizeof(table)));
+	table = SR_ZALLOC(sizeof(table));
 	if (!table)
 		return NULL;
 	table->size = count;
@@ -58,23 +59,28 @@ int sr_hash_insert(struct sr_hash_table_t *table, struct sr_hash_ent_t *ent)
 void sr_hash_delete(struct sr_hash_table_t *table, SR_U32 key)
 {
 	SR_U32 index;
+	struct sr_hash_ent_t *ptr;
 	
 	index = sr_hash_get_index(key, table->size);
-	table->count--;
 	
 	if (!table->buckets[index].head) {
 		return ;
 	}
+
 	SR_LOCK(&table->buckets[index].bucket_lock);
 	if (table->buckets[index].head->key == key) {// remove head
+		ptr = table->buckets[index].head;
 		table->buckets[index].head = table->buckets[index].head->next;
+		SR_FREE(ptr);
+		table->count--;
 	} else {
-		struct sr_hash_ent_t *ptr = table->buckets[index].head;
+		ptr = table->buckets[index].head;
 		while (ptr && ptr->next) {
 			if (ptr->next->key == key) {
 				struct sr_hash_ent_t *ptr2 = ptr->next;
 				ptr->next = ptr->next->next;
 				SR_FREE(ptr2);
+				table->count--;
 				break;
 			}
 			ptr = ptr->next;
@@ -88,8 +94,7 @@ struct sr_hash_ent_t *sr_hash_lookup(struct sr_hash_table_t *table, SR_U32 key)
 	struct sr_hash_ent_t *ptr;
 	
 	index = sr_hash_get_index(key, table->size);
-	table->count--;
-	
+
 	if (!table->buckets[index].head) {
 		return NULL;
 	}
@@ -104,4 +109,52 @@ struct sr_hash_ent_t *sr_hash_lookup(struct sr_hash_table_t *table, SR_U32 key)
 	}
 	SR_UNLOCK(&table->buckets[index].bucket_lock);
 	return (ptr);
+}
+
+void sr_hash_free_table(struct sr_hash_table_t *table)
+{
+	SR_U32 i;
+	struct sr_hash_ent_t *ptr,*ptr1;
+	
+	for (i=0; (i < table->size) && table->count; i++) {
+		if (table->buckets[i].head) {
+			sal_kernel_print_alert("sr_hash_free_table: Table still has member in location %lu\n", i);
+			SR_LOCK(&table->buckets[index].bucket_lock);
+			ptr = table->buckets[i].head->next;
+			while (ptr) {
+				ptr1 = ptr->next;
+				SR_FREE(ptr);
+				table->count--;
+				ptr = ptr1;
+			}
+			SR_FREE(table->buckets[i].head);
+			table->buckets[i].head = NULL;
+			table->count--;
+			SR_UNLOCK(&table->buckets[index].bucket_lock);
+		}
+	}
+	sal_kernel_print_alert("Cleaned entire table, count is %lu\n", table->count);
+	SR_FREE(table->buckets);
+	SR_FREE(table);
+}
+void sr_hash_print_table(struct sr_hash_table_t *table)
+{
+	SR_U32 i;
+	struct sr_hash_ent_t *ptr;
+	
+	sal_kernel_print_alert("sr_hash_print_table: Entry, size is %lu\n", table->size);
+
+	for (i=0; i < table->size ; i++) {
+		if (table->buckets[i].head) {
+			sal_kernel_print_alert("Table has member in location %lu\n", i);
+			SR_LOCK(&table->buckets[index].bucket_lock);
+			ptr = table->buckets[i].head->next;
+			while (ptr) {
+				sal_kernel_print_alert("Element address is %lu\n", (unsigned long)ptr);
+				ptr = ptr->next;
+			}
+			SR_UNLOCK(&table->buckets[index].bucket_lock);
+		}
+	}
+	sal_kernel_print_alert("sr_hash_print_table: Exit\n");
 }

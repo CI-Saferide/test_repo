@@ -3,6 +3,7 @@
 
 #define SR_MAX_PATH 1024
 int sr_cls_init(void);
+void sr_cls_uninit(void);
 int sr_cls_inode_add_rule(SR_U32 inode, SR_U32 rulenum);
 int sr_cls_inode_del_rule(SR_U32 inode, SR_U32 rulenum);
 int sr_cls_inode_inherit(SR_U32 from, SR_U32 to);
