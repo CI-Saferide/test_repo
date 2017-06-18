@@ -4,8 +4,6 @@
 #include "sal_linux.h"
 #include "sal_bitops.h"
 
-#define SR_U32 unsigned long
-
 enum policy_cls{
 	SRC_IP,		//Source IP
 	DST_IP,		//Destination IP
