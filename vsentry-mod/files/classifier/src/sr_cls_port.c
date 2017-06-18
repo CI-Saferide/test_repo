@@ -51,13 +51,11 @@ int sr_cls_port_init(void)
 void sr_cls_port_uninit(void)
 { 
 	int i;
-	struct sr_hash_ent_t* curr;
-	struct sr_hash_ent_t* next;
+	struct sr_hash_ent_t *curr, *next;
 	
 	if (sr_cls_port_table != NULL) {
 		sal_kernel_print_alert("DELETEING elements!\n");
-		for(i = 0; i < HT_PORT_SIZE; i++) 
-		{
+		for(i = 0; i < HT_PORT_SIZE; i++) {
 			if (sr_cls_port_table->buckets[i].head != NULL){
 				sal_kernel_print_alert("hash_index[%d] - DELETEING\n",i);
 				curr = sr_cls_port_table->buckets[i].head;				
@@ -67,8 +65,6 @@ void sr_cls_port_uninit(void)
 					SR_FREE(curr);
 					curr= next;
 				}
-				//sal_kernel_print_alert("\n#############");
-				//SR_FREE(sr_cls_port_table->buckets[i].head);
 			}
 		}
 		
@@ -82,9 +78,8 @@ void sr_cls_port_uninit(void)
 }
 int sr_cls_port_add_rule(SR_U32 port, SR_U32 rulenum)
 {
-
 	struct sr_hash_ent_t *ent;
-
+	
 	// TODO: Check for duplicated rules for same ports
 	ent=sr_hash_lookup(sr_cls_port_table, port);
 	if (!ent) {		
@@ -109,13 +104,11 @@ int sr_cls_port_add_rule(SR_U32 port, SR_U32 rulenum)
 void print_table(struct sr_hash_table_t *table)
 {
 	int i;
-	struct sr_hash_ent_t* curr;
-	struct sr_hash_ent_t* next;
+	struct sr_hash_ent_t *curr, *next;
 	
 	if (sr_cls_port_table != NULL) {
 		sal_kernel_print_alert("Printing elements!\n");
-		for(i = 0; i < HT_PORT_SIZE; i++) 
-		{
+		for(i = 0; i < HT_PORT_SIZE; i++) {
 			if (sr_cls_port_table->buckets[i].head != NULL){
 				sal_kernel_print_alert("hash_index[%d]\n",i);
 				curr = sr_cls_port_table->buckets[i].head;				
@@ -124,8 +117,6 @@ void print_table(struct sr_hash_table_t *table)
 					next = curr->next;
 					curr= next;
 				}
-				//sal_kernel_print_alert("\n#############");
-				//SR_FREE(sr_cls_port_table->buckets[i].head);
 			}
 		}
 		
