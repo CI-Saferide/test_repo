@@ -23,9 +23,7 @@ struct sr_hash_ent_t{
 	SR_U32 key;
 	SR_U32 type;
 	struct sr_hash_ent_t *next;
-	SR_U32 rule;
 	bit_array rules;
-	//char pad[1];
 	enum policy_cls ent_type;
 };
 
