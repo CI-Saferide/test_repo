@@ -9,27 +9,6 @@
 #define HT_PORT_SIZE 32
 struct sr_hash_table_t *sr_cls_port_table;
 
-int myRandom(int bottom, int top){ // for unit testing
-	
-	unsigned long get_time;
-	//int sec ,hr, min, tmp1,tmp2;
-	int usec;
-	struct timeval tv;
-
-	do_gettimeofday(&tv);
-	//get_time = tv.tv_sec;
-	//sec = get_time % 60;
-	//tmp1 = get_time / 60;
-	//min = tmp1 % 60;
-	//tmp2 = tmp1 / 60;
-	//hr = tmp2 % 24;
-
-	//printk("The time is hr:min:sec  ::  %d:%d:%dn",hr,min,sec);
-	get_time = tv.tv_usec;
-	usec = get_time % 9999;	
-    return (usec % (top - bottom)) + bottom;
-}
-
 int sr_cls_port_init(void)
 {
 	sr_cls_port_table = sr_hash_new_table(HT_PORT_SIZE);
@@ -168,6 +147,27 @@ void sr_cls_print_port_rules(SR_U32 port)
 		sal_kernel_print_alert("\t\t\tRule #%d\n", rule);
 	}
 	
+}
+
+int myRandom(int bottom, int top){ // for unit testing
+	
+	unsigned long get_time;
+	//int sec ,hr, min, tmp1,tmp2;
+	int usec;
+	struct timeval tv;
+
+	do_gettimeofday(&tv);
+	//get_time = tv.tv_sec;
+	//sec = get_time % 60;
+	//tmp1 = get_time / 60;
+	//min = tmp1 % 60;
+	//tmp2 = tmp1 / 60;
+	//hr = tmp2 % 24;
+
+	//printk("The time is hr:min:sec  ::  %d:%d:%dn",hr,min,sec);
+	get_time = tv.tv_usec;
+	usec = get_time % 9999;	
+    return (usec % (top - bottom)) + bottom;
 }
 
 void sr_cls_port_ut(void)
