@@ -34,7 +34,7 @@ int main (int argc, char * argv[])
 	fprintf(fd, "atz\r\n"); /* performs device reset and returns ELM-USB identification */
 	printf("Sent atz\n");
 	len = fread(buffer, 1, 10, fd);
-	printf("Read %d bytes:\n", len);
+	printf("Read %d bytes:\n", len); 
 	for (i=0; i<len; i++) {
 		if ((buffer[i] != '?') && (buffer[i] != '\n'))
 			printf("%c", buffer[i]);
