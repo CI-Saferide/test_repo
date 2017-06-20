@@ -172,7 +172,6 @@ int myRandom(int bottom, int top){ // for unit testing
 
 void sr_cls_port_ut(void)
 {
-
 	
 	int i;
 	int rand;
@@ -182,7 +181,13 @@ void sr_cls_port_ut(void)
 		sr_cls_port_add_rule(rand,myRandom(0, 4096));
 	}
 	print_table(sr_cls_port_table);
-	
+
+	sr_cls_port_add_rule(22,10);
+	sr_cls_port_add_rule(5566,4);
+	sr_cls_port_add_rule(8080,8);
+	sr_cls_port_find(4444);
+	sr_cls_port_find(8080);
+
 	sr_cls_port_add_rule(22,10);
 	sr_cls_port_add_rule(5566,4);
 	sr_cls_port_add_rule(8080,8);
@@ -234,4 +239,5 @@ void sr_cls_port_ut(void)
 	print_table(sr_cls_port_table);
 	sr_cls_port_del_rule(16394, 27);
 	print_table(sr_cls_port_table);
+
 }

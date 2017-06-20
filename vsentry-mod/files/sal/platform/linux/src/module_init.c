@@ -65,7 +65,7 @@ static void __exit vsentry_cleanup(void)
 	//sal_kernel_socket_exit(MAIN_SOCKET_INDEX);
 	//sr_netfilter_uninit();
 	#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,2,0)
-	//	unregister_lsm_hooks();
+		//unregister_lsm_hooks();
 	#else
 		reset_security_ops();
 	#endif
