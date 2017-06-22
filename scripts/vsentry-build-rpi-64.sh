@@ -1,9 +1,12 @@
 #!/bin/bash
+
+##https://devsidestory.com/build-a-64-bit-kernel-for-your-raspberry-pi-3/
+
 sudo apt-get install -y bc build-essential gcc-aarch64-linux-gnu git gcc-arm-linux-gnueabi gcc-arm-linux-gnueabihf libncurses-dev pv unzip
 
 script_dir=`cd $(dirname $0); pwd`
 kernel_dir=$script_dir/../..
-KERNEL=kernel7
+KERNEL=kernel8
 
 cd ../../
 
@@ -30,23 +33,22 @@ done
 if [ ! -d "linux-rpi" ]; then
 
 	#To get the sources, refer to the original GitHub repository for the various branches
-	git clone https://github.com/saferide-tech/linux-rpi.git
+	git clone https://github.com/saferide-tech/linux-rpi-64.git
 
 else
 	echo -n "linux-rpi kernel source already exist... " 
 	echo -e "" 
 fi
 
-cd linux-rpi/
+cd linux-rpi-64/
 
 while true; do
 	read -p "Do you wish compile the rpi kernel? " yn
 	case $yn in
 		[Yy]* )
-			make ARCH=arm CROSS_COMPILE=/usr/bin/arm-linux-gnueabi- bcm2709_defconfig
-			make ARCH=arm CROSS_COMPILE=/usr/bin/arm-linux-gnueabi- zImage modules dtbs -j8
-#			make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- bcmrpi3_defconfig
-#			make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- -j 8					
+
+			make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- bcmrpi3_defconfig
+			make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- -j 8					
 			break;;
 		[Nn]* ) break;;
 		* ) echo "Answer yes or no.";;
@@ -92,18 +94,18 @@ while true; do
 #			cp -R ../vsentry/ mnt/ext4/home/pi/vsentry/
 			cd ../vsentry/vsentry-mod/files/
 			echo $PWD
-			make arm
+			make arm64
 			echo $PWD
-			cp vsentry.ko ../../../linux-rpi/mnt/ext4/home/pi/
+			cp vsentry.ko ../../../linux-rpi-64/mnt/ext4/home/pi/
 			sleep 1s
 			make clean
 			cd ../../vsentry-engine/files/
 			echo $PWD
-			make arm arch=arm
+			make arm64 arch=arm64
 			echo $PWD
-			cp ../build/bin/sr-engine ../../../linux-rpi/mnt/ext4/home/pi/			
+			cp ../build/bin/sr-engine ../../../linux-rpi-64/mnt/ext4/home/pi/			
 			make clean
-			cd ../../../linux-rpi/
+			cd ../../../linux-rpi-64/
 			echo $PWD
 			sleep 1s
 			sudo umount mnt/fat32
@@ -152,13 +154,13 @@ while true; do
 			sleep 1s
 			sudo mount /dev/sdb2 mnt/ext4
 			sleep 1s
-			sudo make ARCH=arm CROSS_COMPILE=/usr/bin/arm-linux-gnueabi- INSTALL_MOD_PATH=mnt/ext4 modules_install
+			sudo make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- INSTALL_MOD_PATH=mnt/ext4 modules_install
 #			sudo make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- INSTALL_MOD_PATH=mnt/ext4 modules_install
 			sleep 1s
-			sudo cp arch/arm/boot/zImage mnt/fat32/$KERNEL.img
-			sudo cp arch/arm/boot/dts/*.dtb mnt/fat32/
-			sudo cp arch/arm/boot/dts/overlays/*.dtb* mnt/fat32/overlays/
-			sudo cp arch/arm/boot/dts/overlays/README mnt/fat32/overlays/
+			sudo cp arch/arm64/boot/Image mnt/fat32/$KERNEL.img
+			sudo cp arch/arm64/boot/dts/broadcom/*.dtb mnt/fat32/
+			sudo cp arch/arm64/boot/dts/overlays/*.dtb* mnt/fat32/overlays/
+			sudo cp arch/arm64/boot/dts/overlays/README mnt/fat32/overlays/
 			echo $PWD
 			sleep 1s
 			sudo umount mnt/fat32
@@ -177,7 +179,7 @@ done
 
 echo -n "You need to edit the config.txt file to select the kernel that the Pi will boot into:"
 echo -e ""
-echo -n "add the line kernel=kernel7.img in the config.txt"
+echo -n "add the line kernel=kernel8.img in the config.txt"
 echo -e ""
 	
 
