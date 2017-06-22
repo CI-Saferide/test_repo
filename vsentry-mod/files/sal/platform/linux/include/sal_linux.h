@@ -25,11 +25,17 @@
 #include <net/sock.h> 
 #include <linux/rwlock.h>
 #include <linux/vmalloc.h>
+#include <asm/atomic.h>
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wdeclaration-after-statement"
 
 #pragma GCC diagnostic pop
+
+// Atomic counters
+#define SR_ATOMIC	atomic_t
+#define SR_ATOMIC_SET 	atomic_set
+#define SR_ATOMIC_INC_RETURN atomic_inc_return
 
 #define SR_RWLOCK	rwlock_t
 #define SR_LOCK(x) //(x++)
