@@ -1,13 +1,14 @@
 #ifndef SR_CLASSIFIER_H
 #define SR_CLASSIFIER_H
-#include <asm/atomic.h>
+
+#include "sr_types.h"
 
 #define SR_MAX_RULES 4096
 
-int sr_classifier_init(void);
-int sr_cls_inode_add_rule(SR_U32 inode, SR_U32 rulenum);
-int sr_cls_inode_del_rule(SR_U32 inode, SR_U32 rulenum);
-int sr_cls_inode_inherit(SR_U32 from, SR_U32 to);
+SR_32 sr_classifier_init(void);
+SR_32 sr_cls_inode_add_rule(SR_U32 inode, SR_U32 rulenum);
+SR_32 sr_cls_inode_del_rule(SR_U32 inode, SR_U32 rulenum);
+SR_32 sr_cls_inode_inherit(SR_U32 from, SR_U32 to);
 void sr_cls_inode_remove(SR_U32 inode);
 void sr_classifier_uninit(void);
 void sr_cls_rules_init(void);

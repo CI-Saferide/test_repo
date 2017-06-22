@@ -33,7 +33,7 @@ void sr_cls_port_uninit(void)
 				sal_kernel_print_alert("hash_index[%d] - DELETEING\n",i);
 				curr = sr_cls_port_table->buckets[i].head;				
 				while (curr != NULL){
-					sal_kernel_print_alert("\t\tkey: %lu\n",curr->key);
+					sal_kernel_print_alert("\t\tkey: %u\n",curr->key);
 					sr_cls_print_port_rules(curr->key);
 					next = curr->next;
 					SR_FREE(curr);
@@ -46,7 +46,7 @@ void sr_cls_port_uninit(void)
 			sal_kernel_print_alert("DELETEING table->bucket\n");
 			SR_FREE(sr_cls_port_table->buckets);
 		}
-		sal_kernel_print_alert("DELETEING table that orig size was: %lu\n",sr_cls_port_table->size);
+		sal_kernel_print_alert("DELETEING table that orig size was: %u\n",sr_cls_port_table->size);
 		SR_FREE(sr_cls_port_table);
 	}
 }
@@ -73,7 +73,7 @@ int sr_cls_port_add_rule(SR_U32 port, SR_U32 rulenum)
 		}	
 	}	
 	sal_set_bit_array(rulenum, &ent->rules);
-	sal_kernel_print_alert("\t\trule# %lu assigned to port: %lu\n",rulenum,port);	
+	sal_kernel_print_alert("\t\trule# %u assigned to port: %u\n",rulenum,port);	
 	return SR_SUCCESS;
 }
 int sr_cls_port_del_rule(SR_U32 port, SR_U32 rulenum)
@@ -88,7 +88,7 @@ int sr_cls_port_del_rule(SR_U32 port, SR_U32 rulenum)
 	if (!ent->rules.summary) {
 		sr_cls_port_remove(port);
 	}
-	sal_kernel_print_alert("\t\trule# %lu removed from port: %lu\n",rulenum,port);
+	sal_kernel_print_alert("\t\trule# %u removed from port: %u\n",rulenum,port);
 	return SR_SUCCESS;
 }
 
@@ -104,7 +104,7 @@ void print_table(struct sr_hash_table_t *table)
 				sal_kernel_print_alert("hash_index[%d]\n",i);
 				curr = sr_cls_port_table->buckets[i].head;				
 				while (curr != NULL){
-					sal_kernel_print_alert("\t\tport: %lu\n",curr->key);
+					sal_kernel_print_alert("\t\tport: %u\n",curr->key);
 					sr_cls_print_port_rules(curr->key);
 					next = curr->next;
 					curr= next;
@@ -114,7 +114,7 @@ void print_table(struct sr_hash_table_t *table)
 		if(sr_cls_port_table->buckets != NULL){
 			sal_kernel_print_alert("Printed table->bucket\n");
 		}
-		sal_kernel_print_alert("Printed table that orig size was: %lu\n",sr_cls_port_table->size);
+		sal_kernel_print_alert("Printed table that orig size was: %u\n",sr_cls_port_table->size);
 	}	
 }
 
@@ -123,7 +123,7 @@ struct sr_hash_ent_t *sr_cls_port_find(SR_U32 port)
 {
 	struct sr_hash_ent_t *ent=sr_hash_lookup(sr_cls_port_table, port);
 	if (!ent) {
-		sal_kernel_print_alert("Error:%lu Port not found\n",port);
+		sal_kernel_print_alert("Error:%u Port not found\n",port);
 		return NULL;
 	}
 	//sal_kernel_print_alert("%lu Port found with rule:%lu\n",ent->key,ent->rule);

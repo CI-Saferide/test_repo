@@ -1,28 +1,29 @@
-#include "sr_log.h" /* this file comes from kernel folder. mutual file between kernel and user space */
-#include "sal_linux_engine.h"
+#include "sr_log.h"
+#include "sr_shmem.h"
+#include "sr_msg.h"
+#include "sr_ring_buf.h"
+#include "sr_tasks.h"
+#include "sr_sal_common.h"
 
-const static char    *log_level_str[8] = {
-	"EMERGENCY", /* LOG_EMERG   = system is unusable               */
-	"ALERT",     /* LOG_ALERT   = action must be taken immediately */
-	"CRITICAL",  /* LOG_CRIT    = critical conditions              */
-	"ERROR",     /* LOG_ERR     = error conditions                 */
-	"WARNING",   /* LOG_WARNING = warning conditions               */
-	"NOTICE",    /* LOG_NOTICE  = normal but significant condition */
-	"INFO",      /* LOG_INFO    = informational                    */
-	"DEBUG",     /* LOG_DEBUG   = debug-level messages             */
+#if 0
+const static SR_8	*log_level_str[8] = {
+	"EMERGENCY", /* LOG_EMERG   = system is unusable		       */
+	"ALERT",	 /* LOG_ALERT   = action must be taken immediately */
+	"CRITICAL",  /* LOG_CRIT	= critical conditions	          */
+	"ERROR",	 /* LOG_ERR	 = error conditions                 */
+	"WARNING",   /* LOG_WARNING = warning conditions		       */
+	"NOTICE",	/* LOG_NOTICE  = normal but significant condition */
+	"INFO",	  /* LOG_INFO	= informational                    */
+	"DEBUG",	 /* LOG_DEBUG   = debug-level messages	         */
 };
+#endif
 
-unsigned long  tid[2];
-typedef void (*sal_thread_cb_t)(void*);
+static SR_8 g_app_name[20];
 
-extern int main_sock_fd;
-
-char g_app_name[20];
-
-char* file_basename(const char* file)
+/*static SR_8* file_basename(const SR_8* file)
 {
-	char* pattern;
-	char* tmp = (char*)file;
+	SR_8* pattern;
+	SR_8* tmp = (SR_8*)file;
 
 	pattern = strstr(tmp, "/");
 	while (NULL != pattern) {
@@ -31,187 +32,91 @@ char* file_basename(const char* file)
 		pattern = strstr(pattern, "/");
 	}
 	return (tmp);
+}*/
+
+SR_32 engine_log_loop(void *data)
+{
+	sr_ring_buffer *rb;
+	sr_shmem *vsshmem;
+	SR_32 ret;
+	CEF_payload *cef;
+	SR_U8 *buf;
+	SR_32 length = (sizeof(CEF_payload) * 64);
+
+	sal_printf("engine_log_loop started\n");
+
+	ret = sr_msg_alloc_buf(LOG_BUF, length);
+	if (ret != SR_SUCCESS){
+		sal_printf("failed to init log buf\n");
+		return 0;
+	}
+
+	vsshmem = sr_msg_get_buf(LOG_BUF);
+	if (!vsshmem) {
+		sal_printf("failed to init vsshmem\n");
+		return 0;
+	}
+
+	rb = vsshmem->buffer;
+	if (!rb) {
+		sal_printf("something is wrong !!!! shouldn't happened\n");
+		return 0;
+	}
+
+	while (!sr_task_should_stop(SR_LOG_TASK)) {
+		if ((ret = get_max_read_size(rb)) > sizeof(CEF_payload)) {
+			buf = ((SR_U8*)rb + sizeof(sr_ring_buffer));
+			cef = (CEF_payload*)&buf[rb->read_ptr];
+			sal_printf("LOG msg: %s\n", cef->extension);
+			read_buf(rb, (SR_U8*)cef, sizeof(CEF_payload), SR_FALSE);
+		}
+	}
+
+	/* free allocated buffer */
+	sr_msg_free_buf(LOG_BUF);
+
+	sal_printf("engine_log_loop end\n");
+
+	return 0;
 }
 
-int sr_log_init (const char* app_name, int flags)
+
+SR_32 sr_log_init (const SR_8* app_name, SR_32 flags)
 {
-	strcpy(g_app_name, app_name);
+	sal_strcpy(g_app_name, (SR_8*)app_name);
+
+	sal_printf("Starting LOG module!\n");
+	
+	if (sr_start_task(SR_LOG_TASK, engine_log_loop) != SR_SUCCESS) {
+		sal_printf("failed to start engine_log_loop\n");
+		return SR_ERROR;
+	}
+	
+	return SR_SUCCESS;
 }
 
-int __sr_print (enum SR_LOG_PRIORITY priority, int line, const char *file, const char *fmt, ...)
+#if 0
+SR_32 __sr_print (enum SR_LOG_PRIORITY priority, SR_32 line, const SR_8 *file, const SR_8 *fmt, ...)
 {
-	char     msg[MAX_MSG_LEN];
-	char     output_msg[MAX_MSG_LEN];
+	SR_8	 msg[SR_MAX_PATH];
+	SR_8	 output_msg[SR_MAX_PATH];
 	va_list  args;
 	time_t t = time(NULL);
 	struct tm tm = *localtime(&t);
 
 	/* create msg */
 	va_start(args, fmt);
-	vsnprintf(msg, MAX_MSG_LEN-1, fmt, args);
+	vsnprintf(msg, SR_MAX_PATH-1, fmt, args);
 	va_end(args);
-	msg[MAX_MSG_LEN - 1] = 0;
+	msg[SR_MAX_PATH - 1] = 0;
 	/* create final message */
-	snprintf(output_msg, MAX_MSG_LEN-1, "%d-%d-%d %d:%d:%d %s %s[%d] %s\n",
+	snprintf(output_msg, SR_MAX_PATH-1, "%d-%d-%d %d:%d:%d %s %s[%d] %s\n",
 			tm.tm_mday, tm.tm_mon + 1,tm.tm_year + 1900, 
 			tm.tm_hour, tm.tm_min, tm.tm_sec,
 			g_app_name,file_basename(file), line, msg);
 
-	output_msg[MAX_MSG_LEN - 1] = 0;
+	output_msg[SR_MAX_PATH - 1] = 0;
 	fprintf (stderr, "[%s] %s", log_level_str[priority], output_msg);
 }
+#endif
 
-int sr_net_init (void/*hardcoded for now...*/)
-{
-	char *sr_msg;
-	int err;
-	sal_thread_cb_t sal_thread_process_msg;
-
-	main_sock_fd = sal_socket(PROTOCOL_RAW, NETLINK_USER);//this function for userspace only, cannot be used in kernel module!! 
-	if(main_sock_fd < 0){
-		sr_print(LOG_ERR, "failed to create socket on port: %d\n",NETLINK_USER);
-		return -1;
-	}
-	/*
-	   log_sock_fd = sal_socket(PROTOCOL_RAW, NETLINK_LOG_USER);//this function for userspace only, cannot be used in kernel module!!
-	   if(log_sock_fd < 0){
-	   sr_print(LOG_ERR, "failed to create socket on port: %d\n",NETLINK_LOG_USER);
-	   return -1;
-	   }	*/							  
-
-	sal_bind(main_sock_fd);
-	//sal_bind_log(log_sock_fd);
-
-	sr_msg = "Ping from userspace!!";
-
-	sal_sendmsg(sr_msg, strlen(sr_msg)); //sending msg to kernel space
-
-	sr_msg = "Another one!\n";
-	sleep (1);
-	sal_sendmsg(sr_msg, strlen(sr_msg)); //sending msg to kernel space
-	err = pthread_create(&(tid[0]), NULL, sal_recvmsg_loop, NULL);
-	if (err != 0){
-		printf("\ncan't create thread :[%s]", strerror(err));
-		return err;
-	}else
-		printf("\n Thread created successfully\n");
-
-	return err;
-	//return sal_recvmsg_loop(); // Receive loop from kernel
-}
-
-int sal_recvmsg_loop()
-{		
-	unsigned int ctr = 0;
-	int fd_index, numfds=0; 
-	int idle_timer, msg_len; 
-	struct pollfd poll_set[2];	
-	struct CEF_payload cef;
-	struct msghdr rcv_msg;
-        struct sockaddr_nl dest_addr;
-        struct nlmsghdr *rcv_nlh;
-        struct iovec rcv_iov;
-
-        struct sockaddr_nl src_addr_log, dest_addr_log;
-        struct nlmsghdr *nlh_log;
-        struct iovec iov_log;
-        struct msghdr msg_log;
-
-
-        memset(&dest_addr, 0, sizeof(dest_addr));
-        dest_addr.nl_family = AF_NETLINK;
-        dest_addr.nl_pid = 0; // For Linux Kernel
-        dest_addr.nl_groups = 0; //unicast
-
-        rcv_nlh = (struct nlmsghdr *)malloc(NLMSG_SPACE(MAX_PAYLOAD));
-        memset(rcv_nlh, 0, NLMSG_SPACE(MAX_PAYLOAD));
-        rcv_nlh->nlmsg_len = NLMSG_SPACE(MAX_PAYLOAD);
-        rcv_nlh->nlmsg_pid = getpid();
-        rcv_nlh->nlmsg_flags = 0;
-
-        rcv_iov.iov_base = (void *)rcv_nlh;
-        rcv_iov.iov_len = rcv_nlh->nlmsg_len;
-
-        rcv_msg.msg_name = (void *)&dest_addr;
-        rcv_msg.msg_namelen = sizeof(dest_addr);
-        rcv_msg.msg_iov = &rcv_iov;
-        rcv_msg.msg_iovlen = 1;
-
-	/*
-	   struct pollfd {
-	   int fd;             * file descriptor for an open file. 
-	   in poll function if this is neg value 'events' will be ignored, revents will return as 0
-	   possible to use this for temporary stop monitoring one of the fds
-
-	   short events;       * The input event flags . 
-	 * bit mask (flag) to determine the type of events of intrest,
-example: events =0; 
-revents will return : POLLHUP || POLLERR || POLLNVAL 
-
-short revents;      * The output event flags 
-filled by the kernel with the events that actually occurred.
-}; */
-
-	poll_set[0].fd = main_sock_fd; 
-	poll_set[0].events = POLLIN; // flag that means "There is data to read"
-	numfds++; //num of actual fds in poll_set (in our case it's just 1)
-
-	while (1) {
-
-		/*If none of the events requested (and no error) has occurred for any of the fds in poll_set
-		  poll() blocks until one of the events occurs. -- this could cause an infinite block 
-timeout : number of milliseconds that poll() should block waiting for any fds to become ready.
-The call will block until either:
-		 * a file descriptor becomes ready;
-		 * the call is interrupted by a signal handler; or
-		 * the timeout expires.
-		 */	
-		/**
-		  cef example:
-
-CEF:Version|Device Vendor|Device Product|Device Version|Device Event Class ID|Name|Severity|[Extension]
-
-CEF:1.2|SafeRide|vSentry|1.0|100|Malware stopped|10|src=10.0.0.1 dst=2.1.2.2 spt=1232
-
-typedef struct CEF_payload
-{   
-float						cef_version;
-char						dev_vendor[32];
-char						dev_product[32];
-float						dev_version;			
-enum dev_event_class_ID		class;
-char						name[32];
-enum severity				sev;
-char 						extension[256]; 
-}CEF_payload;
-		 * **/
-	//timeout > 0 : will be in millsecs
-	//timeout < 0 :infinite timeout 
-	//timeout == 0 : return immediately, even if no file descriptors are ready.		
-	if (poll(poll_set, numfds, 10000)) {  
-		for (fd_index = 0; fd_index < numfds; fd_index++) {
-			if ((poll_set[fd_index].revents & POLLIN ))   //check POLLIN specific bit 
-				//	&&(poll_set[fd_index].fd == sock_fd))
-			{					
-				/* Read message from kernel */
-				msg_len = sal_recvmsg(&rcv_msg, (void*)&cef); //also cleans the msghdr!!
-				//cef = NLMSG_DATA(nlh);
-				//sr_print(LOG_INFO, "%s",cef->extension);
-				printf("CEF:%.1f|%s|%s|%.1f|%d|%s|%d|%s\n", cef.cef_version,
-						cef.dev_vendor,
-						cef.dev_product,
-						cef.dev_version,
-						cef.class,
-						cef.name,
-						cef.sev,
-						cef.extension);
-			}else{
-				sr_print(LOG_ERR,"Poll failure - event %d\n", poll_set[fd_index].revents); 
-			}
-		}
-	} 
-}
-//close(main_sock_fd);
-
-return 0; //NEED TO RETURN FIXED ERROR CODE
-}
