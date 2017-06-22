@@ -1,53 +1,49 @@
-/* file: sal_linux.c
- * purpose: this file implements the sal functions for linux os
-*/
-
+#include "sr_sal_common.h"
 #include "sal_linux.h"
 #include "sr_tasks.h"
-#include "sr_sal_common.h"
 
 SR_32 sal_task_stop(void *data)
 {
-	struct task_struct *thread = (struct task_struct *)data;
+	pthread_t *thread = (pthread_t*)data;
 
 	if (!thread) {
 		sal_printf("sal_task_stop: invalid argument %p\n", data);
 		return SR_ERROR;
 	}
 
-	kthread_stop(thread);
+	pthread_join(*thread, NULL);
 
-	thread = NULL;
+	free(data);
+	data = NULL;
 
 	return SR_SUCCESS;
+}
+
+void* sal_dummy_func(void *func)
+{
+	SR_32 (*task_func)(void *data) = func;
+
+	task_func(NULL);
+
+	return NULL;
 }
 
 SR_32 sal_task_start(void **data, SR_32 (*task_func)(void *data))
 {
-	struct task_struct *thread;
+	pthread_t *thread = (pthread_t*)malloc(sizeof(pthread_t));
 
-	thread = kthread_create(task_func, NULL, "vsentry kernel thread");
-	if (IS_ERR(thread)) {
+	//if (pthread_create(thread, NULL, task_func, NULL) != 0) {
+	if (pthread_create(thread, NULL, sal_dummy_func, task_func) != 0) {
 		sal_printf("sal_task_start: failed to create new thread\n");
+		free(thread);
 		return SR_ERROR;
 	}
 
-	*data = thread;
+	data = (void*)thread;
 
-	sal_printf("sal_task_start: new task was created 0x%p 0x%p\n", thread, data);
+	sal_printf("sal_task_start: new task was created\n");
 
 	return SR_SUCCESS;
-}
-
-void sal_schedule_timeout(SR_U32 timeout)
-{
-	schedule_timeout_interruptible(msecs_to_jiffies(timeout));
-}
-
-void sal_schedule(void)
-{
-	set_current_state(TASK_INTERRUPTIBLE);
-	schedule();
 }
 
 void *sal_memcpy(void *dest, void *src, SR_32 len)
@@ -74,15 +70,13 @@ SR_32 sal_sprintf(SR_8 *str, SR_8 *fmt, ...)
 
 void sal_printf(SR_8 *fmt, ...)
 {
-	int i;
 	va_list args;
 	SR_8 msg[SR_MAX_LOG];
 
 	va_start(args, fmt);
-	i = vsnprintf(msg, SR_MAX_LOG-1, fmt, args);
+	vsnprintf(msg, SR_MAX_LOG-1, fmt, args);
 	va_end(args);
 
 	msg[SR_MAX_LOG - 1] = 0;
-	printk("%s", msg);
+	printf("%s", msg);
 }
-

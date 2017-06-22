@@ -6,7 +6,7 @@
 #ifndef SAL_BITOPS_H
 #define SAL_BITOPS_H
 
-#include "sal_linux.h"
+#include "sr_types.h"
 
 /* 64 bit operations */
 SR_8 sal_fls64 (SR_U64 addr);

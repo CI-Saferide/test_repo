@@ -10,8 +10,6 @@ extern "C" {
 
 #define MAX_PAYLOAD 2024 /* maximum payload size*/
 
-#define MAX_MSG_LEN             1024
-
 #define SR_LOG_EMERG			1
 #define SR_LOG_ALERT			1
 #define SR_LOG_CRIT				1
@@ -69,15 +67,13 @@ typedef struct CEF_payload
 	char						name[32];
     enum severity				sev;
     char 						extension[512]; 
-}CEF_payload;
+} CEF_payload;
 
 int sr_log_init (const char* app_name, int flags);
-
+#if 0
 int __sr_print (enum SR_LOG_PRIORITY priority, int line, const char *file, const char *fmt, ...);
-
-int sr_net_init (void/*hardcoded for now...*/);//netlink userspace init
-
 #define sr_print(priority, ...) __sr_print(priority, __LINE__, __FILE__, __VA_ARGS__)
+#endif
 
 #ifdef __cplusplus
 }

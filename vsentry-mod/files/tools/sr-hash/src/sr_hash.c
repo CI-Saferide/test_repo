@@ -1,6 +1,4 @@
-#include "sal_linux.h"
 #include "sr_hash.h"
-
 
 static inline int IsPowerOfTwo(SR_U32 num)
 {
@@ -11,9 +9,9 @@ static inline int IsPowerOfTwo(SR_U32 num)
 	}
 	for (power = 2; power <= num; power=(power <<1)) {
 		if (power == num)
-			return TRUE;
+			return SR_TRUE;
 	}
-	return FALSE;
+	return SR_FALSE;
 }
 struct sr_hash_table_t *sr_hash_new_table(int count)
 {	
@@ -118,7 +116,7 @@ void sr_hash_free_table(struct sr_hash_table_t *table)
 	
 	for (i=0; (i < table->size) && table->count; i++) {
 		if (table->buckets[i].head) {
-			sal_kernel_print_alert("sr_hash_free_table: Table still has member in location %lu\n", i);
+			sal_kernel_print_alert("sr_hash_free_table: Table still has member in location %u\n", i);
 			SR_LOCK(&table->buckets[index].bucket_lock);
 			ptr = table->buckets[i].head->next;
 			while (ptr) {
@@ -133,7 +131,7 @@ void sr_hash_free_table(struct sr_hash_table_t *table)
 			SR_UNLOCK(&table->buckets[index].bucket_lock);
 		}
 	}
-	sal_kernel_print_alert("Cleaned entire table, count is %lu\n", table->count);
+	sal_kernel_print_alert("Cleaned entire table, count is %u\n", table->count);
 	SR_FREE(table->buckets);
 	SR_FREE(table);
 }
@@ -142,11 +140,11 @@ void sr_hash_print_table(struct sr_hash_table_t *table)
 	SR_U32 i;
 	struct sr_hash_ent_t *ptr;
 	
-	sal_kernel_print_alert("sr_hash_print_table: Entry, size is %lu\n", table->size);
+	sal_kernel_print_alert("sr_hash_print_table: Entry, size is %u\n", table->size);
 
 	for (i=0; i < table->size ; i++) {
 		if (table->buckets[i].head) {
-			sal_kernel_print_alert("Table has member in location %lu\n", i);
+			sal_kernel_print_alert("Table has member in location %u\n", i);
 			SR_LOCK(&table->buckets[index].bucket_lock);
 			ptr = table->buckets[i].head->next;
 			while (ptr) {
