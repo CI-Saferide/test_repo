@@ -3,6 +3,8 @@
 #include "sal_bitops.h"
 #include "sr_radix.h"
 #include "sr_cls_file.h"
+#include "sr_classifier.h"
+#include <asm/atomic.h>
 
 struct radix_head *sr_cls_src_ipv4;
 
@@ -17,7 +19,9 @@ int sr_classifier_init(void)
 	} else {
 		sal_kernel_print_alert("Successfully Initialized radix tree\n");
 	}
-	sr_cls_init();
+	sr_cls_fs_init();
+
+	sr_cls_rules_init();
 
 	sr_classifier_ut();
 
@@ -30,7 +34,7 @@ void sr_classifier_uninit(void)
 		rn_detachhead((void **)&sr_cls_src_ipv4);
 		sr_cls_src_ipv4 = NULL;
 	}
-	sr_cls_uninit();
+	sr_cls_fs_uninit();
 }
 
 int sr_cls_add_ipv4(SR_U32 addr, SR_U32 netmask, int rulenum)
@@ -142,7 +146,6 @@ int sr_cls_find_ipv4(SR_U32 addr)
     struct radix_node *node = NULL;
     struct sockaddr_in *ip;
 	bit_array matched_rules;
-	SR_16 rule;
 
 	memset(&matched_rules, 0, sizeof(matched_rules));
 
@@ -158,6 +161,7 @@ int sr_cls_find_ipv4(SR_U32 addr)
         node = rn_match((void*)ip, sr_cls_src_ipv4);
 #ifdef DEBUG
 	if (node) {
+		SR_16 rule;
 		memcpy(&matched_rules, &node->sr_private.rules, sizeof(matched_rules)); 
 		sal_kernel_print_alert("Found match for IP %lx:\n", addr);
 		while ((rule = sal_ffs_and_clear_array (&matched_rules)) != -1) {
@@ -211,4 +215,100 @@ void sr_classifier_ut(void)
         sr_cls_del_ipv4(htonl(0x12345678), htonl(0xffffffff),40);
         sr_cls_find_ipv4(htonl(0x12345678));
 }
+
+//////////////////////////////// Rules DB section /////////////////////////
+struct cls_rule_action_t sr_rules_db[SR_MAX_RULES];
+
+void sr_cls_rules_init(void)
+{
+	int i;
+
+	if (unlikely(SR_CLS_ACTION_MAX>=(65536))) { // too many actions to fit a 16 bit
+		sal_kernel_print_alert("Too many actions defined !\n");
+		BUG();
+	}
+	memset(sr_rules_db, 0, sizeof(sr_rules_db));
+	for (i=0; i<SR_MAX_RULES; i++) {
+		sr_cls_rl_init(&sr_rules_db[i].rate);
+		sr_rules_db[i].actions = SR_CLS_ACTION_ALLOW;
+	}
+}
+void sr_cls_rl_init(struct sr_rl_t *rl)
+{
+	if (likely(rl)) {
+		atomic_set(&rl->count, 0);
+	}
+}
+void sr_cls_rule_del(SR_U16 rulenum)
+{
+	sr_cls_rl_init(&sr_rules_db[rulenum].rate);
+	sr_rules_db[rulenum].actions = SR_CLS_ACTION_ALLOW;
+}
+void sr_cls_rule_add(SR_U16 rulenum, SR_U16 actions, SR_U32 rl_max_rate, SR_U16 rl_exceed_action, SR_U16 log_target, SR_U16 email_id, SR_U16 phone_id, SR_U16 skip_rulenum)
+{
+	if (unlikely(rulenum>=SR_MAX_RULES)){
+		sal_kernel_print_alert("sr_cls_rule_add: Invalid rule ID %u\n", rulenum);
+		return;
+	}
+	sr_rules_db[rulenum].actions = actions;
+	if (actions & SR_CLS_ACTION_RATE) {
+		sr_cls_rl_init(&sr_rules_db[rulenum].rate);
+		sr_rules_db[rulenum].rate.max_rate = rl_max_rate;
+		sr_rules_db[rulenum].rate.exceed_action = rl_exceed_action;
+	}
+	if (actions & SR_CLS_ACTION_LOG) {
+		sr_rules_db[rulenum].log_target = log_target;
+	}
+	if (actions & SR_CLS_ACTION_SMS) {
+		sr_rules_db[rulenum].phone_id = phone_id;
+	}
+	if (actions & SR_CLS_ACTION_EMAIL) {
+		sr_rules_db[rulenum].email_id = email_id;
+	}
+	if (actions & SR_CLS_ACTION_SKIP_RULE) {
+		sr_rules_db[rulenum].skip_rulenum = skip_rulenum;
+	}
+}
+enum cls_actions sr_cls_rl_check(struct sr_rl_t *rl, SR_U32 timestamp)
+{
+	if (!rl) {
+		return SR_CLS_ACTION_ALLOW;
+	}
+	if (timestamp > rl->timestamp) { // new measurement period
+		atomic_set(&rl->count, 1);
+		rl->timestamp = timestamp;
+		return SR_CLS_ACTION_ALLOW;
+	}
+	if (atomic_inc_return(&rl->count) > rl->max_rate) {
+		sal_kernel_print_alert("sr_cls_rl_check: Rate exceeds configured rate\n");
+		return rl->exceed_action;
+	}
+	return SR_CLS_ACTION_ALLOW;
+}
+
+enum cls_actions sr_cls_rule_match(SR_U16 rulenum)
+{
+	SR_U16 action;
+
+	if (sr_rules_db[rulenum].actions & SR_CLS_ACTION_RATE) { 
+		action = sr_cls_rl_check(&sr_rules_db[rulenum].rate, jiffies);
+	} else {
+		action = sr_rules_db[rulenum].actions;
+	}
+	// non-finite actions should be handled here rather than by the caller, so that 
+	// there's no need to expose the whole rule structure including emails IDs etc
+	// to callers.
+	if (sr_rules_db[rulenum].actions & SR_CLS_ACTION_LOG) {
+		// TODO
+	}
+	if (sr_rules_db[rulenum].actions & SR_CLS_ACTION_EMAIL) {
+		// TODO
+	}
+	if (sr_rules_db[rulenum].actions & SR_CLS_ACTION_SMS) {
+		// TODO
+	}
+	return action;
+}
+
+///////////////////////////////////////////////////////////////////////////
 

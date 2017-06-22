@@ -141,7 +141,7 @@ void sr_cls_ut(void)
 
 }
 
-int sr_cls_init(void)
+int sr_cls_fs_init(void)
 {
 	sr_cls_file_table = sr_hash_new_table(8192);
 	if (!sr_cls_file_table) {
@@ -154,7 +154,7 @@ int sr_cls_init(void)
 	return SR_SUCCESS;
 }
 
-void sr_cls_uninit(void)
+void sr_cls_fs_uninit(void)
 {
 	if (!sr_cls_file_table)
 		return;
