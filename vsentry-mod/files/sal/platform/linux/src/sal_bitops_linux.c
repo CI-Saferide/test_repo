@@ -49,11 +49,28 @@ SR_8 sal_fls64 (SR_U64 addr)
 
 SR_8 sal_ffs64 (SR_U64 *addr)
 {
+#ifdef ARCH_64	
+	SR_8	ffs32;
+	SR_U32	upper;
+	SR_U32	lower;
+#endif /* ARCH_64 */
+
 	if (!(*addr))
 		return (-1);
+#ifdef ARCH_64
 	return __ffs64(*addr);
+#else
+	lower = (*addr)&0xffffffff;
+	ffs32 = ffs(lower);
+	if (ffs32)
+		return (ffs32-1);
+	else {
+		upper = (*addr) >> 32;
+		ffs32 = ffs(upper);
+		return (ffs32+32-1);
+	}
+#endif /* ARCH_64 */
 }
-
 
 #endif /* #ifdef PLATFORM_LINUX */
 
