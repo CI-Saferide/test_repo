@@ -31,7 +31,7 @@ enum cls_actions{
 
 struct sr_rl_t{ // rate limit tracking
 	SR_U32 max_rate; 	// max allowable rate per timestamp period
-	atomic_t count;   	// lapsed counter since last timestamp
+	SR_ATOMIC count;   	// lapsed counter since last timestamp
 	SR_U32 timestamp; 	// timestamp of last counter clear (jiffies?)
 	SR_U8  exceed_action;   // What to do upon exceeding the limit
 };

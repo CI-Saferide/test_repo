@@ -230,7 +230,7 @@ void sr_cls_rules_init(void)
 void sr_cls_rl_init(struct sr_rl_t *rl)
 {
 	if (likely(rl)) {
-		atomic_set(&rl->count, 0);
+		SR_ATOMIC_SET(&rl->count, 0);
 	}
 }
 void sr_cls_rule_del(SR_U16 rulenum)
@@ -269,11 +269,11 @@ enum cls_actions sr_cls_rl_check(struct sr_rl_t *rl, SR_U32 timestamp)
 		return SR_CLS_ACTION_ALLOW;
 	}
 	if (timestamp > rl->timestamp) { // new measurement period
-		atomic_set(&rl->count, 1);
+		SR_ATOMIC_SET(&rl->count, 1);
 		rl->timestamp = timestamp;
 		return SR_CLS_ACTION_ALLOW;
 	}
-	if (atomic_inc_return(&rl->count) > rl->max_rate) {
+	if (SR_ATOMIC_INC_RETURN(&rl->count) > rl->max_rate) {
 		sal_kernel_print_alert("sr_cls_rl_check: Rate exceeds configured rate\n");
 		return rl->exceed_action;
 	}
