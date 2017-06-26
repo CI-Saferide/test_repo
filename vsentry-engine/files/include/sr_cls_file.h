@@ -1,8 +1,7 @@
 #ifndef SR_CLS_FILE_H
 #define SR_CLS_FILE_H
-#include "sal_linux.h"
+#include "sr_types.h"
 
-#define SR_MAX_PATH 1024
 enum {
 	SR_CLS_INODE_INHERIT=0,
 	SR_CLS_INODE_DEL_RULE,

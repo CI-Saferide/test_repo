@@ -14,8 +14,13 @@ $(TARGET)-objs := sal/platform/linux/src/module_init.o \
 				  sal/platform/linux/src/sal_bitops_linux.o \
 				  sal/src/sal_bitops.o \
 				  sal/test/sal_bitops_test.o \
+				  main/src/main_loop.o \
+				  ../../common/src/sr_ring_buf.o \
+				  sal/platform/linux/src/sal_shmem_linux.o \
+				  ../../common/src/sr_msg.o \
+				  ../../common/src/sr_tasks.o \
 
-	SRC := $(shell pwd)
+SRC := $(shell pwd)
 
 EXTRA_CFLAGS := -I$(PWD)/sal/platform/linux/lsm/include 
 EXTRA_CFLAGS += -I$(PWD)/multiplexer/include
@@ -26,6 +31,8 @@ EXTRA_CFLAGS += -I$(PWD)/sal/platform/linux/include
 EXTRA_CFLAGS += -I$(PWD)/tools/sr-log/include
 EXTRA_CFLAGS += -I$(PWD)/tools/radix/include
 EXTRA_CFLAGS += -I$(PWD)/tools/sr-hash/include
+EXTRA_CFLAGS += -I$(PWD)/../../common/include
+EXTRA_CFLAGS += -I$(PWD)/main/include
 
 #EXTRA_CFLAGS += -DUNIT_TEST
 EXTRA_CFLAGS += -DPLATFORM_LINUX -D_KERNEL
@@ -45,9 +52,9 @@ modules_install:
 #	make -C /lib/modules/$(shell uname -r)/build M=$(PWD) clean
 clean:
 	rm -rf *.o *~ core .depend .*.cmd *.ko *.mod.c
+	rm -rf ../../common/src/*.o ../../common/src/.*.cmd
 	rm -f Module.markers Module.symvers modules.order
 	rm -rf .tmp_versions Modules.symvers
 	find . -name "*.o" -type f -delete
 	find . -name "*.o.cmd" -type f -delete
-	
     

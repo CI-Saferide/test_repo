@@ -1,13 +1,14 @@
 #ifndef SR_CLASSIFIER_H
 #define SR_CLASSIFIER_H
-#include <asm/atomic.h>
+
+#include "sr_types.h"
 
 #define SR_MAX_RULES 4096
 
-int sr_classifier_init(void);
-int sr_cls_inode_add_rule(SR_U32 inode, SR_U32 rulenum);
-int sr_cls_inode_del_rule(SR_U32 inode, SR_U32 rulenum);
-int sr_cls_inode_inherit(SR_U32 from, SR_U32 to);
+SR_32 sr_classifier_init(void);
+SR_32 sr_cls_inode_add_rule(SR_U32 inode, SR_U32 rulenum);
+SR_32 sr_cls_inode_del_rule(SR_U32 inode, SR_U32 rulenum);
+SR_32 sr_cls_inode_inherit(SR_U32 from, SR_U32 to);
 void sr_cls_inode_remove(SR_U32 inode);
 void sr_classifier_uninit(void);
 void sr_cls_rules_init(void);
@@ -30,7 +31,7 @@ enum cls_actions{
 
 struct sr_rl_t{ // rate limit tracking
 	SR_U32 max_rate; 	// max allowable rate per timestamp period
-	atomic_t count;   	// lapsed counter since last timestamp
+	SR_ATOMIC count;   	// lapsed counter since last timestamp
 	SR_U32 timestamp; 	// timestamp of last counter clear (jiffies?)
 	SR_U8  exceed_action;   // What to do upon exceeding the limit
 };
