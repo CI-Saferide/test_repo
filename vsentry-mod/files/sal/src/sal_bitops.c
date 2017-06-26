@@ -102,6 +102,7 @@ void sal_or_op_arrays (const bit_array *arr1, const bit_array *arr2, bit_array *
 void sal_or_self_op_arrays (bit_array *base, const bit_array *addon)
 {
 	SR_16 index;
+	SR_U8 index;
 	SR_U64 summary = addon->summary;
 	base->summary |= addon->summary;
 	while ((index = sal_ffs_and_clear_bitmask(&summary)) != -1) {

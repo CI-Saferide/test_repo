@@ -11,6 +11,8 @@
 #define CEF_VERSION 	23.0f //a float number
 #define VSENTRY_VERSION 1.0f //a float number
 
+#define SR_MPX_MAX_PATH_SIZE 512
+
 typedef struct _identifier {
 /*
 the kernel doesn't make a real distinction between pid and tid: 
