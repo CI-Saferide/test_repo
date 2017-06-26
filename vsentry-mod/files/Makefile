@@ -35,6 +35,7 @@ EXTRA_CFLAGS += -I$(PWD)/../../common/include
 EXTRA_CFLAGS += -I$(PWD)/main/include
 
 #EXTRA_CFLAGS += -DUNIT_TEST
+
 EXTRA_CFLAGS += -DPLATFORM_LINUX -D_KERNEL
 #default arch is 32bit, uncomment ARCH_64 to use 64bit architectures
 #EXTRA_CFLAGS += -DARCH_64
