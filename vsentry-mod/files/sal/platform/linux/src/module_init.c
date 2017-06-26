@@ -52,7 +52,7 @@ static int __init vsentry_init(void)
 	//sr_netfilter_init();
 	sr_classifier_init();
 	sr_cls_port_init();	
-	sr_cls_port_ut();
+	//sr_cls_port_ut();
 	
 #ifdef UNIT_TEST	
 	sal_bitops_test (0);

@@ -38,6 +38,7 @@ SR_BOOL sal_test_and_clear_bit (SR_U8 bit, void *addr)
  */
 SR_8 sal_fls64 (SR_U64 addr)
 {
+#ifdef ARCH_64
 	/* fls64(value) returns 0 if value is 0 or the position of the last
 	 * set bit if value is nonzero. The last (most significant) bit is
 	 * at position 64. 
@@ -45,11 +46,14 @@ SR_8 sal_fls64 (SR_U64 addr)
 	if (!addr)
 		return (-1);
 	return (fls64(addr)-1);
+#else
+	return (-1); /* currently not in use, no support is 32bit yet */
+#endif /* ARCH_64 */
 }
 
 SR_8 sal_ffs64 (SR_U64 *addr)
 {
-#ifdef ARCH_64	
+#ifndef ARCH_64	
 	SR_8	ffs32;
 	SR_U32	upper;
 	SR_U32	lower;

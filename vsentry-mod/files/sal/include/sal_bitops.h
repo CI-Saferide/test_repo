@@ -32,6 +32,7 @@ SR_16 sal_ffs_and_clear_bitmask (SR_U64 *bitmask);
 void sal_and_op_arrays (const bit_array *arr1, const bit_array *arr2, bit_array *result);
 void sal_or_op_arrays (const bit_array *arr1, const bit_array *arr2, bit_array *result);
 void sal_or_self_op_arrays (bit_array *base, const bit_array *addon);
+void sal_and_self_op_arrays (bit_array *base, const bit_array *addon);
 void sal_not_op_array (bit_array *arr);
 
 #endif /* SAL_BITOPS_H*/

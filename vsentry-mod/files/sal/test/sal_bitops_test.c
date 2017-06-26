@@ -55,7 +55,7 @@ void sal_bitops_test (SR_U32 test_num)
 {
 	SR_U64  	decimal64 = 0x0;
 	SR_U32  	decimal = 0x0;
-	SR_16  	ffs_result;
+	SR_16  		ffs_result;
 	//SR_U8		test;
 	SR_8		result;
 	SR_BOOL		bool_result;
@@ -207,5 +207,31 @@ void sal_bitops_test (SR_U32 test_num)
 	print_bool (64, decimal64);
 	result = sal_ffs64(&decimal64);
 	sal_kernel_print_info("first set bit is %d\n", result);
+	
+	sal_kernel_print_info("----------------------------\n");
+	sal_kernel_print_info("sal_or_self_op_arrays\n");
+	sal_set_bit_array (23, &test_arr);
+	sal_set_bit_array (32, &test_arr);
+	sal_set_bit_array (43, &test_arr);
+	sal_set_bit_array (234, &test_arr);
+	sal_set_bit_array (485, &test_arr);
+	sal_set_bit_array (984, &test_arr);
+	sal_set_bit_array (1073, &test_arr);
+	sal_set_bit_array (2346, &test_arr);
+	sal_set_bit_array (3767, &test_arr);
+	
+	sal_set_bit_array (1073, &test_arr2);
+	sal_set_bit_array (434, &test_arr2);
+	sal_set_bit_array (657, &test_arr2);
+	sal_set_bit_array (3767, &test_arr2);
+	sal_set_bit_array (32, &test_arr2);
+	sal_set_bit_array (43, &test_arr2);
+	
+	sal_and_self_op_arrays(&test_arr, &test_arr2);
+	ffs_result = 4096;
+	while (ffs_result  > 0) {
+		ffs_result = sal_ffs_and_clear_array(&test_arr);
+		sal_kernel_print_info("first set bit is %d\n", ffs_result);
+	}
 }
 #endif /* UNIT_TEST */
