@@ -1,14 +1,7 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include <stddef.h>
-#include <string.h>
-#include <sys/stat.h>
-#include <dirent.h>
-#include "sal_linux.h"
+#include "sr_sal_common.h"
 #include "sr_cls_file.h"
-
-extern int main_sock_fd;
+#include "sr_shmem.h"
+#include "sr_msg.h"
 
 //#include "sr_cls_file.h"
 //#include "sr_hash.h"
@@ -20,24 +13,24 @@ int sr_cls_file_add_rule(char *filename, SR_U32 rulenum, SR_U8 treetop)
 {
 	char *sr_msg;
 	struct stat buf;
-	int retval;
+
 	if(lstat(filename, &buf)) { // Error
 		return SR_ERROR;
 	}
 	if (S_ISREG(buf.st_mode)) {
 		if ((buf.st_nlink > 1) && (treetop)) {
-			printf("Error: Cannot add classification rules for hard links\n");
+			sal_printf("Error: Cannot add classification rules for hard links\n");
 			return SR_ERROR;
 		}
 		// sr_cls_inode_add_rule(buf.st_ino, rulenum)
 		sr_msg = "Call sr_cls_inode_add_rule!";
-		sal_sendmsg(sr_msg, strlen(sr_msg));
+		sr_send_msg(ENG2MOD_BUF, (SR_U8*)sr_msg, strlen(sr_msg));
 	}
 	if (S_ISDIR(buf.st_mode))  {
 		// first update the directory itself
 		// sr_cls_inode_add_rule(buf.st_ino, rulenum)
 		sr_msg = "Call sr_cls_inode_add_rule!";
-		sal_sendmsg(sr_msg, strlen(sr_msg));
+		sr_send_msg(ENG2MOD_BUF, (SR_U8*)sr_msg, strlen(sr_msg));
 		// Now iterate subtree
 		DIR * dir;
 		long name_max;
@@ -46,7 +39,7 @@ int sr_cls_file_add_rule(char *filename, SR_U32 rulenum, SR_U8 treetop)
 		if ((dir = opendir(filename))
 				&& (name_max = pathconf(filename, _PC_NAME_MAX)) > 0
 				&& (buf = (struct dirent *)malloc(
-						offsetof(struct dirent, d_name) + name_max + 1)))
+					offsetof(struct dirent, d_name) + name_max + 1)))
 		{
 			char fullpath[SR_MAX_PATH];
 
@@ -55,7 +48,7 @@ int sr_cls_file_add_rule(char *filename, SR_U32 rulenum, SR_U8 treetop)
 				if ((!strcmp(de->d_name, ".")) || (!strcmp(de->d_name, "..")))
 					continue;
 				snprintf(fullpath, SR_MAX_PATH, "%s/%s", filename, de->d_name);
-				retval = sr_cls_file_add_rule(fullpath, rulenum, 0);
+				sr_cls_file_add_rule(fullpath, rulenum, 0);
 			}
 		}
 	}
@@ -63,7 +56,7 @@ int sr_cls_file_add_rule(char *filename, SR_U32 rulenum, SR_U8 treetop)
 		// first update the link itself
 		// sr_cls_inode_add_rule(buf.st_ino, rulenum)
 		sr_msg = "Call sr_cls_inode_add_rule!";
-		sal_sendmsg(sr_msg, strlen(sr_msg));
+		sr_send_msg(ENG2MOD_BUF, (SR_U8*)sr_msg, strlen(sr_msg));
 		//TODO: Do I need to update the destination file as well ???
 		//Can use realpath() to resolve target filename.
 		//I believe we should not modify the target file in this case.
@@ -78,7 +71,7 @@ int sr_cls_file_del_rule(char *filename, SR_U32 rulenum, SR_U8 treetop)
 {
 	char *sr_msg;
 	struct stat buf;
-	int retval;
+
 	if(lstat(filename, &buf)) { // Error
 		return SR_ERROR;
 	}
@@ -89,13 +82,13 @@ int sr_cls_file_del_rule(char *filename, SR_U32 rulenum, SR_U8 treetop)
 		}
 		// sr_cls_inode_del_rule(buf.st_ino, rulenum)
 		sr_msg = "Call sr_cls_inode_del_rule!";
-		sal_sendmsg(sr_msg, strlen(sr_msg));
+		sr_send_msg(ENG2MOD_BUF, (SR_U8*)sr_msg, strlen(sr_msg));
 	}
 	if (S_ISDIR(buf.st_mode))  {
 		// first update the directory itself
 		// sr_cls_inode_del_rule(buf.st_ino, rulenum)
 		sr_msg = "Call sr_cls_inode_del_rule!";
-		sal_sendmsg(sr_msg, strlen(sr_msg));
+		sr_send_msg(ENG2MOD_BUF, (SR_U8*)sr_msg, strlen(sr_msg));
 		// Now iterate subtree
 		DIR * dir;
 		long name_max;
@@ -113,7 +106,7 @@ int sr_cls_file_del_rule(char *filename, SR_U32 rulenum, SR_U8 treetop)
 				if ((!strcmp(de->d_name, ".")) || (!strcmp(de->d_name, "..")))
 					continue;
 				snprintf(fullpath, SR_MAX_PATH, "%s/%s", filename, de->d_name);
-				retval = sr_cls_file_add_rule(fullpath, rulenum, 0);
+				sr_cls_file_add_rule(fullpath, rulenum, 0);
 			}
 		}
 	}
@@ -121,7 +114,7 @@ int sr_cls_file_del_rule(char *filename, SR_U32 rulenum, SR_U8 treetop)
 		// first update the link itself
 		// sr_cls_inode_del_rule(buf.st_ino, rulenum)
 		sr_msg = "Call sr_cls_inode_del_rule!";
-		sal_sendmsg(sr_msg, strlen(sr_msg));
+		sr_send_msg(ENG2MOD_BUF, (SR_U8*)sr_msg, strlen(sr_msg));
 		//Can use realpath() to resolve target filename.
 		//I believe we should not modify the target file in this case.
 	}
@@ -135,10 +128,10 @@ int sr_cls_file_create(char *filename)
 	char *sr_msg;
 	struct stat buf,buf2;
 	char parentdir[SR_MAX_PATH];
-	struct sr_hash_ent_t *parent, *fileent;
+#if 0
 	struct sr_cls_msg msg;
+#endif
 
-	int retval;
 	if(lstat(filename, &buf)) { // Error
 		return SR_ERROR;
 	}
@@ -153,15 +146,18 @@ int sr_cls_file_create(char *filename)
 		}
 		// sr_cls_inode_inherit(buf2.st_ino, buf.st_mode)
 		sr_msg = "Call sr_cls_inode_inherit!";
+#if 0
 		msg.msg_type = SR_CLS_INODE_INHERIT;
 		msg.rulenum=456;
 		msg.inode1=buf.st_mode;
 		msg.inode2=buf.st_mode;
-		//sal_sendmsg((char *)&msg, sizeof(struct sr_cls_msg));
-		sal_sendmsg(sr_msg, strlen(sr_msg));
+		sr_send_msg(ENG2MOD_BUF(char *)&msg, sizeof(struct sr_cls_msg));
+#else
+		sr_send_msg(ENG2MOD_BUF, (SR_U8*)sr_msg, strlen(sr_msg));
+#endif
 	}
 	
-	return;
+	return SR_SUCCESS;
 }
 // This function should be invoked upon file deletion. 
 // It will need to check if there's an entry and remove it
@@ -169,21 +165,19 @@ void sr_cls_file_delete(char *filename)
 { 
 	char *sr_msg;
 	struct stat buf;
-	struct sr_hash_ent_t *fileent;
 
-	int retval;
 	if(lstat(filename, &buf)) { // Error
 		return;
 	}
 	if ((S_ISREG(buf.st_mode)) && (buf.st_nlink == 1)) {
 		// sr_cls_inode_remove(buf.st_mode)
 		sr_msg = "Call sr_cls_inode_remove!";
-		sal_sendmsg(sr_msg, strlen(sr_msg));
+		sr_send_msg(ENG2MOD_BUF, (SR_U8*)sr_msg, strlen(sr_msg));
 	}
 	if (S_ISDIR(buf.st_mode)) {
 		// sr_cls_inode_remove(buf.st_mode)
 		sr_msg = "Call sr_cls_inode_remove!";
-		sal_sendmsg(sr_msg, strlen(sr_msg));
+		sr_send_msg(ENG2MOD_BUF, (SR_U8*)sr_msg, strlen(sr_msg));
 		// Now iterate subtree
 		DIR * dir;
 		long name_max;
