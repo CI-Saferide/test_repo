@@ -60,8 +60,7 @@ void sal_bitops_test (SR_U32 test_num)
 	SR_8		result;
 	SR_BOOL		bool_result;
 
-	decimal = 0;
-	decimal64 = 0;
+#if 0
 	result = sal_fls64(decimal64);
 	sal_kernel_print_info("last set bit is %d\n", result);
 	decimal64 = 0x0345672580345600;
@@ -199,6 +198,14 @@ void sal_bitops_test (SR_U32 test_num)
 		sal_kernel_print_info("level2[%ld] register:\n", decimal);
 		print_bool (64, test_arr4.level2[decimal]);
 	}
-	
+#endif
+	//sal_set_bit(60, &decimal64);
+	//sal_set_bit(54, &decimal64);
+	sal_set_bit(35, &decimal64);
+	//sal_set_bit(17, &decimal64);
+	//sal_set_bit(3, &decimal64);
+	print_bool (64, decimal64);
+	result = sal_ffs64(&decimal64);
+	sal_kernel_print_info("first set bit is %d\n", result);
 }
 #endif /* UNIT_TEST */

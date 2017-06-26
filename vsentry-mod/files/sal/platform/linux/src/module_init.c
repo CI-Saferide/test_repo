@@ -167,6 +167,8 @@ static int __init vsentry_init(void)
 {	
 	int rc = 0;
 	
+	printk(KERN_INFO "[%s]: module started. kernel version is %s\n",MODULE_NAME, utsname()->release);
+	#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,2,0)
 	pr_info("[%s]: module started. kernel version is %s\n",MODULE_NAME, utsname()->release);
 
 	rc = alloc_chrdev_region(&vsentry_dev, 0, 1, "vsentry");
@@ -235,11 +237,18 @@ static void __exit vsentry_cleanup(void)
 
 	//sal_kernel_socket_exit(MAIN_SOCKET_INDEX);
 	//sr_netfilter_uninit();
+	#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,2,0)
+		unregister_lsm_hooks();
+	#else
+		reset_security_ops();
+	#endif
+
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4,2,0)
 	unregister_lsm_hooks();
 #else
 	reset_security_ops();
 #endif
+
 	sr_classifier_uninit();
 	sr_cls_port_uninit();
 	cdev_del(cdev_p);
