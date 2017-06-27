@@ -5,13 +5,6 @@
 #include "multiplexer.h"
 #include "sr_sal_common.h"
 
-/* "Socket"-level control message types: */
-const char static *SCM_type[] = {"UNKNOWN",
-								 "SCM_RIGHTS",		 /* SCM_RIGHTS	0x01	rw: access rights (array of int) */
-								 "SCM_CREDENTIALS", /*SCM_CREDENTIALS 0x02  rw: struct ucred				 */	
-								 "SCM_SECURITY"	 /*SCM_SECURITY	0x03	rw: security label				 */
-								};
-
 /* Supported address families. */
 /*
 const char static *address_family[] = {"AF_UNSPEC",	
@@ -739,8 +732,8 @@ static int vsentry_socket_create(int family, int type, int protocol, int kern)
 		MIN(sizeof(mpx.socket_info.id.event_name), 1+strlen(__FUNCTION__)));
 	strncpy(mpx.socket_info.family, protocol_family[family],
 		MIN(sizeof(mpx.socket_info.family), 1+strlen(protocol_family[family])));
-	strncpy(mpx.socket_info.type, SCM_type[type],
-		MIN(sizeof(mpx.socket_info.type), 1+strlen(SCM_type[type])));
+	sprintf(mpx.socket_info.type,"socket type: %d",type);
+		
 	mpx.socket_info.protocol = protocol;
 	mpx.socket_info.kern = kern;
 	

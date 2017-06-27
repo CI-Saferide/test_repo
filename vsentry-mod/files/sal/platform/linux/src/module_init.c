@@ -48,8 +48,10 @@ static int vsentry_drv_mmap(struct file *file, struct vm_area_struct *vma)
 	int type;
 	struct task_struct *thread = NULL;
 
+	pr_info("vsentry PID = %d\n",sr_vsentryd_pid);
 	if (!sr_vsentryd_pid)
 		sr_vsentryd_pid = current->pid;
+		pr_info("vsentry PID = %d\n",sr_vsentryd_pid);
 
 	pr_info("vsentry_drv_mmap length = %ld, vm_start 0x%p\n", length, (void *) vma->vm_start);
 
@@ -116,7 +118,7 @@ int vsentry_drv_release (struct inode *inode, struct file *file)
 	sr_shmem* vsshmem;
 
 	pr_info("vsentry_drv_release ... freeing all allocated memory\n");
-
+	sr_vsentryd_pid = 0;
 	for (i=0; i<TOTAL_BUFS; i++) {
 		vsshmem = sr_msg_get_buf(i);
 		if (vsshmem->buffer)
@@ -207,8 +209,8 @@ static int __init vsentry_init(void)
 #endif
 	
 	//sr_netfilter_init();
-	sr_classifier_init();
-	sr_cls_port_init();	
+	//sr_classifier_init();
+	//sr_cls_port_init();	
 	//sr_cls_port_ut();
 	// sr_cls_port_ut();
 	
@@ -234,22 +236,15 @@ static void __exit vsentry_cleanup(void)
 	for (i=0; i<SR_MAX_TASK; i++)
 		sr_stop_task(i);
 
-	//sal_kernel_socket_exit(MAIN_SOCKET_INDEX);
-	//sr_netfilter_uninit();
-	#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,2,0)
-		unregister_lsm_hooks();
-	#else
-		reset_security_ops();
-	#endif
-
+//sr_netfilter_uninit();
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4,2,0)
 	unregister_lsm_hooks();
 #else
 	reset_security_ops();
 #endif
 
-	sr_classifier_uninit();
-	sr_cls_port_uninit();
+	//sr_classifier_uninit();
+	//sr_cls_port_uninit();
 	cdev_del(cdev_p);
 	unregister_chrdev_region(vsentry_dev, 1);
 	pr_info("[%s]: module released!\n", MODULE_NAME);
