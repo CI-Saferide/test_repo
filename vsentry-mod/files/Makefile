@@ -2,9 +2,10 @@ TARGET = vsentry
 obj-m += $(TARGET).o 
 $(TARGET)-objs := sal/platform/linux/src/module_init.o \
 				  sal/platform/linux/lsm/src/sr_lsm_hooks.o \
+				  sal/platform/linux/src/event_mediator.o \
 				  sal/platform/linux/netfilter/src/sr_netfilter.o \
-				  multiplexer/src/multiplexer.o \
-				  multiplexer/src/msg_process.o \
+				  dispatcher/src/dispatcher.o \
+				  dispatcher/src/msg_process.o \
 				  classifier/src/sr_classifier.o \
 				  classifier/src/sr_cls_file.o \
 				  classifier/src/sr_cls_port.o \
@@ -23,7 +24,7 @@ $(TARGET)-objs := sal/platform/linux/src/module_init.o \
 SRC := $(shell pwd)
 
 EXTRA_CFLAGS := -I$(PWD)/sal/platform/linux/lsm/include 
-EXTRA_CFLAGS += -I$(PWD)/multiplexer/include
+EXTRA_CFLAGS += -I$(PWD)/dispatcher/include
 EXTRA_CFLAGS += -I$(PWD)/classifier/include
 EXTRA_CFLAGS += -I$(PWD)/sal/include
 EXTRA_CFLAGS += -I$(PWD)/sal/test

@@ -1,5 +1,5 @@
-#ifndef _MULTIPLEXER_H
-#define _MULTIPLEXER_H
+#ifndef _DISPATCHER_H
+#define _DISPATCHER_H
 
 #include "sr_log.h"
 
@@ -11,7 +11,7 @@
 #define CEF_VERSION 	23.0f //a float number
 #define VSENTRY_VERSION 1.0f //a float number
 
-#define SR_MPX_MAX_PATH_SIZE 512
+#define SR_disp_MAX_PATH_SIZE 512
 
 typedef struct _identifier {
 /*
@@ -53,26 +53,26 @@ typedef union {
 		unsigned int kern;			//kern set to 1 if a kernel socket.
 	}socket_info;
 
-}mpx_info_t;
+}disp_info_t;
 
 void main_socket_process_cb(void *data);
 void log_socket_process_cb(void *data);
 
 CEF_payload cef_init(char* event_name,enum severity sev,enum dev_event_class_ID	class);
 
-int mpx_mkdir(mpx_info_t* info);
-int mpx_rmdir(mpx_info_t* info);
+int disp_mkdir(disp_info_t* info);
+int disp_rmdir(disp_info_t* info);
 
-int mpx_inode_create(mpx_info_t* info);
-int mpx_path_chmod(mpx_info_t* info);
-int mpx_file_open(mpx_info_t* info);
+int disp_inode_create(disp_info_t* info);
+int disp_path_chmod(disp_info_t* info);
+int disp_file_open(disp_info_t* info);
 
-int mpx_inode_link(mpx_info_t* info);
-int mpx_inode_unlink(mpx_info_t* info);
-int mpx_inode_symlink(mpx_info_t* info);
+int disp_inode_link(disp_info_t* info);
+int disp_inode_unlink(disp_info_t* info);
+int disp_inode_symlink(disp_info_t* info);
 
-int mpx_socket_connect(mpx_info_t* info);
-int mpx_socket_create(mpx_info_t* info);
+int disp_socket_connect(disp_info_t* info);
+int disp_socket_create(disp_info_t* info);
 
 
-#endif /* _MULTIPLEXER_H */
+#endif /* _DISPATCHER_H */

@@ -1,9 +1,9 @@
-/* file: multiplexer.c
+/* file: dispatcher.c
  * purpose: this file offers general API (to upper layers)
  *          for the LSM hooks, to enable general system operations
  *          hooks registration
 */
-#include "multiplexer.h"
+#include "dispatcher.h"
 #include "sr_msg.h"
 #include "sr_sal_common.h"
 
@@ -20,7 +20,7 @@ CEF_payload cef_init(char* event_name,enum severity sev,enum dev_event_class_ID	
 	return payload;
 }
 
-int mpx_mkdir(mpx_info_t* info)
+int disp_mkdir(disp_info_t* info)
 {
 	enum dev_event_class_ID	class = FS;
 	enum severity sev = NOTICE;
@@ -34,11 +34,12 @@ int mpx_mkdir(mpx_info_t* info)
 			info->fileinfo.id.gid, 
 			info->fileinfo.id.tid);
 			
+	printk ("mkdir called\n");
 	sr_send_msg(LOG_BUF, (unsigned char*)&payload, sizeof(CEF_payload));
 	return 0;
 }
 
-int mpx_rmdir(mpx_info_t* info)
+int disp_rmdir(disp_info_t* info)
 {
 	enum dev_event_class_ID	class = FS;
 	enum severity sev = NOTICE;
@@ -56,7 +57,7 @@ int mpx_rmdir(mpx_info_t* info)
 	return 0;
 }
 
-int mpx_inode_create(mpx_info_t* info)
+int disp_inode_create(disp_info_t* info)
 {
 	enum dev_event_class_ID	class = FS;
 	enum severity sev = NOTICE;
@@ -74,7 +75,7 @@ int mpx_inode_create(mpx_info_t* info)
 	return 0;
 }
 
-int mpx_path_chmod(mpx_info_t* info)
+int disp_path_chmod(disp_info_t* info)
 {
 	enum dev_event_class_ID	class = FS;
 	enum severity sev = WARNING;
@@ -91,7 +92,7 @@ int mpx_path_chmod(mpx_info_t* info)
 	return 0;
 }
 
-int mpx_file_open(mpx_info_t* info)
+int disp_file_open(disp_info_t* info)
 {
 	enum dev_event_class_ID	class = FS;
 	enum severity sev = NOTICE;
@@ -108,7 +109,7 @@ int mpx_file_open(mpx_info_t* info)
 	return 0;
 }
 
-int mpx_inode_link(mpx_info_t* info)
+int disp_inode_link(disp_info_t* info)
 {
 	enum dev_event_class_ID	class = FS;
 	enum severity sev = NOTICE;
@@ -127,7 +128,7 @@ int mpx_inode_link(mpx_info_t* info)
 	return 0;
 }
 
-int mpx_inode_unlink(mpx_info_t* info)
+int disp_inode_unlink(disp_info_t* info)
 {
 	enum dev_event_class_ID	class = FS;
 	enum severity sev = NOTICE;
@@ -145,7 +146,7 @@ int mpx_inode_unlink(mpx_info_t* info)
 	return 0;
 }
 
-int mpx_inode_symlink(mpx_info_t* info){
+int disp_inode_symlink(disp_info_t* info){
 	
 	enum dev_event_class_ID	class = FS;
 	enum severity sev = NOTICE;
@@ -163,7 +164,7 @@ int mpx_inode_symlink(mpx_info_t* info){
 	return 0;	
 }
 
-int mpx_socket_connect(mpx_info_t* info)
+int disp_socket_connect(disp_info_t* info)
 {
 	enum dev_event_class_ID	class = NETWORK;
 	enum severity sev = WARNING;
@@ -181,7 +182,7 @@ int mpx_socket_connect(mpx_info_t* info)
 	return 0;
 }
 
-int mpx_socket_create(mpx_info_t* info){
+int disp_socket_create(disp_info_t* info){
 	enum dev_event_class_ID	class = NETWORK;
 	enum severity sev = WARNING;
 	struct CEF_payload payload = cef_init(info->address_info.id.event_name,sev,class);
