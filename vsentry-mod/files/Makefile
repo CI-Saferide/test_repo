@@ -41,6 +41,10 @@ EXTRA_CFLAGS += -DPLATFORM_LINUX -D_KERNEL
 #default arch is 32bit, uncomment ARCH_64 to use 64bit architectures
 #EXTRA_CFLAGS += -DARCH_64
 
+#debug flags
+#EXTRA_CFLAGS += -DDEBUG_EVENT_MEDIATOR
+#EXTRA_CFLAGS += -DDEBUG_DISPATCHER
+
 all:
 	$(MAKE) -C $(KERNEL_SRC) M=$(SRC)
 
