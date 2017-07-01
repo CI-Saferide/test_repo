@@ -6,7 +6,8 @@
 #include "sr_msg.h"
 #include "sr_sal_common.h"
 
-static SR_8 module_name[] = "[disp]";
+__attribute__ ((unused))
+static SR_8 module_name[] = "[disp]"; /* module_name used only when DEBUG_DISPATCHER is enabled */
 
 /*
  * GENERAL FILE TODO -

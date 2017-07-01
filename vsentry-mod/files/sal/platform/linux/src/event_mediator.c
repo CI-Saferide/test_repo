@@ -60,7 +60,8 @@ const static SR_8 *protocol_family[] = {
 	"PF_MAX"
 };
 
-static SR_8 module_name[] = "[em]";
+__attribute__ ((unused))
+static SR_8 module_name[] = "[em]"; /* module_name used only when DEBUG_EVENT_MEDIATOR is enabled */
 
 extern SR_32 sr_vsentryd_pid; //TODO: get sr_engine pid from chdrv open fops
 #define HOOK_FILTER		if(hook_filter()) return 0;
