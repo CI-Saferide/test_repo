@@ -38,3 +38,4 @@
 vsentry-mod/files/Module.symvers
 modules.order
 *.mod.c
+vsentry-engine/build/

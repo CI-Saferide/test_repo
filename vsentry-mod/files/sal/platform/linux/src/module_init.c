@@ -11,7 +11,7 @@
 
 #include "sr_lsm_hooks.h"
 #include "sal_linux.h"
-#include "multiplexer.h"
+#include "dispatcher.h"
 #include "sr_classifier.h"
 #include "sr_cls_port.h"
 #include "sr_ring_buf.h"

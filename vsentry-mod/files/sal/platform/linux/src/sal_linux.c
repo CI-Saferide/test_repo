@@ -55,6 +55,11 @@ void *sal_memcpy(void *dest, void *src, SR_32 len)
 	return memcpy(dest, src, len);
 }
 
+void *sal_memset(void *dest, SR_8 ch, SR_32 len)
+{
+	return memset(dest, ch, len);
+}
+
 SR_8 *sal_strcpy(SR_8 *dest, SR_8 *src)
 {
 	return strcpy(dest, src);

@@ -1,4 +1,4 @@
-#include "multiplexer.h"
+#include "dispatcher.h"
 #include "sal_linux.h"
 #include "sal_bitops.h"
 #include "sr_hash.h"
