@@ -28,8 +28,8 @@ all:
 	$(AR) rcs $(ROOT_DIR)/../../build/lib/libsr_log.a sr_log.o sal_linux.o
 	
 x86:
-	@mkdir -Wall -p $(ROOT_DIR)/../../build/lib/
-	$(CC) -g -I$(ROOT_DIR)/../../../vsentry-mod/files/sal/include \
+	@mkdir -p $(ROOT_DIR)/../../build/lib/
+	$(CC) -Wall -g -I$(ROOT_DIR)/../../../vsentry-mod/files/sal/include \
 		  -I$(ROOT_DIR)/../../../vsentry-mod/files/tools/sr-log/include \
 		  -I$(ROOT_DIR)/../../files/sal/platform/linux/include \
 		  -I$(ROOT_DIR)/../../../vsentry-mod/files/sal/include \
@@ -41,7 +41,7 @@ x86:
 
 arm:
 	@mkdir -p $(ROOT_DIR)/../../build/lib/
-	arm-linux-gnueabi-gcc -Wall -I$(ROOT_DIR)/../../../vsentry-mod/files/sal/include \
+	arm-linux-gnueabi-gcc -Wall -g -I$(ROOT_DIR)/../../../vsentry-mod/files/sal/include \
 		  -I$(ROOT_DIR)/../../../vsentry-mod/files/tools/sr-log/include \
 		  -I$(ROOT_DIR)/../../files/sal/platform/linux/include \
 		  -I$(ROOT_DIR)/../../../vsentry-mod/files/sal/include \
@@ -58,8 +58,3 @@ clean:
 	rm -f $(ROOT_DIR)/../../build/lib/libsr_log.a
 	find . -name "*.o" -type f -delete
 	find ../ -name "*~" -type f -delete
-	
-	
-
-
-
