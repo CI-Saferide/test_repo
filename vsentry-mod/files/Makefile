@@ -51,7 +51,9 @@ all:
 x86:
 	make -C /lib/modules/$(shell uname -r)/build M=$(PWD) modules
 arm:
-	make ARCH=arm CROSS_COMPILE=/usr/bin/arm-linux-gnueabi- -C ../../../linux-rpi M=$(PWD) modules
+	make ARCH=arm CROSS_COMPILE=arm-linux-gnueabi- -C ../../../linux-rpi M=$(PWD) modules
+arm64:
+	make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- -C ../../../linux-rpi M=$(PWD) modules
 
 modules_install:
 	$(MAKE) -C $(KERNEL_SRC) M=$(SRC) modules_install
