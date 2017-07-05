@@ -3,22 +3,38 @@
 
 SR_32 init_buf(SR_32 size, sr_ring_buffer *rb)
 {
-	rb->buf_size = size;
-	rb->free_slots = size;
+	rb->buf_size = (size - sizeof(sr_ring_buffer));
 	rb->read_ptr = 0;
 	rb->write_ptr = 0;
+
+#ifdef SR_RB_DEBUG
+	sal_printf(" init buf: size %d\n", rb->buf_size);
+#endif
 
 	return 0;
 }
 
 SR_32 get_max_read_size(sr_ring_buffer *rb)
 {
-	return (rb->buf_size - rb->free_slots);
+	SR_32 length = rb->write_ptr - rb->read_ptr;
+
+	if (length == 0 )
+		return 0;
+
+	if (length < 0)
+		length += rb->buf_size;
+
+	return length;
 }
 
 SR_32 get_max_write_size(sr_ring_buffer *rb)
 {
-	return rb->free_slots;
+	SR_32 length = rb->read_ptr - rb->write_ptr;
+
+	if (length <= 0)
+		length += rb->buf_size;
+
+	return length;
 }
 
 SR_32 write_to_buf(sr_ring_buffer *rb, SR_U8 *data, SR_32 length)
@@ -37,9 +53,8 @@ SR_32 write_to_buf(sr_ring_buffer *rb, SR_U8 *data, SR_32 length)
 			sal_memcpy(buf_ptr, data + first_size, second_size);
 			rb->write_ptr = second_size;
 		}
-		rb->free_slots -= length;
 #ifdef SR_RB_DEBUG
-		sal_printf("write_to_buf %p: free_slots %d write_ptr %d\n", rb, rb->free_slots, rb->write_ptr);
+		sal_printf("write_to_buf %p: write_ptr %d read_ptr %d\n", rb, rb->write_ptr, rb->read_ptr);
 #endif
 		return length;
 	}
@@ -70,9 +85,8 @@ SR_32 read_buf(sr_ring_buffer *rb, SR_U8 *data, SR_32 size, SR_BOOL copy)
 		rb->read_ptr = second_size;
 	}
 
-	rb->free_slots += length;
 #ifdef SR_RB_DEBUG
-	sal_printf("read_buf %p: free_slots %d read_ptr %d\n", rb, rb->free_slots, rb->read_ptr);
+	sal_printf("read_buf %p: read_ptr %d write_ptr %d\n", rb, rb->read_ptr, rb->write_ptr);
 #endif
 
 	return length;
@@ -82,7 +96,6 @@ SR_32 reset_buf(sr_ring_buffer *rb)
 {
 	rb->read_ptr = 0;
 	rb->write_ptr = 0;
-	rb->free_slots = 0;
 	rb->buf_size = 0;
 
 	return 0;
