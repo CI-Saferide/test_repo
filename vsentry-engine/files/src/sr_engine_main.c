@@ -6,6 +6,8 @@
 #include "sr_sal_common.h"
 #include "sr_log.h"
 
+extern void sr_cls_control_ut(void);
+
 SR_32 engine_main_loop(void *data)
 {
 	SR_32 ret;

@@ -173,14 +173,14 @@ int sr_cls_find_ipv4(SR_U32 addr)
 int sr_cls_walker_addrule(struct radix_node *node, void *rulenum)
 {
 	//sal_kernel_print_alert("Walker adds rule %d to node %lx\n", (int)rulenum, (unsigned long)node);
-	sal_set_bit_array((SR_U32)rulenum, &node->sr_private.rules);
+	sal_set_bit_array((SR_U32)(long)rulenum, &node->sr_private.rules);
 	return 0;
 }
 
 int sr_cls_walker_delrule(struct radix_node *node, void *rulenum)
 {
 	//sal_kernel_print_alert("Walker deletes rule %d to node %lx\n", (int)rulenum, (unsigned long)node);
-	sal_clear_bit_array((SR_U32)rulenum, &node->sr_private.rules);
+	sal_clear_bit_array((SR_U32)(long)rulenum, &node->sr_private.rules);
 	return 0;
 }
 
