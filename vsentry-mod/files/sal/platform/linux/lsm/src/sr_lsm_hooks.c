@@ -620,6 +620,8 @@ static int vsentry_vm_enough_memory(struct mm_struct *mm, long pages)
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4,2,0)
 static struct security_hook_list vsentry_hooks[] = {
 
+//#define SR_FILE_HOOKS
+#ifdef SR_FILE_HOOKS
 	LSM_HOOK_INIT(path_unlink, vsentry_path_unlink),
 	LSM_HOOK_INIT(path_symlink, vsentry_path_symlink),
 	LSM_HOOK_INIT(path_mkdir, vsentry_path_mkdir),
@@ -667,11 +669,16 @@ static struct security_hook_list vsentry_hooks[] = {
 	LSM_HOOK_INIT(unix_stream_connect, vsentry_unix_stream_connect),
 	LSM_HOOK_INIT(unix_may_send, vsentry_unix_may_send),
 #endif
+
+#endif // SR_FILE_HOOKS
 	
 	//LSM_HOOK_INIT(kernel_fw_from_file, vsentry_kernel_fw_from_file), //not in every kern version
 	LSM_HOOK_INIT(kernel_module_request, vsentry_kernel_module_request),
 	//LSM_HOOK_INIT(kernel_module_from_file, vsentry_kernel_module_from_file), //not in every kern version
 
+#define SR_SOCKET_HOOKS
+
+#ifdef SR_SOCKET_HOOKS
 	LSM_HOOK_INIT(socket_connect, vsentry_socket_connect),
 	LSM_HOOK_INIT(socket_create, vsentry_socket_create),
 	LSM_HOOK_INIT(socket_bind, vsentry_socket_bind),
@@ -681,6 +688,7 @@ static struct security_hook_list vsentry_hooks[] = {
 	LSM_HOOK_INIT(socket_recvmsg, vsentry_socket_recvmsg),
 	LSM_HOOK_INIT(socket_shutdown, vsentry_socket_shutdown),
 	LSM_HOOK_INIT(socket_sock_rcv_skb,vsentry_socket_sock_rcv_skb),
+#endif // SR_SOCKET_HOOKS
 
 	//LSM_HOOK_INIT(sk_alloc_security, vsentry_sk_alloc_security),
 	//LSM_HOOK_INIT(sk_free_security, vsentry_sk_free_security),

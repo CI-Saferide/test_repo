@@ -6,6 +6,7 @@ $(TARGET)-objs := sal/platform/linux/src/module_init.o \
 				  sal/platform/linux/netfilter/src/sr_netfilter.o \
 				  dispatcher/src/dispatcher.o \
 				  dispatcher/src/msg_process.o \
+				  scanner_det/src/sr_scanner_det.o \
 				  classifier/src/sr_classifier.o \
 				  classifier/src/sr_cls_file.o \
 				  classifier/src/sr_cls_port.o \
@@ -26,6 +27,7 @@ SRC := $(shell pwd)
 EXTRA_CFLAGS := -I$(PWD)/sal/platform/linux/lsm/include 
 EXTRA_CFLAGS += -I$(PWD)/dispatcher/include
 EXTRA_CFLAGS += -I$(PWD)/classifier/include
+EXTRA_CFLAGS += -I$(PWD)/scanner_det/include
 EXTRA_CFLAGS += -I$(PWD)/sal/include
 EXTRA_CFLAGS += -I$(PWD)/sal/test
 EXTRA_CFLAGS += -I$(PWD)/sal/platform/linux/include
