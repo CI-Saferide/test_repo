@@ -10,7 +10,6 @@
 
 /* hook types are NF_INET_PRE_ROUTING, NF_INET_LOCAL_IN, NF_INET_FORWARD, NF_INET_LOCAL_OUT, NF_INET_POST_ROUTING */
 
-extern int sr_scanner_det_rcv(struct sk_buff *skb);
 
 unsigned int sr_netfilter_hook_fn(void *priv,
                     struct sk_buff *skb,          

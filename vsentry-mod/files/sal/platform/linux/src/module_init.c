@@ -25,7 +25,7 @@
 #include "sal_bitops_test.h"
 #endif /* UNIT_TEST */
 
-MODULE_LICENSE("GPL");
+MODULE_LICENSE("proprietary");
 MODULE_DESCRIPTION("vSentry Kernel Module");
 
 static dev_t vsentry_dev;
