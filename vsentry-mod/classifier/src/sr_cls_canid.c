@@ -1,5 +1,4 @@
 #include "dispatcher.h"
-#include "sal_linux.h"
 #include "sal_bitops.h"
 #include "sr_hash.h"
 #include "sr_cls_canid.h"
@@ -13,10 +12,10 @@ int sr_cls_canid_init(void)
 {
 	sr_cls_canid_table = sr_hash_new_table(HT_canid_SIZE);
 	if (!sr_cls_canid_table) {
-		sal_kernel_print_alert("[%s]: Failed to allocate CAN MsgID table!\n", MODULE_NAME);
+		pr_info("[%s]: Failed to allocate CAN MsgID table!\n", MODULE_NAME);
 		return SR_ERROR;
 	}
-	sal_kernel_print_alert("[%s]: Successfully initialized CAN MsgID classifier!\n", MODULE_NAME);
+	pr_info("[%s]: Successfully initialized CAN MsgID classifier!\n", MODULE_NAME);
 	
 	return SR_SUCCESS;
 }
@@ -135,7 +134,7 @@ void sr_cls_print_canid_rules(SR_U32 canid)
 	bit_array rules;
 	SR_16 rule;
 
-	memset(&rules, 0, sizeof(rules));
+	sal_memset(&rules, 0, sizeof(rules));
 
 	if (!ent) {
 		pr_info("Error:%u CAN MsgID rule not found\n",canid);
@@ -143,7 +142,7 @@ void sr_cls_print_canid_rules(SR_U32 canid)
 	}
 	sal_or_self_op_arrays(&rules, &ent->rules);
 	while ((rule = sal_ffs_and_clear_array (&rules)) != -1) {
-		sal_kernel_print_alert("\t\t\tRule #%d\n", rule);
+		pr_info("\t\t\tRule #%d\n", rule);
 	}
 	
 }

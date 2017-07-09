@@ -1,5 +1,4 @@
 #include "dispatcher.h"
-#include "sal_linux.h"
 #include "sal_bitops.h"
 #include "sr_hash.h"
 #include "sr_cls_port.h"
@@ -136,7 +135,7 @@ void sr_cls_print_port_rules(SR_U32 port)
 	bit_array rules;
 	SR_16 rule;
 
-	memset(&rules, 0, sizeof(rules));;
+	sal_memset(&rules, 0, sizeof(rules));;
 	if (!ent) {
 		pr_info("Error:%u port rule not found\n",port);
 		return;

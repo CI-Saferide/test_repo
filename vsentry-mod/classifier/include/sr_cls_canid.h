@@ -1,7 +1,7 @@
 #ifndef SR_CLS_CANID_H
 #define SR_CLS_CANID_H
 
-#include "sr_types.h"
+#include "sr_sal_common.h"
 #include "sal_bitops.h"
 #include "sr_hash.h"
 
