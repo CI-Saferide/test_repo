@@ -1,5 +1,6 @@
 #include "sal_linux.h"
 #include "sr_cls_file.h"
+#include "sr_cls_file_common.h"
 #include "sr_hash.h"
 #include "sal_bitops.h"
 
@@ -87,6 +88,31 @@ void sr_cls_print_rules(SR_U32 inode)
 		sal_kernel_print_alert("Rule #%d\n", rule);
 	}
 	
+}
+
+SR_8 sr_cls_msg_dispatch(struct sr_cls_msg *msg)
+{
+	switch (msg->msg_type) {
+		case SR_CLS_INODE_INHERIT:
+			//sal_kernel_print_alert("Inherit from %x to %x\n", msg->inode1, msg->inode2);
+			return sr_cls_inode_inherit(msg->inode1, msg->inode2);
+			break;
+		case SR_CLS_INODE_DEL_RULE:
+			//sal_kernel_print_alert("delete rule %d from %x\n", msg->rulenum, msg->inode1);
+			return sr_cls_inode_del_rule(msg->inode1, msg->rulenum);
+			break;
+		case SR_CLS_INODE_ADD_RULE:
+			//sal_kernel_print_alert("add rule %d to %x\n", msg->rulenum, msg->inode1);
+			return sr_cls_inode_add_rule(msg->inode1, msg->rulenum);
+			break;
+		case SR_CLS_INODE_REMOVE:
+			//sal_kernel_print_alert("remove inode %x\n", msg->inode1);
+			sr_cls_inode_remove(msg->inode1);
+			break;
+		default:
+			break;
+	}
+	return SR_SUCCESS;
 }
 
 void sr_cls_ut(void)

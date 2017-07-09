@@ -1,3 +1,5 @@
+EXTRA_CFLAGS += -DPLATFORM_LINUX #shay - ask oshri about this flag
+
 KERNEL_SRC  ?= /lib/modules/$(shell uname -r)/build
 
 #make ARCH=arm64 KERNEL_SRC=~/git/raspberrypi/linux CROSS_COMPILE=aarch64-linux-gnu-
