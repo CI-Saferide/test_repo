@@ -14,6 +14,7 @@
 #include "dispatcher.h"
 #include "sr_classifier.h"
 #include "sr_cls_port.h"
+#include "sr_cls_canid.h"
 #include "sr_ring_buf.h"
 #include "sr_shmem.h"
 #include "sr_msg.h"
@@ -203,11 +204,13 @@ static int __init vsentry_init(void)
 	
 	//sr_netfilter_init();
 	sr_classifier_init();
-	sr_cls_port_init();	
+	sr_cls_port_init();
+	sr_cls_canid_init();	
 	
 #ifdef UNIT_TEST
-	sr_cls_port_ut();
 	sal_bitops_test (0);
+	sr_cls_port_ut();
+	sr_cls_canid_ut();
 #endif /* UNIT_TEST */
 
 #if 0
@@ -230,8 +233,11 @@ static void __exit vsentry_cleanup(void)
 
 	//sr_netfilter_uninit();
 	unregister_lsm_hooks();
+	
 	sr_classifier_uninit();
 	sr_cls_port_uninit();
+	sr_cls_canid_uninit();
+	
 	cdev_del(cdev_p);
 	unregister_chrdev_region(vsentry_dev, 1);
 	pr_info("[%s]: module released!\n", MODULE_NAME);
