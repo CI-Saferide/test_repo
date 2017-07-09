@@ -6,40 +6,23 @@
 #include "linux/ip.h"
 #include "linux/netfilter.h"
 #include "linux/netfilter_ipv4.h"
+#include "sal_linux.h"
+#include "sr_scanner_det.h"
+#include "sr_classifier.h"
 
 /* hook types are NF_INET_PRE_ROUTING, NF_INET_LOCAL_IN, NF_INET_FORWARD, NF_INET_LOCAL_OUT, NF_INET_POST_ROUTING */
+
 
 unsigned int sr_netfilter_hook_fn(void *priv,
                     struct sk_buff *skb,          
                     const struct nf_hook_state *state)
 {
 	struct iphdr *ip_header = (struct iphdr *)skb_network_header(skb);
-	unsigned int src_ip = (unsigned int)ip_header->saddr;
-	unsigned int dest_ip = (unsigned int)ip_header->daddr;
-	struct udphdr *udp_header;
- 
-   struct tcphdr *tcp_header;
-	unsigned int src_port = 0;
 
-	unsigned int dest_port = 0;
-
-	/***get src and dest port number***/
-	if (ip_header->protocol==17) {
-
-		udp_header = (struct udphdr *)skb_transport_header(skb);
-
-		src_port = (unsigned int)ntohs(udp_header->source);
-		dest_port = (unsigned int)ntohs(udp_header->dest);
-
-	} else if (ip_header->protocol == 6) {
-
-		tcp_header = (struct tcphdr *)skb_transport_header(skb);
-		src_port = (unsigned int)ntohs(tcp_header->source);
-
-		dest_port = (unsigned int)ntohs(tcp_header->dest);
-
+	if ( ((ip_header->protocol == 6) && ((struct tcphdr *)skb_transport_header(skb))->syn) || (ip_header->protocol == 17)) {
+		if(sr_scanner_det_rcv(skb)==SR_CLS_ACTION_DROP);
+			return NF_DROP;
 	}
-	printk(KERN_INFO "IN packet info: src ip: %x, src port: %x; dest ip: %x, dest port: %x; proto: %un", src_ip, src_port, dest_ip, dest_port, ip_header->protocol); 
 
 	return NF_ACCEPT;
 }

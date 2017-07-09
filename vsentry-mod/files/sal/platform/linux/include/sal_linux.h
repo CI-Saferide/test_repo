@@ -1,6 +1,7 @@
 #ifndef SAL_LINUX_H
 #define SAL_LINUX_H
 
+#include "sr_types.h"
 #include <linux/kernel.h>
 #include <linux/kthread.h>
 #include <linux/vmalloc.h>
@@ -8,6 +9,9 @@
 #include <linux/tcp.h>
 #include <linux/ip.h>
 #include <linux/string.h>
+#include <net/tcp.h>
+#include <linux/time.h>
+
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wdeclaration-after-statement"
@@ -46,4 +50,14 @@
 #define sal_kernel_print_info(fmt, ...) \
 	printk(KERN_INFO pr_fmt(fmt), ##__VA_ARGS__)
 
+// Network functions
+SR_U16 sal_packet_ip_proto(void *skb);
+SR_U16 sal_packet_dest_port(void *skb);
+SR_U16 sal_packet_src_port(void *skb);
+SR_U16 sal_packet_src_addr(void *skb);
+
+
+// Time functions
+SR_U32 sal_get_curr_time(void);
+SR_U32 sal_get_curr_time_nsec(void);
 #endif /* SAL_LINUX_H*/

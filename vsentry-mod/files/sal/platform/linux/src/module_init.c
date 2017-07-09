@@ -19,6 +19,7 @@
 #include "sr_msg.h"
 #include "sr_tasks.h"
 #include "main_loop.h"
+#include "sr_scanner_det.h"
 
 #ifdef UNIT_TEST
 #include "sal_bitops_test.h"
@@ -192,6 +193,7 @@ static int __init vsentry_init(void)
 		return -EIO;
 	}
 
+	sr_scanner_det_init();
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4,2,0)
 	rc = register_lsm_hooks();
 	if (rc)		
@@ -208,7 +210,7 @@ static int __init vsentry_init(void)
 	}
 #endif
 	
-	//sr_netfilter_init();
+	sr_netfilter_init();
 	sr_classifier_init();
 	//sr_cls_port_init();	
 	//sr_cls_port_ut();
@@ -236,7 +238,7 @@ static void __exit vsentry_cleanup(void)
 	for (i=0; i<SR_MAX_TASK; i++)
 		sr_stop_task(i);
 
-//sr_netfilter_uninit();
+	sr_netfilter_uninit();
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4,2,0)
 	unregister_lsm_hooks();
 #else
