@@ -5,7 +5,6 @@
 
 typedef struct {
 	SR_32 buf_size;
-	SR_32 free_slots;
 	SR_32 read_ptr;
 	SR_32 write_ptr;
 } sr_ring_buffer;
