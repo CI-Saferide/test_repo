@@ -96,7 +96,8 @@ SR_U16 sal_packet_dest_port(void *skb)
 {
 	struct iphdr *ip_header = (struct iphdr *)skb_network_header(skb);
 	struct tcphdr *tcp_header = NULL;
-        struct udphdr *udp_header = NULL;
+    struct udphdr *udp_header = NULL;
+
 	if (ip_header->protocol == 6) {
 		tcp_header = (struct tcphdr *)skb_transport_header(skb);
 		return ((unsigned int)ntohs(tcp_header->dest));
@@ -111,7 +112,8 @@ SR_U16 sal_packet_src_port(void *skb)
 {
 	struct iphdr *ip_header = (struct iphdr *)skb_network_header(skb);
 	struct tcphdr *tcp_header = NULL;
-        struct udphdr *udp_header = NULL;
+    struct udphdr *udp_header = NULL;
+
 	if (ip_header->protocol == 6) {
 		tcp_header = (struct tcphdr *)skb_transport_header(skb);
 		return ((unsigned int)ntohs(tcp_header->source));
@@ -126,18 +128,21 @@ SR_U16 sal_packet_src_port(void *skb)
 SR_U16 sal_packet_ip_proto(void *skb)
 {
 	struct iphdr *ip_header = (struct iphdr *)skb_network_header(skb);
+
 	return (ip_header->protocol);
 }
 
 SR_U16 sal_packet_src_addr(void *skb)
 {
 	struct iphdr *ip_header = (struct iphdr *)skb_network_header(skb);
+
 	return ntohl(ip_header->saddr);
 }
 
 SR_U16 sal_packet_dest_addr(void *skb)
 {
 	struct iphdr *ip_header = (struct iphdr *)skb_network_header(skb);
+
 	return ntohl(ip_header->daddr);
 }
 
@@ -145,12 +150,16 @@ SR_U16 sal_packet_dest_addr(void *skb)
 SR_U32 sal_get_curr_time(void)
 {
 	struct timespec ts;
-        getnstimeofday(&ts);
+
+    getnstimeofday(&ts);
+
 	return (ts.tv_sec);
 }
 SR_U32 sal_get_curr_time_nsec(void)
 {
 	struct timespec ts;
-        getnstimeofday(&ts);
+
+    getnstimeofday(&ts);
+
 	return (ts.tv_nsec);
 }

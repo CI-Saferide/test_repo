@@ -5,9 +5,6 @@
 #include "sr_cls_file.h"
 #include "sr_classifier.h"
 #include "sr_sal_common.h"
-#ifdef PLATFORM_LINUX
-#include "sal_linux.h"
-#endif // LINUX
 #include "sr_scanner_det.h"
 #include "sal_bitops.h"
 
@@ -50,10 +47,10 @@ SR_32 scanner_suspicious_conn(void *skb)
 		scan_start = sal_get_curr_time();
 		if (!scan_detected) {
 			if (source_counter < scan_counter/3) { // heuristic number - could be anything...
-				sal_kernel_print_info("SR Detected port scan. initiating counter measures\n");
+				sal_printf("SR Detected port scan. initiating counter measures\n");
 			} else {
 				unsigned int src_ip = sal_packet_src_addr(skb);
-				sal_kernel_print_info("SR Detected port scan from source %02d.%02d.%02d.%02d. initiating counter measures\n",
+				sal_printf("SR Detected port scan from source %02d.%02d.%02d.%02d. initiating counter measures\n",
 					(src_ip&0xff000000)>>24, (src_ip&0x00ff0000)>>16, (src_ip&0xff00)>> 8, src_ip&0xff);
 			}
 			scan_detected = 1;

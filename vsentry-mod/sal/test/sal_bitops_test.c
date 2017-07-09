@@ -21,10 +21,12 @@ void print_bool (SR_U8 bits, SR_U64 num)
 	SR_U8   str_inx; 
 	SR_U8   delimiter;
 	SR_U64  tmp;
+	SR_U8 str[80];
+
 	index = bits-1;
 	str_inx = 0;
 	delimiter = (DELIMITER-1);
-	SR_U8 str[80];
+	
 	switch (bits) {
 		case 8:  tmp = 0x80; break;
 		case 16: tmp = 0x8000; break;
@@ -54,11 +56,11 @@ void print_bool (SR_U8 bits, SR_U64 num)
 void sal_bitops_test (SR_U32 test_num)
 {
 	SR_U64  	decimal64 = 0x0;
-	SR_U32  	decimal = 0x0;
+	//SR_U32  	decimal = 0x0;
 	SR_16  		ffs_result;
 	//SR_U8		test;
 	SR_8		result;
-	SR_BOOL		bool_result;
+	//SR_BOOL		bool_result;
 
 #if 0
 	result = sal_fls64(decimal64);

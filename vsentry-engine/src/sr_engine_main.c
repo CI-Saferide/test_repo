@@ -5,27 +5,28 @@
 #include "sr_engine_main.h"
 #include "sr_sal_common.h"
 #include "sr_log.h"
-
-extern void sr_cls_control_ut(void);
+#include "sr_msg_dispatch.h"
 
 SR_32 engine_main_loop(void *data)
 {
 	SR_32 ret;
-	SR_U8 msg[SR_MAX_PATH];
+	SR_U8 *msg;
 
 	sal_printf("engine_main_loop started\n");
 
 	/* init the module2engine buffer*/
-	ret = sr_msg_alloc_buf(MOD2ENG_BUF, (PAGE_SIZE * 2));
+	ret = sr_msg_alloc_buf(MOD2ENG_BUF, MAX_BUFFER_SIZE);
 	if (ret != SR_SUCCESS){
-		sal_printf("failed to init msg_buf\n");
+		sal_printf("failed to init MOD2ENG msg_buf\n");
 		return SR_ERROR;
 	}
 
 	while (!sr_task_should_stop(SR_ENGINE_TASK)) {
-		ret = sr_read_msg(MOD2ENG_BUF, msg, SR_MAX_PATH, SR_FALSE);
-		if (ret > 0)
-			sal_printf("MOD2ENG msg[len %d]\n", ret);
+		msg = sr_read_msg(MOD2ENG_BUF, &ret);
+		if (ret > 0) {
+			sal_printf("MOD2ENG msg[len %d]. msg: %s\n", ret, msg);
+			sr_free_msg(MOD2ENG_BUF);
+		}
 
 		if (ret == 0)
 			sal_schedule_timeout(1);
@@ -39,9 +40,30 @@ SR_32 engine_main_loop(void *data)
 	return SR_SUCCESS;
 }
 
+static void eng2mod_test(void)
+{
+	sr_msg_cls_file_t *msg;
+	SR_U8 count = 0;
+
+	while (count < 32) {
+		msg = (sr_msg_cls_file_t*)sr_get_msg(ENG2MOD_BUF, ENG2MOD_MSG_MAX_SIZE);
+		if (msg) {
+			msg->msg_type = SR_MSG_TYPE_CLS_FILE;
+			msg->file_msg.msg_type = (count % SR_CLS_INODE_TOTAL);
+			msg->file_msg.rulenum = count;
+			msg->file_msg.inode1 = count;
+			msg->file_msg.inode2 = count;
+			sr_send_msg(ENG2MOD_BUF, ENG2MOD_MSG_MAX_SIZE);
+		}
+		count++;
+	}
+}
+
+
 SR_32 sr_engine_start(void)
 {
 	SR_32 ret;
+	SR_U8 run = 1;
 
 	sal_printf("Welcome to sr-engine App!\n");
 
@@ -52,26 +74,36 @@ SR_32 sr_engine_start(void)
 	}
 
 	ret = sr_start_task(SR_ENGINE_TASK, engine_main_loop);
-	if (ret != SR_SUCCESS){
+	if (ret != SR_SUCCESS) {
 		sal_printf("failed to start engine_main_loop\n");
-		//sr_log_deinit();
+		sr_stop_task(SR_LOG_TASK);
 		return SR_ERROR;
 	}
 
-	ret = sr_msg_alloc_buf(ENG2MOD_BUF, (PAGE_SIZE * 2));
+	ret = sr_msg_alloc_buf(ENG2MOD_BUF, MAX_BUFFER_SIZE);
 	if (ret != SR_SUCCESS){
-		sal_printf("failed to init msg_buf\n");
+		sal_printf("failed to init ENG2MOD msg_buf\n");
 		return SR_ERROR;
 	}
 
-	//sr_cls_control_ut();
+	while (run) {
+		SR_8 input = getchar();
 
-	while (1);
-
-	/* TODO: */
-	//sr_log_deinit();
+		switch (input) {
+			case 'b':
+				run = 0;
+				break;
+			case 's':
+				sr_msg_print_stat();
+				break;
+			case 't':
+				eng2mod_test();
+				break;
+		}
+	}
 
 	sr_stop_task(SR_ENGINE_TASK);
+	sr_stop_task(SR_LOG_TASK);
 
 	return 0;
 }

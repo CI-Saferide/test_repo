@@ -42,6 +42,8 @@ LIB_PATH 	:= -L$(LIBDIR)
 
 CFLAGS 		+= -MMD -Wall
 
+#CFLAGS 		+= -DSR_RB_DEBUG -DSR_MSG_DEBUG
+
 ifdef DEBUG
 CFLAGS		+= -g -O0
 else

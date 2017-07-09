@@ -6,7 +6,7 @@
 #include "linux/ip.h"
 #include "linux/netfilter.h"
 #include "linux/netfilter_ipv4.h"
-#include "sal_linux.h"
+#include "sr_sal_common.h"
 #include "sr_scanner_det.h"
 #include "sr_classifier.h"
 
@@ -39,14 +39,14 @@ int sr_netfilter_init(void)
 	nfho.priority = NF_IP_PRI_FIRST;    
 	nf_register_hook(&nfho);         // Register the hook
 
-    printk(KERN_INFO "Registering netfilter hooks!\n");
+    sal_printf("Registering netfilter hooks!\n");
     return 0;
 }
 
 void sr_netfilter_uninit(void)
 {
 	nf_unregister_hook(&nfho);
-    printk(KERN_INFO "Unregistering netfilter hooks!\n");
+    sal_printf("Unregistering netfilter hooks!\n");
 }
 
 #endif

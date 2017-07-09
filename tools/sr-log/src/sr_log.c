@@ -20,60 +20,65 @@ const static SR_8	*log_level_str[8] = {
 
 static SR_8 g_app_name[20];
 
-/*static SR_8* file_basename(const SR_8* file)
+void log_print_cef_msg(CEF_payload *cef)
 {
-	SR_8* pattern;
-	SR_8* tmp = (SR_8*)file;
 
-	pattern = strstr(tmp, "/");
-	while (NULL != pattern) {
-		pattern+=1;
-		tmp = pattern;
-		pattern = strstr(pattern, "/");
+	sal_printf("CEF: cef_version %d, vendor %s, product %s, ver %d, ",
+		cef->cef_version, cef->dev_vendor, cef->dev_product, cef->dev_version);
+	switch (cef->class) {
+	case NETWORK:
+		sal_printf("class network, ");
+		break;
+    case FS:
+		sal_printf("class fs, ");
+		break;
+    case PROC:
+		sal_printf("class proc, ");
+		break;
+	default:
+		sal_printf("class N/A, ");
+		break;
 	}
-	return (tmp);
-}*/
+	sal_printf("name %s,\n", cef->name);
+	sal_printf("extension : %s\n", cef->extension);
+}
 
 SR_32 engine_log_loop(void *data)
 {
-	sr_ring_buffer *rb;
-	sr_shmem *vsshmem;
 	SR_32 ret;
-	CEF_payload *cef;
-	SR_U8 *buf;
-	SR_32 length = (sizeof(CEF_payload) * 64);
+	SR_U8 *msg;
 
 	sal_printf("engine_log_loop started\n");
 
-	ret = sr_msg_alloc_buf(LOG_BUF, length);
+	ret = sr_msg_alloc_buf(ENG2LOG_BUF, MAX_BUFFER_SIZE);
 	if (ret != SR_SUCCESS){
 		sal_printf("failed to init log buf\n");
 		return 0;
 	}
 
-	vsshmem = sr_msg_get_buf(LOG_BUF);
-	if (!vsshmem) {
-		sal_printf("failed to init vsshmem\n");
-		return 0;
-	}
-
-	rb = vsshmem->buffer;
-	if (!rb) {
-		sal_printf("something is wrong !!!! shouldn't happened\n");
+	ret = sr_msg_alloc_buf(MOD2LOG_BUF, MAX_BUFFER_SIZE);
+	if (ret != SR_SUCCESS){
+		sal_printf("failed to init log buf\n");
 		return 0;
 	}
 
 	while (!sr_task_should_stop(SR_LOG_TASK)) {
-		if ((ret = get_max_read_size(rb)) > sizeof(CEF_payload)) {
-			buf = ((SR_U8*)rb + sizeof(sr_ring_buffer));
-			cef = (CEF_payload*)&buf[rb->read_ptr];
-			sal_printf("LOG msg: %s\n", cef->extension);
-			read_buf(rb, (SR_U8*)cef, sizeof(CEF_payload), SR_FALSE);
+		msg = sr_read_msg(MOD2LOG_BUF, &ret);
+		if (ret > 0) {
+			log_print_cef_msg((CEF_payload*)msg);
+			sr_free_msg(MOD2LOG_BUF);
+		}
+
+		msg = sr_read_msg(ENG2LOG_BUF, &ret);
+		if (ret > 0) {
+			sal_printf("ENG2LOG msg: %s\n", msg);
+			sr_free_msg(ENG2LOG_BUF);
 		}
 	}
 
 	/* free allocated buffer */
-	sr_msg_free_buf(LOG_BUF);
+	sr_msg_free_buf(ENG2LOG_BUF);
+	sr_msg_free_buf(MOD2LOG_BUF);
 
 	sal_printf("engine_log_loop end\n");
 

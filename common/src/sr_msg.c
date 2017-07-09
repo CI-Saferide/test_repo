@@ -3,16 +3,26 @@
 #include "sr_msg.h"
 #include "sr_sal_common.h"
 
-static sr_shmem sr_msg_buf_array[TOTAL_BUFS];
+static sr_shmem sr_msg_buf_array[TOTAL_BUFS] = {
+	{NULL, 0},
+	{NULL, 0},
+	{NULL, 0},
+	{NULL, 0}
+	};
 
 SR_8 *buf_names[TOTAL_BUFS] = {
 	"ENG2MOD",
 	"MOD2ENG",
-	"LOG_BUF"
+	"ENG2LOG",
+	"MOD2LOG",
 };
 
 SR_32 sr_msg_alloc_buf(SR_U8 type, SR_32 length)
 {
+	SR_32 num_of_buffers;
+	SR_32 each_buf_size;
+	sr_shmem shmem;
+
 	if (type > MAX_BUF_TYPE) {
 		sal_printf("sr_msg_alloc_buf: requested type %d is wrong\n", type);
 		return SR_ERROR;
@@ -23,13 +33,40 @@ SR_32 sr_msg_alloc_buf(SR_U8 type, SR_32 length)
 		return SR_ERROR;
 	}
 
-	if (sal_shmem_alloc(&sr_msg_buf_array[type], length, type) != SR_SUCCESS) {
+	if (sal_shmem_alloc(&shmem, length, type) != SR_SUCCESS) {
 		sal_printf("sr_msg_alloc_buf: failed to allocate mem for %s len %d\n", buf_names[type], length);
 		return SR_ERROR;
 	}
 
-	init_buf(length, (sr_ring_buffer*)sr_msg_buf_array[type].buffer);
+	switch (type) {
+		case ENG2MOD_BUF:
+			each_buf_size = ENG2MOD_MSG_MAX_SIZE;
+			break;
+		case MOD2ENG_BUF:
+			each_buf_size = MOD2ENG_MSG_MAX_SIZE;
+			break;
+		case ENG2LOG_BUF:
+		case MOD2LOG_BUF:
+			each_buf_size = LOG_MSG_MAX_SIZE;
+			break;
+		default:
+			sal_printf("sr_msg_alloc_buf: requested type %d is wrong\n", type);
+			return SR_ERROR;
+	}
 
+	num_of_buffers = sr_ring_buf_calc_buffers(length, each_buf_size);
+
+	sal_printf("sr_msg_alloc_buf: allocating %d buffers of size %d for %s\n",
+		num_of_buffers, length, buf_names[type]);
+
+	if (sr_init_ring_buf((sr_ring_buffer*)shmem.buffer, length, num_of_buffers, each_buf_size) == 0) {
+		sal_printf("sr_msg_alloc_buf: failed to init ring buffer for %s\n", buf_names[type]);
+		return SR_ERROR;
+	}
+
+	sr_msg_buf_array[type].buffer_size = shmem.buffer_size;
+	sr_msg_buf_array[type].buffer = shmem.buffer;
+	
 #ifdef SR_MSG_DEBUG
 	sal_printf("sr_msg_alloc_buf: buf %s initilized %p\n", buf_names[type], sr_msg_buf_array[type].buffer);
 #endif
@@ -56,32 +93,25 @@ SR_32 sr_msg_free_buf(SR_U8 type)
 
 }
 
-SR_32 sr_read_msg(SR_U8 type, SR_U8 *data, SR_U32 length, SR_BOOL copy)
+SR_U8 *sr_read_msg(SR_U8 type, SR_32 *length)
 {
 	sr_ring_buffer *rb;
 
 	if (type > MAX_BUF_TYPE) {
 		sal_printf("sr_read_msg: requested type %d is wrong\n", type);
-		return SR_ERROR;
+		return NULL;
 	}
 
 	rb = (sr_ring_buffer*)sr_msg_buf_array[type].buffer;
-	if (!rb) {
+	if (!rb || !rb->buf_mem_offset) {
 		sal_printf("sr_read_msg: error, %s buffer is NULL\n", buf_names[type]);
-		return SR_ERROR;
+		return NULL;
 	}
 
-	if (get_max_read_size(rb) > 0) {
-#ifdef SR_MSG_DEBUG
-		sal_printf("sr_read_msg: read from %s buf %p\n", buf_names[type], rb); 
-#endif
-		return read_buf(rb, data, length, copy);
-	}
-
-	return 0;
+	return sr_read_buf(rb, length);
 }
 
-SR_32 sr_send_msg(SR_U8 type, SR_U8 *data, SR_U32 length)
+SR_32 sr_free_msg(SR_U8 type)
 {
 	sr_ring_buffer *rb;
 
@@ -91,19 +121,56 @@ SR_32 sr_send_msg(SR_U8 type, SR_U8 *data, SR_U32 length)
 	}
 
 	rb = (sr_ring_buffer*)sr_msg_buf_array[type].buffer;
-	if (!rb) {
+	if (!rb || !rb->buf_mem_offset) {
 #ifdef SR_MSG_DEBUG
 		sal_printf("sr_send_msg: error, buffer is NULL\n");
 #endif
 		return SR_ERROR;
 	}
 
-	if (get_max_write_size(rb) < length) {
-		sal_printf("sr_send_msg: error, no room in %s\n", buf_names[type]);
-		return 0;
+	sr_free_buf(rb);
+
+	return SR_SUCCESS;
+}
+
+SR_U8 *sr_get_msg(SR_U8 type, SR_32 size)
+{
+	sr_ring_buffer *rb;
+
+	if (type > MAX_BUF_TYPE) {
+		sal_printf("sr_get_msg: requested type %d is wrong\n", type);
+		return NULL;
 	}
 
-	return write_to_buf(rb, data, length);
+	rb = (sr_ring_buffer*)sr_msg_buf_array[type].buffer;
+	if (!rb || !rb->buf_mem_offset) {
+#ifdef SR_MSG_DEBUG
+		sal_printf("sr_get_msg: error, buffer is NULL\n");
+#endif
+		return NULL;
+	}
+
+	return sr_get_buf(rb, size);
+}
+
+SR_32 sr_send_msg(SR_U8 type, SR_32 length)
+{
+	sr_ring_buffer *rb;
+
+	if (type > MAX_BUF_TYPE) {
+		sal_printf("sr_send_msg: requested type %d is wrong\n", type);
+		return SR_ERROR;
+	}
+
+	rb = (sr_ring_buffer*)sr_msg_buf_array[type].buffer;
+	if (!rb || !rb->buf_mem_offset) {
+#ifdef SR_MSG_DEBUG
+		sal_printf("sr_send_msg: error, buffer is NULL\n");
+#endif
+		return SR_ERROR;
+	}
+
+	return sr_write_buf(rb, length);
 }
 
 sr_shmem* sr_msg_get_buf(SR_U8 type)
@@ -114,5 +181,19 @@ sr_shmem* sr_msg_get_buf(SR_U8 type)
 	}
 
 	return &sr_msg_buf_array[type];
+}
+
+void sr_msg_print_stat(void)
+{
+	sr_ring_buffer *rb;
+	SR_U8 type;
+
+	for (type = ENG2MOD_BUF; type < TOTAL_BUFS; type ++) {
+		rb = (sr_ring_buffer*)sr_msg_buf_array[type].buffer;
+		if (!rb || !rb->buf_mem_offset)
+			continue;
+				sal_printf("%s statistics:\n", buf_names[type]);
+		sr_print_rb_info(rb);
+	}
 }
 

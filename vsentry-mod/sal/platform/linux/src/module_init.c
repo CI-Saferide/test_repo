@@ -59,17 +59,21 @@ static int vsentry_drv_mmap(struct file *file, struct vm_area_struct *vma)
 	switch (vma->vm_pgoff) {
 		case ENG2MOD_PAGE_OFFSET:
 			type = ENG2MOD_BUF;
-			pr_info("vsentry_drv_mmap: initializing rx_buff\n");
+			pr_info("vsentry_drv_mmap: initializing ENG2MOD_BUF\n");
 			thread = sr_task_get_data(SR_MODULE_TASK);
 			pr_info("vsentry_drv_mmap: thread 0x%p\n", thread);
 			break;
 		case MOD2ENG_PAGE_OFFSET:
 			type = MOD2ENG_BUF;
-			pr_info("vsentry_drv_mmap: initializing tx_buff\n");
+			pr_info("vsentry_drv_mmap: initializing MOD2ENG_BUF\n");
 			break;
-		case LOG_BUF_PAGE_OFFSET:
-			type = LOG_BUF;
-			pr_info("vsentry_drv_mmap: initializing log_buff\n");
+		case ENG2LOG_PAGE_OFFSET:
+			type = ENG2LOG_BUF;
+			pr_info("vsentry_drv_mmap: initializing ENG2LOG_BUF\n");
+			break;
+		case MOD2LOG_PAGE_OFFSET:
+			type = MOD2LOG_BUF;
+			pr_info("vsentry_drv_mmap: initializing MOD2LOG_BUF\n");
 			break;
 		default:
 			pr_err("wrong offset %lu\n", vma->vm_pgoff);
@@ -83,9 +87,8 @@ static int vsentry_drv_mmap(struct file *file, struct vm_area_struct *vma)
 		return -EIO;
 	}
 
-	ret = sr_msg_alloc_buf(type, length);
-	if (ret < 0) {
-		pr_err("failed to allocate memory on offset %lu\n", vma->vm_pgoff);
+	if (sal_shmem_alloc(vsshmem, length, type) != SR_SUCCESS) {
+		pr_err("failed to allocate mem len %ld\n", length);
 		return -EIO;
 	}
 
@@ -141,8 +144,8 @@ static struct file_operations vsentry_file_ops = {
 #if 0
 static int dummy_tx_thread_loop(void *arg)
 {
-	unsigned char data[128];
-	int length, count;
+	unsigned char *data;
+	int count;
 
 	pr_info("dummy_tx_thread_loop started ...\n");
 
@@ -152,10 +155,12 @@ static int dummy_tx_thread_loop(void *arg)
 		count = 0;
 
 		while (count < 32) {
-			length = (jiffies%128);
-			memset(data, 0, 128);
-			memset(data, '#', length);
-			sr_send_msg(MOD2ENG_BUF, data, length);
+			data = sr_get_msg(MOD2ENG_BUF, MOD2ENG_MSG_MAX_SIZE);
+			if (data) {
+				memset(data, 0, MOD2ENG_MSG_MAX_SIZE);
+				memset(data, '#', count);
+				sr_send_msg(MOD2ENG_BUF, MOD2ENG_MSG_MAX_SIZE);
+			}
 			count++;
 		}
 
@@ -195,8 +200,6 @@ static int __init vsentry_init(void)
 		return -EIO;
 	}
 
-	sr_scanner_det_init();
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,2,0)
 	rc = register_lsm_hooks();
 	if (rc)	{
 		pr_info("[%s]: registration to lsm failed!\n", MODULE_NAME);
@@ -204,21 +207,11 @@ static int __init vsentry_init(void)
 		return rc;
 	}
 	pr_info("[%s]: registration to lsm succeedded\n", MODULE_NAME);	
-#else
-	reset_security_ops();
-	if (register_security (&vsentry_ops)){
-		pr_info("[%s]: registration to lsm failed!\n", MODULE_NAME);
-		rc = -EPERM;
-	} else {
-		pr_info("[%s]: registration to lsm succeedded\n", MODULE_NAME);
-	}
-#endif
 
 	sr_cls_port_init();	
-	sr_netfilter_init();
-	sr_classifier_init();	
-	//sr_cls_port_ut();
-	// sr_cls_port_ut();
+	//sr_netfilter_init();
+	sr_classifier_init();
+	sr_cls_canid_init();
 	
 #ifdef UNIT_TEST
 	sal_bitops_test (0);
@@ -250,11 +243,6 @@ static void __exit vsentry_cleanup(void)
 	sr_cls_port_uninit();
 	sr_cls_canid_uninit();
 	sr_netfilter_uninit();
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,2,0)
-	unregister_lsm_hooks();
-#else
-	reset_security_ops();
-#endif
 
 	cdev_del(cdev_p);
 	unregister_chrdev_region(vsentry_dev, 1);

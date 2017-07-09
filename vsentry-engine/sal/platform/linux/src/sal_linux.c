@@ -38,7 +38,7 @@ SR_32 sal_task_start(void **data, SR_32 (*task_func)(void *data))
 		return SR_ERROR;
 	}
 
-	data = (void*)thread;
+	*data = (void*)thread;
 
 	sal_printf("sal_task_start: new task was created\n");
 

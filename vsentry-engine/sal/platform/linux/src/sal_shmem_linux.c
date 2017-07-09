@@ -2,6 +2,8 @@
 #include "sal_linux.h"
 #include "sr_sal_common.h"
 
+static int fd = 0;
+
 SR_32 sal_shmem_free(sr_shmem *sr_shmem_ptr)
 {
     if (!sr_shmem_ptr || !sr_shmem_ptr->buffer) {
@@ -23,7 +25,6 @@ SR_32 sal_shmem_free(sr_shmem *sr_shmem_ptr)
 
 SR_32 sal_shmem_alloc(sr_shmem *sr_shmem_ptr, SR_32 length, SR_32 type)
 {
-	int fd;
 	int offset;
 
     if (!sr_shmem_ptr || (length <= 0) || (length > MAX_BUFFER_SIZE)) {
@@ -38,34 +39,38 @@ SR_32 sal_shmem_alloc(sr_shmem *sr_shmem_ptr, SR_32 length, SR_32 type)
 		case MOD2ENG_BUF:
 			offset = MOD2ENG_SIZE_OFFSET;
 			break;
-		case LOG_BUF:
-			offset = LOG_BUF_SIZE_OFFSET;
+		case ENG2LOG_BUF:
+			offset = ENG2LOG_SIZE_OFFSET;
+			break;
+		case MOD2LOG_BUF:
+			offset = MOD2LOG_SIZE_OFFSET;
 			break;
 		default:
 			sal_printf("sal_shmem_alloc: wrong buf type %d\n", type);
 			return SR_ERROR;
 	}
 
-	fd = open(VS_FILE_NAME, O_RDWR|O_SYNC);
-	if (fd < 0) {
-		sal_printf("sal_shmem_alloc: faield to open %s\n", VS_FILE_NAME);
-		return SR_ERROR;
+	if (fd == 0 ) {
+		fd = open(VS_FILE_NAME, O_RDWR|O_SYNC);
+		if (fd < 0) {
+			sal_printf("sal_shmem_alloc: faield to open %s\n", VS_FILE_NAME);
+			return SR_ERROR;
+		}
 	}
 
 	sr_shmem_ptr->buffer = mmap(NULL, length, (PROT_READ | PROT_WRITE),
 		(MAP_SHARED| MAP_LOCKED) ,fd, offset);
-	if (!sr_shmem_ptr->buffer) {
-		sal_printf("sal_shmem_alloc: failed to mmap %d %d\n", type, length);
-		close(fd);
+	if (sr_shmem_ptr->buffer == (void*)(-1)) {
+		perror("");
+		sal_printf("sal_shmem_alloc: failed to mmap type %d %d\n", type, length);
 		return SR_ERROR;
 	}
 
 	sr_shmem_ptr->buffer_size = length;
 
-	sal_printf("sal_shmem_alloc: allocated 0x%p:%d\n",
+	sal_printf("sal_shmem_alloc: allocated 0x%p size 0x%08x\n",
 		sr_shmem_ptr->buffer, sr_shmem_ptr->buffer_size);
-
-	close(fd);
 
 	return SR_SUCCESS;
 }
+

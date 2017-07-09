@@ -55,7 +55,7 @@ typedef union {
 	}socket_info;
 }disp_info_t;
 
-CEF_payload cef_init(char* event_name,enum severity sev,enum dev_event_class_ID	class);
+CEF_payload *cef_init(char* event_name,enum severity sev,enum dev_event_class_ID	class);
 
 SR_BOOL disp_mkdir(disp_info_t* info);
 SR_BOOL disp_rmdir(disp_info_t* info);
