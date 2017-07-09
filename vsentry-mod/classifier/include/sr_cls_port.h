@@ -1,7 +1,7 @@
 #ifndef SR_CLS_PORT_H
 #define SR_CLS_PORT_H
 
-#include "sr_types.h"
+#include "sr_sal_common.h"
 #include "sal_bitops.h"
 #include "sr_hash.h"
 #define SR_MAX_PORT 65535

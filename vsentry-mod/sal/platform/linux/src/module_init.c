@@ -14,6 +14,7 @@
 #include "dispatcher.h"
 #include "sr_classifier.h"
 #include "sr_cls_port.h"
+#include "sr_cls_canid.h"
 #include "sr_ring_buf.h"
 #include "sr_shmem.h"
 #include "sr_msg.h"
@@ -202,7 +203,7 @@ static int __init vsentry_init(void)
 		cdev_del(cdev_p);
 		return rc;
 	}
-	pr_info("[%s]: registration to lsm succeedded\n", MODULE_NAME);
+	pr_info("[%s]: registration to lsm succeedded\n", MODULE_NAME);	
 #else
 	reset_security_ops();
 	if (register_security (&vsentry_ops)){
@@ -220,8 +221,9 @@ static int __init vsentry_init(void)
 	// sr_cls_port_ut();
 	
 #ifdef UNIT_TEST
-	sr_cls_port_ut();
 	sal_bitops_test (0);
+	sr_cls_port_ut();
+	sr_cls_canid_ut();
 #endif /* UNIT_TEST */
 
 #if 0
@@ -243,8 +245,10 @@ static void __exit vsentry_cleanup(void)
 		sr_stop_task(i);
 
 	unregister_lsm_hooks();
+	
 	sr_classifier_uninit();
 	sr_cls_port_uninit();
+	sr_cls_canid_uninit();
 	sr_netfilter_uninit();
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4,2,0)
 	unregister_lsm_hooks();
@@ -252,7 +256,6 @@ static void __exit vsentry_cleanup(void)
 	reset_security_ops();
 #endif
 
-	sr_classifier_uninit();
 	cdev_del(cdev_p);
 	unregister_chrdev_region(vsentry_dev, 1);
 	pr_info("[%s]: module released!\n", MODULE_NAME);
