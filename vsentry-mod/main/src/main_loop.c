@@ -1,9 +1,11 @@
 #include "sal_module.h"
 #include "sr_shmem.h"
 #include "sr_msg.h"
+#include "sr_msg_dispatch.h"
 #include "sr_tasks.h"
 #include "main_loop.h"
 #include "sr_sal_common.h"
+#include "sr_cls_file.h"
 
 #define MAX_RX_MSG_LEN 	512
 
@@ -55,3 +57,14 @@ SR_32 sr_module_start(void)
 	return SR_SUCCESS;
 }
 
+SR_32 sr_msg_dispatch(char *msg, int size)
+{
+	sr_msg_dispatch_hdr_t *hdr = (sr_msg_dispatch_hdr_t *)msg;
+	if (!hdr)
+		return SR_ERROR;
+	if (hdr->msg_type == SR_MSG_TYPE_CLS_FILE) {
+		sr_cls_msg_dispatch((struct sr_cls_msg *)hdr->msg_payload);
+	}
+	return SR_SUCCESS;
+
+}

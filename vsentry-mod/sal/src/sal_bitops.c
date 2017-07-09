@@ -6,6 +6,16 @@
 
 #include "sal_bitops.h"
 
+SR_BOOL sal_bit_array_is_set (SR_U16 bit, bit_array *arr)
+{
+	if (bit > 4095)
+		return 0;
+	if ((arr->summary & bit/64) && (arr->level2[bit/64] & (bit%64))) {
+		return 1;
+	} else {
+		return 0;
+	}
+}
 void sal_set_bit_array (SR_U16 bit, bit_array *arr)
 {
 	SR_U8		pos_in_summary;

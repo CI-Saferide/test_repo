@@ -11,7 +11,13 @@ EXTRA_CFLAGS += -I$(TOP_DIR)/../common/include
 EXTRA_CFLAGS += -I$(TOP_DIR)/main/include
 EXTRA_CFLAGS += -I$(TOP_DIR)/../tools/sr-log/include
 EXTRA_CFLAGS += -I$(TOP_DIR)/dispatcher/include
+EXTRA_CFLAGS += -I$(TOP_DIR)/scanner_det/include
+
 #EXTRA_CFLAGS += -DUNIT_TEST
+EXTRA_CFLAGS += -D_KERNEL
+#debug flags
+#EXTRA_CFLAGS += -DDEBUG_EVENT_MEDIATOR
+#EXTRA_CFLAGS += -DDEBUG_DISPATCHER
 
 ifneq ($(KERNELRELEASE),)
 
@@ -23,6 +29,7 @@ $(TARGET)-objs := sal/platform/linux/src/module_init.o \
 				  sal/platform/linux/netfilter/src/sr_netfilter.o \
 				  dispatcher/src/dispatcher.o \
 				  dispatcher/src/msg_process.o \
+				  scanner_det/src/sr_scanner_det.o \
 				  classifier/src/sr_classifier.o \
 				  classifier/src/sr_cls_file.o \
 				  classifier/src/sr_cls_port.o \

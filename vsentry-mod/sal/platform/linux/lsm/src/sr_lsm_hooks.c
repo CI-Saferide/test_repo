@@ -15,7 +15,7 @@ int hook_filter(void)
 	/*if the statement is true in means the SYS_CALL invoked by sr-engine */
 	if ((sr_vsentryd_pid) == (current->pid)-1)
 		return SR_TRUE;
-
+		
 	return SR_FALSE;
 }
 
@@ -42,6 +42,19 @@ char* get_path(struct dentry *dentry, char *buffer, int len)
 	return buffer;
 }
 
+
+
+
+__attribute__ ((unused))
+static void vsentry_bprm_committing_creds(struct linux_binprm *bprm)
+{
+	if(hook_filter())
+		return;
+
+	return;
+}
+
+__attribute__ ((unused))
 static int vsentry_path_unlink(struct path *path, struct dentry *dentry)
 {
 	if(hook_filter())
@@ -51,15 +64,18 @@ static int vsentry_path_unlink(struct path *path, struct dentry *dentry)
 	return 0;
 }
 
+__attribute__ ((unused))
 static int vsentry_path_mkdir(struct path *dir, struct dentry *dentry, umode_t mode)
 {
 	if(hook_filter())
 		return 0;
 
+	printk("%s CALLED\n",__FUNCTION__);
 	//TODO: handle permission for sys call
 	return 0;
 }
 
+__attribute__ ((unused))
 static int vsentry_path_rmdir(struct path *dir, struct dentry *dentry)
 {
 	if(hook_filter())
@@ -69,6 +85,7 @@ static int vsentry_path_rmdir(struct path *dir, struct dentry *dentry)
 	return 0;
 }
 
+__attribute__ ((unused))
 static int vsentry_path_symlink(struct path *dir, struct dentry *dentry, const char *old_name)
 {
 	if(hook_filter())
@@ -78,6 +95,7 @@ static int vsentry_path_symlink(struct path *dir, struct dentry *dentry, const c
 	return 0;
 }
 
+__attribute__ ((unused))
 static int vsentry_inode_mknod(struct inode *dir, struct dentry *dentry, umode_t mode, dev_t dev)
 {
 	if(hook_filter())
@@ -87,6 +105,7 @@ static int vsentry_inode_mknod(struct inode *dir, struct dentry *dentry, umode_t
 	return 0;
 }
 
+__attribute__ ((unused))
 static int vsentry_path_mknod(struct path *dir, struct dentry *dentry, umode_t mode,unsigned int dev)
 {
 	if(hook_filter())
@@ -96,6 +115,7 @@ static int vsentry_path_mknod(struct path *dir, struct dentry *dentry, umode_t m
 	return 0;
 }
 
+__attribute__ ((unused))
 static int vsentry_inode_rename(struct inode *old_dir, struct dentry *old_dentry, struct inode *new_dir,struct dentry *new_dentry)
 {
 	if(hook_filter())
@@ -105,15 +125,17 @@ static int vsentry_inode_rename(struct inode *old_dir, struct dentry *old_dentry
 	return 0;
 }
 
+__attribute__ ((unused))
 static int vsentry_path_rename(struct path *old_dir, struct dentry *old_dentry, struct path *new_dir,struct dentry *new_dentry)
 {
 	if(hook_filter())
 		return 0;
-
+	
 	//TODO: handle permission for sys call
 	return 0;
 }
 
+__attribute__ ((unused))
 static int vsentry_path_chown(struct path *old_dir,kuid_t uid,kgid_t gid)
 {
 	if(hook_filter())
@@ -123,11 +145,8 @@ static int vsentry_path_chown(struct path *old_dir,kuid_t uid,kgid_t gid)
 	return 0;
 }
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,2,0)
-static int vsentry_inode_follow_link(struct dentry *dentry, struct inode *inode, bool rcu)
-#else
-static int vsentry_inode_follow_link(struct dentry *dentry, struct nameidata *nd)
-#endif
+__attribute__ ((unused))
+static int vsentry_path_chroot(struct path *old_dir,kuid_t uid,kgid_t gid)
 {
 	if(hook_filter())
 		return 0;
@@ -136,6 +155,27 @@ static int vsentry_inode_follow_link(struct dentry *dentry, struct nameidata *nd
 	return 0;
 }
 
+__attribute__ ((unused))
+static int vsentry_inode_readlink(struct dentry *dentry)
+{
+	if(hook_filter())
+		return 0;
+
+	//TODO: handle permission for sys call
+	return 0;
+}
+
+__attribute__ ((unused))
+static int vsentry_inode_follow_link(struct dentry *dentry, struct inode *inode, bool rcu)
+{
+	if(hook_filter())
+		return 0;
+
+	//TODO: handle permission for sys call
+	return 0;
+}
+
+__attribute__ ((unused))
 static int vsentry_path_truncate(struct path *path)
 {
 	if(hook_filter())
@@ -145,6 +185,7 @@ static int vsentry_path_truncate(struct path *path)
 	return 0;
 }
 
+__attribute__ ((unused))
 static int vsentry_file_permission(struct file *file, int mask)
 {
 	if(hook_filter())
@@ -154,6 +195,7 @@ static int vsentry_file_permission(struct file *file, int mask)
 	return 0;
 }
 
+__attribute__ ((unused))
 static int vsentry_file_alloc_security(struct file *file)
 {
 	if(hook_filter())
@@ -163,6 +205,7 @@ static int vsentry_file_alloc_security(struct file *file)
 	return 0;
 }
 
+__attribute__ ((unused))
 static void vsentry_file_free_security(struct file *file)
 {
 	if(hook_filter())
@@ -171,6 +214,7 @@ static void vsentry_file_free_security(struct file *file)
 	return;
 }
 
+__attribute__ ((unused))
 static int vsentry_file_ioctl(struct file *file, unsigned int cmd,unsigned long arg)
 {
 	if(hook_filter())
@@ -180,6 +224,7 @@ static int vsentry_file_ioctl(struct file *file, unsigned int cmd,unsigned long 
 	return 0;
 }
 
+__attribute__ ((unused))
 static int vsentry_mmap_addr(unsigned long addr)
 {
 	if(hook_filter())
@@ -189,15 +234,17 @@ static int vsentry_mmap_addr(unsigned long addr)
 	return 0;
 }
 
+__attribute__ ((unused))
 static int vsentry_mmap_file(struct file *file, unsigned long reqport,unsigned long port,unsigned long flags)
 {
 	if(hook_filter())
-		return 0;
+return 0;
 
 	//TODO: handle permission for sys call
 	return 0;
 }
 
+__attribute__ ((unused))
 static int vsentry_file_mprotect(struct vm_area_struct *vma, unsigned long reqport,unsigned long port)
 {
 	if(hook_filter())
@@ -206,6 +253,7 @@ static int vsentry_file_mprotect(struct vm_area_struct *vma, unsigned long reqpo
 	return 0;
 }
 
+__attribute__ ((unused))
 static int vsentry_file_lock(struct file *file, unsigned int cmd)
 {
 	if(hook_filter())
@@ -215,6 +263,7 @@ static int vsentry_file_lock(struct file *file, unsigned int cmd)
 	return 0;
 }
 
+__attribute__ ((unused))
 static int vsentry_file_fcntl(struct file *file, unsigned int cmd,unsigned long arg)
 {
 	if(hook_filter())
@@ -223,15 +272,17 @@ static int vsentry_file_fcntl(struct file *file, unsigned int cmd,unsigned long 
 	return 0;
 }
 
+__attribute__ ((unused))
 static int vsentry_task_create(unsigned long clone_flags)
 {
 	if(hook_filter())
-		return 0;
+return 0;
 
 	//TODO: handle permission for sys call
 	return 0;
 }
 
+__attribute__ ((unused))
 static void vsentry_task_free(struct task_struct *task)
 {
 	if(hook_filter())
@@ -240,6 +291,17 @@ static void vsentry_task_free(struct task_struct *task)
 	return;
 }
 
+__attribute__ ((unused))
+static int vsentry_kernel_fw_from_file(struct file *file,char * buf,size_t size)
+{
+	if(hook_filter())
+		return 0;
+
+	//TODO: handle permission for sys call
+	return 0;
+}
+
+__attribute__ ((unused))
 static int vsentry_kernel_module_request(char *kmod_name)
 {
 	if(hook_filter())
@@ -249,6 +311,27 @@ static int vsentry_kernel_module_request(char *kmod_name)
 	return 0;
 }
 
+__attribute__ ((unused))
+static int vsentry_kernel_module_from_file(struct file *file)
+{
+	if(hook_filter())
+		return 0;
+
+	//TODO: handle permission for sys call
+	return 0;
+}
+
+__attribute__ ((unused))
+static int vsentry_task_fix_setuid(struct cred *new, const struct cred *old, int flags)
+{
+	if(hook_filter())
+		return 0;
+
+	//TODO: handle permission for sys call
+	return 0;
+}
+
+__attribute__ ((unused))
 static int vsentry_task_setpgid(struct task_struct *p,pid_t pgid)
 {
 	if(hook_filter())
@@ -257,6 +340,7 @@ static int vsentry_task_setpgid(struct task_struct *p,pid_t pgid)
 	return 0;
 }
 
+__attribute__ ((unused))
 static int vsentry_task_setnice(struct task_struct *p,int nice)
 {
 	if(hook_filter())
@@ -266,6 +350,7 @@ static int vsentry_task_setnice(struct task_struct *p,int nice)
 	return 0;
 }
 
+__attribute__ ((unused))
 static int vsentry_task_setrlimit(struct task_struct *p,unsigned int resource, struct rlimit *new_rlim)
 {
 	if(hook_filter())
@@ -275,15 +360,17 @@ static int vsentry_task_setrlimit(struct task_struct *p,unsigned int resource, s
 	return 0;
 }
 
+__attribute__ ((unused))
 static int vsentry_task_movememory(struct task_struct *p)
 {
 	if(hook_filter())
 		return 0;
-
+	
 	//TODO: handle permission for sys call
 	return 0;
 }
 
+__attribute__ ((unused))
 static int vsentry_task_kill(struct task_struct *p,struct siginfo *info, int sig, u32 secid)
 {
 	if(hook_filter())
@@ -293,6 +380,7 @@ static int vsentry_task_kill(struct task_struct *p,struct siginfo *info, int sig
 	return 0;
 }
 
+__attribute__ ((unused))
 static void vsentry_task_to_inode(struct task_struct *p,struct inode *inode)
 {
 	if(hook_filter())
@@ -301,25 +389,27 @@ static void vsentry_task_to_inode(struct task_struct *p,struct inode *inode)
 	return;
 }
 
-#ifdef CONFIG_SECURITY_NETWORK
+__attribute__ ((unused))
 static int vsentry_unix_stream_connect(struct sock *sock,struct sock *other, struct sock *newsk)
 {
 	if(hook_filter())
 		return 0;
-
+	
 	//TODO: handle permission for sys call
 	return 0;
 }
 
+__attribute__ ((unused))
 static int vsentry_unix_may_send(struct socket *sock,struct socket *other)
 {
 	if(hook_filter())
 		return 0;
-
+	
 	//TODO: handle permission for sys call
 	return 0;
 }
 
+__attribute__ ((unused))
 static int vsentry_socket_bind(struct socket *sock, struct sockaddr *address,int addrlen)
 {
 	if(hook_filter())
@@ -328,14 +418,16 @@ static int vsentry_socket_bind(struct socket *sock, struct sockaddr *address,int
 	return 0;
 }
 
+__attribute__ ((unused))
 static int vsentry_socket_listen(struct socket *sock,int backlog)
 {
 	if(hook_filter())
 		return 0;
-
+	
 	return 0;
 }
 
+__attribute__ ((unused))
 static int vsentry_socket_accept(struct socket *sock,struct socket *newsock)
 {
 	if(hook_filter())
@@ -351,6 +443,7 @@ static int vsentry_socket_accept(struct socket *sock,struct socket *newsock)
  *	@size contains the size of message.
  *	Return 0 if permission is granted.
  */
+__attribute__ ((unused))
 static int vsentry_socket_sendmsg(struct socket *sock,struct msghdr *msg,int size)
 {
 	if(hook_filter())
@@ -367,10 +460,14 @@ static int vsentry_socket_sendmsg(struct socket *sock,struct msghdr *msg,int siz
  *	@flags contains the operational flags.
  *	Return 0 if permission is granted.
  */
+__attribute__ ((unused))
 static int vsentry_socket_recvmsg(struct socket *sock,struct msghdr *msg,int size,int flags)
 {
 	if(hook_filter())
 		return 0;
+	
+	if (current->pid == 0)
+		printk(KERN_INFO"%s PID: %d\n",__FUNCTION__,current->pid);
 
 	return 0;
 }
@@ -384,6 +481,7 @@ static int vsentry_socket_sock_rcv_skb(struct sock *sk, struct sk_buff *skb)
 	return 0;
 }
 
+__attribute__ ((unused))
 static int vsentry_socket_shutdown(struct socket *sock,int how)
 {
 	if(hook_filter())
@@ -392,423 +490,326 @@ static int vsentry_socket_shutdown(struct socket *sock,int how)
 	//TODO: handle permission for sys call
 	return 0;
 }
-#endif /* CONFIG_SECURITY_NETWORK */
+
+__attribute__ ((unused))
+static int vsentry_sk_alloc_security(struct socket *sk,int family, gfp_t priority)
+{
+	if(hook_filter())
+		return 0;
+
+	//TODO: handle permission for sys call
+	return 0;
+}
+
+__attribute__ ((unused))
+static void vsentry_sk_free_security(struct socket *sk)
+{
+	if(hook_filter())
+		return;
+
+	return;
+}
+
+__attribute__ ((unused))
+static void vsentry_sk_clone_security(struct socket *sk,struct sock *newsk)
+{
+	if(hook_filter())
+		return;
+
+	return;
+}
+
+__attribute__ ((unused))
+static int vsentry_shm_alloc_security(struct shmid_kernel *shp)
+{
+	if(hook_filter())
+		return 0;
+
+	//TODO: handle permission for sys call
+	return 0;
+}
+
+__attribute__ ((unused))
+static void vsentry_shm_free_security(struct shmid_kernel *shp)
+{
+	if(hook_filter())
+		return;
+
+	return;
+}
+
+__attribute__ ((unused))
+static int vsentry_shm_associate(struct shmid_kernel *shp, int shmflg)
+{
+	if(hook_filter())
+		return 0;
+
+	//TODO: handle permission for sys call
+	return 0;
+}
+
+__attribute__ ((unused))
+static int vsentry_shm_shmctl(struct shmid_kernel *shp, int cmd)
+{
+	if(hook_filter())
+		return 0;
+
+	//TODO: handle permission for sys call
+	return 0;
+}
+
+__attribute__ ((unused))
+static int vsentry_shm_shmat(struct shmid_kernel *shp, char __user *shmaddr,int shmflg)
+{
+	if(hook_filter())
+		return 0;
+
+	return 0;
+}
+
+__attribute__ ((unused))
+static int vsentry_ptrace_access_check(struct task_struct *child,unsigned int mode)
+{
+	if(hook_filter())
+		return 0;
+
+	//TODO: handle permission for sys call
+	return 0;
+}
+
+__attribute__ ((unused))
+static int vsentry_ptrace_traceme(struct task_struct *parent)
+{
+	if(hook_filter())
+		return 0;
+
+	//TODO: handle permission for sys call
+	return 0;
+}
+
+__attribute__ ((unused))
+static int vsentry_syslog(int type)
+{
+	if(hook_filter())
+		return 0;
+
+	//TODO: handle permission for sys call
+	return 0;
+}
+
+__attribute__ ((unused))
+static int vsentry_settime(const struct timespec64 *ts, const struct timezone *tz)
+{
+	if(hook_filter())
+		return 0;
+
+	//TODO: handle permission for sys call
+	return 0;
+}
+
+__attribute__ ((unused))
+static int vsentry_vm_enough_memory(struct mm_struct *mm, long pages)
+{
+	if(hook_filter())
+		return 0;
+
+	//TODO: handle permission for sys call
+	return 0;
+}
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4,2,0)
-static struct security_hook_list vsentry_security_hooks[VS_HOOK_MAX];
-struct security_hook_heads *lsm_hook_head_ptr;
+static struct security_hook_list vsentry_hooks[] = {
 
-typedef struct {
-	vsentry_hook_type vs_type;
-	void* 	func_ptr;
-} vs_hook_t;
+//#define SR_FILE_HOOKS
+#ifdef SR_FILE_HOOKS
+	LSM_HOOK_INIT(path_unlink, vsentry_path_unlink),
+	LSM_HOOK_INIT(path_symlink, vsentry_path_symlink),
+	LSM_HOOK_INIT(path_mkdir, vsentry_path_mkdir),
+	LSM_HOOK_INIT(path_rmdir, vsentry_path_rmdir),
+	LSM_HOOK_INIT(path_chmod, vsentry_path_chmod),
+	LSM_HOOK_INIT(path_mknod, vsentry_path_mknod),
+	LSM_HOOK_INIT(path_rename, vsentry_path_rename),
+	LSM_HOOK_INIT(path_chown, vsentry_path_chown),
+	//LSM_HOOK_INIT(path_chroot, vsentry_path_chroot),
+	LSM_HOOK_INIT(path_truncate, vsentry_path_truncate),
 
-static vs_hook_t vsentry_hooks[] = {
-#ifdef CONFIG_SECURITY_PATH
-	{ VS_HOOK_PATH_UNLINK, (void*)vsentry_path_unlink },
-	{ VS_HOOK_PATH_MKDIR, (void*)vsentry_path_mkdir },
-	{ VS_HOOK_PATH_RMDIR, (void*)vsentry_path_rmdir },
-	{ VS_HOOK_PATH_MKNOD, (void*)vsentry_path_mknod },
-	{ VS_HOOK_PATH_TRUNCATE, (void*)vsentry_path_truncate },
-	{ VS_HOOK_PATH_SYMLINK, (void*)vsentry_path_symlink },
-	{ VS_HOOK_PATH_RENAME, (void*)vsentry_path_rename },
-	{ VS_HOOK_PATH_CHMOD, (void*)vsentry_path_chmod },
-	{ VS_HOOK_PATH_CHOWN, (void*)vsentry_path_chown },
+	LSM_HOOK_INIT(inode_link, vsentry_inode_link),
+	LSM_HOOK_INIT(inode_unlink, vsentry_inode_unlink),
+	LSM_HOOK_INIT(inode_symlink, vsentry_inode_symlink),
+	LSM_HOOK_INIT(inode_mkdir, vsentry_inode_mkdir),
+	LSM_HOOK_INIT(inode_rmdir, vsentry_inode_rmdir),
+	LSM_HOOK_INIT(inode_create, vsentry_inode_create),
+	LSM_HOOK_INIT(inode_mknod, vsentry_inode_mknod),
+	LSM_HOOK_INIT(inode_rename, vsentry_inode_rename),
+	//LSM_HOOK_INIT(inode_readlink, vsentry_inode_readlink),
+	//LSM_HOOK_INIT(inode_follow_link, vsentry_inode_follow_link),
+#if(1)
+	LSM_HOOK_INIT(file_open, vsentry_file_open),
+	LSM_HOOK_INIT(file_permission, vsentry_file_permission),
+	LSM_HOOK_INIT(file_alloc_security, vsentry_file_alloc_security),
+	LSM_HOOK_INIT(file_free_security, vsentry_file_free_security),
+	LSM_HOOK_INIT(file_ioctl, vsentry_file_ioctl),
+	LSM_HOOK_INIT(file_mprotect, vsentry_file_mprotect),
+	LSM_HOOK_INIT(file_lock, vsentry_file_lock),
+	LSM_HOOK_INIT(file_fcntl, vsentry_file_fcntl),
+
+	LSM_HOOK_INIT(mmap_addr, vsentry_mmap_addr),
+	LSM_HOOK_INIT(mmap_file, vsentry_mmap_file),
+
+	LSM_HOOK_INIT(task_create, vsentry_task_create),
+	LSM_HOOK_INIT(task_free, vsentry_task_free),
+	LSM_HOOK_INIT(task_fix_setuid, vsentry_task_fix_setuid),
+	LSM_HOOK_INIT(task_setpgid, vsentry_task_setpgid),
+	LSM_HOOK_INIT(task_setnice, vsentry_task_setnice),
+	LSM_HOOK_INIT(task_setrlimit, vsentry_task_setrlimit),
+	LSM_HOOK_INIT(task_movememory, vsentry_task_movememory),
+	LSM_HOOK_INIT(task_kill, vsentry_task_kill),
+	LSM_HOOK_INIT(task_to_inode, vsentry_task_to_inode),
+
+	LSM_HOOK_INIT(unix_stream_connect, vsentry_unix_stream_connect),
+	LSM_HOOK_INIT(unix_may_send, vsentry_unix_may_send),
 #endif
-	{ VS_HOOK_INODE_CREATE, (void*)vsentry_inode_create },
-	{ VS_HOOK_INODE_LINK, (void*)vsentry_inode_link },
-	{ VS_HOOK_INODE_UNLINK, (void*)vsentry_inode_unlink },
-	{ VS_HOOK_INODE_SYMLINK, (void*)vsentry_inode_symlink },
-	{ VS_HOOK_INODE_MKDIR, (void*)vsentry_inode_mkdir },
-	{ VS_HOOK_INODE_RMDIR, (void*)vsentry_inode_rmdir },
-	{ VS_HOOK_INODE_MKNOD, (void*)vsentry_inode_mknod },
-	{ VS_HOOK_INODE_RENAME, (void*)vsentry_inode_rename },
-	{ VS_HOOK_INODE_FOLLOW_LINK, (void*)vsentry_inode_follow_link },
-	{ VS_HOOK_FILE_PERMISSION, (void*)vsentry_file_permission },
-	{ VS_HOOK_FILE_ALLOC_SECURITY, (void*)vsentry_file_alloc_security },
-	{ VS_HOOK_FILE_FREE_SECURITY, (void*)vsentry_file_free_security },
-	{ VS_HOOK_FILE_IOCTL, (void*)vsentry_file_ioctl },
-	{ VS_HOOK_MMAP_ADDR, (void*)vsentry_mmap_addr },
-	{ VS_HOOK_MMAP_FILE, (void*)vsentry_mmap_file },
-	{ VS_HOOK_FILE_MPROTECT, (void*)vsentry_file_mprotect },
-	{ VS_HOOK_FILE_LOCK, (void*)vsentry_file_lock },
-	{ VS_HOOK_FILE_FCNTL, (void*)vsentry_file_fcntl },
-	{ VS_HOOK_FILE_OPEN, (void*)vsentry_file_open },
-	{ VS_HOOK_TASK_CREATE, (void*)vsentry_task_create },
-	{ VS_HOOK_TASK_FREE, (void*)vsentry_task_free },
-	{ VS_HOOK_KERNEL_MODULE_REQUEST, (void*)vsentry_kernel_module_request },
-	{ VS_HOOK_TASK_SETPGID, (void*)vsentry_task_setpgid },
-	{ VS_HOOK_TASK_SETNICE, (void*)vsentry_task_setnice },
-	{ VS_HOOK_TASK_SETRLIMIT, (void*)vsentry_task_setrlimit },
-	{ VS_HOOK_TASK_MOVEMEMORY, (void*)vsentry_task_movememory },
-	{ VS_HOOK_TASK_KILL, (void*)vsentry_task_kill },
-	{ VS_HOOK_TASK_TO_INODE, (void*)vsentry_task_to_inode },
-#ifdef CONFIG_SECURITY_NETWORK
-	{ VS_HOOK_UNIX_STREAM_CONNECT, (void*)vsentry_unix_stream_connect },
-	{ VS_HOOK_UNIX_MAY_SEND, (void*)vsentry_unix_may_send },
-	{ VS_HOOK_SOCKET_CREATE, (void*)vsentry_socket_create },
-	{ VS_HOOK_SOCKET_BIND, (void*)vsentry_socket_bind },
-	{ VS_HOOK_SOCKET_CONNECT, (void*)vsentry_socket_connect },
-	{ VS_HOOK_SOCKET_LISTEN, (void*)vsentry_socket_listen },
-	{ VS_HOOK_SOCKET_ACCEPT, (void*)vsentry_socket_accept },
-	{ VS_HOOK_SOCKET_SENDMSG, (void*)vsentry_socket_sendmsg },
-	{ VS_HOOK_SOCKET_RECVMSG, (void*)vsentry_socket_recvmsg },
-	{ VS_HOOK_SOCKET_SHUTDOWN, (void*)vsentry_socket_shutdown },
-	{ VS_HOOK_SOCKET_SOCK_RCV_SKB, (void*)vsentry_socket_sock_rcv_skb },
-#endif  /* CONFIG_SECURITY_NETWORK */
+
+#endif // SR_FILE_HOOKS
+	
+	//LSM_HOOK_INIT(kernel_fw_from_file, vsentry_kernel_fw_from_file), //not in every kern version
+	LSM_HOOK_INIT(kernel_module_request, vsentry_kernel_module_request),
+	//LSM_HOOK_INIT(kernel_module_from_file, vsentry_kernel_module_from_file), //not in every kern version
+
+#define SR_SOCKET_HOOKS
+
+#ifdef SR_SOCKET_HOOKS
+	LSM_HOOK_INIT(socket_connect, vsentry_socket_connect),
+	LSM_HOOK_INIT(socket_create, vsentry_socket_create),
+	LSM_HOOK_INIT(socket_bind, vsentry_socket_bind),
+	LSM_HOOK_INIT(socket_listen, vsentry_socket_listen),
+	LSM_HOOK_INIT(socket_accept, vsentry_socket_accept),
+	LSM_HOOK_INIT(socket_sendmsg, vsentry_socket_sendmsg),
+	LSM_HOOK_INIT(socket_recvmsg, vsentry_socket_recvmsg),
+	LSM_HOOK_INIT(socket_shutdown, vsentry_socket_shutdown),
+	LSM_HOOK_INIT(socket_sock_rcv_skb,vsentry_socket_sock_rcv_skb),
+#endif // SR_SOCKET_HOOKS
+
+	//LSM_HOOK_INIT(sk_alloc_security, vsentry_sk_alloc_security),
+	//LSM_HOOK_INIT(sk_free_security, vsentry_sk_free_security),
+	//LSM_HOOK_INIT(sk_clone_security, vsentry_sk_clone_security),
+
+	//LSM_HOOK_INIT(shm_alloc_security, vsentry_shm_alloc_security),
+	//LSM_HOOK_INIT(shm_free_security, vsentry_shm_free_security),
+	//LSM_HOOK_INIT(shm_associate, vsentry_shm_associate),
+	//LSM_HOOK_INIT(shm_shmctl, vsentry_shm_shmctl),
+	//LSM_HOOK_INIT(shm_shmat, vsentry_shm_shmat),
+
+	//LSM_HOOK_INIT(ptrace_access_check, vsentry_ptrace_access_check),
+	//LSM_HOOK_INIT(ptrace_traceme, vsentry_ptrace_traceme),
+
+	//LSM_HOOK_INIT(syslog, vsentry_syslog),
+	LSM_HOOK_INIT(settime, vsentry_settime),
+	//LSM_HOOK_INIT(vm_enough_memory, vsentry_vm_enough_memory),
+	
+	//LSM_HOOK_INIT(bprm_committing_creds, vsentry_bprm_committing_creds), 
 };
-
-void init_vsentry_hooks(int type, void* func_ptr)
-{
-	switch (type) {
-	case VS_HOOK_PATH_UNLINK:
-		vsentry_security_hooks[type].hook.path_unlink = func_ptr;
-		vsentry_security_hooks[type].head = &lsm_hook_head_ptr->path_unlink;
-		break;
-	case VS_HOOK_PATH_MKDIR:
-		vsentry_security_hooks[type].hook.path_mkdir = func_ptr;
-		vsentry_security_hooks[type].head = &lsm_hook_head_ptr->path_mkdir;
-		break;
-	case VS_HOOK_PATH_RMDIR:
-		vsentry_security_hooks[type].hook.path_rmdir = func_ptr;
-		vsentry_security_hooks[type].head = &lsm_hook_head_ptr->path_rmdir;
-		break;
-	case VS_HOOK_PATH_MKNOD:
-		vsentry_security_hooks[type].hook.path_mknod = func_ptr;
-		vsentry_security_hooks[type].head = &lsm_hook_head_ptr->path_mknod;
-		break;
-	case VS_HOOK_PATH_TRUNCATE:
-		vsentry_security_hooks[type].hook.path_truncate= func_ptr;
-		vsentry_security_hooks[type].head = &lsm_hook_head_ptr->path_truncate;
-		break;
-	case VS_HOOK_PATH_SYMLINK:
-		vsentry_security_hooks[type].hook.path_symlink = func_ptr;
-		vsentry_security_hooks[type].head = &lsm_hook_head_ptr->path_symlink;
-		break;
-	case VS_HOOK_PATH_RENAME:
-		vsentry_security_hooks[type].hook.path_rename = func_ptr;
-		vsentry_security_hooks[type].head = &lsm_hook_head_ptr->path_rename;
-		break;
-	case VS_HOOK_PATH_CHMOD:
-		vsentry_security_hooks[type].hook.path_chmod = func_ptr;
-		vsentry_security_hooks[type].head = &lsm_hook_head_ptr->path_chmod;
-		break;
-	case VS_HOOK_PATH_CHOWN:
-		vsentry_security_hooks[type].hook.path_chown = func_ptr;
-		vsentry_security_hooks[type].head = &lsm_hook_head_ptr->path_chown;
-		break;
-	case VS_HOOK_INODE_CREATE:
-		vsentry_security_hooks[type].hook.inode_create = func_ptr;
-		vsentry_security_hooks[type].head = &lsm_hook_head_ptr->inode_create;
-		break;
-	case VS_HOOK_INODE_LINK:
-		vsentry_security_hooks[type].hook.inode_link = func_ptr;
-		vsentry_security_hooks[type].head = &lsm_hook_head_ptr->inode_link;
-		break;
-	case VS_HOOK_INODE_UNLINK:
-		vsentry_security_hooks[type].hook.inode_unlink = func_ptr;
-		vsentry_security_hooks[type].head = &lsm_hook_head_ptr->inode_unlink;
-		break;
-	case VS_HOOK_INODE_SYMLINK:
-		vsentry_security_hooks[type].hook.inode_symlink = func_ptr;
-		vsentry_security_hooks[type].head = &lsm_hook_head_ptr->inode_symlink;
-		break;
-	case VS_HOOK_INODE_MKDIR:
-		vsentry_security_hooks[type].hook.inode_mkdir = func_ptr;
-		vsentry_security_hooks[type].head = &lsm_hook_head_ptr->inode_mkdir;
-		break;
-	case VS_HOOK_INODE_RMDIR:
-		vsentry_security_hooks[type].hook.inode_rmdir = func_ptr;
-		vsentry_security_hooks[type].head = &lsm_hook_head_ptr->inode_rmdir;
-		break;
-	case VS_HOOK_INODE_MKNOD:
-		vsentry_security_hooks[type].hook.inode_mknod = func_ptr;
-		vsentry_security_hooks[type].head = &lsm_hook_head_ptr->inode_mknod;
-		break;
-	case VS_HOOK_INODE_RENAME:
-		vsentry_security_hooks[type].hook.inode_rename = func_ptr;
-		vsentry_security_hooks[type].head = &lsm_hook_head_ptr->inode_rename;
-		break;
-	case VS_HOOK_INODE_FOLLOW_LINK:
-		vsentry_security_hooks[type].hook.inode_follow_link = func_ptr;
-		vsentry_security_hooks[type].head = &lsm_hook_head_ptr->inode_follow_link;
-	case VS_HOOK_FILE_PERMISSION:
-		vsentry_security_hooks[type].hook.file_permission = func_ptr;
-		vsentry_security_hooks[type].head = &lsm_hook_head_ptr->file_permission;
-		break;
-	case VS_HOOK_FILE_ALLOC_SECURITY:
-		vsentry_security_hooks[type].hook.file_alloc_security = func_ptr;
-		vsentry_security_hooks[type].head = &lsm_hook_head_ptr->file_alloc_security;
-		break;
-	case VS_HOOK_FILE_FREE_SECURITY:
-		vsentry_security_hooks[type].hook.file_free_security = func_ptr;
-		vsentry_security_hooks[type].head = &lsm_hook_head_ptr->file_free_security;
-		break;
-	case VS_HOOK_FILE_IOCTL:
-		vsentry_security_hooks[type].hook.file_ioctl = func_ptr;
-		vsentry_security_hooks[type].head = &lsm_hook_head_ptr->file_ioctl;
-		break;
-	case VS_HOOK_MMAP_ADDR:
-		vsentry_security_hooks[type].hook.mmap_addr = func_ptr;
-		vsentry_security_hooks[type].head = &lsm_hook_head_ptr->mmap_addr;
-		break;
-	case VS_HOOK_MMAP_FILE:
-		vsentry_security_hooks[type].hook.mmap_file = func_ptr;
-		vsentry_security_hooks[type].head = &lsm_hook_head_ptr->mmap_file;
-		break;
-	case VS_HOOK_FILE_MPROTECT:
-		vsentry_security_hooks[type].hook.file_mprotect = func_ptr;
-		vsentry_security_hooks[type].head = &lsm_hook_head_ptr->file_mprotect;
-		break;
-	case VS_HOOK_FILE_LOCK:
-		vsentry_security_hooks[type].hook.file_lock = func_ptr;
-		vsentry_security_hooks[type].head = &lsm_hook_head_ptr->file_lock;
-		break;
-	case VS_HOOK_FILE_FCNTL:
-		vsentry_security_hooks[type].hook.file_fcntl = func_ptr;
-		vsentry_security_hooks[type].head = &lsm_hook_head_ptr->file_fcntl;
-		break;
-	case VS_HOOK_FILE_OPEN:
-		vsentry_security_hooks[type].hook.file_open = func_ptr;
-		vsentry_security_hooks[type].head = &lsm_hook_head_ptr->file_open;
-		break;
-	case VS_HOOK_TASK_CREATE:
-		vsentry_security_hooks[type].hook.task_create = func_ptr;
-		vsentry_security_hooks[type].head = &lsm_hook_head_ptr->task_create;
-		break;
-	case VS_HOOK_TASK_FREE:
-		vsentry_security_hooks[type].hook.task_free = func_ptr;
-		vsentry_security_hooks[type].head = &lsm_hook_head_ptr->task_free;
-		break;
-	case VS_HOOK_KERNEL_MODULE_REQUEST:
-		vsentry_security_hooks[type].hook.kernel_module_request = func_ptr;
-		vsentry_security_hooks[type].head = &lsm_hook_head_ptr->kernel_module_request;
-		break;
-	case VS_HOOK_TASK_SETPGID:
-		vsentry_security_hooks[type].hook.task_setpgid = func_ptr;
-		vsentry_security_hooks[type].head = &lsm_hook_head_ptr->task_setpgid;
-		break;
-	case VS_HOOK_TASK_SETNICE:
-		vsentry_security_hooks[type].hook.task_setnice = func_ptr;
-		vsentry_security_hooks[type].head = &lsm_hook_head_ptr->task_setnice;
-		break;
-	case VS_HOOK_TASK_SETRLIMIT:
-		vsentry_security_hooks[type].hook.task_setrlimit = func_ptr;
-		vsentry_security_hooks[type].head = &lsm_hook_head_ptr->task_setrlimit;
-		break;
-	case VS_HOOK_TASK_MOVEMEMORY:
-		vsentry_security_hooks[type].hook.task_movememory = func_ptr;
-		vsentry_security_hooks[type].head = &lsm_hook_head_ptr->task_movememory;
-		break;
-	case VS_HOOK_TASK_KILL:
-		vsentry_security_hooks[type].hook.task_kill = func_ptr;
-		vsentry_security_hooks[type].head = &lsm_hook_head_ptr->task_kill;
-		break;
-	case VS_HOOK_TASK_TO_INODE:
-		vsentry_security_hooks[type].hook.task_to_inode = func_ptr;
-		vsentry_security_hooks[type].head = &lsm_hook_head_ptr->task_to_inode;
-		break;
-	case VS_HOOK_UNIX_STREAM_CONNECT:
-		vsentry_security_hooks[type].hook.unix_stream_connect = func_ptr;
-		vsentry_security_hooks[type].head = &lsm_hook_head_ptr->unix_stream_connect;
-		break;
-	case VS_HOOK_UNIX_MAY_SEND:
-		vsentry_security_hooks[type].hook.unix_may_send = func_ptr;
-		vsentry_security_hooks[type].head = &lsm_hook_head_ptr->unix_may_send;
-		break;
-	case VS_HOOK_SOCKET_CREATE:
-		vsentry_security_hooks[type].hook.socket_create = func_ptr;
-		vsentry_security_hooks[type].head = &lsm_hook_head_ptr->socket_create;
-		break;
-	case VS_HOOK_SOCKET_BIND:
-		vsentry_security_hooks[type].hook.socket_bind = func_ptr;
-		vsentry_security_hooks[type].head = &lsm_hook_head_ptr->socket_bind;
-		break;
-	case VS_HOOK_SOCKET_CONNECT:
-		vsentry_security_hooks[type].hook.socket_connect = func_ptr;
-		vsentry_security_hooks[type].head = &lsm_hook_head_ptr->socket_connect;
-		break;
-	case VS_HOOK_SOCKET_LISTEN:
-		vsentry_security_hooks[type].hook.socket_listen = func_ptr;
-		vsentry_security_hooks[type].head = &lsm_hook_head_ptr->socket_listen;
-		break;
-	case VS_HOOK_SOCKET_ACCEPT:
-		vsentry_security_hooks[type].hook.socket_accept = func_ptr;
-		vsentry_security_hooks[type].head = &lsm_hook_head_ptr->socket_accept;
-		break;
-	case VS_HOOK_SOCKET_SENDMSG:
-		vsentry_security_hooks[type].hook.socket_sendmsg = func_ptr;
-		vsentry_security_hooks[type].head = &lsm_hook_head_ptr->socket_sendmsg;
-		break;
-	case VS_HOOK_SOCKET_RECVMSG:
-		vsentry_security_hooks[type].hook.socket_recvmsg = func_ptr;
-		vsentry_security_hooks[type].head = &lsm_hook_head_ptr->socket_recvmsg;
-		break;
-	case VS_HOOK_SOCKET_SHUTDOWN:
-		vsentry_security_hooks[type].hook.socket_shutdown = func_ptr;
-		vsentry_security_hooks[type].head = &lsm_hook_head_ptr->socket_shutdown;
-		break;
-	case VS_HOOK_SOCKET_SOCK_RCV_SKB:
-		vsentry_security_hooks[type].hook.socket_sock_rcv_skb = func_ptr;
-		vsentry_security_hooks[type].head = &lsm_hook_head_ptr->socket_sock_rcv_skb;
-		break;
-
-	default:
-		pr_err("this hook type is not supported [%d]\n", type);
-		break;
-	}
-}
-
 #else
+static struct security_operations vsentry_ops = {
 
-void init_vsentry_hooks(struct security_operations *ops)
-{
-	memset(ops->name, 0, SECURITY_NAME_MAX+1);
-	memcpy(ops->name, "vsentry", 7);
-#ifdef CONFIG_SECURITY_PATH
-	ops->path_unlink =			vsentry_path_unlink;
-	ops->path_symlink =			vsentry_path_symlink;
-	ops->path_mkdir =			vsentry_path_mkdir;
-	ops->path_rmdir =			vsentry_path_rmdir;
-	ops->path_rename =			vsentry_path_rename;
-	ops->path_chmod =			vsentry_path_chmod;
-	ops->path_chown = 			vsentry_path_chown;
-	ops->path_mknod = 			vsentry_path_mknod;
-	ops->path_truncate = 		vsentry_path_truncate;
-#endif
-	ops->inode_link =			vsentry_inode_link;
-	ops->inode_unlink =			vsentry_inode_unlink;
-	ops->inode_symlink =		vsentry_inode_symlink;
-	ops->inode_mkdir =			vsentry_inode_mkdir;
-	ops->inode_rmdir =			vsentry_inode_rmdir;
-	ops->inode_create =			vsentry_inode_create;
-	ops->inode_rename =			vsentry_inode_rename;
-	ops->inode_follow_link =	vsentry_inode_follow_link;
-	ops->inode_mknod = 			vsentry_inode_mknod;
-	ops->file_open = 			vsentry_file_open;
-	ops->file_permission = 		vsentry_file_permission;
-	ops->file_alloc_security = 	vsentry_file_alloc_security;
-	ops->file_free_security = 	vsentry_file_free_security;
-	ops->file_ioctl = 			vsentry_file_ioctl;
-	ops->file_mprotect = 		vsentry_file_mprotect;
-	ops->file_lock = 			vsentry_file_lock;
-	ops->file_fcntl = 			vsentry_file_fcntl;
-	ops->mmap_addr = 			vsentry_mmap_addr;
-	ops->mmap_file = 			vsentry_mmap_file;
-	ops->task_create = 			vsentry_task_create;
-	ops->task_free = 			vsentry_task_free;
-	ops->task_setpgid = 		vsentry_task_setpgid;
-	ops->task_setnice = 		vsentry_task_setnice;
-	ops->task_setrlimit = 		vsentry_task_setrlimit;
-	ops->task_movememory = 		vsentry_task_movememory;
-	ops->task_kill = 			vsentry_task_kill;
-	ops->task_to_inode = 		vsentry_task_to_inode;
-	ops->kernel_module_request=	vsentry_kernel_module_request;
-#ifdef CONFIG_SECURITY_NETWORK
-	ops->socket_connect = 		vsentry_socket_connect;
-	ops->unix_stream_connect = 	vsentry_unix_stream_connect;
-	ops->unix_may_send = 		vsentry_unix_may_send;
-	ops->socket_create = 		vsentry_socket_create;
-	ops->socket_bind = 			vsentry_socket_bind;
-	ops->socket_listen = 		vsentry_socket_listen;
-	ops->socket_accept = 		vsentry_socket_accept;
-	ops->socket_sendmsg = 		vsentry_socket_sendmsg;
-	ops->socket_recvmsg = 		vsentry_socket_recvmsg;
-	ops->socket_sock_rcv_skb = 	vsentry_socket_sock_rcv_skb;
-	ops->socket_shutdown = 		vsentry_socket_shutdown;
-#endif
+	.path_unlink =				vsentry_path_unlink,
+	.path_symlink =				vsentry_path_symlink,
+	.path_mkdir = 				vsentry_path_mkdir,
+	.path_rmdir = 				vsentry_path_rmdir,
+	//.path_mknod =				vsentry_path_mknod,
+	.path_rename =				vsentry_path_rename,	
+	.path_chmod =		 		vsentry_path_chmod,
+	//.path_chown =				vsentry_path_chown,
+	//.path_chroot =			vsentry_path_chroot,
+	//.path_truncate =			vsentry_path_truncate,
 
-}
+	.inode_link =				vsentry_inode_link,
+	.inode_unlink =				vsentry_inode_unlink,
+	.inode_symlink =			vsentry_inode_symlink,
+	.inode_mkdir =				vsentry_inode_mkdir,
+	.inode_rmdir =				vsentry_inode_rmdir,
+	.inode_create =		 		vsentry_inode_create,
+	//.inode_mknod =			vsentry_inode_mknod,
+	.inode_rename =				vsentry_inode_rename,
+	//.inode_readlink =			vsentry_inode_readlink,
+	.inode_follow_link =		vsentry_inode_follow_link,
+
+	//.file_open =			vsentry_file_open,
+	//.file_permission = 		vsentry_file_permission,
+	//.file_alloc_security =	vsentry_file_alloc_security,
+	//.file_ioctl =				vsentry_file_ioctl,
+	//.file_mprotect =			vsentry_file_mprotect,
+	//.file_lock =				vsentry_file_lock,
+	//.file_fcntl =				vsentry_file_fcntl,
+
+	//.mmap_addr =				vsentry_mmap_addr,
+	//.mmap_file =				vsentry_mmap_file,
+
+	//.task_create =			vsentry_task_create,
+	//.task_free = 				vsentry_task_free,
+	//.task_fix_setuid =		vsentry_task_fix_setuid,
+	//.task_setpgid =			vsentry_task_setpgid,
+	//.task_setnice =			vsentry_task_setnice,
+	//.task_setrlimit = 		vsentry_task_setrlimit,
+	//.task_movememory =		vsentry_task_movememory,
+	//.task_kill =				vsentry_task_kill,
+	//.task_to_inode =			vsentry_task_to_inode,
+
+	//.unix_stream_connect =	vsentry_unix_stream_connect,
+	//.unix_may_send =			vsentry_unix_may_send,
+
+	//.kernel_fw_from_file =	vsentry_kernel_fw_from_file,
+	//.kernel_module_request = 	vsentry_kernel_module_request,
+	//.kernel_module_from_file =vsentry_kernel_module_from_file,
+
+	.socket_connect =			vsentry_socket_connect,
+	//.socket_create = 			vsentry_socket_create,
+	//.socket_bind =			vsentry_socket_bind,
+	//.socket_listen = 			vsentry_socket_listen,
+	//.socket_accept = 			vsentry_socket_accept,
+	//.socket_sendmsg = 		vsentry_socket_sendmsg,
+	//.socket_recvmsg = 		vsentry_socket_recvmsg,
+	//.socket_shutdown =		vsentry_socket_shutdown,
+
+	//.sk_alloc_security =		vsentry_sk_alloc_security,
+	//.sk_free_security = 		vsentry_sk_free_security,
+	//.sk_clone_security = 		vsentry_sk_clone_security,
+
+	//.shm_alloc_security = 	vsentry_shm_alloc_security,
+	//.shm_free_security = 		vsentry_shm_free_security,
+	//.shm_associate = 			vsentry_shm_associate,
+	//.shm_shmctl = 			vsentry_shm_shmctl,
+	//.shm_shmat = 				vsentry_shm_shmat,
+
+	//.ptrace_access_check =	vsentry_ptrace_access_check,
+	//.ptrace_traceme = 		vsentry_ptrace_traceme,
+
+	//.syslog =					vsentry_syslog,
+	//.settime = 				vsentry_settime,
+	//.vm_enough_memory = 		vsentry_vm_enough_memory,
+
+	.bprm_committing_creds =	vsentry_bprm_committing_creds,
+};
 #endif /*LINUX_VERSION_CODE >= KERNEL_VERSION(4,2,0)*/
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4,2,0)
-static void vsentry_security_delete_hooks(void)
+static inline void security_delete_hooks(struct security_hook_list *hooks,int count)
 {
 	int i;
 
-	for (i = 0; i < VS_HOOK_MAX; i++) {
-		if (vsentry_security_hooks[i].head)
-			list_del_rcu(&vsentry_security_hooks[i].list);
-	}
+	for (i = 0; i < count; i++)
+		list_del_rcu(&hooks[i].list);
 }
-#endif
-
-#if LINUX_VERSION_CODE < KERNEL_VERSION(4,2,0)
-struct security_operations default_security_ops;
 #endif
 
 int register_lsm_hooks (void)
 {
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,2,0)
-	unsigned long addr;
-	int i;
-
-	addr = kallsyms_lookup_name("security_hook_heads");
-	if (!addr) {
-		pr_err("%s: failed to get security_hook_heads address\n", __func__);
-		return -EFAULT;
-	}
-
-	lsm_hook_head_ptr = (struct security_hook_heads *)addr;
-	memset(vsentry_security_hooks, 0, sizeof(vsentry_security_hooks));
-	for (i=0; i<ARRAY_SIZE(vsentry_hooks); i++)
-		init_vsentry_hooks(vsentry_hooks[i].vs_type,
-			vsentry_hooks[i].func_ptr);
-
-	for (i=0; i<VS_HOOK_MAX; i++) {
-		if (vsentry_security_hooks[i].head)
-			list_add_tail_rcu(&vsentry_security_hooks[i].list,
-				vsentry_security_hooks[i].head);
-	}
-
-#else
-	struct security_operations* default_security_ops_ptr;
-	void (*reset_security_ops_func)(void);
-
-	default_security_ops_ptr = (struct security_operations*)kallsyms_lookup_name("default_security_ops");
-	if (!default_security_ops_ptr) {
-		pr_err("%s: failed to get security_ops address\n", __func__);
-		return -EFAULT;
-	}
-
-	reset_security_ops_func = (void*)kallsyms_lookup_name("reset_security_ops");
-	if (!reset_security_ops_func) {
-		pr_err("%s: failed to get reset_security_ops address\n", __func__);
-		return -EFAULT;
-	}
-
-	memcpy(&default_security_ops, default_security_ops_ptr, sizeof(default_security_ops));
-	init_vsentry_hooks(default_security_ops_ptr);
-
-	reset_security_ops_func();
-#endif
-
+	security_add_hooks(vsentry_hooks, ARRAY_SIZE(vsentry_hooks));
 	return 0;
 }
 
 int unregister_lsm_hooks (void)
 {
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,2,0)
-	vsentry_security_delete_hooks();
-#else
-	struct security_operations* default_security_ops_ptr;
-	void (*reset_security_ops_func)(void);
-
-	default_security_ops_ptr = (struct security_operations*)kallsyms_lookup_name("default_security_ops");
-	if (!default_security_ops_ptr) {
-		pr_err("%s: failed to get security_ops address\n", __func__);
-		return -EFAULT;
-	}
-
-	reset_security_ops_func = (void*)kallsyms_lookup_name("reset_security_ops");
-	if (!reset_security_ops_func) {
-		pr_err("%s: failed to get reset_security_ops address\n", __func__);
-		return -EFAULT;
-	}
-
-	memcpy(default_security_ops_ptr, &default_security_ops, sizeof(default_security_ops));
-
-	reset_security_ops_func();	
-#endif
+	security_delete_hooks(vsentry_hooks, ARRAY_SIZE(vsentry_hooks));
 	return 0;
 }

@@ -34,5 +34,7 @@ void sal_or_op_arrays (const bit_array *arr1, const bit_array *arr2, bit_array *
 void sal_or_self_op_arrays (bit_array *base, const bit_array *addon);
 void sal_and_self_op_arrays (bit_array *base, const bit_array *addon);
 void sal_not_op_array (bit_array *arr);
+SR_BOOL sal_bit_array_is_set (SR_U16 bit, bit_array *arr);
+
 
 #endif /* SAL_BITOPS_H*/

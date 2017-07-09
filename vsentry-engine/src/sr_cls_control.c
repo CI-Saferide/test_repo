@@ -1,7 +1,9 @@
 #include "sr_sal_common.h"
-#include "sr_cls_file.h"
+//#include "sr_cls_file.h"
+#include "sr_cls_file_common.h"
 #include "sr_shmem.h"
 #include "sr_msg.h"
+#include "sr_msg_dispatch.h"
 
 //#include "sr_cls_file.h"
 //#include "sr_hash.h"
@@ -11,10 +13,11 @@
 // treetop: 1 for the first call, 0 for recursive calls further down.
 int sr_cls_file_add_rule(char *filename, SR_U32 rulenum, SR_U8 treetop)
 {
-	char *sr_msg;
 	struct stat buf;
+	sr_msg_cls_file_t msg;
 
 	if(lstat(filename, &buf)) { // Error
+		perror("lstat");
 		return SR_ERROR;
 	}
 	if (S_ISREG(buf.st_mode)) {
@@ -23,14 +26,19 @@ int sr_cls_file_add_rule(char *filename, SR_U32 rulenum, SR_U8 treetop)
 			return SR_ERROR;
 		}
 		// sr_cls_inode_add_rule(buf.st_ino, rulenum)
-		sr_msg = "Call sr_cls_inode_add_rule!";
-		sr_send_msg(ENG2MOD_BUF, (SR_U8*)sr_msg, strlen(sr_msg));
+		msg.msg_type = SR_MSG_TYPE_CLS_FILE;
+		msg.file_msg.msg_type = SR_CLS_INODE_ADD_RULE;
+		msg.file_msg.rulenum = rulenum;
+		msg.file_msg.inode1=buf.st_ino;
+		sr_send_msg(ENG2MOD_BUF, (SR_U8*)&msg, sizeof(msg));
 	}
 	if (S_ISDIR(buf.st_mode))  {
 		// first update the directory itself
-		// sr_cls_inode_add_rule(buf.st_ino, rulenum)
-		sr_msg = "Call sr_cls_inode_add_rule!";
-		sr_send_msg(ENG2MOD_BUF, (SR_U8*)sr_msg, strlen(sr_msg));
+		msg.msg_type = SR_MSG_TYPE_CLS_FILE;
+		msg.file_msg.msg_type = SR_CLS_INODE_ADD_RULE;
+		msg.file_msg.rulenum = rulenum;
+		msg.file_msg.inode1=buf.st_ino;
+		sr_send_msg(ENG2MOD_BUF, (SR_U8*)&msg, sizeof(msg));
 		// Now iterate subtree
 		DIR * dir;
 		long name_max;
@@ -55,8 +63,11 @@ int sr_cls_file_add_rule(char *filename, SR_U32 rulenum, SR_U8 treetop)
 	if (S_ISLNK(buf.st_mode))  {
 		// first update the link itself
 		// sr_cls_inode_add_rule(buf.st_ino, rulenum)
-		sr_msg = "Call sr_cls_inode_add_rule!";
-		sr_send_msg(ENG2MOD_BUF, (SR_U8*)sr_msg, strlen(sr_msg));
+		msg.msg_type = SR_MSG_TYPE_CLS_FILE;
+		msg.file_msg.msg_type = SR_CLS_INODE_ADD_RULE;
+		msg.file_msg.rulenum = rulenum;
+		msg.file_msg.inode1=buf.st_ino;
+		sr_send_msg(ENG2MOD_BUF, (SR_U8*)&msg, sizeof(msg));
 		//TODO: Do I need to update the destination file as well ???
 		//Can use realpath() to resolve target filename.
 		//I believe we should not modify the target file in this case.
@@ -69,8 +80,8 @@ int sr_cls_file_add_rule(char *filename, SR_U32 rulenum, SR_U8 treetop)
 // treetop: 1 for the first call, 0 for recursive calls further down.
 int sr_cls_file_del_rule(char *filename, SR_U32 rulenum, SR_U8 treetop)
 {
-	char *sr_msg;
 	struct stat buf;
+	sr_msg_cls_file_t msg;
 
 	if(lstat(filename, &buf)) { // Error
 		return SR_ERROR;
@@ -80,15 +91,19 @@ int sr_cls_file_del_rule(char *filename, SR_U32 rulenum, SR_U8 treetop)
 			printf("Error: Cannot del classification rules for hard links\n");
 			return SR_ERROR;
 		}
-		// sr_cls_inode_del_rule(buf.st_ino, rulenum)
-		sr_msg = "Call sr_cls_inode_del_rule!";
-		sr_send_msg(ENG2MOD_BUF, (SR_U8*)sr_msg, strlen(sr_msg));
+		msg.msg_type = SR_MSG_TYPE_CLS_FILE;
+		msg.file_msg.msg_type = SR_CLS_INODE_DEL_RULE;
+		msg.file_msg.rulenum = rulenum;
+		msg.file_msg.inode1=buf.st_ino;
+		sr_send_msg(ENG2MOD_BUF, (SR_U8*)&msg, sizeof(msg));
 	}
 	if (S_ISDIR(buf.st_mode))  {
 		// first update the directory itself
-		// sr_cls_inode_del_rule(buf.st_ino, rulenum)
-		sr_msg = "Call sr_cls_inode_del_rule!";
-		sr_send_msg(ENG2MOD_BUF, (SR_U8*)sr_msg, strlen(sr_msg));
+		msg.msg_type = SR_MSG_TYPE_CLS_FILE;
+		msg.file_msg.msg_type = SR_CLS_INODE_DEL_RULE;
+		msg.file_msg.rulenum = rulenum;
+		msg.file_msg.inode1=buf.st_ino;
+		sr_send_msg(ENG2MOD_BUF, (SR_U8*)&msg, sizeof(msg));
 		// Now iterate subtree
 		DIR * dir;
 		long name_max;
@@ -112,9 +127,11 @@ int sr_cls_file_del_rule(char *filename, SR_U32 rulenum, SR_U8 treetop)
 	}
 	if (S_ISLNK(buf.st_mode))  {
 		// first update the link itself
-		// sr_cls_inode_del_rule(buf.st_ino, rulenum)
-		sr_msg = "Call sr_cls_inode_del_rule!";
-		sr_send_msg(ENG2MOD_BUF, (SR_U8*)sr_msg, strlen(sr_msg));
+		msg.msg_type = SR_MSG_TYPE_CLS_FILE;
+		msg.file_msg.msg_type = SR_CLS_INODE_DEL_RULE;
+		msg.file_msg.rulenum = rulenum;
+		msg.file_msg.inode1=buf.st_ino;
+		sr_send_msg(ENG2MOD_BUF, (SR_U8*)&msg, sizeof(msg));
 		//Can use realpath() to resolve target filename.
 		//I believe we should not modify the target file in this case.
 	}
@@ -125,12 +142,9 @@ int sr_cls_file_del_rule(char *filename, SR_U32 rulenum, SR_U8 treetop)
 // It will need to check if parent directory has rules associated with it and inherit accordingly
 int sr_cls_file_create(char *filename)
 { 
-	char *sr_msg;
 	struct stat buf,buf2;
 	char parentdir[SR_MAX_PATH];
-#if 0
-	struct sr_cls_msg msg;
-#endif
+	sr_msg_cls_file_t msg;
 
 	if(lstat(filename, &buf)) { // Error
 		return SR_ERROR;
@@ -144,17 +158,11 @@ int sr_cls_file_create(char *filename)
 		if (lstat(parentdir, &buf2)) {
 			return SR_ERROR;
 		}
-		// sr_cls_inode_inherit(buf2.st_ino, buf.st_mode)
-		sr_msg = "Call sr_cls_inode_inherit!";
-#if 0
-		msg.msg_type = SR_CLS_INODE_INHERIT;
-		msg.rulenum=456;
-		msg.inode1=buf.st_mode;
-		msg.inode2=buf.st_mode;
-		sr_send_msg(ENG2MOD_BUF(char *)&msg, sizeof(struct sr_cls_msg));
-#else
-		sr_send_msg(ENG2MOD_BUF, (SR_U8*)sr_msg, strlen(sr_msg));
-#endif
+		msg.msg_type = SR_MSG_TYPE_CLS_FILE;
+		msg.file_msg.msg_type = SR_CLS_INODE_INHERIT;
+		msg.file_msg.inode1=buf2.st_ino;
+		msg.file_msg.inode2=buf.st_ino;
+		sr_send_msg(ENG2MOD_BUF, (SR_U8*)&msg, sizeof(msg));
 	}
 	
 	return SR_SUCCESS;
@@ -163,21 +171,24 @@ int sr_cls_file_create(char *filename)
 // It will need to check if there's an entry and remove it
 void sr_cls_file_delete(char *filename)
 { 
-	char *sr_msg;
 	struct stat buf;
+	sr_msg_cls_file_t msg;
 
 	if(lstat(filename, &buf)) { // Error
 		return;
 	}
 	if ((S_ISREG(buf.st_mode)) && (buf.st_nlink == 1)) {
-		// sr_cls_inode_remove(buf.st_mode)
-		sr_msg = "Call sr_cls_inode_remove!";
-		sr_send_msg(ENG2MOD_BUF, (SR_U8*)sr_msg, strlen(sr_msg));
+		msg.msg_type = SR_MSG_TYPE_CLS_FILE;
+		msg.file_msg.msg_type = SR_CLS_INODE_REMOVE;
+		msg.file_msg.inode1=buf.st_ino;
+		sr_send_msg(ENG2MOD_BUF, (SR_U8*)&msg, sizeof(msg));
 	}
 	if (S_ISDIR(buf.st_mode)) {
 		// sr_cls_inode_remove(buf.st_mode)
-		sr_msg = "Call sr_cls_inode_remove!";
-		sr_send_msg(ENG2MOD_BUF, (SR_U8*)sr_msg, strlen(sr_msg));
+		msg.msg_type = SR_MSG_TYPE_CLS_FILE;
+		msg.file_msg.msg_type = SR_CLS_INODE_REMOVE;
+		msg.file_msg.inode1=buf.st_ino;
+		sr_send_msg(ENG2MOD_BUF, (SR_U8*)&msg, sizeof(msg));
 		// Now iterate subtree
 		DIR * dir;
 		long name_max;
@@ -203,7 +214,7 @@ void sr_cls_file_delete(char *filename)
 
 void sr_cls_control_ut(void)
 {
-	sr_cls_file_add_rule("~/Desktop/git/vsentry/", 10, 1);
+	sr_cls_file_add_rule("/home/hilik/Desktop/git/vsentry/", 10, 1);
 	sr_cls_file_create("/usr/lib/shotwell");
 	return ;
 }
