@@ -6,7 +6,9 @@
 #include "linux/ip.h"
 #include "linux/netfilter.h"
 #include "linux/netfilter_ipv4.h"
+#include "sal_linux.h"
 #include "sr_scanner_det.h"
+#include "sr_classifier.h"
 
 /* hook types are NF_INET_PRE_ROUTING, NF_INET_LOCAL_IN, NF_INET_FORWARD, NF_INET_LOCAL_OUT, NF_INET_POST_ROUTING */
 
@@ -18,7 +20,8 @@ unsigned int sr_netfilter_hook_fn(void *priv,
 	struct iphdr *ip_header = (struct iphdr *)skb_network_header(skb);
 
 	if ( ((ip_header->protocol == 6) && ((struct tcphdr *)skb_transport_header(skb))->syn) || (ip_header->protocol == 17)) {
-		return(sr_scanner_det_rcv(skb));
+		if(sr_scanner_det_rcv(skb)==SR_CLS_ACTION_DROP);
+			return NF_DROP;
 	}
 
 	return NF_ACCEPT;
