@@ -13,7 +13,7 @@ SR_32 sr_module_loop(void *arg)
 {
 	sr_shmem* vsshmem;
 	SR_32 ret;
-	SR_U8 msg[MAX_RX_MSG_LEN];
+	sr_msg_cls_file_t *msg;
 
 	sal_printf("module_loop: started ...\n");
 
@@ -23,11 +23,37 @@ SR_32 sr_module_loop(void *arg)
 
 		/* if allocated (i.e. engine started ... */
 		if (vsshmem && vsshmem->buffer) {
-			memset(msg, 0, MAX_RX_MSG_LEN);
 			/* check for incomming msgs from engine */
-			while ((ret = sr_read_msg(ENG2MOD_BUF, msg, MAX_RX_MSG_LEN, SR_TRUE)) > 0) {
+			while ((msg = (sr_msg_cls_file_t*)sr_read_msg(ENG2MOD_BUF, &ret)) > 0) {
 				/* TODO: read and process data. example: */
-				sal_printf("sr_module_loop: got new msg: %s\n", msg);
+				sal_printf("sr_module_loop: got new msg. len %d\n", ret);
+				switch (msg->msg_type) {
+				case SR_MSG_TYPE_CLS_FILE:
+					sal_printf("MSG type CLS_FILE. ");
+					switch (msg->file_msg.msg_type) {
+					case SR_CLS_INODE_INHERIT:
+						sal_printf("INODE_INHERIT ");
+						break;
+					case SR_CLS_INODE_DEL_RULE:
+						sal_printf("INODE_DEL_RULE ");
+						break;
+					case SR_CLS_INODE_ADD_RULE:
+						sal_printf("INODE_ADD_RULE ");
+						break;
+					case SR_CLS_INODE_REMOVE:
+						sal_printf("INODE_REMOVE ");
+						break;
+					default:
+						sal_printf("wrong file_msg->msg_type\n");
+						break;
+					}
+					sal_printf("rulenem 0x%08x inode1 0x%08x inode2 0x%08x\n",
+						msg->file_msg.rulenum, msg->file_msg.inode1, msg->file_msg.inode2);
+					break;
+				case SR_MSG_TYPE_DEFAULT:
+					break;
+				}
+				sr_free_msg(ENG2MOD_BUF);
 			}
 
 			/* short sleep (2ms) to allow others to run so they 

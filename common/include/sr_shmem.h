@@ -4,8 +4,8 @@
 #include "sr_types.h"
 
 typedef struct {
-	void* 	buffer; /* buffer pointer page aligned (used by user) */
-	SR_32 	buffer_size;/* buffer size after page aligned (used by user) */
+	void 	*buffer;
+	SR_32	buffer_size;
 }sr_shmem;
 
 #ifndef __KERNEL__
@@ -14,22 +14,35 @@ typedef struct {
 #endif
 #endif
 
-#define PAGES_PER_BUFFER 		16
-#define MAX_BUFFER_SIZE 		(PAGE_SIZE * PAGES_PER_BUFFER)
+#define MAX_BUFFER_SIZE 		0x20000 /*128KB per memory buffer*/
+#define PAGES_PER_BUFFER 		(MAX_BUFFER_SIZE / PAGE_SIZE)
 
 #define ENG2MOD_PAGE_OFFSET 	0
 #define MOD2ENG_PAGE_OFFSET 	(ENG2MOD_PAGE_OFFSET + PAGES_PER_BUFFER)
-#define LOG_BUF_PAGE_OFFSET 	(MOD2ENG_PAGE_OFFSET + PAGES_PER_BUFFER)
+#define ENG2LOG_PAGE_OFFSET 	(MOD2ENG_PAGE_OFFSET + PAGES_PER_BUFFER)
+#define MOD2LOG_PAGE_OFFSET 	(ENG2LOG_PAGE_OFFSET + PAGES_PER_BUFFER)
 
 #define ENG2MOD_SIZE_OFFSET		(ENG2MOD_PAGE_OFFSET * PAGE_SIZE)
 #define MOD2ENG_SIZE_OFFSET		(MOD2ENG_PAGE_OFFSET * PAGE_SIZE)
-#define LOG_BUF_SIZE_OFFSET 	(LOG_BUF_PAGE_OFFSET * PAGE_SIZE)
+#define ENG2LOG_SIZE_OFFSET 	(ENG2LOG_PAGE_OFFSET * PAGE_SIZE)
+#define MOD2LOG_SIZE_OFFSET 	(MOD2LOG_PAGE_OFFSET * PAGE_SIZE)
+
+/* define the max size of each msg by type */
+#define ENG2MOD_MSG_MAX_SIZE 	64   /* eng -> mod max msg size 64 bytes */
+#define MOD2ENG_MSG_MAX_SIZE 	64   /* mod -> eng max msg size 64 bytes */
+#define LOG_MSG_MAX_SIZE 		2048 /* mod/eng -> log max msg size 2KB */ 
+
+/* define the total number of msgs in each ring buffer */
+#define ENG2MOD_TOTAL_MSGS 		(MAX_BUFFER_SIZE / ENG2MOD_MSG_MAX_SIZE)
+#define MOD2ENG_TOTAL_MSGS 		(MAX_BUFFER_SIZE / MOD2ENG_MSG_MAX_SIZE)
+#define LOG_TOTAL_MSGS 			(MAX_BUFFER_SIZE / LOG_MSG_MAX_SIZE)
 
 typedef enum {
 	ENG2MOD_BUF = 0,
 	MOD2ENG_BUF,
-	LOG_BUF,
-	MAX_BUF_TYPE = LOG_BUF,
+	ENG2LOG_BUF,
+	MOD2LOG_BUF,
+	MAX_BUF_TYPE = MOD2LOG_BUF,
 	TOTAL_BUFS = (MAX_BUF_TYPE + 1),
 } sr_buf_type;
 

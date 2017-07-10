@@ -1,103 +1,189 @@
 #include "sr_ring_buf.h"
 #include "sr_sal_common.h"
 
-SR_32 init_buf(SR_32 size, sr_ring_buffer *rb)
+SR_32 sr_ring_buf_calc_buffers(SR_32 mem_size, SR_32 each_buf_size)
 {
-	rb->buf_size = (size - sizeof(sr_ring_buffer));
-	rb->read_ptr = 0;
-	rb->write_ptr = 0;
+	SR_32 buffers;
 
-#ifdef SR_RB_DEBUG
-	sal_printf(" init buf: size %d\n", rb->buf_size);
-#endif
+	buffers = (mem_size - sizeof(sr_ring_buffer)) / (each_buf_size + sizeof(sr_buffer));
 
-	return 0;
+	return buffers;
 }
 
-SR_32 get_max_read_size(sr_ring_buffer *rb)
+SR_32 sr_ring_buf_calc_mem(SR_32 num_of_buffers, SR_32 each_buf_size)
 {
-	SR_32 length = rb->write_ptr - rb->read_ptr;
+	SR_32 total_mem_needed;
 
-	if (length == 0 )
+	total_mem_needed = sizeof(sr_ring_buffer);
+	total_mem_needed += sizeof(sr_buffer) * num_of_buffers;
+	total_mem_needed += num_of_buffers * each_buf_size;
+
+	return total_mem_needed;
+}
+
+SR_32 sr_init_ring_buf(sr_ring_buffer *rb, SR_32 mem_size, SR_32 num_of_buffers, SR_32 each_buf_size)
+{
+	SR_32 total_mem_needed;
+	SR_U32 i;
+	sr_buffer *buf_ptr;
+
+	total_mem_needed = sr_ring_buf_calc_mem(num_of_buffers, each_buf_size);
+	if (total_mem_needed > mem_size) {
+		sal_printf("sr_init_ring_buf: required mem [%d] is bigger than allocated [%d]\n",
+			total_mem_needed, mem_size);
 		return 0;
-
-	if (length < 0)
-		length += rb->buf_size;
-
-	return length;
-}
-
-SR_32 get_max_write_size(sr_ring_buffer *rb)
-{
-	SR_32 length = rb->read_ptr - rb->write_ptr;
-
-	if (length <= 0)
-		length += rb->buf_size;
-
-	return length;
-}
-
-SR_32 write_to_buf(sr_ring_buffer *rb, SR_U8 *data, SR_32 length)
-{
-	SR_U8 *buf_ptr = ((SR_U8 *)rb + sizeof(sr_ring_buffer));
-
-	if (length <= get_max_write_size(rb)) {
-		if (rb->write_ptr + length < rb->buf_size) {
-			sal_memcpy(buf_ptr + rb->write_ptr, data, length);
-			rb->write_ptr += length;
-		} else {
-			SR_32 first_size = rb->buf_size - rb->write_ptr;
-			SR_32 second_size = length - first_size;
-
-			sal_memcpy(buf_ptr +rb->write_ptr, data, first_size);
-			sal_memcpy(buf_ptr, data + first_size, second_size);
-			rb->write_ptr = second_size;
-		}
-#ifdef SR_RB_DEBUG
-		sal_printf("write_to_buf %p: write_ptr %d read_ptr %d\n", rb, rb->write_ptr, rb->read_ptr);
-#endif
-		return length;
 	}
 
-	return 0;
-}
+	memset(rb, 0, sizeof(sr_buffer));
+	rb->each_buf_size = each_buf_size;
+	rb->num_of_bufs = num_of_buffers;
+	rb->buf_mem_offset = sizeof(sr_ring_buffer) + (sizeof(sr_buffer) * num_of_buffers);
 
-SR_32 read_buf(sr_ring_buffer *rb, SR_U8 *data, SR_32 size, SR_BOOL copy)
-{
-	SR_U8 *buf_ptr = ((SR_U8 *)rb + sizeof(sr_ring_buffer));
-	SR_32 length = get_max_read_size(rb);
-
-	if (length > size)
-		length = size;
-		
-	if (rb->read_ptr + length < rb->buf_size) {
-		if (copy)
-			sal_memcpy(data, &buf_ptr[rb->read_ptr], length);
-		rb->read_ptr += length;
-	} else {
-		SR_32 first_size = rb->buf_size - rb->read_ptr;
-		SR_32 second_size = length - first_size;
-
-		if (copy) {
-			sal_memcpy(data, &buf_ptr[rb->read_ptr], first_size);
-			sal_memcpy(&data[first_size], &buf_ptr[0], second_size);
-		}
-		rb->read_ptr = second_size;
+	buf_ptr = (sr_buffer *)((SR_U8*)rb + sizeof(sr_ring_buffer));
+	for (i=0; i<num_of_buffers; i++) {
+		buf_ptr->offset = (i * each_buf_size);
+		buf_ptr++;
 	}
 
 #ifdef SR_RB_DEBUG
-	sal_printf("read_buf %p: read_ptr %d write_ptr %d\n", rb, rb->read_ptr, rb->write_ptr);
+	sal_printf("sr_init_ring_buf: used memory size %d\n", total_mem_needed);
+	sr_print_rb_info(rb);
 #endif
 
-	return length;
+	return total_mem_needed;
 }
 
-SR_32 reset_buf(sr_ring_buffer *rb)
+SR_U8 *sr_get_buf(sr_ring_buffer *rb, SR_32 size)
 {
-	rb->read_ptr = 0;
-	rb->write_ptr = 0;
-	rb->buf_size = 0;
+	sr_buffer *buf_ptr = (sr_buffer *)((SR_U8*)rb + sizeof(sr_ring_buffer));
+	SR_U8 *ptr = NULL;
+	SR_32 read_ptr = rb->read_ptr;
 
-	return 0;
+	if (size > rb->each_buf_size) {
+#ifdef SR_RB_DEBUG
+		sal_printf("sr_get_buf: requested size [%d] bigger than buffer size [%d]\n",
+			size, rb->each_buf_size);
+#endif
+		return ptr;
+	}
+
+	if ( ((rb->free_ptr + 1) % rb->num_of_bufs) == read_ptr) {
+#ifdef SR_RB_DEBUG
+		sal_printf("sr_get_buf: no free buffers free_ptr %d read_ptr %d\n", rb->free_ptr, read_ptr);
+#endif
+		return ptr;
+	}
+
+	buf_ptr = &buf_ptr[rb->free_ptr];
+	ptr = (SR_U8*)rb + rb->buf_mem_offset + buf_ptr->offset;
+
+	rb->free_ptr = (rb->free_ptr + 1) % rb->num_of_bufs;
+#ifdef SR_RB_DEBUG
+	sal_printf("sr_get_buf: new free_ptr %d\n", rb->free_ptr);
+#endif
+	return ptr;
+}
+
+SR_32 sr_write_buf(sr_ring_buffer *rb, SR_32 size)
+{
+	sr_buffer *buf_ptr = (sr_buffer *)((SR_U8*)rb + sizeof(sr_ring_buffer));
+	SR_32 free_ptr = rb->free_ptr;
+
+	if (size > rb->each_buf_size) {
+#ifdef SR_RB_DEBUG
+		sal_printf("sr_wite_buf: requested size [%d] bigger than buffer size [%d]\n",
+			size, rb->each_buf_size);
+#endif
+		return SR_ERROR;
+	}
+
+	if (free_ptr == rb->write_ptr) {
+#ifdef SR_RB_DEBUG
+	sal_printf("sr_write_buf: no buffer was allocated, free_ptr %d write_ptr %d\n", free_ptr, rb->write_ptr);
+#endif
+		return 0;
+	}
+
+#ifdef SR_RB_DEBUG
+	sal_printf("Writing to buf @offset %d size %d\n", rb->write_ptr, size);
+#endif
+	buf_ptr = &buf_ptr[rb->write_ptr];
+	buf_ptr->content_size = size;
+	rb->total_write_bytes += size;
+	rb->total_write_bufs++;
+
+	rb->write_ptr = (rb->write_ptr + 1) % rb->num_of_bufs;
+#ifdef SR_RB_DEBUG
+	sal_printf("sr_write_buf: new write_ptr %d\n", rb->write_ptr);
+#endif
+	return size;
+}
+
+SR_U8 *sr_read_buf(sr_ring_buffer *rb, SR_32 *size)
+{
+	sr_buffer *buf_ptr = (sr_buffer *)((SR_U8*)rb + sizeof(sr_ring_buffer));
+	SR_U8 *ptr = NULL;
+	SR_32 write_ptr = rb->write_ptr;
+
+	if (rb->read_ptr == write_ptr) {
+#ifdef SR_RB_DEBUG
+		sal_printf("sr_read_buf: no readable buffers. read_ptr %d write_ptr %d\n", rb->read_ptr, write_ptr);
+#endif
+		*size = 0;
+		return NULL;
+	}
+
+	buf_ptr += rb->read_ptr;
+
+#ifdef SR_RB_DEBUG
+	sal_printf("sr_read_buf: buf at offset %d size %d\n",
+		rb->read_ptr, buf_ptr->content_size);
+#endif
+	*size = buf_ptr->content_size;
+	rb->total_read_bytes += buf_ptr->content_size;
+	rb->total_read_bufs++;
+
+	ptr = (SR_U8*)rb + rb->buf_mem_offset + buf_ptr->offset;
+
+	return ptr;
+}
+
+void sr_free_buf(sr_ring_buffer *rb)
+{
+	SR_32 write_ptr = rb->write_ptr;
+
+	if ( (write_ptr == rb->read_ptr) ) {
+#ifdef SR_RB_DEBUG
+		sal_printf("sr_free_buf: no used buffers\n");
+#endif
+		return;
+	}
+
+	rb->read_ptr = (rb->read_ptr + 1) % rb->num_of_bufs;
+#ifdef SR_RB_DEBUG
+	sal_printf("sr_free_buf: new read_ptr %d\n", rb->read_ptr);
+#endif
+}
+
+void sr_print_rb_info(sr_ring_buffer *rb)
+{
+	/*SR_32 i;
+	sr_buffer *buf_ptr = (sr_buffer *)((SR_U8*)rb + sizeof(sr_ring_buffer));*/
+
+	sal_printf("read_ptr            = %08x\n", rb->read_ptr);
+	sal_printf("write_ptr           = %08x\n", rb->write_ptr);
+	sal_printf("free_ptr            = %08x\n", rb->free_ptr);
+	sal_printf("each_buf_size       = %08x\n", rb->each_buf_size);
+	sal_printf("num_of_bufs         = %08x\n", rb->num_of_bufs);
+	sal_printf("buf_mem_offset      = %08x\n", rb->buf_mem_offset);
+	sal_printf("total_read_bytes    = %08x\n", rb->total_read_bytes);
+	sal_printf("total_read_bufs     = %08x\n", rb->total_read_bufs);
+	sal_printf("total_write_bytes   = %08x\n", rb->total_write_bytes);
+	sal_printf("total_write_bufs    = %08x\n", rb->total_write_bufs);
+
+	/*for (i=0; i<rb->num_of_bufs; i++) {
+		sal_printf("buf_ptr[%08X] %p offset %08x content_size %08x\n", i, buf_ptr, buf_ptr->offset, buf_ptr->content_size);
+		buf_ptr++;
+	}*/
 }
 
