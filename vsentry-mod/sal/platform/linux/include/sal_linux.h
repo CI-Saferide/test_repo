@@ -55,6 +55,7 @@ SR_U16 sal_packet_ip_proto(void *skb);
 SR_U16 sal_packet_dest_port(void *skb);
 SR_U16 sal_packet_src_port(void *skb);
 SR_U16 sal_packet_src_addr(void *skb);
+SR_U16 sal_packet_dest_addr(void *skb);
 
 
 // Time functions
