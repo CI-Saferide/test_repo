@@ -10,7 +10,7 @@ SR_BOOL sal_bit_array_is_set (SR_U16 bit, bit_array *arr)
 {
 	if (bit > 4095)
 		return 0;
-	if ((arr->summary & bit/64) && (arr->level2[bit/64] & (bit%64))) {
+	if ((arr->summary & (1ULL<<(bit/64))) && (arr->level2[bit/64] & (1ULL<<(bit%64)))) {
 		return 1;
 	} else {
 		return 0;
