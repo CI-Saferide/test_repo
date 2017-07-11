@@ -338,6 +338,7 @@ static int vsentry_socket_listen(struct socket *sock,int backlog)
 
 #if 0 // testing shows that returning EACCESS will result in an endless loop of calling this hook.
       // moving this functionality to the netfilter incoming packet hook
+
 static int vsentry_socket_accept(struct socket *sock,struct socket *newsock)
 {
 	printk("vsentry_socket_accept: Entry, %lx->%lx\n", sock, newsock);
