@@ -336,13 +336,19 @@ static int vsentry_socket_listen(struct socket *sock,int backlog)
 	return 0;
 }
 
+#if 0 // testing shows that returning EACCESS will result in an endless loop of calling this hook.
+      // moving this functionality to the netfilter incoming packet hook
+
 static int vsentry_socket_accept(struct socket *sock,struct socket *newsock)
 {
+	printk("vsentry_socket_accept: Entry, %lx->%lx\n", sock, newsock);
+	return -EACCES;
 	if(hook_filter())
 		return 0;
 
-	return 0;
+	return -EACCES;
 }
+#endif // 0
 
 /* @socket_sendmsg:
  *	Check permission before transmitting a message to another socket.
@@ -450,7 +456,7 @@ static vs_hook_t vsentry_hooks[] = {
 	{ VS_HOOK_SOCKET_BIND, (void*)vsentry_socket_bind },
 	{ VS_HOOK_SOCKET_CONNECT, (void*)vsentry_socket_connect },
 	{ VS_HOOK_SOCKET_LISTEN, (void*)vsentry_socket_listen },
-	{ VS_HOOK_SOCKET_ACCEPT, (void*)vsentry_socket_accept },
+	//{ VS_HOOK_SOCKET_ACCEPT, (void*)vsentry_socket_accept },
 	{ VS_HOOK_SOCKET_SENDMSG, (void*)vsentry_socket_sendmsg },
 	{ VS_HOOK_SOCKET_RECVMSG, (void*)vsentry_socket_recvmsg },
 	{ VS_HOOK_SOCKET_SHUTDOWN, (void*)vsentry_socket_shutdown },
@@ -711,7 +717,7 @@ void init_vsentry_hooks(struct security_operations *ops)
 	ops->socket_create = 		vsentry_socket_create;
 	ops->socket_bind = 			vsentry_socket_bind;
 	ops->socket_listen = 		vsentry_socket_listen;
-	ops->socket_accept = 		vsentry_socket_accept;
+	//ops->socket_accept = 		vsentry_socket_accept;
 	ops->socket_sendmsg = 		vsentry_socket_sendmsg;
 	ops->socket_recvmsg = 		vsentry_socket_recvmsg;
 	ops->socket_sock_rcv_skb = 	vsentry_socket_sock_rcv_skb;
