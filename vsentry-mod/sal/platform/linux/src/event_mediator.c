@@ -60,8 +60,33 @@ const static SR_8 *protocol_family[] = {
 	"PF_MAX"
 };
 
-__attribute__ ((unused))
-static SR_8 module_name[] = "[em]"; /* module_name used only when DEBUG_EVENT_MEDIATOR is enabled */
+#ifdef DEBUG_EVENT_MEDIATOR
+static SR_8 module_name[] = "em";
+
+static SR_8 get_path(struct dentry *dentry, SR_8 *buffer, SR_32 len)
+{
+	SR_8 path[SR_MAX_PATH_SIZE], *path_ptr;
+
+	path_ptr = dentry_path_raw(dentry, path, SR_MAX_PATH_SIZE);
+	if (IS_ERR(path))
+		return SR_ERROR;
+
+	strncpy(buffer, path_ptr, MIN(len, 1+strlen(path_ptr)));
+	return SR_SUCCESS;
+}
+#endif /* DEBUG_EVENT_MEDIATOR */
+
+const event_name hook_event_names[MAX_HOOK] = {
+	{HOOK_MKDIR,		"mkdir"},
+	{HOOK_UNLINK,		"unlink"},
+	{HOOK_SYMLINK,		"symlink"},
+	{HOOK_RMDIR,		"rmdir"},
+	{HOOK_CHMOD,		"chmod"},
+	{HOOK_INODE_CREATE,	"inode_create"},
+	{HOOK_FILE_OPEN,	"file_open"},
+	{HOOK_INODE_LINK,	"inode_link"},
+};
+
 
 extern SR_32 sr_vsentryd_pid; //TODO: get sr_engine pid from chdrv open fops
 #define HOOK_FILTER		if(hook_filter()) return 0;
@@ -84,18 +109,6 @@ static void parse_sinaddr(const struct in_addr saddr, SR_8* buffer, SR_32 length
 		((saddr.s_addr&0xFF000000)>>24));
 }
 
-static SR_8 get_path(struct dentry *dentry, SR_8 *buffer, SR_32 len)
-{
-	SR_8 path[SR_MAX_PATH_SIZE], *path_ptr;
-
-	path_ptr = dentry_path_raw(dentry, path, SR_MAX_PATH_SIZE);
-	if (IS_ERR(path))
-		return SR_ERROR;
-
-	strncpy(buffer, path_ptr, MIN(len, 1+strlen(path_ptr)));
-	return SR_SUCCESS;
-}
-
 SR_32 vsentry_inode_mkdir(struct inode *dir, struct dentry *dentry, umode_t mask)
 {
 	disp_info_t disp;
@@ -108,22 +121,33 @@ SR_32 vsentry_inode_mkdir(struct inode *dir, struct dentry *dentry, umode_t mask
 	HOOK_FILTER
 
 	/* gather metadata */
-	strncpy(disp.fileinfo.id.event_name, __FUNCTION__,
-		MIN(sizeof(disp.fileinfo.id.event_name), 1+strlen(__FUNCTION__)));
-	strncpy(disp.fileinfo.filename, dentry->d_iname,
-		MIN(sizeof(disp.fileinfo.filename), 1+strlen(dentry->d_iname)));
-	if (SR_SUCCESS != get_path(dentry->d_parent, disp.fileinfo.fullpath, sizeof(disp.fileinfo.fullpath)))
-		strncpy(disp.fileinfo.fullpath, "NA", 3);
-
-	disp.fileinfo.id.gid = (int)rcred->gid.val;
-	disp.fileinfo.id.tid = (int)rcred->uid.val;
+	disp.fileinfo.id.event = HOOK_MKDIR;
+	if ((dentry->d_parent) && (dentry->d_parent->d_inode))
+		disp.fileinfo.parent_inode = dentry->d_parent->d_inode->i_ino;
+	else
+		sal_kernel_print_err("[%s] parent inode in null\n", hook_event_names[HOOK_MKDIR].name);
+	disp.fileinfo.id.gid = (SR_32)rcred->gid.val;
+	disp.fileinfo.id.tid = (SR_32)rcred->uid.val;
 	disp.fileinfo.id.pid = current->pid;
 
 #ifdef DEBUG_EVENT_MEDIATOR
-	sal_kernel_print_info("%s mkdir=%s, path=%s, pid=%d, gid=%d, tid=%d\n", 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeclaration-after-statement"
+
+	SR_U8 		filename[128];
+	SR_U8 		fullpath[128];
+#pragma GCC diagnostic pop	
+	strncpy(filename, dentry->d_iname,
+		MIN(sizeof(filename), 1+strlen(dentry->d_iname)));
+	if (SR_SUCCESS != get_path(dentry->d_parent, fullpath, sizeof(fullpath)))
+		strncpy(fullpath, "NA", 3);
+	
+	sal_kernel_print_info("[%s:HOOK %s] parent inode=%lu, file=%s, path=%s, pid=%d, gid=%d, tid=%d\n", 
 			module_name,
-			disp.fileinfo.filename, 
-			disp.fileinfo.fullpath, 
+			hook_event_names[HOOK_MKDIR].name,
+			disp.fileinfo.parent_inode,
+			filename, 
+			fullpath, 
 			disp.fileinfo.id.pid,
 			disp.fileinfo.id.gid, 
 			disp.fileinfo.id.tid);
@@ -145,21 +169,38 @@ SR_32 vsentry_inode_unlink(struct inode *dir, struct dentry *dentry)
 	HOOK_FILTER
 	
 	/* gather metadata */
-	strncpy(disp.fileinfo.id.event_name, __FUNCTION__,
-		MIN(sizeof(disp.fileinfo.id.event_name), 1+strlen(__FUNCTION__)));
-	strncpy(disp.fileinfo.filename, dentry->d_iname,
-		MIN(sizeof(disp.fileinfo.filename), 1+strlen(dentry->d_iname)));
-	get_path(dentry, disp.fileinfo.fullpath, sizeof(disp.fileinfo.fullpath));
+	disp.fileinfo.id.event = HOOK_UNLINK;
+	if (dentry->d_inode)
+		disp.fileinfo.current_inode = dentry->d_inode->i_ino;
+	else
+		sal_kernel_print_err("[%s] parent inode in null\n", hook_event_names[HOOK_UNLINK].name);
+	if ((dentry->d_parent) && (dentry->d_parent->d_inode))
+		disp.fileinfo.parent_inode = dentry->d_parent->d_inode->i_ino;
+	else
+		sal_kernel_print_err("[%s] parent inode in null\n", hook_event_names[HOOK_UNLINK].name);
 
 	disp.fileinfo.id.gid = (int)rcred->gid.val;
 	disp.fileinfo.id.tid = (int)rcred->uid.val;
 	disp.fileinfo.id.pid = current->pid;
 	
 #ifdef DEBUG_EVENT_MEDIATOR
-	sal_kernel_print_info("%s unlink=%s, path=%s, pid=%d, gid=%d, tid=%d\n", 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeclaration-after-statement"
+
+	SR_U8 		filename[128];
+	SR_U8 		fullpath[128];
+#pragma GCC diagnostic pop		
+	strncpy(filename, dentry->d_iname,
+		MIN(sizeof(filename), 1+strlen(dentry->d_iname)));
+	get_path(dentry, fullpath, sizeof(fullpath));
+
+	sal_kernel_print_info("[%s:HOOK %s] inode=%lu, parent_inode=%lu, file=%s, path=%s, pid=%d, gid=%d, tid=%d\n", 
 			module_name,
-			disp.fileinfo.filename, 
-			disp.fileinfo.fullpath, 
+			hook_event_names[HOOK_UNLINK].name,
+			disp.fileinfo.current_inode,
+			disp.fileinfo.parent_inode,
+			filename, 
+			fullpath, 
 			disp.fileinfo.id.pid,
 			disp.fileinfo.id.gid, 
 			disp.fileinfo.id.tid);
@@ -182,21 +223,31 @@ SR_32 vsentry_inode_symlink(struct inode *dir, struct dentry *dentry, const SR_8
 	HOOK_FILTER
 
 	/* gather metadata */
-	strncpy(disp.fileinfo.id.event_name, __FUNCTION__,
-		MIN(sizeof(disp.fileinfo.id.event_name), 1+strlen(__FUNCTION__)));
-	strncpy(disp.fileinfo.filename, (char *)name,
-		MIN(sizeof(disp.fileinfo.filename), 1+strlen(name)));
-	get_path(dentry, disp.fileinfo.fullpath, sizeof(disp.fileinfo.fullpath));
+	disp.fileinfo.id.event = HOOK_SYMLINK;
+	if ((dentry->d_parent) && (dentry->d_parent->d_inode))
+		disp.fileinfo.parent_inode = dentry->d_parent->d_inode->i_ino;
+	else
+		sal_kernel_print_err("[%s] parent inode in null\n", hook_event_names[HOOK_SYMLINK].name);
 
 	disp.fileinfo.id.gid = (int)rcred->gid.val;
 	disp.fileinfo.id.tid = (int)rcred->uid.val;
 	disp.fileinfo.id.pid = current->pid;
 	
 #ifdef DEBUG_EVENT_MEDIATOR
-	sal_kernel_print_info("%s symlink=%s, path=%s, pid=%d, gid=%d, tid=%d\n", 
+#pragma GCC diagnostic ignored "-Wdeclaration-after-statement"
+
+	SR_U8 		filename[128];
+	SR_U8 		fullpath[128];
+#pragma GCC diagnostic pop	
+	strncpy(disp.fileinfo.filename, (char *)name,
+		MIN(sizeof(filename), 1+strlen(name)));
+	get_path(dentry, fullpath, sizeof(fullpath));
+	sal_kernel_print_info("[%s:HOOK %s] parent_inode=%lu, file=%s, path=%s, pid=%d, gid=%d, tid=%d\n", 
 			module_name,
-			disp.fileinfo.filename, 
-			disp.fileinfo.fullpath, 
+			hook_event_names[HOOK_SYMLINK].name,
+			disp.fileinfo.parent_inode,
+			filename, 
+			fullpath, 
 			disp.fileinfo.id.pid,
 			disp.fileinfo.id.gid, 
 			disp.fileinfo.id.tid);
@@ -205,7 +256,6 @@ SR_32 vsentry_inode_symlink(struct inode *dir, struct dentry *dentry, const SR_8
 	/* call dispatcher */
 	return (disp_inode_symlink(&disp));
 }
-
 
 SR_32 vsentry_inode_rmdir(struct inode *dir, struct dentry *dentry)
 {
@@ -220,21 +270,35 @@ SR_32 vsentry_inode_rmdir(struct inode *dir, struct dentry *dentry)
 	HOOK_FILTER
 
 	/* gather metadata */
-	strncpy(disp.fileinfo.id.event_name, __FUNCTION__,
-		MIN(sizeof(disp.fileinfo.id.event_name), 1+strlen(__FUNCTION__)));
-	strncpy(disp.fileinfo.filename, dentry->d_iname,
-		MIN(sizeof(disp.fileinfo.filename), 1+strlen(dentry->d_iname)));
-	get_path(dentry->d_parent, disp.fileinfo.fullpath, sizeof(disp.fileinfo.fullpath));
-
+	disp.fileinfo.id.event = HOOK_RMDIR;
+	if (dentry->d_inode)
+		disp.fileinfo.current_inode = dentry->d_inode->i_ino;
+	else
+		sal_kernel_print_err("[%s] inode in null\n", hook_event_names[HOOK_RMDIR].name);
+	if ((dentry->d_parent) && (dentry->d_parent->d_inode))
+		disp.fileinfo.parent_inode = dentry->d_parent->d_inode->i_ino;
+	else
+		sal_kernel_print_err("[%s] parent inode in null\n", hook_event_names[HOOK_RMDIR].name);
+		
 	disp.fileinfo.id.gid = (int)rcred->gid.val;
 	disp.fileinfo.id.tid = (int)rcred->uid.val;
 	disp.fileinfo.id.pid = current->pid;
-	
+
 #ifdef DEBUG_EVENT_MEDIATOR
-	sal_kernel_print_info("%s rmdir=%s, path=%s, pid=%d, gid=%d, tid=%d\n", 
+#pragma GCC diagnostic ignored "-Wdeclaration-after-statement"
+	SR_U8 		filename[128];
+	SR_U8 		fullpath[128];
+#pragma GCC diagnostic pop	
+	strncpy(filename, dentry->d_iname,
+		MIN(sizeof(filename), 1+strlen(dentry->d_iname)));
+	get_path(dentry->d_parent, fullpath, sizeof(fullpath));
+	sal_kernel_print_info("[%s:HOOK %s] inode=%lu, parent_inode=%lu, file=%s, path=%s, pid=%d, gid=%d, tid=%d\n", 
 			module_name,
-			disp.fileinfo.filename, 
-			disp.fileinfo.fullpath, 
+			hook_event_names[HOOK_RMDIR].name,
+			disp.fileinfo.current_inode,
+			disp.fileinfo.parent_inode,
+			filename, 
+			fullpath, 
 			disp.fileinfo.id.pid,
 			disp.fileinfo.id.gid, 
 			disp.fileinfo.id.tid);
@@ -293,17 +357,32 @@ SR_32 vsentry_path_chmod(struct path *path, umode_t mode)
 	HOOK_FILTER
 
 	/* gather metadata */
-	strncpy(disp.fileinfo.id.event_name,__FUNCTION__,
-		MIN(sizeof(disp.fileinfo.id.event_name), 1+strlen(__FUNCTION__)));
-	get_path(path->dentry, disp.fileinfo.fullpath, sizeof(disp.fileinfo.fullpath));
+	disp.fileinfo.id.event = HOOK_CHMOD;
+	if (path->dentry->d_inode)
+		disp.fileinfo.current_inode = path->dentry->d_inode->i_ino;
+	else
+		sal_kernel_print_err("[%s] inode in null\n", hook_event_names[HOOK_CHMOD].name);
+	if ((path->dentry->d_parent) && (path->dentry->d_parent->d_inode))
+		disp.fileinfo.parent_inode = path->dentry->d_parent->d_inode->i_ino;
+	else
+		sal_kernel_print_err("[%s] parent inode in null\n", hook_event_names[HOOK_CHMOD].name);
+		
 	disp.fileinfo.id.gid = (int)rcred->gid.val;
 	disp.fileinfo.id.tid = (int)rcred->uid.val;
 	disp.fileinfo.id.pid = current->pid;
 
 #ifdef DEBUG_EVENT_MEDIATOR
-	sal_kernel_print_info("%s path_chmod=%s, pid=%d, gid=%d, tid=%d\n", 
-			module_name, 
-			disp.fileinfo.fullpath, 
+#pragma GCC diagnostic ignored "-Wdeclaration-after-statement"
+	SR_U8 		fullpath[128];
+#pragma GCC diagnostic pop	
+	get_path(path->dentry, fullpath, sizeof(fullpath));
+
+	sal_kernel_print_info("[%s:HOOK %s] inode=%lu, parent_inode=%lu, path=%s, pid=%d, gid=%d, tid=%d\n", 
+			module_name,
+			hook_event_names[HOOK_CHMOD].name,
+			disp.fileinfo.current_inode,
+			disp.fileinfo.parent_inode,
+			fullpath, 
 			disp.fileinfo.id.pid,
 			disp.fileinfo.id.gid, 
 			disp.fileinfo.id.tid);
@@ -325,20 +404,29 @@ SR_32 vsentry_inode_create(struct inode *dir, struct dentry *dentry, umode_t mod
 	HOOK_FILTER
 
 	/* gather metadata */
-	strncpy(disp.fileinfo.id.event_name, __FUNCTION__,
-		MIN(sizeof(disp.fileinfo.id.event_name), 1+strlen(__FUNCTION__)));
-	strncpy(disp.fileinfo.filename, dentry->d_iname,
-		MIN(sizeof(disp.fileinfo.filename), 1+strlen(dentry->d_iname)));
-	get_path(dentry->d_parent, disp.fileinfo.fullpath, sizeof(disp.fileinfo.fullpath));
+	disp.fileinfo.id.event = HOOK_INODE_CREATE;
+	if ((dentry->d_parent) && (dentry->d_parent->d_inode))
+		disp.fileinfo.parent_inode = dentry->d_parent->d_inode->i_ino;
+	else
+		sal_kernel_print_err("[%s] parent inode in null\n", hook_event_names[HOOK_INODE_CREATE].name);
+		
 	disp.fileinfo.id.gid = (int)rcred->gid.val;
 	disp.fileinfo.id.tid = (int)rcred->uid.val;
 	disp.fileinfo.id.pid = current->pid;
 	
 #ifdef DEBUG_EVENT_MEDIATOR
-	sal_kernel_print_info("%s inode_create=%s, path=%s, pid=%d, gid=%d, tid=%d\n", 
+#pragma GCC diagnostic ignored "-Wdeclaration-after-statement"
+	SR_U8 		filename[128];
+	SR_U8 		fullpath[128];
+#pragma GCC diagnostic pop
+	strncpy(disp.fileinfo.filename, dentry->d_iname,
+		MIN(sizeof(filename), 1+strlen(dentry->d_iname)));
+	get_path(dentry->d_parent, fullpath, sizeof(fullpath));
+	sal_kernel_print_info("[%s:HOOK %s] parent_inode=%lu, path=%s, pid=%d, gid=%d, tid=%d\n", 
 			module_name,
-			disp.fileinfo.filename, 
-			disp.fileinfo.fullpath,
+			hook_event_names[HOOK_INODE_CREATE].name,
+			disp.fileinfo.parent_inode,
+			fullpath, 
 			disp.fileinfo.id.pid,
 			disp.fileinfo.id.gid, 
 			disp.fileinfo.id.tid);
@@ -361,19 +449,31 @@ SR_32 vsentry_file_open(struct file *file, const struct cred *cred)
 	HOOK_FILTER
 
 	/* gather metadata */
-	strncpy(disp.fileinfo.id.event_name, __FUNCTION__,
-		MIN(sizeof(disp.fileinfo.id.event_name), 1+strlen(__FUNCTION__)));
-	get_path(file->f_path.dentry, disp.fileinfo.filename, sizeof(disp.fileinfo.filename));
-	/*TODO: obtain full path */
-	
+	disp.fileinfo.id.event = HOOK_FILE_OPEN;
+	if (file->f_path.dentry->d_inode)
+		disp.fileinfo.current_inode = file->f_path.dentry->d_inode->i_ino;
+	else
+		sal_kernel_print_err("[%s] inode in null\n", hook_event_names[HOOK_FILE_OPEN].name);
+	if ((file->f_path.dentry->d_parent) && (file->f_path.dentry->d_parent->d_inode))
+		disp.fileinfo.parent_inode = file->f_path.dentry->d_parent->d_inode->i_ino;
+	else
+		sal_kernel_print_err("[%s] parent inode in null\n", hook_event_names[HOOK_FILE_OPEN].name);
+		
 	disp.fileinfo.id.gid = (int)rcred->gid.val;
 	disp.fileinfo.id.tid = (int)rcred->uid.val;
 	disp.fileinfo.id.pid = current->pid;
 
 #ifdef DEBUG_EVENT_MEDIATOR
-	sal_kernel_print_info("%s file_open=%s, pid=%d, gid=%d, tid=%d\n", 
+#pragma GCC diagnostic ignored "-Wdeclaration-after-statement"
+	SR_U8 		filename[128];
+#pragma GCC diagnostic pop
+	get_path(file->f_path.dentry, filename, sizeof(filename));
+	sal_kernel_print_info("[%s:HOOK %s] inode=%lu, parent_inode=%lu, file=%s, pid=%d, gid=%d, tid=%d\n", 
 			module_name,
-			disp.fileinfo.filename, 
+			hook_event_names[HOOK_FILE_OPEN].name,
+			disp.fileinfo.current_inode,
+			disp.fileinfo.parent_inode,
+			filename, 
 			disp.fileinfo.id.pid,
 			disp.fileinfo.id.gid, 
 			disp.fileinfo.id.tid);
@@ -396,23 +496,38 @@ SR_32 vsentry_inode_link(struct dentry *old_dentry, struct inode *dir, struct de
 	HOOK_FILTER
 
 	/* gather metadata */
-	strncpy(disp.fileinfo.id.event_name, __FUNCTION__,
-		MIN(sizeof(disp.fileinfo.id.event_name), 1+strlen(__FUNCTION__)));
-	strncpy(disp.fileinfo.filename, old_dentry->d_iname,
-		MIN(sizeof(disp.fileinfo.filename), 1+strlen(old_dentry->d_iname)));
-	get_path(new_dentry, disp.fileinfo.fullpath, sizeof(disp.fileinfo.fullpath));
-	get_path(old_dentry, disp.fileinfo.old_path, sizeof(disp.fileinfo.old_path));
+	disp.fileinfo.id.event = HOOK_INODE_LINK;	
+	if ((new_dentry->d_parent) && (new_dentry->d_parent->d_inode))
+		disp.fileinfo.parent_inode = new_dentry->d_parent->d_inode->i_ino;
+	else
+		sal_kernel_print_err("[%s] parent inode in null\n", hook_event_names[HOOK_INODE_LINK].name);
+	if ((old_dentry->d_parent) && (old_dentry->d_parent->d_inode))
+		disp.fileinfo.old_inode = old_dentry->d_parent->d_inode->i_ino;
+	else
+		sal_kernel_print_err("[%s] old parent inode in null\n", hook_event_names[HOOK_INODE_LINK].name);
 
 	disp.fileinfo.id.gid = (int)rcred->gid.val;
 	disp.fileinfo.id.tid = (int)rcred->uid.val;
 	disp.fileinfo.id.pid = current->pid;
 	
 #ifdef DEBUG_EVENT_MEDIATOR
-	sal_kernel_print_info("%s inode_link=%s, path=%s, old path=%s, pid=%d, gid=%d, tid=%d\n", 
+#pragma GCC diagnostic ignored "-Wdeclaration-after-statement"
+	SR_U8 		filename[128];
+	SR_U8 		fullpath[128];
+	SR_U8 		old_path[128];
+#pragma GCC diagnostic pop
+	strncpy(filename, old_dentry->d_iname,
+		MIN(sizeof(filename), 1+strlen(old_dentry->d_iname)));
+	get_path(new_dentry, fullpath, sizeof(fullpath));
+	get_path(old_dentry, old_path, sizeof(old_path));
+	sal_kernel_print_info("[%s:HOOK %s] parent_inode=%lu, old_parent_inode=%lu, file=%s, path=%s, old_path=%s pid=%d, gid=%d, tid=%d\n", 
 			module_name,
-			disp.fileinfo.filename, 
-			disp.fileinfo.fullpath, 
-			disp.fileinfo.old_path,
+			hook_event_names[HOOK_INODE_LINK].name,
+			disp.fileinfo.parent_inode,
+			disp.fileinfo.old_inode,
+			filename,
+			fullpath,
+			old_path, 
 			disp.fileinfo.id.pid,
 			disp.fileinfo.id.gid, 
 			disp.fileinfo.id.tid);
