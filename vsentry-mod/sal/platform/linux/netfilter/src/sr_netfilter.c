@@ -22,7 +22,7 @@ unsigned int sr_netfilter_hook_fn(void *priv,
 	struct iphdr *ip_header = (struct iphdr *)skb_network_header(skb);
 
 	if ( ((ip_header->protocol == 6) && ((struct tcphdr *)skb_transport_header(skb))->syn) || (ip_header->protocol == 17)) {
-		if(sr_scanner_det_rcv(skb)==SR_CLS_ACTION_DROP);
+		if(sr_scanner_det_rcv(skb)==SR_CLS_ACTION_DROP)
 			return NF_DROP;
 	}
 

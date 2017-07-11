@@ -209,7 +209,7 @@ static int __init vsentry_init(void)
 	pr_info("[%s]: registration to lsm succeedded\n", MODULE_NAME);	
 
 	sr_cls_port_init();	
-	//sr_netfilter_init();
+	sr_netfilter_init();
 	sr_classifier_init();
 	sr_cls_canid_init();
 	
