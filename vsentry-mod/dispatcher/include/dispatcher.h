@@ -14,6 +14,19 @@
 
 #define SR_MAX_PATH_SIZE 512
 
+enum hook_events {
+	HOOK_MKDIR,
+	HOOK_UNLINK,
+	HOOK_SYMLINK,
+	HOOK_RMDIR,
+	HOOK_CHMOD,
+	HOOK_INODE_CREATE,
+	HOOK_FILE_OPEN,
+	HOOK_INODE_LINK,
+	MAX_HOOK
+	/* NOTE: when addidng hooks make sure to update also event_mediator.c hook_event_names */
+};
+
 typedef struct _identifier {
 /*
 	the kernel doesn't make a real distinction between pid and tid: 
@@ -21,10 +34,11 @@ typedef struct _identifier {
 	a tid is actually the identifier of the schedulable object in the kernel (thread), 
 	while the pid is the identifier of the group of schedulable objects that share memory and fds (process).
 */	
-	SR_U8		event_name[32];
-	SR_U32 		gid; /* group identifier */
-	SR_U32 		tid; /* thread identifier */
-	SR_U32 		pid; /* process identifier */
+	SR_U8				event_name[32];
+	enum hook_events	event;
+	SR_U32 				gid; /* group identifier */
+	SR_U32 				tid; /* thread identifier */
+	SR_U32 				pid; /* process identifier */
 }identifier;
 
 
@@ -32,10 +46,13 @@ typedef union {
 
 /* FS related functions  */
 	struct _fileinfo {
-		identifier id;
-		SR_U8 	filename[128];
-		SR_U8 	fullpath[128];
-		SR_U8 	old_path[128];
+		identifier 	id;
+		SR_U32		current_inode;
+		SR_U32		parent_inode;
+		SR_U32		old_inode;
+		SR_U8 		filename[128];
+		SR_U8 		fullpath[128];
+		SR_U8 		old_path[128];
 	}fileinfo;
 
 /* socket related functions */
@@ -54,6 +71,11 @@ typedef union {
 		SR_BOOL kern;			//kern set to 1 if a kernel socket.
 	}socket_info;
 }disp_info_t;
+
+typedef struct _event_name {
+	enum hook_events	event;
+	SR_U8				name[32];
+}event_name;
 
 CEF_payload *cef_init(char* event_name,enum severity sev,enum dev_event_class_ID	class);
 
