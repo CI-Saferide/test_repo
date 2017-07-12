@@ -6,6 +6,7 @@
 #include "sr_sal_common.h"
 #include "sr_log.h"
 #include "sr_msg_dispatch.h"
+#include "sr_cls_control.h"
 
 SR_32 engine_main_loop(void *data)
 {
@@ -86,6 +87,12 @@ SR_32 sr_engine_start(void)
 		return SR_ERROR;
 	}
 
+	/* hardcoded configuration */
+	sr_cls_file_add_rule("/sbin", 1, 1);
+	sr_cls_file_add_rule("/bin", 2, 1);
+	sr_cls_file_add_rule("/proc", 3, 1);
+	sr_cls_file_add_rule("/var", 4, 1);
+	
 	while (run) {
 		SR_8 input = getchar();
 

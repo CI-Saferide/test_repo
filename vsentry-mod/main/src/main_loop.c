@@ -23,31 +23,31 @@ SR_32 sr_module_loop(void *arg)
 
 		/* if allocated (i.e. engine started ... */
 		if (vsshmem && vsshmem->buffer) {
-			/* check for incomming msgs from engine */
+			/* check for incoming msgs from engine */
 			while ((msg = (sr_msg_cls_file_t*)sr_read_msg(ENG2MOD_BUF, &ret)) > 0) {
-				/* TODO: read and process data. example: */
-				sal_printf("sr_module_loop: got new msg. len %d\n", ret);
+				/* TODO: Currently reading hardcoded file classifier messages which are always 17 bytes. later needs a different implementation */
+				sr_msg_dispatch(msg, ret);
 				switch (msg->msg_type) {
 				case SR_MSG_TYPE_CLS_FILE:
-					sal_printf("MSG type CLS_FILE. ");
+					sal_printf("MSG type CLS_FILE ");
 					switch (msg->file_msg.msg_type) {
 					case SR_CLS_INODE_INHERIT:
-						sal_printf("INODE_INHERIT ");
+						sal_printf("[INODE_INHERIT] ");
 						break;
 					case SR_CLS_INODE_DEL_RULE:
-						sal_printf("INODE_DEL_RULE ");
+						sal_printf("[INODE_DEL_RULE] ");
 						break;
 					case SR_CLS_INODE_ADD_RULE:
-						sal_printf("INODE_ADD_RULE ");
+						sal_printf("[INODE_ADD_RULE] ");
 						break;
 					case SR_CLS_INODE_REMOVE:
-						sal_printf("INODE_REMOVE ");
+						sal_printf("[INODE_REMOVE] ");
 						break;
 					default:
 						sal_printf("wrong file_msg->msg_type\n");
 						break;
 					}
-					sal_printf("rulenem 0x%08x inode1 0x%08x inode2 0x%08x\n",
+					sal_printf("rulenum %d inode1 %d inode2 %d\n",
 						msg->file_msg.rulenum, msg->file_msg.inode1, msg->file_msg.inode2);
 					break;
 				case SR_MSG_TYPE_DEFAULT:
