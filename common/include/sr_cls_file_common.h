@@ -18,4 +18,4 @@ struct sr_cls_msg {
 	SR_U32  inode2;
 };
 
-#endif
+#endif /* SR_CLS_FILE_COMMON_H */
