@@ -6,6 +6,7 @@
 #include "main_loop.h"
 #include "sr_sal_common.h"
 #include "sr_cls_file.h"
+#include "sr_cls_network.h"
 
 #define MAX_RX_MSG_LEN 	512
 
@@ -13,7 +14,7 @@ SR_32 sr_module_loop(void *arg)
 {
 	sr_shmem* vsshmem;
 	SR_32 ret;
-	sr_msg_cls_file_t *msg;
+	sr_msg_cls_t *msg;
 
 	sal_printf("module_loop: started ...\n");
 
@@ -24,13 +25,13 @@ SR_32 sr_module_loop(void *arg)
 		/* if allocated (i.e. engine started ... */
 		if (vsshmem && vsshmem->buffer) {
 			/* check for incoming msgs from engine */
-			while ((msg = (sr_msg_cls_file_t*)sr_read_msg(ENG2MOD_BUF, &ret)) > 0) {
+			while ((msg = (sr_msg_cls_t*)sr_read_msg(ENG2MOD_BUF, &ret)) > 0) {
 				/* TODO: Currently reading hardcoded file classifier messages which are always 17 bytes. later needs a different implementation */
-				sr_msg_dispatch(msg, ret);
+				sr_msg_dispatch((char*)msg, ret);
 				switch (msg->msg_type) {
 				case SR_MSG_TYPE_CLS_FILE:
 					sal_printf("MSG type CLS_FILE ");
-					switch (msg->file_msg.msg_type) {
+					switch (msg->sub_msg.msg_type) {
 					case SR_CLS_INODE_INHERIT:
 						sal_printf("[INODE_INHERIT] ");
 						break;
@@ -44,11 +45,31 @@ SR_32 sr_module_loop(void *arg)
 						sal_printf("[INODE_REMOVE] ");
 						break;
 					default:
-						sal_printf("wrong file_msg->msg_type\n");
+						sal_printf("wrong sub_msg->msg_type\n");
 						break;
-					}
+					} /* end of SR_MSG_TYPE_CLS_FILE */
 					sal_printf("rulenum %d inode1 %d inode2 %d\n",
-						msg->file_msg.rulenum, msg->file_msg.inode1, msg->file_msg.inode2);
+						msg->sub_msg.rulenum, msg->sub_msg.inode1, msg->sub_msg.inode2);
+					break;
+				case SR_MSG_TYPE_CLS_NETWORK:
+					sal_printf("MSG type CLS_NETWORK ");
+					switch (msg->sub_msg.msg_type) {
+						case SR_CLS_IPV4_DEL_RULE:
+						sal_printf("[IPV4_DEL] ");
+						break;
+						case SR_CLS_IPV4_ADD_RULE:
+						sal_printf("[IPV4_ADD] ");
+						break;
+						case SR_CLS_IPV6_DEL_RULE:
+						sal_printf("[IPV6_DEL] ");
+						break;
+						case SR_CLS_IPV6_ADD_RULE:
+						sal_printf("[IPV6_DEL] ");
+						break;
+					default:
+						sal_printf("wrong sub_msg->msg_type\n");
+						break;
+					} /* end of SR_MSG_TYPE_CLS_NETWORK */
 					break;
 				case SR_MSG_TYPE_DEFAULT:
 					break;
@@ -89,7 +110,9 @@ SR_32 sr_msg_dispatch(char *msg, int size)
 	if (!hdr)
 		return SR_ERROR;
 	if (hdr->msg_type == SR_MSG_TYPE_CLS_FILE) {
-		sr_cls_msg_dispatch((struct sr_cls_msg *)hdr->msg_payload);
+		sr_cls_file_msg_dispatch((struct sr_cls_msg *)hdr->msg_payload);
+	} else if (hdr->msg_type == SR_MSG_TYPE_CLS_NETWORK) {
+		sr_cls_network_msg_dispatch((struct sr_cls_network_msg *)hdr->msg_payload);
 	}
 	return SR_SUCCESS;
 

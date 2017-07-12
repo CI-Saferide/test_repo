@@ -43,17 +43,17 @@ SR_32 engine_main_loop(void *data)
 
 static void eng2mod_test(void)
 {
-	sr_msg_cls_file_t *msg;
+	sr_msg_cls_t *msg;
 	SR_U8 count = 0;
 
 	while (count < 32) {
-		msg = (sr_msg_cls_file_t*)sr_get_msg(ENG2MOD_BUF, ENG2MOD_MSG_MAX_SIZE);
+		msg = (sr_msg_cls_t*)sr_get_msg(ENG2MOD_BUF, ENG2MOD_MSG_MAX_SIZE);
 		if (msg) {
 			msg->msg_type = SR_MSG_TYPE_CLS_FILE;
-			msg->file_msg.msg_type = (count % SR_CLS_INODE_TOTAL);
-			msg->file_msg.rulenum = count;
-			msg->file_msg.inode1 = count;
-			msg->file_msg.inode2 = count;
+			msg->sub_msg.msg_type = (count % SR_CLS_INODE_TOTAL);
+			msg->sub_msg.rulenum = count;
+			msg->sub_msg.inode1 = count;
+			msg->sub_msg.inode2 = count;
 			sr_send_msg(ENG2MOD_BUF, ENG2MOD_MSG_MAX_SIZE);
 		}
 		count++;

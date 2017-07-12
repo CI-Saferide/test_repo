@@ -90,7 +90,7 @@ void sr_cls_print_rules(SR_U32 inode)
 	
 }
 
-SR_8 sr_cls_msg_dispatch(struct sr_cls_msg *msg)
+SR_8 sr_cls_file_msg_dispatch(struct sr_cls_msg *msg)
 {
 	switch (msg->msg_type) {
 		case SR_CLS_INODE_INHERIT:

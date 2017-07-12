@@ -12,7 +12,7 @@ enum {
 };
 
 struct sr_cls_msg {
-	SR_U8 msg_type;
+	SR_U8 	msg_type;
 	SR_U32	rulenum;
 	SR_U32  inode1;
 	SR_U32  inode2;
