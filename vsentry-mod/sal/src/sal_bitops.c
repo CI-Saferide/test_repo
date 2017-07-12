@@ -91,6 +91,7 @@ SR_16 sal_ffs_and_clear_bitmask (SR_U64 *bitmask)
 	return first_set_bit;
 }
 
+//TODO: Avoid blind operation - perform level2 only for relevant bits
 void sal_and_op_arrays (const bit_array *arr1, const bit_array *arr2, bit_array *result)
 {
 	SR_U8 index;

@@ -2,16 +2,21 @@
 #define SR_CLASSIFIER_H
 
 #include "sr_types.h"
+#include "dispatcher.h"
+#include "sr_cls_port.h"
 
 #define SR_MAX_RULES 4096
 
 SR_32 sr_classifier_init(void);
+int sr_cls_add_ipv4(SR_U32 addr, SR_U32 netmask, int rulenum);
 SR_32 sr_cls_inode_add_rule(SR_U32 inode, SR_U32 rulenum);
 SR_32 sr_cls_inode_del_rule(SR_U32 inode, SR_U32 rulenum);
 SR_32 sr_cls_inode_inherit(SR_U32 from, SR_U32 to);
 void sr_cls_inode_remove(SR_U32 inode);
 void sr_classifier_uninit(void);
 void sr_cls_rules_init(void);
+
+SR_32 sr_classifier_network(disp_info_t* info);
 
 // rules actions are a bitmap - some rules are not mutually exclusive - e.g. drop + SMS...
 // enum defines actions as bits. 

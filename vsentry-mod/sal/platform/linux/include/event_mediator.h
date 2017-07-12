@@ -65,6 +65,7 @@ int vsentry_inode_create(struct inode *dir, struct dentry *dentry, umode_t mode)
 int vsentry_file_open(struct file *file, const struct cred *cred);
 int vsentry_inode_link(struct dentry *old_dentry, struct inode *dir, struct dentry *new_dentry);
 int vsentry_socket_create(int family, int type, int protocol, int kern);
+SR_32 vsentry_incoming_connection(struct sk_buff *skb);
 
 
 #endif /* _EVENT_MEDIATOR_H */

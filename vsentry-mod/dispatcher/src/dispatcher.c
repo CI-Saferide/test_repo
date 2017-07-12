@@ -5,6 +5,7 @@
 #include "dispatcher.h"
 #include "sr_msg.h"
 #include "sr_sal_common.h"
+#include "sr_classifier.h"
 
 #ifdef DEBUG_DISPATCHER
 static SR_8 module_name[] = "dispatcher"; /* module_name used only when DEBUG_DISPATCHER is enabled */
@@ -248,19 +249,12 @@ SR_BOOL disp_socket_connect(disp_info_t* info)
 {
 	enum dev_event_class_ID	class = NETWORK;
 	enum severity sev = WARNING;
-	struct CEF_payload *payload = cef_init(info->address_info.id.event_name,sev,class);
+	struct CEF_payload *payload = cef_init((char*)__FUNCTION__,sev,class);
 
 	if (!payload)
 		return 0;
 
 	/* create event message */
-	sal_sprintf(payload->extension,
-			"IP:PORT=%s:%d, tpid=%d, gid=%d, tid=%d", 
-			info->address_info.ipv4, 
-			info->address_info.port, 
-			info->address_info.id.pid,
-			info->address_info.id.gid, 
-			info->address_info.id.tid);
 			
 #ifdef DEBUG_DISPATCHER
 	sal_kernel_print_info("%s %s\n", module_name, payload->extension);
@@ -272,12 +266,27 @@ SR_BOOL disp_socket_connect(disp_info_t* info)
 	return 0;
 }
 
-SR_BOOL disp_socket_create(disp_info_t* info){
+SR_32 disp_incoming_connection(disp_info_t* info)
+{
+	sal_kernel_print_info("disp_incoming_connection: Entry\n");
+
+	return sr_classifier_network(info);
+}
+
+SR_BOOL disp_socket_create(disp_info_t* info)
+{
 	SR_BOOL		classifier_rc = 1;
 	
 	/* call classifier */
 	classifier_rc = 0;
 	
+	enum dev_event_class_ID	class = NETWORK;
+	enum severity sev = WARNING;
+	struct CEF_payload *payload = cef_init((char*)__FUNCTION__,sev,class);
+
+	if (!payload)
+		return 0;
+
 	/* create event message */
 
 #ifdef DEBUG_DISPATCHER

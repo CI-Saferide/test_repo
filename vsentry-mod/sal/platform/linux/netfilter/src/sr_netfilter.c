@@ -9,6 +9,7 @@
 #include "sr_sal_common.h"
 #include "sr_scanner_det.h"
 #include "sr_classifier.h"
+#include "event_mediator.h"
 
 #ifdef CONFIG_NETFILTER
 
@@ -24,6 +25,11 @@ unsigned int sr_netfilter_hook_fn(void *priv,
 	if ( ((ip_header->protocol == 6) && ((struct tcphdr *)skb_transport_header(skb))->syn) || (ip_header->protocol == 17)) {
 		if(sr_scanner_det_rcv(skb)==SR_CLS_ACTION_DROP)
 			return NF_DROP;
+	}
+	if ((ip_header->protocol == 6) && ((struct tcphdr *)skb_transport_header(skb))->syn) {
+		if (vsentry_incoming_connection(skb) == SR_CLS_ACTION_DROP) {
+			return NF_DROP;
+		}
 	}
 
 	return NF_ACCEPT;

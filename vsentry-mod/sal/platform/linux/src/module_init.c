@@ -173,6 +173,29 @@ static int dummy_tx_thread_loop(void *arg)
 }
 #endif
 
+void sr_demo(void) 
+{
+	// Populate rules for demo on 7/13/2017
+	sr_cls_add_ipv4(htonl(0x0a0a0a00), htonl(0xFFFFFF00), 50);
+	sr_cls_port_add_rule(22, 50);
+	sr_cls_add_ipv4(htonl(0x0a0a0a00), htonl(0xFFFFFF00), 60);
+	sr_cls_port_add_rule(24, 60);
+	sr_cls_add_ipv4(htonl(0x709), htonl(0xFFFFFFFF), 70);
+	sr_cls_port_add_rule(22, 70);
+	sr_cls_add_ipv4(htonl(0x0a0a0a2e), htonl(0xFFFFFFFF), 80);
+	sr_cls_port_add_rule(22, 80);
+	sr_cls_add_ipv4(htonl(0x555), htonl(0xFFFFFFFF), 90);
+	sr_cls_port_add_rule(555, 90);
+	sr_cls_add_ipv4(htonl(0x0a000000), htonl(0xFF000000), 100);
+	sr_cls_port_add_rule(23, 100);
+	sr_cls_rule_add(50, SR_CLS_ACTION_ALLOW, 0, SR_CLS_ACTION_DROP, 0, 0, 0, 0);
+	sr_cls_rule_add(60, SR_CLS_ACTION_ALLOW, 0, SR_CLS_ACTION_DROP, 0, 0, 0, 0);
+	sr_cls_rule_add(70, SR_CLS_ACTION_ALLOW, 0, SR_CLS_ACTION_DROP, 0, 0, 0, 0);
+	sr_cls_rule_add(80, SR_CLS_ACTION_ALLOW|SR_CLS_ACTION_LOG, 0, SR_CLS_ACTION_DROP, 0, 0, 0, 0);
+	sr_cls_rule_add(90, SR_CLS_ACTION_ALLOW, 0, SR_CLS_ACTION_DROP, 0, 0, 0, 0);
+	sr_cls_rule_add(100, SR_CLS_ACTION_DROP, 0, SR_CLS_ACTION_DROP, 0, 0, 0, 0);
+}
+
 static int __init vsentry_init(void)
 {	
 	int rc = 0;
@@ -222,6 +245,7 @@ static int __init vsentry_init(void)
 #if 0
 	tx_thread = kthread_run(dummy_tx_thread_loop, NULL, "vsentry dummy tx thread");
 #endif
+	sr_demo();
 
 	return rc;
 }

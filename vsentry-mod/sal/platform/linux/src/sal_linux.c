@@ -125,21 +125,21 @@ SR_U16 sal_packet_src_port(void *skb)
 	}
 }
 
-SR_U16 sal_packet_ip_proto(void *skb)
+SR_U8 sal_packet_ip_proto(void *skb)
 {
 	struct iphdr *ip_header = (struct iphdr *)skb_network_header(skb);
 
 	return (ip_header->protocol);
 }
 
-SR_U16 sal_packet_src_addr(void *skb)
+SR_U32 sal_packet_src_addr(void *skb)
 {
 	struct iphdr *ip_header = (struct iphdr *)skb_network_header(skb);
 
 	return ntohl(ip_header->saddr);
 }
 
-SR_U16 sal_packet_dest_addr(void *skb)
+SR_U32 sal_packet_dest_addr(void *skb)
 {
 	struct iphdr *ip_header = (struct iphdr *)skb_network_header(skb);
 

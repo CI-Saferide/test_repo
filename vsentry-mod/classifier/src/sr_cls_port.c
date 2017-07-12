@@ -6,12 +6,12 @@
 #include <linux/time.h> // for unit testing
 
 #define HT_PORT_SIZE 32
-struct sr_hash_table_t *sr_cls_port_table;
+struct sr_hash_table_t *sr_cls_dport_table;
 
 int sr_cls_port_init(void)
 {
-	sr_cls_port_table = sr_hash_new_table(HT_PORT_SIZE);
-	if (!sr_cls_port_table) {
+	sr_cls_dport_table = sr_hash_new_table(HT_PORT_SIZE);
+	if (!sr_cls_dport_table) {
 		sal_printf("[%s]: Failed to allocate PORT table!\n", MODULE_NAME);
 		return SR_ERROR;
 	}
@@ -25,12 +25,12 @@ void sr_cls_port_uninit(void)
 	SR_32 i;
 	struct sr_hash_ent_t *curr, *next;
 	
-	if (sr_cls_port_table != NULL) {
+	if (sr_cls_dport_table != NULL) {
 		sal_printf("DELETEING PORT elements!\n");
 		for(i = 0; i < HT_PORT_SIZE; i++) {
-			if (sr_cls_port_table->buckets[i].head != NULL){
+			if (sr_cls_dport_table->buckets[i].head != NULL){
 				sal_printf("hash_index[%d] - DELETEING\n",i);
-				curr = sr_cls_port_table->buckets[i].head;				
+				curr = sr_cls_dport_table->buckets[i].head;				
 				while (curr != NULL){
 					sal_printf("\t\tPORT: %u\n",curr->key);
 					sr_cls_print_port_rules(curr->key);
@@ -41,25 +41,25 @@ void sr_cls_port_uninit(void)
 			}
 		}
 		
-		if(sr_cls_port_table->buckets != NULL){
+		if(sr_cls_dport_table->buckets != NULL){
 			sal_printf("DELETEING PORT table->bucket\n");
-			SR_FREE(sr_cls_port_table->buckets);
+			SR_FREE(sr_cls_dport_table->buckets);
 		}
-		sal_printf("DELETEING PORT table that orig size was: %u\n",sr_cls_port_table->size);
-		SR_FREE(sr_cls_port_table);
+		sal_printf("DELETEING PORT table that orig size was: %u\n",sr_cls_dport_table->size);
+		SR_FREE(sr_cls_dport_table);
 	}
 }
 
 void sr_cls_port_remove(SR_U32 port)
 { 
-	sr_hash_delete(sr_cls_port_table, port);
+	sr_hash_delete(sr_cls_dport_table, port);
 }
 
 int sr_cls_port_add_rule(SR_U32 port, SR_U32 rulenum)
 {
 	struct sr_hash_ent_t *ent;
 	
-	ent=sr_hash_lookup(sr_cls_port_table, port);
+	ent=sr_hash_lookup(sr_cls_dport_table, port);
 	if (!ent) {		
 		ent = SR_ZALLOC(sizeof(*ent)); // <-A MINE!!!
 		if (!ent) {
@@ -68,7 +68,7 @@ int sr_cls_port_add_rule(SR_U32 port, SR_U32 rulenum)
 		} else {
 			ent->ent_type = DST_PORT;
 			ent->key = (SR_U32)port;
-			sr_hash_insert(sr_cls_port_table,ent);
+			sr_hash_insert(sr_cls_dport_table,ent);
 		}	
 	}	
 	sal_set_bit_array(rulenum, &ent->rules);
@@ -77,7 +77,7 @@ int sr_cls_port_add_rule(SR_U32 port, SR_U32 rulenum)
 }
 int sr_cls_port_del_rule(SR_U32 port, SR_U32 rulenum)
 {
-	struct sr_hash_ent_t *ent=sr_hash_lookup(sr_cls_port_table, port);
+	struct sr_hash_ent_t *ent=sr_hash_lookup(sr_cls_dport_table, port);
 	if (!ent) {
 		sal_printf("Error can't del rule# %u on PORT:%u - rule not found\n",rulenum,port);
 		return SR_ERROR;
@@ -96,12 +96,12 @@ void print_table(struct sr_hash_table_t *table)
 	SR_32 i;
 	struct sr_hash_ent_t *curr, *next;
 	
-	if (sr_cls_port_table != NULL) {
+	if (sr_cls_dport_table != NULL) {
 		sal_printf("Printing PORT elements!\n");
 		for(i = 0; i < HT_PORT_SIZE; i++) {
-			if (sr_cls_port_table->buckets[i].head != NULL){
+			if (sr_cls_dport_table->buckets[i].head != NULL){
 				sal_printf("hash_index[%d]\n",i);
-				curr = sr_cls_port_table->buckets[i].head;				
+				curr = sr_cls_dport_table->buckets[i].head;				
 				while (curr != NULL){
 					sal_printf("\t\tport: %u\n",curr->key);
 					sr_cls_print_port_rules(curr->key);
@@ -110,17 +110,17 @@ void print_table(struct sr_hash_table_t *table)
 				}
 			}
 		}		
-		if(sr_cls_port_table->buckets != NULL){
+		if(sr_cls_dport_table->buckets != NULL){
 			sal_printf("Printed PORT table->bucket\n");
 		}
-		sal_printf("Printed PORT table that orig size was: %u\n",sr_cls_port_table->size);
+		sal_printf("Printed PORT table that orig size was: %u\n",sr_cls_dport_table->size);
 	}	
 }
 
 
 struct sr_hash_ent_t *sr_cls_port_find(SR_U32 port)
 {
-	struct sr_hash_ent_t *ent=sr_hash_lookup(sr_cls_port_table, port);
+	struct sr_hash_ent_t *ent=sr_hash_lookup(sr_cls_dport_table, port);
 	if (!ent) {
 		sal_printf("Error:%u Port not found\n",port);
 		return NULL;
@@ -131,7 +131,7 @@ struct sr_hash_ent_t *sr_cls_port_find(SR_U32 port)
 
 void sr_cls_print_port_rules(SR_U32 port)
 {
-	struct sr_hash_ent_t *ent=sr_hash_lookup(sr_cls_port_table, port);
+	struct sr_hash_ent_t *ent=sr_hash_lookup(sr_cls_dport_table, port);
 	bit_array rules;
 	SR_16 rule;
 
@@ -145,6 +145,16 @@ void sr_cls_print_port_rules(SR_U32 port)
 		sal_printf("\t\t\tRule #%d\n", rule);
 	}
 	
+}
+
+bit_array *sr_cls_match_dport(SR_U32 port)
+{
+	struct sr_hash_ent_t *ent=sr_hash_lookup(sr_cls_dport_table, port);
+
+	if (!ent) {
+		return NULL;
+	}
+	return(&ent->rules);
 }
 
 int myRandom(int bottom, int top){ // for unit testing
@@ -177,7 +187,7 @@ void sr_cls_port_ut(void)
 		rand = myRandom(0, SR_MAX_PORT);
 		sr_cls_port_add_rule(rand,myRandom(0, 4096));
 	}*/
-	print_table(sr_cls_port_table);
+	print_table(sr_cls_dport_table);
 
 	sr_cls_port_add_rule(22,10);
 	sr_cls_port_add_rule(5566,4);
@@ -196,31 +206,31 @@ void sr_cls_port_ut(void)
 	sr_cls_port_add_rule(809,10);
 	sr_cls_port_add_rule(8019,2000);
 
-	//print_table(sr_cls_port_table);
+	//print_table(sr_cls_dport_table);
 	
 	sr_cls_port_find(4444);
 	sr_cls_port_find(8080);
 	
 	sr_cls_port_add_rule(1000, 5);
-	//print_table(sr_cls_port_table);
+	//print_table(sr_cls_dport_table);
 	sr_cls_port_add_rule(1000, 555);
-	//print_table(sr_cls_port_table);
+	//print_table(sr_cls_dport_table);
 	sr_cls_port_add_rule(2000, 2000);
-	//print_table(sr_cls_port_table);
+	//print_table(sr_cls_dport_table);
 
 	sr_cls_port_add_rule(9192, 7);
-	//print_table(sr_cls_port_table);
+	//print_table(sr_cls_dport_table);
 	sr_cls_port_del_rule(1000, 5);
-	//print_table(sr_cls_port_table);
+	//print_table(sr_cls_dport_table);
 	sr_cls_port_del_rule(1000, 555);
-	//print_table(sr_cls_port_table);
+	//print_table(sr_cls_dport_table);
 	
-	//print_table(sr_cls_port_table);
+	//print_table(sr_cls_dport_table);
 	sr_cls_port_add_rule(2000, 2000);	
-	//print_table(sr_cls_port_table);
+	//print_table(sr_cls_dport_table);
 	sr_cls_port_del_rule(2000,2000);
 	sr_cls_port_del_rule(9192, 7);
-	//print_table(sr_cls_port_table);
+	//print_table(sr_cls_dport_table);
 	sal_printf("******************testing bucket collision******************\n");
 	
 	sr_cls_port_add_rule(8019,200);	
@@ -233,8 +243,8 @@ void sr_cls_port_ut(void)
 	sr_cls_port_add_rule(16394, 27);
 	sr_cls_port_add_rule(24586, 37);
 	sr_cls_port_add_rule(32778, 47);
-	//print_table(sr_cls_port_table);
+	//print_table(sr_cls_dport_table);
 	sr_cls_port_del_rule(16394, 27);
-	print_table(sr_cls_port_table);
+	print_table(sr_cls_dport_table);
 
 }

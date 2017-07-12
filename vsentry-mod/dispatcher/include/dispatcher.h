@@ -3,6 +3,7 @@
 
 #include "sr_log.h"
 #include "sr_types.h"
+#include "sr_sal_common.h"
 
 #define MAIN_SOCKET_INDEX		0
 #define LOG_SOCKET_INDEX		1
@@ -56,12 +57,19 @@ typedef union {
 	}fileinfo;
 
 /* socket related functions */
-	struct _address_info {
-		identifier id;
-		SR_U8 	ipv4[16];
-		SR_U8	ipv6[32];
-		SR_U16 	port;
-	}address_info;
+	struct _tuple_info {
+		struct {
+			struct in_addr v4addr;
+			// FUTURE struct in6_addr v6addr;
+		} saddr;
+		struct {
+			struct in_addr v4addr;
+			// FUTURE struct in6_addr v6addr;
+		} daddr;
+		SR_U16 	sport;
+		SR_U16 	dport;
+		SR_U8   ip_proto;
+	}tuple_info;
 	
 	struct _socket_info {
 		identifier id;
@@ -91,6 +99,7 @@ SR_BOOL disp_inode_unlink(disp_info_t* info);
 SR_BOOL disp_inode_symlink(disp_info_t* info);
 
 SR_BOOL disp_socket_connect(disp_info_t* info);
+SR_32 disp_incoming_connection(disp_info_t* info);
 SR_BOOL disp_socket_create(disp_info_t* info);
 
 
