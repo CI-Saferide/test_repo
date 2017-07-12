@@ -5,6 +5,7 @@
 #include "sr_cls_file.h"
 #include "sr_classifier.h"
 #include "sr_sal_common.h"
+#include "sr_cls_network_common.h"
 
 struct radix_head *sr_cls_src_ipv4;
 
@@ -304,6 +305,29 @@ enum cls_actions sr_cls_rule_match(SR_U16 rulenum)
 		// TODO
 	}
 	return action;
+}
+
+SR_8 sr_cls_network_msg_dispatch(struct sr_cls_network_msg *msg)
+{
+	switch (msg->msg_type) {
+		case SR_CLS_IPV4_DEL_RULE:
+			return sr_cls_del_ipv4(msg->addr, msg->netmask, msg->rulenum);
+			sal_debug_network("[del_ipv4] addr=0x%x, netmask=0x%x, rulenum=%d\n",
+							msg->addr, msg->netmask, msg->rulenum);	
+			break;
+		case SR_CLS_IPV4_ADD_RULE:
+			return sr_cls_add_ipv4(msg->addr, msg->netmask, msg->rulenum);
+			break;
+		case SR_CLS_IPV6_DEL_RULE:
+			/* not implemented yet */
+			break;
+		case SR_CLS_IPV6_ADD_RULE:
+			/* not implemented yet */
+			break;
+		default:
+			break;
+	}
+	return SR_SUCCESS;
 }
 
 ///////////////////////////////////////////////////////////////////////////

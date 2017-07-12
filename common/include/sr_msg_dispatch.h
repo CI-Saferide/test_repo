@@ -8,6 +8,7 @@
 typedef enum {
 	SR_MSG_TYPE_DEFAULT=0,
 	SR_MSG_TYPE_CLS_FILE,
+	SR_MSG_TYPE_CLS_NETWORK,
 } sr_msg_dispatch_type;
 
 #pragma pack(push, 1)
@@ -19,8 +20,8 @@ typedef struct {
 #pragma pack(push, 1)
 typedef struct {
 	SR_8 msg_type;
-	struct sr_cls_msg file_msg;
-} sr_msg_cls_file_t;
+	struct sr_cls_msg sub_msg;
+} sr_msg_cls_t;
 #pragma pack(pop)
 
 SR_32 sr_msg_dispatch(char *msg, int size);

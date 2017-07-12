@@ -20,6 +20,7 @@ EXTRA_CFLAGS += -I$(TOP_DIR)/scanner_det/include
 #EXTRA_CFLAGS += -DDEBUG_DISPATCHER
 #EXTRA_CFLAGS += -DSR_MSG_DEBUG
 #EXTRA_CFLAGS += -DSR_RB_DEBUG
+EXTRA_CFLAGS += -DDEBUG_NETWORK
 
 ifneq ($(KERNELRELEASE),)
 
@@ -32,7 +33,7 @@ $(TARGET)-objs := sal/platform/linux/src/module_init.o \
 				  dispatcher/src/dispatcher.o \
 				  dispatcher/src/msg_process.o \
 				  scanner_det/src/sr_scanner_det.o \
-				  classifier/src/sr_classifier.o \
+				  classifier/src/sr_cls_network.o \
 				  classifier/src/sr_cls_file.o \
 				  classifier/src/sr_cls_port.o \
 				  classifier/src/sr_cls_canid.o \

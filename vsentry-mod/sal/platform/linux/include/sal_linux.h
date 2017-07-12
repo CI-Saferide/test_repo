@@ -50,6 +50,13 @@
 #define sal_kernel_print_info(fmt, ...) \
 	printk(KERN_INFO pr_fmt(fmt), ##__VA_ARGS__)
 
+#ifdef DEBUG_NETWORK	
+#define sal_debug_network(fmt, ...) \
+	printk(KERN_INFO pr_fmt(fmt), ##__VA_ARGS__)
+#else
+#define sal_debug_network(fmt, ...)
+#endif
+
 // Network functions
 SR_U16 sal_packet_ip_proto(void *skb);
 SR_U16 sal_packet_dest_port(void *skb);
