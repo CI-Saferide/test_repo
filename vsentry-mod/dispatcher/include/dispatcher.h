@@ -24,6 +24,7 @@ enum hook_events {
 	HOOK_INODE_CREATE,
 	HOOK_FILE_OPEN,
 	HOOK_INODE_LINK,
+	HOOK_IN_CONNECTION,
 	MAX_HOOK
 	/* NOTE: when addidng hooks make sure to update also event_mediator.c hook_event_names */
 };
@@ -87,20 +88,20 @@ typedef struct _event_name {
 
 CEF_payload *cef_init(char* event_name,enum severity sev,enum dev_event_class_ID	class);
 
-SR_BOOL disp_mkdir(disp_info_t* info);
-SR_BOOL disp_rmdir(disp_info_t* info);
+SR_32 disp_mkdir(disp_info_t* info);
+SR_32 disp_rmdir(disp_info_t* info);
 
-SR_BOOL disp_inode_create(disp_info_t* info);
-SR_BOOL disp_path_chmod(disp_info_t* info);
-SR_BOOL disp_file_open(disp_info_t* info);
+SR_32 disp_inode_create(disp_info_t* info);
+SR_32 disp_path_chmod(disp_info_t* info);
+SR_32 disp_file_open(disp_info_t* info);
 
-SR_BOOL disp_inode_link(disp_info_t* info);
-SR_BOOL disp_inode_unlink(disp_info_t* info);
-SR_BOOL disp_inode_symlink(disp_info_t* info);
+SR_32 disp_inode_link(disp_info_t* info);
+SR_32 disp_inode_unlink(disp_info_t* info);
+SR_32 disp_inode_symlink(disp_info_t* info);
 
-SR_BOOL disp_socket_connect(disp_info_t* info);
+SR_32 disp_socket_connect(disp_info_t* info);
 SR_32 disp_incoming_connection(disp_info_t* info);
-SR_BOOL disp_socket_create(disp_info_t* info);
+SR_32 disp_socket_create(disp_info_t* info);
 
 
 #endif /* _DISPATCHER_H */

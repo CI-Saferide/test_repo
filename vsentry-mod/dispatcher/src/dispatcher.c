@@ -37,9 +37,9 @@ CEF_payload* cef_init(SR_8* event_name,enum severity sev,enum dev_event_class_ID
 	return payload;
 }
 
-SR_BOOL disp_mkdir(disp_info_t* info)
+SR_32 disp_mkdir(disp_info_t* info)
 {
-	SR_BOOL		classifier_rc = 1;
+	SR_32		classifier_rc = -EACCES;
 	
 	/* call classifier */
 	classifier_rc = 0;
@@ -47,7 +47,7 @@ SR_BOOL disp_mkdir(disp_info_t* info)
 	/* create event message */
 
 #ifdef DEBUG_DISPATCHER
-	sal_kernel_print_info("[%s:HOOK %s] inode=%lu, parent_inode=%lu, pid=%d, gid=%d, tid=%d\n", 
+	sal_kernel_print_info("[%s:HOOK %s] inode=%u, parent_inode=%u, pid=%d, gid=%d, tid=%d\n", 
 			module_name, 
 			hook_event_names[info->fileinfo.id.event].name,
 			info->fileinfo.current_inode,
@@ -69,9 +69,9 @@ SR_BOOL disp_mkdir(disp_info_t* info)
 	}
 }
 
-SR_BOOL disp_rmdir(disp_info_t* info)
+SR_32 disp_rmdir(disp_info_t* info)
 {
-	SR_BOOL		classifier_rc = 1;
+	SR_32		classifier_rc = -EACCES;
 	
 	/* call classifier */
 	classifier_rc = 0;
@@ -79,7 +79,7 @@ SR_BOOL disp_rmdir(disp_info_t* info)
 	/* create event message */
 
 #ifdef DEBUG_DISPATCHER
-	sal_kernel_print_info("[%s:HOOK %s] inode=%lu, parent_inode=%lu, pid=%d, gid=%d, tid=%d\n", 
+	sal_kernel_print_info("[%s:HOOK %s] inode=%u, parent_inode=%u, pid=%d, gid=%d, tid=%d\n", 
 			module_name, 
 			hook_event_names[info->fileinfo.id.event].name,
 			info->fileinfo.current_inode,
@@ -95,17 +95,16 @@ SR_BOOL disp_rmdir(disp_info_t* info)
 	return classifier_rc;
 }
 
-SR_BOOL disp_inode_create(disp_info_t* info)
+SR_32 disp_inode_create(disp_info_t* info)
 {
-	SR_BOOL		classifier_rc = 1;
-	
+	SR_32		classifier_rc = -EACCES;
 	/* call classifier */
-	classifier_rc = 0;
+	classifier_rc = sr_classifier_file(info);
 	
 	/* create event message */
 
 #ifdef DEBUG_DISPATCHER
-	sal_kernel_print_info("[%s:HOOK %s] inode=%lu, parent_inode=%lu, pid=%d, gid=%d, tid=%d\n", 
+	sal_kernel_print_info("[%s:HOOK %s] inode=%u, parent_inode=%u, pid=%d, gid=%d, tid=%d\n", 
 			module_name, 
 			hook_event_names[info->fileinfo.id.event].name,
 			info->fileinfo.current_inode,
@@ -116,19 +115,17 @@ SR_BOOL disp_inode_create(disp_info_t* info)
 #endif /* DEBUG_DISPATCHER */
 
 	/* send event message to user space */
-	classifier_rc = sr_classifier_file(info);
 
 	if (classifier_rc == SR_CLS_ACTION_ALLOW) {
 		return 0;
 	} else {
 		return -EACCES;
 	}
-	
 }
 
-SR_BOOL disp_path_chmod(disp_info_t* info)
+SR_32 disp_path_chmod(disp_info_t* info)
 {
-	SR_BOOL		classifier_rc = 1;
+	SR_32		classifier_rc = -EACCES;
 	
 	/* call classifier */
 	classifier_rc = 0;
@@ -136,7 +133,7 @@ SR_BOOL disp_path_chmod(disp_info_t* info)
 	/* create event message */
 
 #ifdef DEBUG_DISPATCHER
-	sal_kernel_print_info("[%s:HOOK %s] inode=%lu, parent_inode=%lu, pid=%d, gid=%d, tid=%d\n", 
+	sal_kernel_print_info("[%s:HOOK %s] inode=%u, parent_inode=%u, pid=%d, gid=%d, tid=%d\n", 
 			module_name, 
 			hook_event_names[info->fileinfo.id.event].name,
 			info->fileinfo.current_inode,
@@ -152,9 +149,9 @@ SR_BOOL disp_path_chmod(disp_info_t* info)
 	return classifier_rc;
 }
 
-SR_BOOL disp_file_open(disp_info_t* info)
+SR_32 disp_file_open(disp_info_t* info)
 {
-	SR_BOOL		classifier_rc = 1;
+	SR_32		classifier_rc = -EACCES;
 	
 	/* call classifier */
 	classifier_rc = 0;
@@ -162,7 +159,7 @@ SR_BOOL disp_file_open(disp_info_t* info)
 	/* create event message */
 
 #ifdef DEBUG_DISPATCHER
-	sal_kernel_print_info("[%s:HOOK %s] inode=%lu, parent_inode=%lu, pid=%d, gid=%d, tid=%d\n", 
+	sal_kernel_print_info("[%s:HOOK %s] inode=%u, parent_inode=%u, pid=%d, gid=%d, tid=%d\n", 
 			module_name,
 			hook_event_names[info->fileinfo.id.event].name,
 			info->fileinfo.current_inode,
@@ -178,9 +175,9 @@ SR_BOOL disp_file_open(disp_info_t* info)
 	return classifier_rc;
 }
 
-SR_BOOL disp_inode_link(disp_info_t* info)
+SR_32 disp_inode_link(disp_info_t* info)
 {
-	SR_BOOL		classifier_rc = 1;
+	SR_32		classifier_rc = -EACCES;
 	
 	/* call classifier */
 	classifier_rc = 0;
@@ -188,7 +185,7 @@ SR_BOOL disp_inode_link(disp_info_t* info)
 	/* create event message */
 
 #ifdef DEBUG_DISPATCHER
-	sal_kernel_print_info("[%s:HOOK %s] inode=%lu, parent_inode=%lu, old_inode=%lu, pid=%d, gid=%d, tid=%d\n", 
+	sal_kernel_print_info("[%s:HOOK %s] inode=%u, parent_inode=%u, old_inode=%u, pid=%d, gid=%d, tid=%d\n", 
 			module_name, 
 			hook_event_names[info->fileinfo.id.event].name,
 			info->fileinfo.current_inode,
@@ -205,9 +202,9 @@ SR_BOOL disp_inode_link(disp_info_t* info)
 	return classifier_rc;
 }
 
-SR_BOOL disp_inode_unlink(disp_info_t* info)
+SR_32 disp_inode_unlink(disp_info_t* info)
 {
-	SR_BOOL		classifier_rc = 1;
+	SR_32		classifier_rc = -EACCES;
 	
 	/* call classifier */
 	classifier_rc = 0;
@@ -215,7 +212,7 @@ SR_BOOL disp_inode_unlink(disp_info_t* info)
 	/* create event message */
 
 #ifdef DEBUG_DISPATCHER
-	sal_kernel_print_info("[%s:HOOK %s] inode=%lu, parent_inode=%lu, pid=%d, gid=%d, tid=%d\n", 
+	sal_kernel_print_info("[%s:HOOK %s] inode=%u, parent_inode=%u, pid=%d, gid=%d, tid=%d\n", 
 			module_name, 
 			hook_event_names[info->fileinfo.id.event].name,
 			info->fileinfo.current_inode,
@@ -231,8 +228,8 @@ SR_BOOL disp_inode_unlink(disp_info_t* info)
 	return classifier_rc;
 }
 
-SR_BOOL disp_inode_symlink(disp_info_t* info){	
-	SR_BOOL		classifier_rc = 1;
+SR_32 disp_inode_symlink(disp_info_t* info){	
+	SR_32		classifier_rc = -EACCES;
 	
 	/* call classifier */
 	classifier_rc = 0;
@@ -240,7 +237,7 @@ SR_BOOL disp_inode_symlink(disp_info_t* info){
 	/* create event message */
 
 #ifdef DEBUG_DISPATCHER
-	sal_kernel_print_info("[%s:HOOK %s] inode=%lu, parent_inode=%lu, pid=%d, gid=%d, tid=%d\n", 
+	sal_kernel_print_info("[%s:HOOK %s] inode=%u, parent_inode=%u, pid=%d, gid=%d, tid=%d\n", 
 			module_name, 
 			hook_event_names[info->fileinfo.id.event].name,
 			info->fileinfo.current_inode,
@@ -256,7 +253,7 @@ SR_BOOL disp_inode_symlink(disp_info_t* info){
 	return classifier_rc;	
 }
 
-SR_BOOL disp_socket_connect(disp_info_t* info)
+SR_32 disp_socket_connect(disp_info_t* info)
 {
 	enum dev_event_class_ID	class = NETWORK;
 	enum severity sev = WARNING;
@@ -279,33 +276,29 @@ SR_BOOL disp_socket_connect(disp_info_t* info)
 
 SR_32 disp_incoming_connection(disp_info_t* info)
 {
-	sal_kernel_print_info("disp_incoming_connection: Entry\n");
+	//sal_kernel_print_info("disp_incoming_connection: Entry\n");
 
 	return sr_classifier_network(info);
 }
 
-SR_BOOL disp_socket_create(disp_info_t* info)
+SR_32 disp_socket_create(disp_info_t* info)
 {
-	SR_BOOL		classifier_rc = 1;
+	SR_32		classifier_rc = -EACCES;
 	
 	/* call classifier */
 	classifier_rc = 0;
-	
-	//enum dev_event_class_ID	class = NETWORK;
-	//enum severity sev = WARNING;
-	//struct CEF_payload *payload = cef_init((char*)__FUNCTION__,sev,class);
-
-	//if (!payload)
-//		return 0;
 
 	/* create event message */
 
 #ifdef DEBUG_DISPATCHER
-	sal_kernel_print_info("[%s:HOOK %s] inode=%lu, parent_inode=%lu, pid=%d, gid=%d, tid=%d\n", 
+	sal_kernel_print_info("[%s:HOOK %s] src_ipv4=x%x, dst_ipv4=0x%x, src_port=%d, dst_port=%d, proto=%d, pid=%d, gid=%d, tid=%d\n", 
 			module_name, 
 			hook_event_names[info->fileinfo.id.event].name,
-			info->fileinfo.current_inode,
-			info->fileinfo.parent_inode,
+			info->tuple_info.saddr.v4addr.s_addr,
+			info->tuple_info.daddr.v4addr.s_addr,
+			info->tuple_info.sport,
+			info->tuple_info.dport,
+			info->tuple_info.ip_proto,
 			info->fileinfo.id.pid,
 			info->fileinfo.id.gid,
 			info->fileinfo.id.tid);

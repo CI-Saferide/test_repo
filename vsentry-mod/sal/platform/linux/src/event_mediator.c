@@ -85,6 +85,7 @@ const event_name hook_event_names[MAX_HOOK] = {
 	{HOOK_INODE_CREATE,	"inode_create"},
 	{HOOK_FILE_OPEN,	"file_open"},
 	{HOOK_INODE_LINK,	"inode_link"},
+	{HOOK_INODE_LINK,	"in_connection"},
 };
 
 
@@ -348,6 +349,7 @@ SR_32 vsentry_incoming_connection(struct sk_buff *skb)
 	HOOK_FILTER
 
 	/* gather metadata */
+	disp.fileinfo.id.event = HOOK_IN_CONNECTION;
 	disp.tuple_info.saddr.v4addr.s_addr = sal_packet_src_addr(skb);
 	disp.tuple_info.daddr.v4addr.s_addr = sal_packet_dest_addr(skb);
 	disp.tuple_info.sport = sal_packet_src_port(skb);
