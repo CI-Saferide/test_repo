@@ -24,9 +24,9 @@ SR_32 sr_classifier_init(void)
 
 	sr_cls_rules_init();
 
-#ifdef UNIT_TEST
+//#ifdef UNIT_TEST
 	sr_classifier_ut();
-#endif
+//#endif
 
 	return 0;
 }
@@ -160,8 +160,9 @@ int sr_cls_find_ipv4(SR_U32 addr)
 	node = rn_match((void*)ip, sr_cls_src_ipv4);
 #ifdef DEBUG
 	if (node) {
+		SR_16 rule;
 		memcpy(&matched_rules, &node->sr_private.rules, sizeof(matched_rules)); 
-		sal_kernel_print_alert("Found match for IP %lx:\n", addr);
+		sal_kernel_print_alert("Found match for IP %lx:\n", (unsigned long)addr);
 		while ((rule = sal_ffs_and_clear_array (&matched_rules)) != -1) {
 			sal_kernel_print_alert("Rule #%d\n", rule);
 		}
@@ -171,6 +172,29 @@ int sr_cls_find_ipv4(SR_U32 addr)
 	SR_FREE(ip);
 
 	return (node?0:-1);
+}
+bit_array *sr_cls_match_srcip(SR_U32 addr)
+{
+	struct radix_node *node = NULL;
+	struct sockaddr_in ip;
+
+	printk("sr_cls_match_srcip: table is %p\n", sr_cls_src_ipv4);
+	//ip = SR_ZALLOC(sizeof(struct sockaddr_in));
+	//if (!ip) {
+//			return NULL;
+//	}
+	ip.sin_family = AF_INET;
+	ip.sin_addr.s_addr = addr;
+
+	node = rn_match((void*)&ip, sr_cls_src_ipv4);
+
+//	SR_FREE(ip);
+
+	if (node) {
+		return(&node->sr_private.rules); 
+	} else {
+		return NULL;
+	}
 }
 
 int sr_cls_walker_addrule(struct radix_node *node, void *rulenum)
@@ -211,6 +235,7 @@ void sr_classifier_ut(void)
 	sr_cls_find_ipv4(htonl(0x12345678));
 	sr_cls_del_ipv4(htonl(0x12345678), htonl(0xffffffff),40);
 	sr_cls_find_ipv4(htonl(0x12345678));
+	printk("Ran all classifier UTs\n");
 }
 
 //////////////////////////////// Rules DB section /////////////////////////
@@ -331,4 +356,76 @@ SR_8 sr_cls_network_msg_dispatch(struct sr_cls_network_msg *msg)
 }
 
 ///////////////////////////////////////////////////////////////////////////
+/////// Actual classifiers entry points
+///////////////////////////////////////////////////////////////////////////
+// Network events classifier
+SR_32 sr_classifier_network(disp_info_t* info)
+{
+	bit_array *ba_src_ip, *ba_dst_port;
+	bit_array ba_res;
+	SR_16 rule;
+	SR_U16 action;
 
+	sal_kernel_print_alert("sr_classifier_network: Entry for %lx->[%d]\n", (unsigned long)info->tuple_info.saddr.v4addr.s_addr, info->tuple_info.dport);
+	// Match 5-tuple
+	// Src IP
+	ba_src_ip = sr_cls_match_srcip(htonl(info->tuple_info.saddr.v4addr.s_addr));
+	//ba_src_ip = sr_cls_match_srcip(htonl(0x0a0a0b00));
+	sal_kernel_print_alert("sr_classifier_network: Found src rules\n");
+	//return SR_CLS_ACTION_ALLOW;
+	// Dst IP - TODO
+	// IP Proto - TODO
+	// Src Port - TODO
+	// Dst Port
+	ba_dst_port = sr_cls_match_dport(info->tuple_info.dport);
+	sal_kernel_print_alert("sr_classifier_network: Found port rules\n");
+
+	if ((!ba_src_ip) || (!ba_dst_port)) {
+		sal_kernel_print_alert("sr_classifier_network: No matching rule! IP: %s, port: %s\n", ba_src_ip?"Match":"None", ba_dst_port?"Match":"None");
+		return SR_CLS_ACTION_ALLOW;
+	}
+	sal_kernel_print_alert("sr_classifier_network: Got some matches\n");
+	sal_and_op_arrays(ba_src_ip, ba_dst_port, &ba_res); // Perform arbitration
+
+	while ((rule = sal_ffs_and_clear_array (&ba_res)) != -1) {
+		action = sr_cls_rule_match(rule);
+                sal_printf("sr_classifier_network: Matched Rule #%d, action is %d\n", rule, action);
+		if (action & SR_CLS_ACTION_DROP) {
+			sal_printf("sr_classifier_network: Rule drop\n");
+			return SR_CLS_ACTION_DROP;
+		}
+        }
+
+	
+	return SR_CLS_ACTION_ALLOW;
+}
+SR_32 sr_classifier_file(disp_info_t* info)
+{
+	bit_array *ba_inode, ba_res;
+	SR_16 rule;
+	SR_U16 action;
+
+	sal_kernel_print_alert("sr_classifier_file: Entry\n");
+	// Match 5-tuple
+	// Src IP
+	ba_inode = sr_cls_file_find(info->fileinfo.parent_inode);
+
+	if (!ba_inode) {
+		sal_kernel_print_alert("sr_classifier_file: No matching rule!\n");
+		return SR_CLS_ACTION_ALLOW;
+	}
+	sal_kernel_print_alert("sr_classifier_file: Got some matches\n");
+	memcpy(&ba_res, ba_inode, sizeof(bit_array)); // Perform arbitration
+
+	while ((rule = sal_ffs_and_clear_array (&ba_res)) != -1) {
+		action = sr_cls_rule_match(rule);
+                sal_printf("sr_classifier_network: Matched Rule #%d, action is %d\n", rule, action);
+		if (action & SR_CLS_ACTION_DROP) {
+			sal_printf("sr_classifier_network: Rule drop\n");
+			return SR_CLS_ACTION_DROP;
+		}
+        }
+
+	
+	return SR_CLS_ACTION_ALLOW;
+}

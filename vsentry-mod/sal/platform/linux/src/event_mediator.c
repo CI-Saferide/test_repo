@@ -85,6 +85,7 @@ const event_name hook_event_names[MAX_HOOK] = {
 	{HOOK_INODE_CREATE,	"inode_create"},
 	{HOOK_FILE_OPEN,	"file_open"},
 	{HOOK_INODE_LINK,	"inode_link"},
+	{HOOK_INODE_LINK,	"in_connection"},
 };
 
 
@@ -99,6 +100,7 @@ static SR_32 hook_filter(void)
 	return SR_FALSE;
 }
 
+#ifdef DEBUG
 /* parsing data helper functions */
 static void parse_sinaddr(const struct in_addr saddr, SR_8* buffer, SR_32 length)
 {
@@ -108,6 +110,7 @@ static void parse_sinaddr(const struct in_addr saddr, SR_8* buffer, SR_32 length
 		((saddr.s_addr&0xFF0000)>>16),
 		((saddr.s_addr&0xFF000000)>>24));
 }
+#endif // DEBUG
 
 SR_32 vsentry_inode_mkdir(struct inode *dir, struct dentry *dentry, umode_t mask)
 {
@@ -311,8 +314,6 @@ SR_32 vsentry_inode_rmdir(struct inode *dir, struct dentry *dentry)
 SR_32 vsentry_socket_connect(struct socket *sock, struct sockaddr *address, SR_32 addrlen)
 {
 	disp_info_t disp;
-	struct task_struct *ts = current;
-	const struct cred *rcred= ts->real_cred;
 	struct sockaddr_in *ipv4;
 
 	memset(&disp, 0, sizeof(disp_info_t));
@@ -322,18 +323,12 @@ SR_32 vsentry_socket_connect(struct socket *sock, struct sockaddr *address, SR_3
 
 	/* gather metadata */
 	ipv4 = (struct sockaddr_in *)address;
-	strncpy(disp.address_info.id.event_name, __FUNCTION__,
-		MIN(sizeof(disp.address_info.id.event_name), 1+strlen(__FUNCTION__)));
-	parse_sinaddr(ipv4->sin_addr, disp.address_info.ipv4, sizeof(disp.address_info.ipv4));
-	disp.address_info.port = (int)ntohs(ipv4->sin_port);	
-	disp.address_info.id.gid = (int)rcred->gid.val;
-	disp.address_info.id.tid = (int)rcred->uid.val;
-	disp.address_info.id.pid = current->pid;
+	disp.tuple_info.sport = (int)ntohs(ipv4->sin_port);	
 
-#ifdef DEBUG_EVENT_MEDIATOR
-	sal_kernel_print_info("%s socket_connect=%s, port=%d, pid=%d, gid=%d, tid=%d\n", 
+#ifdef DEBUG_EVENT_MEDIAjTOR
+	sal_kernel_print_info("%s incoming_connection=%s, port=%d, pid=%d, gid=%d, tid=%d\n", 
 			module_name,
-			disp.address_info.ipv4,
+			disp.tuple_info.saddr.v4addr.s_addr,
 			disp.address_info.port,
 			disp.fileinfo.id.pid,
 			disp.fileinfo.id.gid, 
@@ -342,6 +337,33 @@ SR_32 vsentry_socket_connect(struct socket *sock, struct sockaddr *address, SR_3
 
 	/* call dispatcher */
 	return (disp_socket_connect(&disp));
+}
+
+SR_32 vsentry_incoming_connection(struct sk_buff *skb)
+{
+	disp_info_t disp;
+
+	memset(&disp, 0, sizeof(disp_info_t));
+	
+	/* check hook filter */
+	HOOK_FILTER
+
+	/* gather metadata */
+	disp.fileinfo.id.event = HOOK_IN_CONNECTION;
+	disp.tuple_info.saddr.v4addr.s_addr = sal_packet_src_addr(skb);
+	disp.tuple_info.daddr.v4addr.s_addr = sal_packet_dest_addr(skb);
+	disp.tuple_info.sport = sal_packet_src_port(skb);
+	disp.tuple_info.dport = sal_packet_dest_port(skb);
+	disp.tuple_info.ip_proto = sal_packet_ip_proto(skb);
+
+	sal_kernel_print_info("vsentry_incoming_connection=%lx[%d] -> %lx[%d]\n",
+			(unsigned long)disp.tuple_info.saddr.v4addr.s_addr,
+			disp.tuple_info.sport,
+			(unsigned long)disp.tuple_info.daddr.v4addr.s_addr,
+			disp.tuple_info.dport);
+
+	/* call dispatcher */
+	return (disp_incoming_connection(&disp));
 }
 
 
@@ -433,7 +455,7 @@ SR_32 vsentry_inode_create(struct inode *dir, struct dentry *dentry, umode_t mod
 #endif /* DEBUG_EVENT_MEDIATOR */
 	
 	/* call dispatcher */
-	return (disp_inode_create(&disp));
+	return disp_inode_create(&disp);
 }
 
 //__attribute__ ((unused))
