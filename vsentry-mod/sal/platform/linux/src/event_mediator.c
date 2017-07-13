@@ -99,6 +99,7 @@ static SR_32 hook_filter(void)
 	return SR_FALSE;
 }
 
+#ifdef DEBUG
 /* parsing data helper functions */
 static void parse_sinaddr(const struct in_addr saddr, SR_8* buffer, SR_32 length)
 {
@@ -108,17 +109,7 @@ static void parse_sinaddr(const struct in_addr saddr, SR_8* buffer, SR_32 length
 		((saddr.s_addr&0xFF0000)>>16),
 		((saddr.s_addr&0xFF000000)>>24));
 }
-static SR_8 get_path(struct dentry *dentry, SR_8 *buffer, SR_32 len)
-{
-	SR_8 path[SR_MAX_PATH_SIZE], *path_ptr;
-
-	path_ptr = dentry_path_raw(dentry, path, SR_MAX_PATH_SIZE);
-	if (IS_ERR(path))
-		return SR_ERROR;
-
-	strncpy(buffer, path_ptr, MIN(len, 1+strlen(path_ptr)));
-	return SR_SUCCESS;
-}
+#endif // DEBUG
 
 SR_32 vsentry_inode_mkdir(struct inode *dir, struct dentry *dentry, umode_t mask)
 {
@@ -333,7 +324,7 @@ SR_32 vsentry_socket_connect(struct socket *sock, struct sockaddr *address, SR_3
 	ipv4 = (struct sockaddr_in *)address;
 	disp.tuple_info.sport = (int)ntohs(ipv4->sin_port);	
 
-#ifdef DEBUG_EVENT_MEDIATOR
+#ifdef DEBUG_EVENT_MEDIAjTOR
 	sal_kernel_print_info("%s incoming_connection=%s, port=%d, pid=%d, gid=%d, tid=%d\n", 
 			module_name,
 			disp.tuple_info.saddr.v4addr.s_addr,
@@ -351,7 +342,6 @@ SR_32 vsentry_incoming_connection(struct sk_buff *skb)
 {
 	disp_info_t disp;
 
-	sal_kernel_print_info("vsentry_incoming_connection: Entry\n");
 	memset(&disp, 0, sizeof(disp_info_t));
 	
 	/* check hook filter */
@@ -365,9 +355,9 @@ SR_32 vsentry_incoming_connection(struct sk_buff *skb)
 	disp.tuple_info.ip_proto = sal_packet_ip_proto(skb);
 
 	sal_kernel_print_info("vsentry_incoming_connection=%lx[%d] -> %lx[%d]\n",
-			disp.tuple_info.saddr.v4addr.s_addr,
+			(unsigned long)disp.tuple_info.saddr.v4addr.s_addr,
 			disp.tuple_info.sport,
-			disp.tuple_info.daddr.v4addr.s_addr,
+			(unsigned long)disp.tuple_info.daddr.v4addr.s_addr,
 			disp.tuple_info.dport);
 
 	/* call dispatcher */
@@ -463,7 +453,7 @@ SR_32 vsentry_inode_create(struct inode *dir, struct dentry *dentry, umode_t mod
 #endif /* DEBUG_EVENT_MEDIATOR */
 	
 	/* call dispatcher */
-	return (disp_inode_create(&disp));
+	return disp_inode_create(&disp);
 }
 
 //__attribute__ ((unused))

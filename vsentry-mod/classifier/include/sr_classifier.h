@@ -17,6 +17,7 @@ void sr_classifier_uninit(void);
 void sr_cls_rules_init(void);
 
 SR_32 sr_classifier_network(disp_info_t* info);
+SR_32 sr_classifier_file(disp_info_t* info);
 
 // rules actions are a bitmap - some rules are not mutually exclusive - e.g. drop + SMS...
 // enum defines actions as bits. 

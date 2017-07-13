@@ -194,6 +194,10 @@ void sr_demo(void)
 	sr_cls_rule_add(80, SR_CLS_ACTION_ALLOW|SR_CLS_ACTION_LOG, 0, SR_CLS_ACTION_DROP, 0, 0, 0, 0);
 	sr_cls_rule_add(90, SR_CLS_ACTION_ALLOW, 0, SR_CLS_ACTION_DROP, 0, 0, 0, 0);
 	sr_cls_rule_add(100, SR_CLS_ACTION_DROP, 0, SR_CLS_ACTION_DROP, 0, 0, 0, 0);
+	sr_cls_rule_add(1, SR_CLS_ACTION_DROP, 0, SR_CLS_ACTION_DROP, 0, 0, 0, 0);
+	sr_cls_rule_add(2, SR_CLS_ACTION_DROP, 0, SR_CLS_ACTION_DROP, 0, 0, 0, 0);
+	sr_cls_rule_add(3, SR_CLS_ACTION_DROP, 0, SR_CLS_ACTION_DROP, 0, 0, 0, 0);
+	sr_cls_rule_add(4, SR_CLS_ACTION_DROP, 0, SR_CLS_ACTION_DROP, 0, 0, 0, 0);
 }
 
 static int __init vsentry_init(void)

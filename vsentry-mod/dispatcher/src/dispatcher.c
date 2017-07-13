@@ -60,7 +60,13 @@ SR_BOOL disp_mkdir(disp_info_t* info)
 	/* send event message to user space */
 	//sr_send_msg(MOD2LOG_BUF, sizeof(CEF_payload));
 	
-	return classifier_rc;
+	classifier_rc = sr_classifier_file(info);
+
+	if (classifier_rc == SR_CLS_ACTION_ALLOW) {
+		return 0;
+	} else {
+		return -EACCES;
+	}
 }
 
 SR_BOOL disp_rmdir(disp_info_t* info)
@@ -110,9 +116,14 @@ SR_BOOL disp_inode_create(disp_info_t* info)
 #endif /* DEBUG_DISPATCHER */
 
 	/* send event message to user space */
-	//sr_send_msg(MOD2LOG_BUF, sizeof(CEF_payload));
+	classifier_rc = sr_classifier_file(info);
+
+	if (classifier_rc == SR_CLS_ACTION_ALLOW) {
+		return 0;
+	} else {
+		return -EACCES;
+	}
 	
-	return classifier_rc;
 }
 
 SR_BOOL disp_path_chmod(disp_info_t* info)
@@ -280,12 +291,12 @@ SR_BOOL disp_socket_create(disp_info_t* info)
 	/* call classifier */
 	classifier_rc = 0;
 	
-	enum dev_event_class_ID	class = NETWORK;
-	enum severity sev = WARNING;
-	struct CEF_payload *payload = cef_init((char*)__FUNCTION__,sev,class);
+	//enum dev_event_class_ID	class = NETWORK;
+	//enum severity sev = WARNING;
+	//struct CEF_payload *payload = cef_init((char*)__FUNCTION__,sev,class);
 
-	if (!payload)
-		return 0;
+	//if (!payload)
+//		return 0;
 
 	/* create event message */
 
