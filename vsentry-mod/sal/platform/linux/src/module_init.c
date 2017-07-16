@@ -176,18 +176,18 @@ static int dummy_tx_thread_loop(void *arg)
 void sr_demo(void) 
 {
 	// Populate rules for demo on 7/13/2017
-	sr_cls_add_ipv4(htonl(0x0a0a0a00), htonl(0xFFFFFF00), 50);
-	sr_cls_port_add_rule(22, 50);
-	sr_cls_add_ipv4(htonl(0x0a0a0a00), htonl(0xFFFFFF00), 60);
-	sr_cls_port_add_rule(24, 60);
-	sr_cls_add_ipv4(htonl(0x709), htonl(0xFFFFFFFF), 70);
-	sr_cls_port_add_rule(22, 70);
-	sr_cls_add_ipv4(htonl(0x0a0a0a2e), htonl(0xFFFFFFFF), 80);
-	sr_cls_port_add_rule(22, 80);
-	sr_cls_add_ipv4(htonl(0x555), htonl(0xFFFFFFFF), 90);
-	sr_cls_port_add_rule(555, 90);
-	sr_cls_add_ipv4(htonl(0x0a000000), htonl(0xFF000000), 100);
-	sr_cls_port_add_rule(23, 100);
+	sr_cls_add_ipv4(htonl(0x0a0a0a00), htonl(0xFFFFFF00), 50, SR_DIR_SRC);
+	sr_cls_port_add_rule(22, 50, SR_DIR_SRC);
+	sr_cls_add_ipv4(htonl(0x0a0a0a00), htonl(0xFFFFFF00), 60, SR_DIR_SRC);
+	sr_cls_port_add_rule(24, 60, SR_DIR_SRC);
+	sr_cls_add_ipv4(htonl(0x709), htonl(0xFFFFFFFF), 70, SR_DIR_SRC);
+	sr_cls_port_add_rule(22, 70, SR_DIR_SRC);
+	sr_cls_add_ipv4(htonl(0x0a0a0a2e), htonl(0xFFFFFFFF), 80, SR_DIR_SRC);
+	sr_cls_port_add_rule(22, 80, SR_DIR_SRC);
+	sr_cls_add_ipv4(htonl(0x555), htonl(0xFFFFFFFF), 90, SR_DIR_SRC);
+	sr_cls_port_add_rule(555, 90, SR_DIR_SRC);
+	sr_cls_add_ipv4(htonl(0x0a000000), htonl(0xFF000000), 100, SR_DIR_SRC);
+	sr_cls_port_add_rule(23, 100, SR_DIR_SRC);
 	sr_cls_rule_add(50, SR_CLS_ACTION_ALLOW, 0, SR_CLS_ACTION_DROP, 0, 0, 0, 0);
 	sr_cls_rule_add(60, SR_CLS_ACTION_ALLOW, 0, SR_CLS_ACTION_DROP, 0, 0, 0, 0);
 	sr_cls_rule_add(70, SR_CLS_ACTION_ALLOW, 0, SR_CLS_ACTION_DROP, 0, 0, 0, 0);

@@ -140,15 +140,15 @@ SR_32 sr_classifier_network(disp_info_t* info)
 	sal_kernel_print_alert("sr_classifier_network: Entry for %lx->[%d]\n", (unsigned long)info->tuple_info.saddr.v4addr.s_addr, info->tuple_info.dport);
 	// Match 5-tuple
 	// Src IP
-	ba_src_ip = sr_cls_match_srcip(htonl(info->tuple_info.saddr.v4addr.s_addr));
-	//ba_src_ip = sr_cls_match_srcip(htonl(0x0a0a0b00));
+	ba_src_ip = sr_cls_match_ip(htonl(info->tuple_info.saddr.v4addr.s_addr), SR_DIR_SRC);
+	//ba_src_ip = sr_cls_match_ip(htonl(0x0a0a0b00));
 	sal_kernel_print_alert("sr_classifier_network: Found src rules\n");
 	//return SR_CLS_ACTION_ALLOW;
 	// Dst IP - TODO
 	// IP Proto - TODO
 	// Src Port - TODO
 	// Dst Port
-	ba_dst_port = sr_cls_match_dport(info->tuple_info.dport);
+	ba_dst_port = sr_cls_match_port(info->tuple_info.dport, SR_DIR_DST);
 	sal_kernel_print_alert("sr_classifier_network: Found port rules\n");
 
 	if ((!ba_src_ip) || (!ba_dst_port)) {

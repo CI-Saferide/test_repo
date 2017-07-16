@@ -19,10 +19,10 @@ struct port_ent_t {
 int sr_cls_port_init(void);
 void sr_cls_port_ut(void);
 void sr_cls_port_uninit(void);
-int sr_cls_port_add_rule(SR_U32 port, SR_U32 rulenum);
-int sr_cls_port_del_rule(SR_U32 port, SR_U32 rulenum);
-struct sr_hash_ent_t *sr_cls_port_find(SR_U32 port);
-void sr_cls_print_port_rules(SR_U32 port);
-bit_array *sr_cls_match_dport(SR_U32 port);
+int sr_cls_port_add_rule(SR_U32 port, SR_U32 rulenum, SR_8 dir);
+int sr_cls_port_del_rule(SR_U32 port, SR_U32 rulenum, SR_8 dir);
+struct sr_hash_ent_t *sr_cls_port_find(SR_U32 port, SR_8 dir);
+void sr_cls_print_port_rules(SR_U32 port, SR_8 dir);
+bit_array *sr_cls_match_port(SR_U32 port, SR_8 dir);
 
 #endif

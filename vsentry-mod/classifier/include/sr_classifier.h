@@ -5,16 +5,12 @@
 #include "dispatcher.h"
 #include "sr_cls_port.h"
 #include "sr_cls_file.h"
+#include "sr_cls_network.h"
 
 
 #define SR_MAX_RULES 4096
 
 SR_32 sr_classifier_init(void);
-void sr_cls_network_init(void);
-void sr_cls_network_uninit(void);
-bit_array *sr_cls_match_srcip(SR_U32 addr);
-
-int sr_cls_add_ipv4(SR_U32 addr, SR_U32 netmask, int rulenum);
 SR_32 sr_cls_inode_add_rule(SR_U32 inode, SR_U32 rulenum);
 SR_32 sr_cls_inode_del_rule(SR_U32 inode, SR_U32 rulenum);
 SR_32 sr_cls_inode_inherit(SR_U32 from, SR_U32 to);
