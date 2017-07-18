@@ -8,6 +8,7 @@
 #include "event_mediator.h"
 #include "sr_sal_common.h"
 #include "sr_types.h"
+#include "sr_classifier.h"
 
 /* Protocol families, same as address families */
 const static SR_8 *protocol_family[] = {
@@ -314,7 +315,10 @@ SR_32 vsentry_inode_rmdir(struct inode *dir, struct dentry *dentry)
 SR_32 vsentry_socket_connect(struct socket *sock, struct sockaddr *address, SR_32 addrlen)
 {
 	disp_info_t disp;
-	struct sockaddr_in *ipv4;
+	
+	if (sock->sk->sk_family != AF_INET) { // TODO: AF_INET6
+		return 0;
+	} 
 
 	memset(&disp, 0, sizeof(disp_info_t));
 	
@@ -322,21 +326,25 @@ SR_32 vsentry_socket_connect(struct socket *sock, struct sockaddr *address, SR_3
 	HOOK_FILTER
 
 	/* gather metadata */
-	ipv4 = (struct sockaddr_in *)address;
-	disp.tuple_info.sport = (int)ntohs(ipv4->sin_port);	
+	disp.fileinfo.id.event = HOOK_IN_CONNECTION;
+	//disp.tuple_info.saddr.v4addr.s_addr = sal_packet_src_addr(skb);
+	disp.tuple_info.daddr.v4addr.s_addr = ntohl(((struct sockaddr_in *)address)->sin_addr.s_addr);
+	//disp.tuple_info.sport = sal_packet_src_port(skb);
+	disp.tuple_info.dport = ntohs(((struct sockaddr_in *)address)->sin_port);
+	disp.tuple_info.ip_proto = sock->sk->sk_protocol;
 
-#ifdef DEBUG_EVENT_MEDIAjTOR
-	sal_kernel_print_info("%s incoming_connection=%s, port=%d, pid=%d, gid=%d, tid=%d\n", 
-			module_name,
-			disp.tuple_info.saddr.v4addr.s_addr,
-			disp.address_info.port,
-			disp.fileinfo.id.pid,
-			disp.fileinfo.id.gid, 
-			disp.fileinfo.id.tid);
-#endif /* DEBUG_EVENT_MEDIATOR */
+	sal_kernel_print_info("vsentry_socket_connect=%lx[%d] -> %lx[%d]\n",
+			(unsigned long)disp.tuple_info.saddr.v4addr.s_addr,
+			disp.tuple_info.sport,
+			(unsigned long)disp.tuple_info.daddr.v4addr.s_addr,
+			disp.tuple_info.dport);
 
 	/* call dispatcher */
-	return (disp_socket_connect(&disp));
+	if (disp_socket_connect(&disp) == SR_CLS_ACTION_ALLOW) {
+		return 0;
+	} else {
+		return -EACCES;
+	}
 }
 
 SR_32 vsentry_incoming_connection(struct sk_buff *skb)
@@ -572,6 +580,8 @@ SR_32 vsentry_socket_create(SR_32 family, SR_32 type, SR_32 protocol, SR_32 kern
 	disp_info_t disp;
 	struct task_struct *ts = current;
 	const struct cred *rcred= ts->real_cred;		
+	return 0;
+	// TODO: might want to add some bookkeeping logic here
 	
 	memset(&disp, 0, sizeof(disp_info_t));
 	
@@ -598,5 +608,5 @@ SR_32 vsentry_socket_create(SR_32 family, SR_32 type, SR_32 protocol, SR_32 kern
 #endif /* DEBUG_EVENT_MEDIATOR */
 
 	/* call dispatcher */
-	return (disp_socket_create(&disp));
+	return 0; //return (disp_socket_create(&disp));
 }

@@ -92,7 +92,7 @@ SR_16 sal_ffs_and_clear_bitmask (SR_U64 *bitmask)
 }
 
 //TODO: Avoid blind operation - perform level2 only for relevant bits
-void sal_and_op_arrays (const bit_array *arr1, const bit_array *arr2, bit_array *result)
+void sal_and_op_arrays (bit_array *arr1, bit_array *arr2, bit_array *result)
 {
 	SR_U8 index;
 	result->summary = ((arr1->summary) & (arr2->summary));
@@ -101,7 +101,7 @@ void sal_and_op_arrays (const bit_array *arr1, const bit_array *arr2, bit_array 
 	}
 }
 
-void sal_or_op_arrays (const bit_array *arr1, const bit_array *arr2, bit_array *result)
+void sal_or_op_arrays (bit_array *arr1, bit_array *arr2, bit_array *result)
 {
 	SR_U8 index;
 	result->summary = ((arr1->summary) | (arr2->summary));
@@ -110,7 +110,7 @@ void sal_or_op_arrays (const bit_array *arr1, const bit_array *arr2, bit_array *
 	}
 }
 
-void sal_or_self_op_arrays (bit_array *base, const bit_array *addon)
+void sal_or_self_op_arrays (bit_array *base, bit_array *addon)
 {
 	SR_16 index;
 	SR_U64 summary = addon->summary;
@@ -120,12 +120,22 @@ void sal_or_self_op_arrays (bit_array *base, const bit_array *addon)
 	}
 }
 
-void sal_and_self_op_arrays (bit_array *base, const bit_array *addon)
+void sal_and_self_op_arrays (bit_array *base, bit_array *addon)
 {
 	SR_16	index;
 	SR_U64 summary = base->summary | addon->summary;
 	base->summary &= addon->summary;
 	while ((index = sal_ffs_and_clear_bitmask(&summary)) != -1) {
 		base->level2[index] &= addon->level2[index];
+	}
+}
+
+void sal_and_self_op_two_arrays (bit_array *base, bit_array *A, bit_array *B)
+{
+	SR_16	index;
+	SR_U64 summary = base->summary & (A->summary | B->summary);
+	base->summary = summary;
+	while ((index = sal_ffs_and_clear_bitmask(&summary)) != -1) {
+		base->level2[index] &= (A->level2[index]|B->level2[index]);
 	}
 }

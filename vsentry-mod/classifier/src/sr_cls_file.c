@@ -95,7 +95,6 @@ bit_array *sr_cls_file_find(SR_U32 inode)
 	struct sr_hash_ent_t *ent=sr_hash_lookup(sr_cls_file_table, inode);
 
 	if (!ent) {
-		sal_kernel_print_alert("Error: inode rule not found\n");
 		return NULL;
 	}
 	return (&ent->rules);

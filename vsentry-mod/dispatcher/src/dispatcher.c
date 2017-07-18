@@ -253,25 +253,10 @@ SR_32 disp_inode_symlink(disp_info_t* info){
 	return classifier_rc;	
 }
 
+// TODO: might not have full 5-tuple at this stage !?!?!?
 SR_32 disp_socket_connect(disp_info_t* info)
 {
-	enum dev_event_class_ID	class = NETWORK;
-	enum severity sev = WARNING;
-	struct CEF_payload *payload = cef_init((char*)__FUNCTION__,sev,class);
-
-	if (!payload)
-		return 0;
-
-	/* create event message */
-			
-#ifdef DEBUG_DISPATCHER
-	sal_kernel_print_info("%s %s\n", module_name, payload->extension);
-#endif /* DEBUG_DISPATCHER */
-
-	/* send event message to user space */
-	sr_send_msg(MOD2LOG_BUF, sizeof(CEF_payload));
-	/* call classifier */
-	return 0;
+	return (sr_classifier_network(info));
 }
 
 SR_32 disp_incoming_connection(disp_info_t* info)
@@ -281,31 +266,10 @@ SR_32 disp_incoming_connection(disp_info_t* info)
 	return sr_classifier_network(info);
 }
 
+// TODO: might not have full 5-tuple at this stage !?!?!?
 SR_32 disp_socket_create(disp_info_t* info)
 {
-	SR_32		classifier_rc = -EACCES;
-	
-	/* call classifier */
-	classifier_rc = 0;
-
-	/* create event message */
-
-#ifdef DEBUG_DISPATCHER
-	sal_kernel_print_info("[%s:HOOK %s] src_ipv4=x%x, dst_ipv4=0x%x, src_port=%d, dst_port=%d, proto=%d, pid=%d, gid=%d, tid=%d\n", 
-			module_name, 
-			hook_event_names[info->fileinfo.id.event].name,
-			info->tuple_info.saddr.v4addr.s_addr,
-			info->tuple_info.daddr.v4addr.s_addr,
-			info->tuple_info.sport,
-			info->tuple_info.dport,
-			info->tuple_info.ip_proto,
-			info->fileinfo.id.pid,
-			info->fileinfo.id.gid,
-			info->fileinfo.id.tid);
-#endif /* DEBUG_DISPATCHER */
-
-	/* send event message to user space */
-	//sr_send_msg(MOD2LOG_BUF, sizeof(CEF_payload));
-	
-	return classifier_rc;	
+	printk("Called function %s [DISABLED]\n", __FUNCTION__);
+	//sr_classifier_network(info);
+	return SR_CLS_ACTION_ALLOW;
 }

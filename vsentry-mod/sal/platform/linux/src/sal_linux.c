@@ -98,10 +98,10 @@ SR_U16 sal_packet_dest_port(void *skb)
 	struct tcphdr *tcp_header = NULL;
     struct udphdr *udp_header = NULL;
 
-	if (ip_header->protocol == 6) {
+	if (ip_header->protocol == IPPROTO_TCP) {
 		tcp_header = (struct tcphdr *)skb_transport_header(skb);
 		return ((unsigned int)ntohs(tcp_header->dest));
-	} else if (ip_header->protocol == 17) {
+	} else if (ip_header->protocol == IPPROTO_UDP) {
 		udp_header = (struct udphdr *)skb_transport_header(skb);
 		return ((unsigned int)ntohs(udp_header->dest));
 	} else {
@@ -114,10 +114,10 @@ SR_U16 sal_packet_src_port(void *skb)
 	struct tcphdr *tcp_header = NULL;
     struct udphdr *udp_header = NULL;
 
-	if (ip_header->protocol == 6) {
+	if (ip_header->protocol == IPPROTO_TCP) {
 		tcp_header = (struct tcphdr *)skb_transport_header(skb);
 		return ((unsigned int)ntohs(tcp_header->source));
-	} else if (ip_header->protocol == 17) {
+	} else if (ip_header->protocol == IPPROTO_UDP) {
 		udp_header = (struct udphdr *)skb_transport_header(skb);
 		return ((unsigned int)ntohs(udp_header->source));
 	} else {

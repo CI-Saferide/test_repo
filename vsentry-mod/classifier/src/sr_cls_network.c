@@ -8,14 +8,18 @@
 #include "sr_cls_network_common.h"
 
 struct radix_head *sr_cls_src_ipv4;
+bit_array sr_cls_network_src_any_rules;
 struct radix_head *sr_cls_dst_ipv4;
+bit_array sr_cls_network_dst_any_rules;
 
-void sr_classifier_ut(void) ;
 int sr_cls_walker_addrule(struct radix_node *node, void *rulenum);
 int sr_cls_walker_delrule(struct radix_node *node, void *rulenum);
 
 void sr_cls_network_init(void)
 {
+	memset(&sr_cls_network_src_any_rules, 0, sizeof(bit_array));
+	memset(&sr_cls_network_dst_any_rules, 0, sizeof(bit_array));
+
 	if (!rn_inithead((void **)&sr_cls_src_ipv4, (8 * offsetof(struct sockaddr_in, sin_addr)))) {
 		sal_kernel_print_alert("Error Initializing src radix tree\n");
 	} else {
@@ -41,6 +45,15 @@ void sr_cls_network_uninit(void)
 	}
 }
 
+bit_array *src_cls_network_any_src(void) 
+{ 
+	return &sr_cls_network_src_any_rules; 
+}
+bit_array *src_cls_network_any_dst(void) 
+{ 
+	return &sr_cls_network_dst_any_rules; 
+}
+
 int sr_cls_add_ipv4(SR_U32 addr, SR_U32 netmask, int rulenum, SR_8 dir)
 {
 	struct radix_node *node = NULL;
@@ -48,57 +61,61 @@ int sr_cls_add_ipv4(SR_U32 addr, SR_U32 netmask, int rulenum, SR_8 dir)
 	struct sockaddr_in *ip=NULL, *mask=NULL, *mask2=NULL;
 	struct radix_head *tree_head = NULL;
 
-	treenodes = SR_ZALLOC(2*sizeof(struct radix_node));
-	ip = SR_ZALLOC(sizeof(struct sockaddr_in));
-	mask = SR_ZALLOC(sizeof(struct sockaddr_in));
-	mask2 = SR_ZALLOC(sizeof(struct sockaddr_in));
+	if (likely(netmask)) { // Not an "any" rule
+		treenodes = SR_ZALLOC(2*sizeof(struct radix_node));
+		ip = SR_ZALLOC(sizeof(struct sockaddr_in));
+		mask = SR_ZALLOC(sizeof(struct sockaddr_in));
+		mask2 = SR_ZALLOC(sizeof(struct sockaddr_in));
 
-	if (!treenodes || !ip || !mask || !mask2) {
-		if (ip)
-			SR_FREE(ip);
-		if (mask)
-			SR_FREE(mask);
-		if (mask2)
-			SR_FREE(mask2);
-		if (treenodes)
-			SR_FREE(treenodes);
-		return -1;
-	}
-	ip->sin_family = AF_INET;
-	ip->sin_addr.s_addr = addr;
-	//ip.sin_len = 32; // ????
-	mask->sin_family = AF_INET;
-	mask2->sin_family = AF_INET;
-	mask->sin_addr.s_addr = netmask;
-	mask2->sin_addr.s_addr = netmask;
-	if (dir == SR_DIR_SRC) {
-		tree_head = sr_cls_src_ipv4;
-	} else {
-		tree_head = sr_cls_dst_ipv4;
-	}
-		
-
-	node = rn_addroute((void*)ip, (void*)mask, tree_head, treenodes);
-	if (!node) { // failed to insert - free memory
-		SR_FREE(treenodes);
-		SR_FREE(ip);
-		SR_FREE(mask);
-	} else { // new node, inherit from ancestors
-		struct radix_node *ptr = node->rn_parent;
-		//sal_kernel_print_alert("Checking ancestry for node %lx\n", (unsigned long)node);
-		while (!(ptr->rn_flags & RNF_ROOT)) {
-			//sal_kernel_print_alert("ptr %lx, flags %d, left %lx, right %lx\n", (unsigned long)ptr, ptr->rn_flags, ptr->rn_left, ptr->rn_right);
-			if (ptr->rn_left && (ptr->rn_left != node) && (ptr->rn_left->rn_bit == -1)) {
-				//sal_kernel_print_alert("Node %lx inherited from %lx\n", (unsigned long)node, (unsigned long) ptr->rn_left);
-				sal_or_self_op_arrays(&node->sr_private.rules, &ptr->rn_left->sr_private.rules);
-			}
-			ptr = ptr->rn_parent;
+		if (!treenodes || !ip || !mask || !mask2) {
+			if (ip)
+				SR_FREE(ip);
+			if (mask)
+				SR_FREE(mask);
+			if (mask2)
+				SR_FREE(mask2);
+			if (treenodes)
+				SR_FREE(treenodes);
+			return -1;
 		}
+		ip->sin_family = AF_INET;
+		ip->sin_addr.s_addr = addr;
+		//ip.sin_len = 32; // ????
+		mask->sin_family = AF_INET;
+		mask2->sin_family = AF_INET;
+		mask->sin_addr.s_addr = netmask;
+		mask2->sin_addr.s_addr = netmask;
+		if (dir == SR_DIR_SRC) {
+			tree_head = sr_cls_src_ipv4;
+		} else {
+			tree_head = sr_cls_dst_ipv4;
+		}
+
+
+		node = rn_addroute((void*)ip, (void*)mask, tree_head, treenodes);
+		if (!node) { // failed to insert - free memory
+			SR_FREE(treenodes);
+			SR_FREE(ip);
+			SR_FREE(mask);
+		} else { // new node, inherit from ancestors
+			struct radix_node *ptr = node->rn_parent;
+			//sal_kernel_print_alert("Checking ancestry for node %lx\n", (unsigned long)node);
+			while (!(ptr->rn_flags & RNF_ROOT)) {
+				//sal_kernel_print_alert("ptr %lx, flags %d, left %lx, right %lx\n", (unsigned long)ptr, ptr->rn_flags, ptr->rn_left, ptr->rn_right);
+				if (ptr->rn_left && (ptr->rn_left != node) && (ptr->rn_left->rn_bit == -1)) {
+					//sal_kernel_print_alert("Node %lx inherited from %lx\n", (unsigned long)node, (unsigned long) ptr->rn_left);
+					sal_or_self_op_arrays(&node->sr_private.rules, &ptr->rn_left->sr_private.rules);
+				}
+				ptr = ptr->rn_parent;
+			}
+		}
+
+		rn_walktree_from(tree_head, ip, mask2, sr_cls_walker_addrule, (void*)(long)rulenum);
+		SR_FREE(mask2);
+	} else { // "any" = /0
+		sal_set_bit_array((SR_U32)(long)rulenum, (dir==SR_DIR_SRC)?&sr_cls_network_src_any_rules:&sr_cls_network_dst_any_rules);
 	}
 
-	rn_walktree_from(tree_head, ip, mask2, sr_cls_walker_addrule, (void*)(long)rulenum);
-	SR_FREE(mask2);
-	
 	//sal_kernel_print_alert("sr_cls_add_ipv4: added node has address %lx\n", (unsigned long)node);
 	return 0;
 }
@@ -109,6 +126,7 @@ int sr_cls_del_ipv4(SR_U32 addr, SR_U32 netmask, int rulenum, SR_8 dir)
 	struct sockaddr_in *ip=NULL, *mask=NULL;
 	struct radix_head *tree_head=(dir==SR_DIR_SRC)?sr_cls_src_ipv4:sr_cls_dst_ipv4;
 
+	if (likely(netmask)) { // regular subnet - not "ANY"
 	ip = SR_ZALLOC(sizeof(struct sockaddr_in));
 	mask = SR_ZALLOC(sizeof(struct sockaddr_in));
 
@@ -149,6 +167,9 @@ int sr_cls_del_ipv4(SR_U32 addr, SR_U32 netmask, int rulenum, SR_8 dir)
 	//sal_kernel_print_alert("sr_cls_del_ipv4: node to be deleted has address %lx\n", (unsigned long)node);
 	SR_FREE(ip);
 	SR_FREE(mask);
+	} else { // "ANY" rule
+		sal_clear_bit_array((SR_U32)(long)rulenum, (dir==SR_DIR_SRC)?&sr_cls_network_src_any_rules:&sr_cls_network_dst_any_rules);
+	}
 	return 0;
 }
 

@@ -8,7 +8,6 @@
 #include "sr_cls_network_common.h"
 
 
-void sr_classifier_ut(void) ;
 
 SR_32 sr_classifier_init(void)
 {
@@ -19,7 +18,7 @@ SR_32 sr_classifier_init(void)
 	sr_cls_rules_init();
 
 //#ifdef UNIT_TEST
-	sr_classifier_ut();
+	sr_cls_network_ut();
 //#endif
 
 	return 0;
@@ -132,31 +131,55 @@ enum cls_actions sr_cls_rule_match(SR_U16 rulenum)
 // Network events classifier
 SR_32 sr_classifier_network(disp_info_t* info)
 {
-	bit_array *ba_src_ip, *ba_dst_port;
-	bit_array ba_res;
+	bit_array *ptr;
 	SR_16 rule;
 	SR_U16 action;
+	bit_array ba_res;
 
-	sal_kernel_print_alert("sr_classifier_network: Entry for %lx->[%d]\n", (unsigned long)info->tuple_info.saddr.v4addr.s_addr, info->tuple_info.dport);
+	memset(&ba_res, 0, sizeof(bit_array));
+
 	// Match 5-tuple
 	// Src IP
-	ba_src_ip = sr_cls_match_ip(htonl(info->tuple_info.saddr.v4addr.s_addr), SR_DIR_SRC);
-	//ba_src_ip = sr_cls_match_ip(htonl(0x0a0a0b00));
-	sal_kernel_print_alert("sr_classifier_network: Found src rules\n");
-	//return SR_CLS_ACTION_ALLOW;
-	// Dst IP - TODO
-	// IP Proto - TODO
-	// Src Port - TODO
-	// Dst Port
-	ba_dst_port = sr_cls_match_port(info->tuple_info.dport, SR_DIR_DST);
-	sal_kernel_print_alert("sr_classifier_network: Found port rules\n");
-
-	if ((!ba_src_ip) || (!ba_dst_port)) {
-		sal_kernel_print_alert("sr_classifier_network: No matching rule! IP: %s, port: %s\n", ba_src_ip?"Match":"None", ba_dst_port?"Match":"None");
+	ptr = sr_cls_match_ip(htonl(info->tuple_info.saddr.v4addr.s_addr), SR_DIR_SRC);
+	if (ptr) {
+		sal_or_op_arrays(ptr, src_cls_network_any_src(), &ba_res);
+	} else { // take only src/any
+		sal_or_self_op_arrays(&ba_res, src_cls_network_any_src());
+	}
+	if (array_is_clear(ba_res)) {
 		return SR_CLS_ACTION_ALLOW;
 	}
-	sal_kernel_print_alert("sr_classifier_network: Got some matches\n");
-	sal_and_op_arrays(ba_src_ip, ba_dst_port, &ba_res); // Perform arbitration
+	// Dst Port
+	ptr = sr_cls_match_port(info->tuple_info.dport, SR_DIR_DST, info->tuple_info.ip_proto);
+	if (ptr) {
+		sal_and_self_op_two_arrays(&ba_res, ptr, src_cls_port_any_dst());
+	} else { // take only dst/any
+		sal_and_self_op_arrays(&ba_res, src_cls_port_any_dst());
+	}
+	if (array_is_clear(ba_res)) {
+		return SR_CLS_ACTION_ALLOW;
+	}
+	// Dst IP 
+	ptr = sr_cls_match_ip(htonl(info->tuple_info.daddr.v4addr.s_addr), SR_DIR_DST);
+	if (ptr) {
+		sal_and_self_op_two_arrays(&ba_res, ptr, src_cls_network_any_dst());
+	} else { // take only dst/any
+		sal_and_self_op_arrays(&ba_res, src_cls_network_any_dst());
+	}
+	if (array_is_clear(ba_res)) {
+		return SR_CLS_ACTION_ALLOW;
+	}
+	// IP Proto - TODO
+	// Src Port
+	ptr = sr_cls_match_port(info->tuple_info.sport, SR_DIR_SRC, info->tuple_info.ip_proto);
+	if (ptr) {
+		sal_and_self_op_two_arrays(&ba_res, ptr, src_cls_port_any_src());
+	} else { // take only dst/any
+		sal_and_self_op_arrays(&ba_res, src_cls_port_any_src());
+	}
+	if (array_is_clear(ba_res)) {
+		return SR_CLS_ACTION_ALLOW;
+	}
 
 	while ((rule = sal_ffs_and_clear_array (&ba_res)) != -1) {
 		action = sr_cls_rule_match(rule);
@@ -170,29 +193,27 @@ SR_32 sr_classifier_network(disp_info_t* info)
 	
 	return SR_CLS_ACTION_ALLOW;
 }
+
+
 SR_32 sr_classifier_file(disp_info_t* info)
 {
 	bit_array *ba_inode, ba_res;
 	SR_16 rule;
 	SR_U16 action;
 
-	sal_kernel_print_alert("sr_classifier_file: Entry\n");
-	// Match 5-tuple
-	// Src IP
 	ba_inode = sr_cls_file_find(info->fileinfo.parent_inode);
 
 	if (!ba_inode) {
-		sal_kernel_print_alert("sr_classifier_file: No matching rule!\n");
+		//sal_kernel_print_alert("sr_classifier_file: No matching rule!\n");
 		return SR_CLS_ACTION_ALLOW;
 	}
-	sal_kernel_print_alert("sr_classifier_file: Got some matches\n");
 	memcpy(&ba_res, ba_inode, sizeof(bit_array)); // Perform arbitration
 
 	while ((rule = sal_ffs_and_clear_array (&ba_res)) != -1) {
 		action = sr_cls_rule_match(rule);
-                sal_printf("sr_classifier_network: Matched Rule #%d, action is %d\n", rule, action);
+                sal_printf("sr_classifier_file: Matched Rule #%d, action is %d\n", rule, action);
 		if (action & SR_CLS_ACTION_DROP) {
-			sal_printf("sr_classifier_network: Rule drop\n");
+			sal_printf("sr_classifier_file: Rule drop\n");
 			return SR_CLS_ACTION_DROP;
 		}
         }
