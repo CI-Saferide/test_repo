@@ -8,6 +8,8 @@
 
 #include "sr_types.h"
 
+#define SR_MAX_RULES 4096
+
 /* 64 bit operations */
 SR_8 sal_fls64 (SR_U64 addr);
 SR_8 sal_ffs64 (SR_U64 *addr);

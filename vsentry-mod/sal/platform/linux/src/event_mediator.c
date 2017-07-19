@@ -9,6 +9,8 @@
 #include "sr_sal_common.h"
 #include "sr_types.h"
 #include "sr_classifier.h"
+#include <uapi/linux/can.h>
+#include <linux/can/skb.h>
 
 /* Protocol families, same as address families */
 const static SR_8 *protocol_family[] = {
@@ -67,7 +69,7 @@ static SR_8 module_name[] = "em";
 static SR_8 get_path(struct dentry *dentry, SR_8 *buffer, SR_32 len)
 {
 	SR_8 path[SR_MAX_PATH_SIZE], *path_ptr;
-
+	
 	path_ptr = dentry_path_raw(dentry, path, SR_MAX_PATH_SIZE);
 	if (IS_ERR(path))
 		return SR_ERROR;
@@ -78,15 +80,16 @@ static SR_8 get_path(struct dentry *dentry, SR_8 *buffer, SR_32 len)
 #endif /* DEBUG_EVENT_MEDIATOR */
 
 const event_name hook_event_names[MAX_HOOK] = {
-	{HOOK_MKDIR,		"mkdir"},
-	{HOOK_UNLINK,		"unlink"},
-	{HOOK_SYMLINK,		"symlink"},
-	{HOOK_RMDIR,		"rmdir"},
-	{HOOK_CHMOD,		"chmod"},
-	{HOOK_INODE_CREATE,	"inode_create"},
-	{HOOK_FILE_OPEN,	"file_open"},
-	{HOOK_INODE_LINK,	"inode_link"},
-	{HOOK_INODE_LINK,	"in_connection"},
+	{HOOK_MKDIR,			"mkdir"},
+	{HOOK_UNLINK,			"unlink"},
+	{HOOK_SYMLINK,			"symlink"},
+	{HOOK_RMDIR,			"rmdir"},
+	{HOOK_CHMOD,			"chmod"},
+	{HOOK_INODE_CREATE,		"inode_create"},
+	{HOOK_FILE_OPEN,		"file_open"},
+	{HOOK_INODE_LINK,		"inode_link"},
+	{HOOK_INODE_LINK,		"in_connection"},
+	{HOOK_SOCK_MSG_SEND,	"sock_send_msg"},
 };
 
 
@@ -147,7 +150,7 @@ SR_32 vsentry_inode_mkdir(struct inode *dir, struct dentry *dentry, umode_t mask
 	if (SR_SUCCESS != get_path(dentry->d_parent, fullpath, sizeof(fullpath)))
 		strncpy(fullpath, "NA", 3);
 	
-	sal_kernel_print_info("[%s:HOOK %s] parent inode=%lu, file=%s, path=%s, pid=%d, gid=%d, tid=%d\n", 
+	sal_kernel_print_info("[%s:HOOK %s] parent inode=%u, file=%s, path=%s, pid=%d, gid=%d, tid=%d\n", 
 			module_name,
 			hook_event_names[HOOK_MKDIR].name,
 			disp.fileinfo.parent_inode,
@@ -200,7 +203,7 @@ SR_32 vsentry_inode_unlink(struct inode *dir, struct dentry *dentry)
 		MIN(sizeof(filename), 1+strlen(dentry->d_iname)));
 	get_path(dentry, fullpath, sizeof(fullpath));
 
-	sal_kernel_print_info("[%s:HOOK %s] inode=%lu, parent_inode=%lu, file=%s, path=%s, pid=%d, gid=%d, tid=%d\n", 
+	sal_kernel_print_info("[%s:HOOK %s] inode=%u, parent_inode=%u, file=%s, path=%s, pid=%d, gid=%d, tid=%d\n", 
 			module_name,
 			hook_event_names[HOOK_UNLINK].name,
 			disp.fileinfo.current_inode,
@@ -249,7 +252,7 @@ SR_32 vsentry_inode_symlink(struct inode *dir, struct dentry *dentry, const SR_8
 	strncpy(disp.fileinfo.filename, (char *)name,
 		MIN(sizeof(filename), 1+strlen(name)));
 	get_path(dentry, fullpath, sizeof(fullpath));
-	sal_kernel_print_info("[%s:HOOK %s] parent_inode=%lu, file=%s, path=%s, pid=%d, gid=%d, tid=%d\n", 
+	sal_kernel_print_info("[%s:HOOK %s] parent_inode=%u, file=%s, path=%s, pid=%d, gid=%d, tid=%d\n", 
 			module_name,
 			hook_event_names[HOOK_SYMLINK].name,
 			disp.fileinfo.parent_inode,
@@ -300,7 +303,7 @@ SR_32 vsentry_inode_rmdir(struct inode *dir, struct dentry *dentry)
 	strncpy(filename, dentry->d_iname,
 		MIN(sizeof(filename), 1+strlen(dentry->d_iname)));
 	get_path(dentry->d_parent, fullpath, sizeof(fullpath));
-	sal_kernel_print_info("[%s:HOOK %s] inode=%lu, parent_inode=%lu, file=%s, path=%s, pid=%d, gid=%d, tid=%d\n", 
+	sal_kernel_print_info("[%s:HOOK %s] inode=%u, parent_inode=%u, file=%s, path=%s, pid=%d, gid=%d, tid=%d\n", 
 			module_name,
 			hook_event_names[HOOK_RMDIR].name,
 			disp.fileinfo.current_inode,
@@ -333,15 +336,18 @@ SR_32 vsentry_socket_connect(struct socket *sock, struct sockaddr *address, SR_3
 	disp.fileinfo.id.event = HOOK_IN_CONNECTION;
 	disp.tuple_info.saddr.v4addr.s_addr = 0;
 	disp.tuple_info.sport = 0;
+
 	disp.tuple_info.daddr.v4addr.s_addr = ntohl(((struct sockaddr_in *)address)->sin_addr.s_addr);
 	disp.tuple_info.dport = ntohs(((struct sockaddr_in *)address)->sin_port);
 	disp.tuple_info.ip_proto = sock->sk->sk_protocol;
 
+#ifdef DEBUG_EVENT_MEDIATOR
 	sal_kernel_print_info("vsentry_socket_connect=%lx[%d] -> %lx[%d]\n",
 			(unsigned long)disp.tuple_info.saddr.v4addr.s_addr,
 			disp.tuple_info.sport,
 			(unsigned long)disp.tuple_info.daddr.v4addr.s_addr,
 			disp.tuple_info.dport);
+#endif /* DEBUG_EVENT_MEDIATOR */
 
 	/* call dispatcher */
 	if (disp_socket_connect(&disp) == SR_CLS_ACTION_ALLOW) {
@@ -361,18 +367,20 @@ SR_32 vsentry_incoming_connection(struct sk_buff *skb)
 	HOOK_FILTER
 
 	/* gather metadata */
-	disp.fileinfo.id.event = HOOK_IN_CONNECTION;
+	disp.tuple_info.id.event = HOOK_IN_CONNECTION;
 	disp.tuple_info.saddr.v4addr.s_addr = sal_packet_src_addr(skb);
 	disp.tuple_info.daddr.v4addr.s_addr = sal_packet_dest_addr(skb);
 	disp.tuple_info.sport = sal_packet_src_port(skb);
 	disp.tuple_info.dport = sal_packet_dest_port(skb);
 	disp.tuple_info.ip_proto = sal_packet_ip_proto(skb);
 
+#ifdef DEBUG_EVENT_MEDIATOR
 	sal_kernel_print_info("vsentry_incoming_connection=%lx[%d] -> %lx[%d]\n",
 			(unsigned long)disp.tuple_info.saddr.v4addr.s_addr,
 			disp.tuple_info.sport,
 			(unsigned long)disp.tuple_info.daddr.v4addr.s_addr,
 			disp.tuple_info.dport);
+#endif /* DEBUG_EVENT_MEDIATOR */
 
 	/* call dispatcher */
 	return (disp_incoming_connection(&disp));
@@ -409,7 +417,7 @@ SR_32 vsentry_path_chmod(struct path *path, umode_t mode)
 #pragma GCC diagnostic pop	
 	get_path(path->dentry, fullpath, sizeof(fullpath));
 
-	sal_kernel_print_info("[%s:HOOK %s] inode=%lu, parent_inode=%lu, path=%s, pid=%d, gid=%d, tid=%d\n", 
+	sal_kernel_print_info("[%s:HOOK %s] inode=%u, parent_inode=%u, path=%s, pid=%d, gid=%d, tid=%d\n", 
 			module_name,
 			hook_event_names[HOOK_CHMOD].name,
 			disp.fileinfo.current_inode,
@@ -455,7 +463,7 @@ SR_32 vsentry_inode_create(struct inode *dir, struct dentry *dentry, umode_t mod
 	strncpy(disp.fileinfo.filename, dentry->d_iname,
 		MIN(sizeof(filename), 1+strlen(dentry->d_iname)));
 	get_path(dentry->d_parent, fullpath, sizeof(fullpath));
-	sal_kernel_print_info("[%s:HOOK %s] parent_inode=%lu, path=%s, pid=%d, gid=%d, tid=%d\n", 
+	sal_kernel_print_info("[%s:HOOK %s] parent_inode=%u, path=%s, pid=%d, gid=%d, tid=%d\n", 
 			module_name,
 			hook_event_names[HOOK_INODE_CREATE].name,
 			disp.fileinfo.parent_inode,
@@ -499,7 +507,7 @@ SR_32 vsentry_file_open(struct file *file, const struct cred *cred)
 	SR_U8 		filename[128];
 #pragma GCC diagnostic pop
 	get_path(file->f_path.dentry, filename, sizeof(filename));
-	sal_kernel_print_info("[%s:HOOK %s] inode=%lu, parent_inode=%lu, file=%s, pid=%d, gid=%d, tid=%d\n", 
+	sal_kernel_print_info("[%s:HOOK %s] inode=%u, parent_inode=%u, file=%s, pid=%d, gid=%d, tid=%d\n", 
 			module_name,
 			hook_event_names[HOOK_FILE_OPEN].name,
 			disp.fileinfo.current_inode,
@@ -552,7 +560,7 @@ SR_32 vsentry_inode_link(struct dentry *old_dentry, struct inode *dir, struct de
 		MIN(sizeof(filename), 1+strlen(old_dentry->d_iname)));
 	get_path(new_dentry, fullpath, sizeof(fullpath));
 	get_path(old_dentry, old_path, sizeof(old_path));
-	sal_kernel_print_info("[%s:HOOK %s] parent_inode=%lu, old_parent_inode=%lu, file=%s, path=%s, old_path=%s pid=%d, gid=%d, tid=%d\n", 
+	sal_kernel_print_info("[%s:HOOK %s] parent_inode=%u, old_parent_inode=%u, file=%s, path=%s, old_path=%s pid=%d, gid=%d, tid=%d\n", 
 			module_name,
 			hook_event_names[HOOK_INODE_LINK].name,
 			disp.fileinfo.parent_inode,
@@ -611,4 +619,80 @@ SR_32 vsentry_socket_create(SR_32 family, SR_32 type, SR_32 protocol, SR_32 kern
 
 	/* call dispatcher */
 	return 0; //return (disp_socket_create(&disp));
+}
+
+/* @socket_sendmsg:
+ *	Check permission before transmitting a message to another socket.
+ *	@sock contains the socket structure.
+ *	@msg contains the message to be transmitted.
+ *	@size contains the size of message.
+ *	Return 0 if permission is granted.
+ */
+SR_32 vsentry_socket_sendmsg(struct socket *sock,struct msghdr *msg,SR_32 size)
+{
+	int err;
+	int i;
+	struct sk_buff *skb;
+	struct canfd_frame *cfd;
+	const u8 family = sock->sk->sk_family;
+	struct socket copy_sock = *sock;
+	struct msghdr copy_msg = *msg;
+	
+	disp_info_t disp;
+	struct task_struct *ts = current;
+	const struct cred *rcred= ts->real_cred;		
+	
+	memset(&disp, 0, sizeof(disp_info_t));
+	
+	/* check hook filter */
+	HOOK_FILTER
+	
+	/* gather metadata */
+	disp.socket_info.id.event = HOOK_SOCK_MSG_SEND;
+	disp.socket_info.id.gid = (int)rcred->gid.val;
+	disp.socket_info.id.tid = (int)rcred->uid.val;
+	disp.socket_info.id.pid = current->pid;
+	
+	switch (family) {
+		case AF_CAN:
+			skb = sock_alloc_send_skb(copy_sock.sk, size + sizeof(struct can_skb_priv),
+						  copy_msg.msg_flags & MSG_DONTWAIT, &err);
+						  
+			err = memcpy_from_msg(skb_put(skb, size), &copy_msg, size);
+			if (err < 0) {
+				printk ("fail to copy can msg from user!\n");
+				/* we cannot handle this message */
+				return 0;
+			}
+			cfd = (struct canfd_frame *)skb->data;
+			disp.can_info.msg_id = (SR_U32)cfd->can_id;
+			disp.can_info.payload_len = cfd->len;
+			for (i = 0; i < cfd->len; i++) {
+				disp.can_info.payload[i] = cfd->data[i];
+			}
+			sal_debug_em("[%s:HOOK %s] family=af_can msd_id=%x payload_len=%d payload= %02x %02x %02x %02x %02x %02x %02x %02x pid=%d, gid=%d, tid=%d\n", 
+						module_name,
+						hook_event_names[HOOK_SOCK_MSG_SEND].name,
+						disp.can_info.msg_id,
+						disp.can_info.payload_len,
+						disp.can_info.payload[0],
+						disp.can_info.payload[1],
+						disp.can_info.payload[2],
+						disp.can_info.payload[3],
+						disp.can_info.payload[4],
+						disp.can_info.payload[5],
+						disp.can_info.payload[6],
+						disp.can_info.payload[7],
+						disp.fileinfo.id.pid,
+						disp.fileinfo.id.gid, 
+						disp.fileinfo.id.tid);
+			break;
+		default:
+			/* we are not interested in the message */
+			return 0;
+			break;
+	}
+
+	/* call dispatcher */
+	return (disp_socket_sendmsg(&disp));
 }

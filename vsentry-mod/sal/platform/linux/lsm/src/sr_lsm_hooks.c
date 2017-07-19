@@ -6,7 +6,6 @@
 #include "sr_sal_common.h"
 #include "event_mediator.h"
 
-
 extern int sr_vsentryd_pid;
 
 /*implement filter for our sr-engine */
@@ -324,7 +323,10 @@ static int vsentry_socket_bind(struct socket *sock, struct sockaddr *address,int
 {
 	if(hook_filter())
 		return 0;
-
+	if (sock->sk->sk_family == PF_CAN) {
+		printk ("sock CAN create\n");
+	}
+	
 	return 0;
 }
 
@@ -349,21 +351,6 @@ static int vsentry_socket_accept(struct socket *sock,struct socket *newsock)
 	return -EACCES;
 }
 #endif // 0
-
-/* @socket_sendmsg:
- *	Check permission before transmitting a message to another socket.
- *	@sock contains the socket structure.
- *	@msg contains the message to be transmitted.
- *	@size contains the size of message.
- *	Return 0 if permission is granted.
- */
-static int vsentry_socket_sendmsg(struct socket *sock,struct msghdr *msg,int size)
-{
-	if(hook_filter())
-		return 0;
-
-	return 0;
-}
 
 /* @socket_recvmsg:
  *	Check permission before receiving a message from a socket.

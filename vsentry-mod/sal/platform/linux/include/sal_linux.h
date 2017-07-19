@@ -55,7 +55,14 @@
 	printk(KERN_INFO pr_fmt(fmt), ##__VA_ARGS__)
 #else
 #define sal_debug_network(fmt, ...)
-#endif
+#endif /* DEBUG_NETWORK */
+
+#ifdef DEBUG_EVENT_MEDIATOR	
+#define sal_debug_em(fmt, ...) \
+	printk(KERN_INFO pr_fmt(fmt), ##__VA_ARGS__)
+#else
+#define sal_debug_em(fmt, ...)
+#endif /* DEBUG_EVENT_MEDIATOR */
 
 // Network functions
 SR_U8 sal_packet_ip_proto(void *skb);
