@@ -68,7 +68,7 @@ static SR_8 module_name[] = "em";
 static SR_8 get_path(struct dentry *dentry, SR_8 *buffer, SR_32 len)
 {
 	SR_8 path[SR_MAX_PATH_SIZE], *path_ptr;
-	
+
 	path_ptr = dentry_path_raw(dentry, path, SR_MAX_PATH_SIZE);
 	if (IS_ERR(path))
 		return SR_ERROR;
@@ -88,7 +88,7 @@ const event_name hook_event_names[MAX_HOOK] = {
 	{HOOK_FILE_OPEN,	"file_open"},
 	{HOOK_INODE_LINK,	"inode_link"},
 	{HOOK_INODE_LINK,	"in_connection"},
-	{HOOK_SOCK_MSG_SEND,"sock_send_msg"},
+	{HOOK_SOCK_MSG_SEND,	"sock_send_msg"},
 };
 
 
