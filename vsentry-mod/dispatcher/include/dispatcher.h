@@ -60,6 +60,7 @@ typedef union {
 
 /* socket related functions */
 	struct _tuple_info {
+		identifier 	id;
 		struct {
 			struct in_addr v4addr;
 			// FUTURE struct in6_addr v6addr;

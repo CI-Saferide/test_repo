@@ -6,9 +6,7 @@
 #include "sr_cls_port.h"
 #include "sr_cls_file.h"
 #include "sr_cls_network.h"
-
-
-#define SR_MAX_RULES 4096
+#include "sal_bitops.h"
 
 SR_32 sr_classifier_init(void);
 SR_32 sr_cls_inode_add_rule(SR_U32 inode, SR_U32 rulenum);

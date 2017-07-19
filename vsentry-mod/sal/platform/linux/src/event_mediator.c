@@ -329,18 +329,20 @@ SR_32 vsentry_socket_connect(struct socket *sock, struct sockaddr *address, SR_3
 	HOOK_FILTER
 
 	/* gather metadata */
-	disp.fileinfo.id.event = HOOK_IN_CONNECTION;
+	disp.tuple_info.id.event = HOOK_IN_CONNECTION;
 	//disp.tuple_info.saddr.v4addr.s_addr = sal_packet_src_addr(skb);
 	disp.tuple_info.daddr.v4addr.s_addr = ntohl(((struct sockaddr_in *)address)->sin_addr.s_addr);
 	//disp.tuple_info.sport = sal_packet_src_port(skb);
 	disp.tuple_info.dport = ntohs(((struct sockaddr_in *)address)->sin_port);
 	disp.tuple_info.ip_proto = sock->sk->sk_protocol;
 
+#ifdef DEBUG_EVENT_MEDIATOR
 	sal_kernel_print_info("vsentry_socket_connect=%lx[%d] -> %lx[%d]\n",
 			(unsigned long)disp.tuple_info.saddr.v4addr.s_addr,
 			disp.tuple_info.sport,
 			(unsigned long)disp.tuple_info.daddr.v4addr.s_addr,
 			disp.tuple_info.dport);
+#endif /* DEBUG_EVENT_MEDIATOR */
 
 	/* call dispatcher */
 	if (disp_socket_connect(&disp) == SR_CLS_ACTION_ALLOW) {
@@ -360,18 +362,20 @@ SR_32 vsentry_incoming_connection(struct sk_buff *skb)
 	HOOK_FILTER
 
 	/* gather metadata */
-	disp.fileinfo.id.event = HOOK_IN_CONNECTION;
+	disp.tuple_info.id.event = HOOK_IN_CONNECTION;
 	disp.tuple_info.saddr.v4addr.s_addr = sal_packet_src_addr(skb);
 	disp.tuple_info.daddr.v4addr.s_addr = sal_packet_dest_addr(skb);
 	disp.tuple_info.sport = sal_packet_src_port(skb);
 	disp.tuple_info.dport = sal_packet_dest_port(skb);
 	disp.tuple_info.ip_proto = sal_packet_ip_proto(skb);
 
+#ifdef DEBUG_EVENT_MEDIATOR
 	sal_kernel_print_info("vsentry_incoming_connection=%lx[%d] -> %lx[%d]\n",
 			(unsigned long)disp.tuple_info.saddr.v4addr.s_addr,
 			disp.tuple_info.sport,
 			(unsigned long)disp.tuple_info.daddr.v4addr.s_addr,
 			disp.tuple_info.dport);
+#endif /* DEBUG_EVENT_MEDIATOR */
 
 	/* call dispatcher */
 	return (disp_incoming_connection(&disp));
@@ -641,7 +645,7 @@ SR_32 vsentry_socket_sendmsg(struct socket *sock,struct msghdr *msg,SR_32 size)
 	HOOK_FILTER
 	
 	/* gather metadata */
-	disp.fileinfo.id.event = HOOK_SOCK_MSG_SEND;
+	disp.socket_info.id.event = HOOK_SOCK_MSG_SEND;
 	disp.socket_info.id.gid = (int)rcred->gid.val;
 	disp.socket_info.id.tid = (int)rcred->uid.val;
 	disp.socket_info.id.pid = current->pid;

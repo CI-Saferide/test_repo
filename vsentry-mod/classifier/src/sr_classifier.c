@@ -7,16 +7,11 @@
 #include "sr_sal_common.h"
 #include "sr_cls_network_common.h"
 
-
-
 SR_32 sr_classifier_init(void)
 {
 	sr_cls_network_init();
-
 	sr_cls_fs_init();
-
 	sr_cls_rules_init();
-
 //#ifdef UNIT_TEST
 	sr_cls_network_ut();
 //#endif
@@ -27,7 +22,6 @@ SR_32 sr_classifier_init(void)
 void sr_classifier_uninit(void)
 {
 	sr_cls_network_uninit();
-
 	sr_cls_fs_uninit();
 }
 
