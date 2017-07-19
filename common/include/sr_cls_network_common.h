@@ -2,6 +2,9 @@
 #define SR_CLS_NETWORK_COMMON_H
 #include "sr_types.h"
 
+#define SR_DIR_SRC 0
+#define SR_DIR_DST 1
+
 enum {
 	SR_CLS_IPV4_DEL_RULE = 0,
 	SR_CLS_IPV4_ADD_RULE,
@@ -13,6 +16,7 @@ enum {
 
 struct sr_cls_network_msg {
 	SR_U8 	msg_type;
+	SR_U8   dir; // SR_DIR_SRC/DST
 	SR_U16	rulenum;
 	SR_U32	addr;
 	SR_U32  netmask;

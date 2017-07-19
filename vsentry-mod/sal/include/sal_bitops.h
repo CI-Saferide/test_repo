@@ -8,6 +8,8 @@
 
 #include "sr_types.h"
 
+#define SR_MAX_RULES 4096
+
 /* 64 bit operations */
 SR_8 sal_fls64 (SR_U64 addr);
 SR_8 sal_ffs64 (SR_U64 *addr);
@@ -24,15 +26,18 @@ typedef struct __bit_array {
 }bit_array;
 
 /* bit array opearions */
+#define array_is_clear(ba) (!ba.summary)
+
 void sal_set_bit_array (SR_U16 bit, bit_array *arr);
 void sal_clear_bit_array (SR_U16 bit, bit_array *arr);
 SR_16 sal_ffs_array (bit_array *arr);
 SR_16 sal_ffs_and_clear_array (bit_array *arr);
 SR_16 sal_ffs_and_clear_bitmask (SR_U64 *bitmask);
-void sal_and_op_arrays (const bit_array *arr1, const bit_array *arr2, bit_array *result);
-void sal_or_op_arrays (const bit_array *arr1, const bit_array *arr2, bit_array *result);
-void sal_or_self_op_arrays (bit_array *base, const bit_array *addon);
-void sal_and_self_op_arrays (bit_array *base, const bit_array *addon);
+void sal_and_op_arrays (bit_array *arr1, bit_array *arr2, bit_array *result);
+void sal_or_op_arrays (bit_array *arr1, bit_array *arr2, bit_array *result);
+void sal_or_self_op_arrays (bit_array *base, bit_array *addon);
+void sal_and_self_op_arrays (bit_array *base, bit_array *addon);
+void sal_and_self_op_two_arrays (bit_array *base, bit_array *A, bit_array *B);
 void sal_not_op_array (bit_array *arr);
 SR_BOOL sal_bit_array_is_set (SR_U16 bit, bit_array *arr);
 
