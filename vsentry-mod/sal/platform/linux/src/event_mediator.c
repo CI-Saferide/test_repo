@@ -79,16 +79,16 @@ static SR_8 get_path(struct dentry *dentry, SR_8 *buffer, SR_32 len)
 #endif /* DEBUG_EVENT_MEDIATOR */
 
 const event_name hook_event_names[MAX_HOOK] = {
-	{HOOK_MKDIR,		"mkdir"},
-	{HOOK_UNLINK,		"unlink"},
-	{HOOK_SYMLINK,		"symlink"},
-	{HOOK_RMDIR,		"rmdir"},
-	{HOOK_CHMOD,		"chmod"},
-	{HOOK_INODE_CREATE,	"inode_create"},
-	{HOOK_FILE_OPEN,	"file_open"},
-	{HOOK_INODE_LINK,	"inode_link"},
-	{HOOK_INODE_LINK,	"in_connection"},
-	{HOOK_SOCK_MSG_SEND,"sock_send_msg"},
+	{HOOK_MKDIR,			"mkdir"},
+	{HOOK_UNLINK,			"unlink"},
+	{HOOK_SYMLINK,			"symlink"},
+	{HOOK_RMDIR,			"rmdir"},
+	{HOOK_CHMOD,			"chmod"},
+	{HOOK_INODE_CREATE,		"inode_create"},
+	{HOOK_FILE_OPEN,		"file_open"},
+	{HOOK_INODE_LINK,		"inode_link"},
+	{HOOK_INODE_LINK,		"in_connection"},
+	{HOOK_SOCK_MSG_SEND,	"sock_send_msg"},
 };
 
 
@@ -675,6 +675,7 @@ SR_32 vsentry_socket_sendmsg(struct socket *sock,struct msghdr *msg,SR_32 size)
 			return 0;
 			break;
 	}
+
 	/* call dispatcher */
 	return (disp_socket_sendmsg(&disp));
 }
