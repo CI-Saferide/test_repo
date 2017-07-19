@@ -52,6 +52,7 @@ typedef union {
 		SR_U32		current_inode;
 		SR_U32		parent_inode;
 		SR_U32		old_inode;
+		SR_8		fileop;
 		SR_U8 		filename[128];
 		SR_U8 		fullpath[128];
 		SR_U8 		old_path[128];

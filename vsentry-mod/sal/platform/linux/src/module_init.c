@@ -192,17 +192,24 @@ void sr_demo(void)
 	sr_cls_add_ipv4(htonl(0x0a0a0a32), htonl(0xFFFFFFFF), 110, SR_DIR_DST);
 	sr_cls_port_add_rule(0, 110, SR_DIR_SRC, IPPROTO_TCP);
 	sr_cls_port_add_rule(22, 110, SR_DIR_DST, IPPROTO_TCP);
-	sr_cls_rule_add(50, SR_CLS_ACTION_ALLOW, 0, SR_CLS_ACTION_DROP, 0, 0, 0, 0);
-	sr_cls_rule_add(60, SR_CLS_ACTION_ALLOW, 0, SR_CLS_ACTION_DROP, 0, 0, 0, 0);
-	sr_cls_rule_add(70, SR_CLS_ACTION_ALLOW, 0, SR_CLS_ACTION_DROP, 0, 0, 0, 0);
-	sr_cls_rule_add(80, SR_CLS_ACTION_ALLOW|SR_CLS_ACTION_LOG, 0, SR_CLS_ACTION_DROP, 0, 0, 0, 0);
-	sr_cls_rule_add(90, SR_CLS_ACTION_ALLOW, 0, SR_CLS_ACTION_DROP, 0, 0, 0, 0);
-	sr_cls_rule_add(100, SR_CLS_ACTION_DROP, 0, SR_CLS_ACTION_DROP, 0, 0, 0, 0);
-	sr_cls_rule_add(110, SR_CLS_ACTION_DROP, 0, SR_CLS_ACTION_DROP, 0, 0, 0, 0);
-	sr_cls_rule_add(1, SR_CLS_ACTION_DROP, 0, SR_CLS_ACTION_DROP, 0, 0, 0, 0);
-	sr_cls_rule_add(2, SR_CLS_ACTION_DROP, 0, SR_CLS_ACTION_DROP, 0, 0, 0, 0);
-	sr_cls_rule_add(3, SR_CLS_ACTION_DROP, 0, SR_CLS_ACTION_DROP, 0, 0, 0, 0);
-	sr_cls_rule_add(4, SR_CLS_ACTION_DROP, 0, SR_CLS_ACTION_DROP, 0, 0, 0, 0);
+	sr_cls_rule_add(SR_NET_RULES, 50, SR_CLS_ACTION_ALLOW, 0, 0, SR_CLS_ACTION_DROP, 0, 0, 0, 0);
+	sr_cls_rule_add(SR_NET_RULES, 60, SR_CLS_ACTION_ALLOW, 0, 0, SR_CLS_ACTION_DROP, 0, 0, 0, 0);
+	sr_cls_rule_add(SR_NET_RULES, 70, SR_CLS_ACTION_ALLOW, 0, 0, SR_CLS_ACTION_DROP, 0, 0, 0, 0);
+	sr_cls_rule_add(SR_NET_RULES, 80, SR_CLS_ACTION_ALLOW|SR_CLS_ACTION_LOG, 0, 0, SR_CLS_ACTION_DROP, 0, 0, 0, 0);
+	sr_cls_rule_add(SR_NET_RULES, 90, SR_CLS_ACTION_ALLOW, 0, 0, SR_CLS_ACTION_DROP, 0, 0, 0, 0);
+	sr_cls_rule_add(SR_NET_RULES, 100, SR_CLS_ACTION_DROP, 0, 0, SR_CLS_ACTION_DROP, 0, 0, 0, 0);
+	sr_cls_rule_add(SR_NET_RULES, 110, SR_CLS_ACTION_DROP, 0, 0, SR_CLS_ACTION_DROP, 0, 0, 0, 0);
+
+
+	sr_cls_inode_add_rule(1603491, 1); // /templab/file1
+	sr_cls_inode_add_rule(1605650, 2); // /templab/dir2
+	sr_cls_inode_add_rule(1605649, 3); // /templab/dir1
+	sr_cls_inode_add_rule(1603488, 4); // /templab
+	
+	sr_cls_rule_add(SR_FILE_RULES, 1, SR_CLS_ACTION_ALLOW, SR_FILEOPS_READ,0, SR_CLS_ACTION_DROP, 0, 0, 0, 0);
+	sr_cls_rule_add(SR_FILE_RULES, 2, SR_CLS_ACTION_DROP, SR_FILEOPS_READ,0, SR_CLS_ACTION_DROP, 0, 0, 0, 0);
+	sr_cls_rule_add(SR_FILE_RULES, 3, SR_CLS_ACTION_ALLOW, SR_FILEOPS_WRITE|SR_FILEOPS_READ,0, SR_CLS_ACTION_DROP, 0, 0, 0, 0);
+	sr_cls_rule_add(SR_FILE_RULES, 4, SR_CLS_ACTION_DROP, SR_FILEOPS_WRITE|SR_FILEOPS_READ,0, SR_CLS_ACTION_DROP, 0, 0, 0, 0);
 }
 
 static int __init vsentry_init(void)

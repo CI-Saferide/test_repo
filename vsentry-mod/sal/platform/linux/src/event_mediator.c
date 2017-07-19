@@ -133,6 +133,7 @@ SR_32 vsentry_inode_mkdir(struct inode *dir, struct dentry *dentry, umode_t mask
 	disp.fileinfo.id.gid = (SR_32)rcred->gid.val;
 	disp.fileinfo.id.tid = (SR_32)rcred->uid.val;
 	disp.fileinfo.id.pid = current->pid;
+	disp.fileinfo.fileop = SR_FILEOPS_WRITE;
 
 #ifdef DEBUG_EVENT_MEDIATOR
 #pragma GCC diagnostic push
@@ -186,6 +187,7 @@ SR_32 vsentry_inode_unlink(struct inode *dir, struct dentry *dentry)
 	disp.fileinfo.id.gid = (int)rcred->gid.val;
 	disp.fileinfo.id.tid = (int)rcred->uid.val;
 	disp.fileinfo.id.pid = current->pid;
+	disp.fileinfo.fileop = SR_FILEOPS_WRITE;
 	
 #ifdef DEBUG_EVENT_MEDIATOR
 #pragma GCC diagnostic push
@@ -236,6 +238,7 @@ SR_32 vsentry_inode_symlink(struct inode *dir, struct dentry *dentry, const SR_8
 	disp.fileinfo.id.gid = (int)rcred->gid.val;
 	disp.fileinfo.id.tid = (int)rcred->uid.val;
 	disp.fileinfo.id.pid = current->pid;
+	disp.fileinfo.fileop = SR_FILEOPS_WRITE;
 	
 #ifdef DEBUG_EVENT_MEDIATOR
 #pragma GCC diagnostic ignored "-Wdeclaration-after-statement"
@@ -287,6 +290,7 @@ SR_32 vsentry_inode_rmdir(struct inode *dir, struct dentry *dentry)
 	disp.fileinfo.id.gid = (int)rcred->gid.val;
 	disp.fileinfo.id.tid = (int)rcred->uid.val;
 	disp.fileinfo.id.pid = current->pid;
+	disp.fileinfo.fileop = SR_FILEOPS_WRITE;
 
 #ifdef DEBUG_EVENT_MEDIATOR
 #pragma GCC diagnostic ignored "-Wdeclaration-after-statement"
@@ -327,9 +331,9 @@ SR_32 vsentry_socket_connect(struct socket *sock, struct sockaddr *address, SR_3
 
 	/* gather metadata */
 	disp.fileinfo.id.event = HOOK_IN_CONNECTION;
-	//disp.tuple_info.saddr.v4addr.s_addr = sal_packet_src_addr(skb);
+	disp.tuple_info.saddr.v4addr.s_addr = 0;
+	disp.tuple_info.sport = 0;
 	disp.tuple_info.daddr.v4addr.s_addr = ntohl(((struct sockaddr_in *)address)->sin_addr.s_addr);
-	//disp.tuple_info.sport = sal_packet_src_port(skb);
 	disp.tuple_info.dport = ntohs(((struct sockaddr_in *)address)->sin_port);
 	disp.tuple_info.ip_proto = sock->sk->sk_protocol;
 
@@ -392,14 +396,12 @@ SR_32 vsentry_path_chmod(struct path *path, umode_t mode)
 		disp.fileinfo.current_inode = path->dentry->d_inode->i_ino;
 	else
 		sal_kernel_print_err("[%s] inode in null\n", hook_event_names[HOOK_CHMOD].name);
-	if ((path->dentry->d_parent) && (path->dentry->d_parent->d_inode))
-		disp.fileinfo.parent_inode = path->dentry->d_parent->d_inode->i_ino;
-	else
-		sal_kernel_print_err("[%s] parent inode in null\n", hook_event_names[HOOK_CHMOD].name);
+	disp.fileinfo.parent_inode = 0;
 		
 	disp.fileinfo.id.gid = (int)rcred->gid.val;
 	disp.fileinfo.id.tid = (int)rcred->uid.val;
 	disp.fileinfo.id.pid = current->pid;
+	disp.fileinfo.fileop = SR_FILEOPS_WRITE;
 
 #ifdef DEBUG_EVENT_MEDIATOR
 #pragma GCC diagnostic ignored "-Wdeclaration-after-statement"
@@ -443,6 +445,7 @@ SR_32 vsentry_inode_create(struct inode *dir, struct dentry *dentry, umode_t mod
 	disp.fileinfo.id.gid = (int)rcred->gid.val;
 	disp.fileinfo.id.tid = (int)rcred->uid.val;
 	disp.fileinfo.id.pid = current->pid;
+	disp.fileinfo.fileop = SR_FILEOPS_WRITE;
 	
 #ifdef DEBUG_EVENT_MEDIATOR
 #pragma GCC diagnostic ignored "-Wdeclaration-after-statement"
@@ -484,14 +487,12 @@ SR_32 vsentry_file_open(struct file *file, const struct cred *cred)
 		disp.fileinfo.current_inode = file->f_path.dentry->d_inode->i_ino;
 	else
 		sal_kernel_print_err("[%s] inode in null\n", hook_event_names[HOOK_FILE_OPEN].name);
-	if ((file->f_path.dentry->d_parent) && (file->f_path.dentry->d_parent->d_inode))
-		disp.fileinfo.parent_inode = file->f_path.dentry->d_parent->d_inode->i_ino;
-	else
-		sal_kernel_print_err("[%s] parent inode in null\n", hook_event_names[HOOK_FILE_OPEN].name);
+	disp.fileinfo.parent_inode = 0;
 		
 	disp.fileinfo.id.gid = (int)rcred->gid.val;
 	disp.fileinfo.id.tid = (int)rcred->uid.val;
 	disp.fileinfo.id.pid = current->pid;
+	disp.fileinfo.fileop = SR_FILEOPS_READ; // open requires read access
 
 #ifdef DEBUG_EVENT_MEDIATOR
 #pragma GCC diagnostic ignored "-Wdeclaration-after-statement"
@@ -539,6 +540,7 @@ SR_32 vsentry_inode_link(struct dentry *old_dentry, struct inode *dir, struct de
 	disp.fileinfo.id.gid = (int)rcred->gid.val;
 	disp.fileinfo.id.tid = (int)rcred->uid.val;
 	disp.fileinfo.id.pid = current->pid;
+	disp.fileinfo.fileop = SR_FILEOPS_WRITE;
 	
 #ifdef DEBUG_EVENT_MEDIATOR
 #pragma GCC diagnostic ignored "-Wdeclaration-after-statement"
