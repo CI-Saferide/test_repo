@@ -8,6 +8,8 @@
 #include "event_mediator.h"
 #include "sr_sal_common.h"
 #include "sr_types.h"
+#include <uapi/linux/can.h>
+#include <linux/can/skb.h>
 
 /* Protocol families, same as address families */
 const static SR_8 *protocol_family[] = {
@@ -66,7 +68,7 @@ static SR_8 module_name[] = "em";
 static SR_8 get_path(struct dentry *dentry, SR_8 *buffer, SR_32 len)
 {
 	SR_8 path[SR_MAX_PATH_SIZE], *path_ptr;
-
+	
 	path_ptr = dentry_path_raw(dentry, path, SR_MAX_PATH_SIZE);
 	if (IS_ERR(path))
 		return SR_ERROR;
@@ -86,6 +88,7 @@ const event_name hook_event_names[MAX_HOOK] = {
 	{HOOK_FILE_OPEN,	"file_open"},
 	{HOOK_INODE_LINK,	"inode_link"},
 	{HOOK_INODE_LINK,	"in_connection"},
+	{HOOK_SOCK_MSG_SEND,"sock_send_msg"},
 };
 
 
@@ -599,4 +602,78 @@ SR_32 vsentry_socket_create(SR_32 family, SR_32 type, SR_32 protocol, SR_32 kern
 
 	/* call dispatcher */
 	return (disp_socket_create(&disp));
+}
+
+/* @socket_sendmsg:
+ *	Check permission before transmitting a message to another socket.
+ *	@sock contains the socket structure.
+ *	@msg contains the message to be transmitted.
+ *	@size contains the size of message.
+ *	Return 0 if permission is granted.
+ */
+SR_32 vsentry_socket_sendmsg(struct socket *sock,struct msghdr *msg,SR_32 size)
+{
+	int err;
+	int i;
+	struct sk_buff *skb;
+	struct canfd_frame *cfd;
+	const u8 family = sock->sk->sk_family;
+	struct socket copy_sock = *sock;
+	struct msghdr copy_msg = *msg;
+	
+	disp_info_t disp;
+	struct task_struct *ts = current;
+	const struct cred *rcred= ts->real_cred;		
+	
+	memset(&disp, 0, sizeof(disp_info_t));
+	
+	/* check hook filter */
+	HOOK_FILTER
+	
+	/* gather metadata */
+	disp.fileinfo.id.event = HOOK_SOCK_MSG_SEND;
+	disp.socket_info.id.gid = (int)rcred->gid.val;
+	disp.socket_info.id.tid = (int)rcred->uid.val;
+	disp.socket_info.id.pid = current->pid;
+	
+	switch (family) {
+		case AF_CAN:
+			skb = sock_alloc_send_skb(copy_sock.sk, size + sizeof(struct can_skb_priv),
+						  copy_msg.msg_flags & MSG_DONTWAIT, &err);
+						  
+			err = memcpy_from_msg(skb_put(skb, size), &copy_msg, size);
+			if (err < 0) {
+				printk ("fail to copy can msg from user!\n");
+				/* we cannot handle this message */
+				return 0;
+			}
+			cfd = (struct canfd_frame *)skb->data;
+			disp.can_info.msg_id = (SR_U32)cfd->can_id;
+			disp.can_info.payload_len = cfd->len;
+			for (i = 0; i < cfd->len; i++) {
+				disp.can_info.payload[i] = cfd->data[i];
+			}
+			sal_debug_em("[%s:HOOK %s] family=af_can msd_id=%x payload_len=%d payload= %02x %02x %02x %02x %02x %02x %02x %02x pid=%d, gid=%d, tid=%d\n", 
+						module_name,
+						hook_event_names[HOOK_SOCK_MSG_SEND].name,
+						disp.can_info.msg_id,
+						disp.can_info.payload_len,
+						disp.can_info.payload[0],
+						disp.can_info.payload[1],
+						disp.can_info.payload[2],
+						disp.can_info.payload[3],
+						disp.can_info.payload[4],
+						disp.can_info.payload[5],
+						disp.can_info.payload[6],
+						disp.can_info.payload[7],
+						disp.fileinfo.id.pid,
+						disp.fileinfo.id.gid, 
+						disp.fileinfo.id.tid);
+			break;
+		default:
+			/* we are not interested in the message */
+			return 0;
+			break;
+	}
+	return 0;
 }

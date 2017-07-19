@@ -53,19 +53,17 @@
 								*/
 #define SR_AF_MAX			44	/* For now.. */
 
-
-
-int vsentry_inode_mkdir(struct inode *dir, struct dentry *dentry, umode_t mask);
-int vsentry_inode_unlink(struct inode *dir, struct dentry *dentry);
-int vsentry_inode_symlink(struct inode *dir, struct dentry *dentry, const char *name);
-int vsentry_inode_rmdir(struct inode *dir, struct dentry *dentry);
-int vsentry_socket_connect(struct socket *sock, struct sockaddr *address, int addrlen);
-int vsentry_path_chmod(struct path *path, umode_t mode);
-int vsentry_inode_create(struct inode *dir, struct dentry *dentry, umode_t mode);
-int vsentry_file_open(struct file *file, const struct cred *cred);
-int vsentry_inode_link(struct dentry *old_dentry, struct inode *dir, struct dentry *new_dentry);
-int vsentry_socket_create(int family, int type, int protocol, int kern);
+SR_32 vsentry_inode_mkdir(struct inode *dir, struct dentry *dentry, umode_t mask);
+SR_32 vsentry_inode_unlink(struct inode *dir, struct dentry *dentry);
+SR_32 vsentry_inode_symlink(struct inode *dir, struct dentry *dentry, const SR_8 *name);
+SR_32 vsentry_inode_rmdir(struct inode *dir, struct dentry *dentry);
+SR_32 vsentry_socket_connect(struct socket *sock, struct sockaddr *address, SR_32 addrlen);
+SR_32 vsentry_path_chmod(struct path *path, umode_t mode);
+SR_32 vsentry_inode_create(struct inode *dir, struct dentry *dentry, umode_t mode);
+SR_32 vsentry_file_open(struct file *file, const struct cred *cred);
+SR_32 vsentry_inode_link(struct dentry *old_dentry, struct inode *dir, struct dentry *new_dentry);
+SR_32 vsentry_socket_create(SR_32 family, SR_32 type, SR_32 protocol, SR_32 kern);
 SR_32 vsentry_incoming_connection(struct sk_buff *skb);
-
+SR_32 vsentry_socket_sendmsg(struct socket *sock,struct msghdr *msg, SR_32 size);
 
 #endif /* _EVENT_MEDIATOR_H */
