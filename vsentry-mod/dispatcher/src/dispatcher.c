@@ -279,7 +279,9 @@ SR_32 disp_socket_sendmsg(disp_info_t* info)
 	SR_32		classifier_rc = -EACCES;
 	
 	/* call classifier */
-	classifier_rc = 0;
+	//classifier_rc = 0;
+	classifier_rc = sr_classifier_canbus(info);;
+
 
 	/* create event message */
 
