@@ -25,6 +25,7 @@ enum hook_events {
 	HOOK_FILE_OPEN,
 	HOOK_INODE_LINK,
 	HOOK_IN_CONNECTION,
+	HOOK_SOCK_MSG_SEND,
 	MAX_HOOK
 	/* NOTE: when addidng hooks make sure to update also event_mediator.c hook_event_names */
 };
@@ -79,6 +80,13 @@ typedef union {
 		SR_U32 	protocol;		//protocol contains the requested protocol.
 		SR_BOOL kern;			//kern set to 1 if a kernel socket.
 	}socket_info;
+/* can related functions */
+	struct _can_info {
+		identifier id;
+		SR_U32 	msg_id;
+		SR_U8	payload[8];
+		SR_U8 	payload_len;
+	}can_info;
 }disp_info_t;
 
 typedef struct _event_name {
@@ -102,6 +110,6 @@ SR_32 disp_inode_symlink(disp_info_t* info);
 SR_32 disp_socket_connect(disp_info_t* info);
 SR_32 disp_incoming_connection(disp_info_t* info);
 SR_32 disp_socket_create(disp_info_t* info);
-
+SR_32 disp_socket_sendmsg(disp_info_t* info);
 
 #endif /* _DISPATCHER_H */
