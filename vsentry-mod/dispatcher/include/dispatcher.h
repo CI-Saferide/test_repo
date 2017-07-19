@@ -24,11 +24,8 @@ enum hook_events {
 	HOOK_INODE_CREATE,
 	HOOK_FILE_OPEN,
 	HOOK_INODE_LINK,
-<<<<<<< HEAD
 	HOOK_IN_CONNECTION,
-=======
 	HOOK_SOCK_MSG_SEND,
->>>>>>> [PATCH] add can send msg support
 	MAX_HOOK
 	/* NOTE: when addidng hooks make sure to update also event_mediator.c hook_event_names */
 };
