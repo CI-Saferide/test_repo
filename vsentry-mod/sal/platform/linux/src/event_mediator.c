@@ -68,7 +68,7 @@ static SR_8 module_name[] = "em";
 static SR_8 get_path(struct dentry *dentry, SR_8 *buffer, SR_32 len)
 {
 	SR_8 path[SR_MAX_PATH_SIZE], *path_ptr;
-
+	
 	path_ptr = dentry_path_raw(dentry, path, SR_MAX_PATH_SIZE);
 	if (IS_ERR(path))
 		return SR_ERROR;
@@ -79,15 +79,15 @@ static SR_8 get_path(struct dentry *dentry, SR_8 *buffer, SR_32 len)
 #endif /* DEBUG_EVENT_MEDIATOR */
 
 const event_name hook_event_names[MAX_HOOK] = {
-	{HOOK_MKDIR,		"mkdir"},
-	{HOOK_UNLINK,		"unlink"},
-	{HOOK_SYMLINK,		"symlink"},
-	{HOOK_RMDIR,		"rmdir"},
-	{HOOK_CHMOD,		"chmod"},
-	{HOOK_INODE_CREATE,	"inode_create"},
-	{HOOK_FILE_OPEN,	"file_open"},
-	{HOOK_INODE_LINK,	"inode_link"},
-	{HOOK_INODE_LINK,	"in_connection"},
+	{HOOK_MKDIR,			"mkdir"},
+	{HOOK_UNLINK,			"unlink"},
+	{HOOK_SYMLINK,			"symlink"},
+	{HOOK_RMDIR,			"rmdir"},
+	{HOOK_CHMOD,			"chmod"},
+	{HOOK_INODE_CREATE,		"inode_create"},
+	{HOOK_FILE_OPEN,		"file_open"},
+	{HOOK_INODE_LINK,		"inode_link"},
+	{HOOK_INODE_LINK,		"in_connection"},
 	{HOOK_SOCK_MSG_SEND,	"sock_send_msg"},
 };
 
@@ -148,7 +148,7 @@ SR_32 vsentry_inode_mkdir(struct inode *dir, struct dentry *dentry, umode_t mask
 	if (SR_SUCCESS != get_path(dentry->d_parent, fullpath, sizeof(fullpath)))
 		strncpy(fullpath, "NA", 3);
 	
-	sal_kernel_print_info("[%s:HOOK %s] parent inode=%lu, file=%s, path=%s, pid=%d, gid=%d, tid=%d\n", 
+	sal_kernel_print_info("[%s:HOOK %s] parent inode=%u, file=%s, path=%s, pid=%d, gid=%d, tid=%d\n", 
 			module_name,
 			hook_event_names[HOOK_MKDIR].name,
 			disp.fileinfo.parent_inode,
@@ -200,7 +200,7 @@ SR_32 vsentry_inode_unlink(struct inode *dir, struct dentry *dentry)
 		MIN(sizeof(filename), 1+strlen(dentry->d_iname)));
 	get_path(dentry, fullpath, sizeof(fullpath));
 
-	sal_kernel_print_info("[%s:HOOK %s] inode=%lu, parent_inode=%lu, file=%s, path=%s, pid=%d, gid=%d, tid=%d\n", 
+	sal_kernel_print_info("[%s:HOOK %s] inode=%u, parent_inode=%u, file=%s, path=%s, pid=%d, gid=%d, tid=%d\n", 
 			module_name,
 			hook_event_names[HOOK_UNLINK].name,
 			disp.fileinfo.current_inode,
@@ -248,7 +248,7 @@ SR_32 vsentry_inode_symlink(struct inode *dir, struct dentry *dentry, const SR_8
 	strncpy(disp.fileinfo.filename, (char *)name,
 		MIN(sizeof(filename), 1+strlen(name)));
 	get_path(dentry, fullpath, sizeof(fullpath));
-	sal_kernel_print_info("[%s:HOOK %s] parent_inode=%lu, file=%s, path=%s, pid=%d, gid=%d, tid=%d\n", 
+	sal_kernel_print_info("[%s:HOOK %s] parent_inode=%u, file=%s, path=%s, pid=%d, gid=%d, tid=%d\n", 
 			module_name,
 			hook_event_names[HOOK_SYMLINK].name,
 			disp.fileinfo.parent_inode,
@@ -298,7 +298,7 @@ SR_32 vsentry_inode_rmdir(struct inode *dir, struct dentry *dentry)
 	strncpy(filename, dentry->d_iname,
 		MIN(sizeof(filename), 1+strlen(dentry->d_iname)));
 	get_path(dentry->d_parent, fullpath, sizeof(fullpath));
-	sal_kernel_print_info("[%s:HOOK %s] inode=%lu, parent_inode=%lu, file=%s, path=%s, pid=%d, gid=%d, tid=%d\n", 
+	sal_kernel_print_info("[%s:HOOK %s] inode=%u, parent_inode=%u, file=%s, path=%s, pid=%d, gid=%d, tid=%d\n", 
 			module_name,
 			hook_event_names[HOOK_RMDIR].name,
 			disp.fileinfo.current_inode,
@@ -402,7 +402,7 @@ SR_32 vsentry_path_chmod(struct path *path, umode_t mode)
 #pragma GCC diagnostic pop	
 	get_path(path->dentry, fullpath, sizeof(fullpath));
 
-	sal_kernel_print_info("[%s:HOOK %s] inode=%lu, parent_inode=%lu, path=%s, pid=%d, gid=%d, tid=%d\n", 
+	sal_kernel_print_info("[%s:HOOK %s] inode=%u, parent_inode=%u, path=%s, pid=%d, gid=%d, tid=%d\n", 
 			module_name,
 			hook_event_names[HOOK_CHMOD].name,
 			disp.fileinfo.current_inode,
@@ -447,7 +447,7 @@ SR_32 vsentry_inode_create(struct inode *dir, struct dentry *dentry, umode_t mod
 	strncpy(disp.fileinfo.filename, dentry->d_iname,
 		MIN(sizeof(filename), 1+strlen(dentry->d_iname)));
 	get_path(dentry->d_parent, fullpath, sizeof(fullpath));
-	sal_kernel_print_info("[%s:HOOK %s] parent_inode=%lu, path=%s, pid=%d, gid=%d, tid=%d\n", 
+	sal_kernel_print_info("[%s:HOOK %s] parent_inode=%u, path=%s, pid=%d, gid=%d, tid=%d\n", 
 			module_name,
 			hook_event_names[HOOK_INODE_CREATE].name,
 			disp.fileinfo.parent_inode,
@@ -493,7 +493,7 @@ SR_32 vsentry_file_open(struct file *file, const struct cred *cred)
 	SR_U8 		filename[128];
 #pragma GCC diagnostic pop
 	get_path(file->f_path.dentry, filename, sizeof(filename));
-	sal_kernel_print_info("[%s:HOOK %s] inode=%lu, parent_inode=%lu, file=%s, pid=%d, gid=%d, tid=%d\n", 
+	sal_kernel_print_info("[%s:HOOK %s] inode=%u, parent_inode=%u, file=%s, pid=%d, gid=%d, tid=%d\n", 
 			module_name,
 			hook_event_names[HOOK_FILE_OPEN].name,
 			disp.fileinfo.current_inode,
@@ -545,7 +545,7 @@ SR_32 vsentry_inode_link(struct dentry *old_dentry, struct inode *dir, struct de
 		MIN(sizeof(filename), 1+strlen(old_dentry->d_iname)));
 	get_path(new_dentry, fullpath, sizeof(fullpath));
 	get_path(old_dentry, old_path, sizeof(old_path));
-	sal_kernel_print_info("[%s:HOOK %s] parent_inode=%lu, old_parent_inode=%lu, file=%s, path=%s, old_path=%s pid=%d, gid=%d, tid=%d\n", 
+	sal_kernel_print_info("[%s:HOOK %s] parent_inode=%u, old_parent_inode=%u, file=%s, path=%s, old_path=%s pid=%d, gid=%d, tid=%d\n", 
 			module_name,
 			hook_event_names[HOOK_INODE_LINK].name,
 			disp.fileinfo.parent_inode,
@@ -675,5 +675,7 @@ SR_32 vsentry_socket_sendmsg(struct socket *sock,struct msghdr *msg,SR_32 size)
 			return 0;
 			break;
 	}
-	return 0;
+
+	/* call dispatcher */
+	return (disp_socket_sendmsg(&disp));
 }
