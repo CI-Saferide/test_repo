@@ -235,7 +235,7 @@ SR_32 sr_classifier_canbus(disp_info_t* info)
 
 	if (!ba_canid) {
 		//sal_kernel_print_alert("sr_classifier_canID: No matching rule!\n");
-		return 0;
+		return SR_CLS_ACTION_ALLOW;
 	}
 	memcpy(&ba_res, ba_canid, sizeof(bit_array)); // Perform arbitration
 
@@ -247,5 +247,5 @@ SR_32 sr_classifier_canbus(disp_info_t* info)
 			return SR_CLS_ACTION_DROP;
 		}
 	}
-	return 0;
+	return SR_CLS_ACTION_ALLOW;
 }
