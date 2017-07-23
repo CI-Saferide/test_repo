@@ -323,9 +323,6 @@ static int vsentry_socket_bind(struct socket *sock, struct sockaddr *address,int
 {
 	if(hook_filter())
 		return 0;
-	if (sock->sk->sk_family == PF_CAN) {
-		printk ("sock CAN create\n");
-	}
 	
 	return 0;
 }

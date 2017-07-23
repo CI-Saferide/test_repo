@@ -645,11 +645,11 @@ SR_32 vsentry_socket_sendmsg(struct socket *sock,struct msghdr *msg,SR_32 size)
 	HOOK_FILTER
 	
 	/* gather metadata */
-	disp.socket_info.id.event = HOOK_SOCK_MSG_SEND;
-	disp.socket_info.id.gid = (int)rcred->gid.val;
-	disp.socket_info.id.tid = (int)rcred->uid.val;
-	disp.socket_info.id.pid = current->pid;
-	
+	disp.can_info.id.event = HOOK_SOCK_MSG_SEND;
+	disp.can_info.id.gid = (int)rcred->gid.val;
+	disp.can_info.id.tid = (int)rcred->uid.val;
+	disp.can_info.id.pid = current->pid;
+
 	switch (family) {
 		case AF_CAN:
 			skb = sock_alloc_send_skb(copy_sock.sk, size + sizeof(struct can_skb_priv),
@@ -680,16 +680,17 @@ SR_32 vsentry_socket_sendmsg(struct socket *sock,struct msghdr *msg,SR_32 size)
 						disp.can_info.payload[5],
 						disp.can_info.payload[6],
 						disp.can_info.payload[7],
-						disp.fileinfo.id.pid,
-						disp.fileinfo.id.gid, 
-						disp.fileinfo.id.tid);
+						disp.can_info.id.pid,
+						disp.can_info.id.gid, 
+						disp.can_info.id.tid);
+			/* call dispatcher */
+			kfree_skb(skb);
+			return (disp_socket_sendmsg(&disp));
 			break;
 		default:
 			/* we are not interested in the message */
-			return 0;
 			break;
 	}
-
-	/* call dispatcher */
-	return (disp_socket_sendmsg(&disp));
+	
+	return 0;
 }

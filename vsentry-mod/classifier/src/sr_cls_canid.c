@@ -147,6 +147,16 @@ void sr_cls_print_canid_rules(SR_U32 canid)
 	
 }
 
+bit_array *sr_cls_match_canid(SR_U32 canid)
+{
+	struct sr_hash_ent_t *ent=sr_hash_lookup(sr_cls_canid_table, canid);
+
+	if (!ent) {
+		return NULL;
+	}
+	return(&ent->rules);
+}
+
 int myRandom_canid(int bottom, int top){ // for unit testing
 	
 	SR_U32 get_time;
