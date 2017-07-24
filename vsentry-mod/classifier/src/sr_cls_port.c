@@ -3,7 +3,7 @@
 #include "sr_hash.h"
 #include "sr_classifier.h"
 
-#include <linux/time.h> // for unit testing
+//#include <linux/time.h> // for unit testing
 
 #define HT_PORT_SIZE 32
 struct sr_hash_table_t *sr_cls_dport_table[2]; // 0 - TCP, 1 - UDP
