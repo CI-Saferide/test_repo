@@ -104,7 +104,6 @@ SR_32 sr_classifier_file(disp_info_t* info)
 	bit_array *ba_inode, ba_res;
 	SR_16 rule;
 	SR_U16 action;
-	printk("Classifier: Entered %s for inodes %d \ %d\n", __FUNCTION__, info->fileinfo.parent_inode, info->fileinfo.current_inode);
 
         if (info->fileinfo.parent_inode) { // create within a directory - match parent only
                 ba_inode = sr_cls_file_find(info->fileinfo.parent_inode);
@@ -113,7 +112,7 @@ SR_32 sr_classifier_file(disp_info_t* info)
         }
 
 	if (!ba_inode) {
-		sal_kernel_print_alert("sr_classifier_file: No matching rule!\n");
+		//sal_kernel_print_alert("sr_classifier_file: No matching rule!\n");
 		return SR_CLS_ACTION_NOOP;
 	}
 	memcpy(&ba_res, ba_inode, sizeof(bit_array)); // Perform arbitration

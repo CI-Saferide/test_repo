@@ -41,7 +41,7 @@ enum cls_actions{
 	SR_CLS_ACTION_EMAIL=(1<<8),
 	SR_CLS_ACTION_TERMINATE=(1<<9), // e.g. kill the process that initiated this violation
 	SR_CLS_ACTION_SKIP_RULE=(1<<10),
-	SR_CLS_ACTION_MAX		// MUST not be more than 64K - this is stored in a 16 bits variable
+	SR_CLS_ACTION_MAX		// MUST not be more than 8K - this is stored in a 13 bits variable
 };
 #define SR_FILEOPS_READ  (1<<0)
 #define SR_FILEOPS_WRITE (1<<1)

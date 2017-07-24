@@ -39,7 +39,6 @@ CEF_payload* cef_init(SR_8* event_name,enum severity sev,enum dev_event_class_ID
 
 SR_32 disp_mkdir(disp_info_t* info)
 {
-	printk("Dispatcher: Entered %s\n", __FUNCTION__);
 	if (unlikely(sr_classifier_file(info) == SR_CLS_ACTION_DROP)) {
 		return -EACCES;
 	} else {
@@ -49,7 +48,6 @@ SR_32 disp_mkdir(disp_info_t* info)
 
 SR_32 disp_rmdir(disp_info_t* info)
 {
-	printk("Dispatcher: Entered %s\n", __FUNCTION__);
 	if (unlikely(sr_classifier_file(info) == SR_CLS_ACTION_DROP)) {
 		return -EACCES;
 	} else {
@@ -59,7 +57,6 @@ SR_32 disp_rmdir(disp_info_t* info)
 
 SR_32 disp_inode_create(disp_info_t* info)
 {
-	printk("Dispatcher: Entered %s\n", __FUNCTION__);
 	if (unlikely(sr_classifier_file(info) == SR_CLS_ACTION_DROP)) {
 		return -EACCES;
 	} else {
@@ -69,7 +66,6 @@ SR_32 disp_inode_create(disp_info_t* info)
 
 SR_32 disp_path_chmod(disp_info_t* info)
 {
-	printk("Dispatcher: Entered %s\n", __FUNCTION__);
 	if (unlikely(sr_classifier_file(info) == SR_CLS_ACTION_DROP)) {
 		return -EACCES;
 	} else {
@@ -79,7 +75,6 @@ SR_32 disp_path_chmod(disp_info_t* info)
 
 SR_32 disp_file_open(disp_info_t* info)
 {
-	printk("Dispatcher: Entered %s\n", __FUNCTION__);
 	if (unlikely(sr_classifier_file(info) == SR_CLS_ACTION_DROP)) {
 		return -EACCES;
 	} else {
@@ -89,7 +84,6 @@ SR_32 disp_file_open(disp_info_t* info)
 
 SR_32 disp_inode_link(disp_info_t* info)
 {
-	printk("Dispatcher: Entered %s\n", __FUNCTION__);
 	if (unlikely(sr_classifier_file(info) == SR_CLS_ACTION_DROP)) {
 		return -EACCES;
 	} else {
@@ -99,7 +93,6 @@ SR_32 disp_inode_link(disp_info_t* info)
 
 SR_32 disp_inode_unlink(disp_info_t* info)
 {
-	printk("Dispatcher: Entered %s\n", __FUNCTION__);
 	if (unlikely(sr_classifier_file(info) == SR_CLS_ACTION_DROP)) {
 		return -EACCES;
 	} else {
@@ -109,7 +102,6 @@ SR_32 disp_inode_unlink(disp_info_t* info)
 
 SR_32 disp_inode_symlink(disp_info_t* info)
 {	
-	printk("Dispatcher: Entered %s\n", __FUNCTION__);
 	if (unlikely(sr_classifier_file(info) == SR_CLS_ACTION_DROP)) {
 		return -EACCES;
 	} else {
@@ -133,7 +125,7 @@ SR_32 disp_incoming_connection(disp_info_t* info)
 // TODO: might not have full 5-tuple at this stage !?!?!?
 SR_32 disp_socket_create(disp_info_t* info)
 {
-	printk("Called function %s [DISABLED]\n", __FUNCTION__);
+	sal_printf("Called function %s [DISABLED]\n", __FUNCTION__);
 	//sr_classifier_network(info);
 	return SR_CLS_ACTION_ALLOW;
 }
