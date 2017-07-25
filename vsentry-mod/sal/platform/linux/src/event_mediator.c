@@ -128,7 +128,6 @@ SR_32 vsentry_inode_mkdir(struct inode *dir, struct dentry *dentry, umode_t mask
 	HOOK_FILTER
 
 	/* gather metadata */
-	disp.fileinfo.id.event = HOOK_MKDIR;
 	if ((dentry->d_parent) && (dentry->d_parent->d_inode))
 		disp.fileinfo.parent_inode = dentry->d_parent->d_inode->i_ino;
 	else
@@ -136,6 +135,7 @@ SR_32 vsentry_inode_mkdir(struct inode *dir, struct dentry *dentry, umode_t mask
 	disp.fileinfo.id.gid = (SR_32)rcred->gid.val;
 	disp.fileinfo.id.tid = (SR_32)rcred->uid.val;
 	disp.fileinfo.id.pid = current->pid;
+	disp.fileinfo.fileop = SR_FILEOPS_WRITE;
 
 #ifdef DEBUG_EVENT_MEDIATOR
 #pragma GCC diagnostic push
@@ -176,7 +176,6 @@ SR_32 vsentry_inode_unlink(struct inode *dir, struct dentry *dentry)
 	HOOK_FILTER
 	
 	/* gather metadata */
-	disp.fileinfo.id.event = HOOK_UNLINK;
 	if (dentry->d_inode)
 		disp.fileinfo.current_inode = dentry->d_inode->i_ino;
 	else
@@ -189,6 +188,7 @@ SR_32 vsentry_inode_unlink(struct inode *dir, struct dentry *dentry)
 	disp.fileinfo.id.gid = (int)rcred->gid.val;
 	disp.fileinfo.id.tid = (int)rcred->uid.val;
 	disp.fileinfo.id.pid = current->pid;
+	disp.fileinfo.fileop = SR_FILEOPS_WRITE;
 	
 #ifdef DEBUG_EVENT_MEDIATOR
 #pragma GCC diagnostic push
@@ -230,7 +230,6 @@ SR_32 vsentry_inode_symlink(struct inode *dir, struct dentry *dentry, const SR_8
 	HOOK_FILTER
 
 	/* gather metadata */
-	disp.fileinfo.id.event = HOOK_SYMLINK;
 	if ((dentry->d_parent) && (dentry->d_parent->d_inode))
 		disp.fileinfo.parent_inode = dentry->d_parent->d_inode->i_ino;
 	else
@@ -239,6 +238,7 @@ SR_32 vsentry_inode_symlink(struct inode *dir, struct dentry *dentry, const SR_8
 	disp.fileinfo.id.gid = (int)rcred->gid.val;
 	disp.fileinfo.id.tid = (int)rcred->uid.val;
 	disp.fileinfo.id.pid = current->pid;
+	disp.fileinfo.fileop = SR_FILEOPS_WRITE;
 	
 #ifdef DEBUG_EVENT_MEDIATOR
 #pragma GCC diagnostic ignored "-Wdeclaration-after-statement"
@@ -277,7 +277,6 @@ SR_32 vsentry_inode_rmdir(struct inode *dir, struct dentry *dentry)
 	HOOK_FILTER
 
 	/* gather metadata */
-	disp.fileinfo.id.event = HOOK_RMDIR;
 	if (dentry->d_inode)
 		disp.fileinfo.current_inode = dentry->d_inode->i_ino;
 	else
@@ -290,6 +289,7 @@ SR_32 vsentry_inode_rmdir(struct inode *dir, struct dentry *dentry)
 	disp.fileinfo.id.gid = (int)rcred->gid.val;
 	disp.fileinfo.id.tid = (int)rcred->uid.val;
 	disp.fileinfo.id.pid = current->pid;
+	disp.fileinfo.fileop = SR_FILEOPS_WRITE;
 
 #ifdef DEBUG_EVENT_MEDIATOR
 #pragma GCC diagnostic ignored "-Wdeclaration-after-statement"
@@ -329,10 +329,10 @@ SR_32 vsentry_socket_connect(struct socket *sock, struct sockaddr *address, SR_3
 	HOOK_FILTER
 
 	/* gather metadata */
-	disp.tuple_info.id.event = HOOK_IN_CONNECTION;
-	//disp.tuple_info.saddr.v4addr.s_addr = sal_packet_src_addr(skb);
+	disp.tuple_info.saddr.v4addr.s_addr = 0;
+	disp.tuple_info.sport = 0;
+
 	disp.tuple_info.daddr.v4addr.s_addr = ntohl(((struct sockaddr_in *)address)->sin_addr.s_addr);
-	//disp.tuple_info.sport = sal_packet_src_port(skb);
 	disp.tuple_info.dport = ntohs(((struct sockaddr_in *)address)->sin_port);
 	disp.tuple_info.ip_proto = sock->sk->sk_protocol;
 
@@ -362,7 +362,6 @@ SR_32 vsentry_incoming_connection(struct sk_buff *skb)
 	HOOK_FILTER
 
 	/* gather metadata */
-	disp.tuple_info.id.event = HOOK_IN_CONNECTION;
 	disp.tuple_info.saddr.v4addr.s_addr = sal_packet_src_addr(skb);
 	disp.tuple_info.daddr.v4addr.s_addr = sal_packet_dest_addr(skb);
 	disp.tuple_info.sport = sal_packet_src_port(skb);
@@ -394,19 +393,16 @@ SR_32 vsentry_path_chmod(struct path *path, umode_t mode)
 	HOOK_FILTER
 
 	/* gather metadata */
-	disp.fileinfo.id.event = HOOK_CHMOD;
 	if (path->dentry->d_inode)
 		disp.fileinfo.current_inode = path->dentry->d_inode->i_ino;
 	else
 		sal_kernel_print_err("[%s] inode in null\n", hook_event_names[HOOK_CHMOD].name);
-	if ((path->dentry->d_parent) && (path->dentry->d_parent->d_inode))
-		disp.fileinfo.parent_inode = path->dentry->d_parent->d_inode->i_ino;
-	else
-		sal_kernel_print_err("[%s] parent inode in null\n", hook_event_names[HOOK_CHMOD].name);
+	disp.fileinfo.parent_inode = 0;
 		
 	disp.fileinfo.id.gid = (int)rcred->gid.val;
 	disp.fileinfo.id.tid = (int)rcred->uid.val;
 	disp.fileinfo.id.pid = current->pid;
+	disp.fileinfo.fileop = SR_FILEOPS_WRITE;
 
 #ifdef DEBUG_EVENT_MEDIATOR
 #pragma GCC diagnostic ignored "-Wdeclaration-after-statement"
@@ -441,7 +437,6 @@ SR_32 vsentry_inode_create(struct inode *dir, struct dentry *dentry, umode_t mod
 	HOOK_FILTER
 
 	/* gather metadata */
-	disp.fileinfo.id.event = HOOK_INODE_CREATE;
 	if ((dentry->d_parent) && (dentry->d_parent->d_inode))
 		disp.fileinfo.parent_inode = dentry->d_parent->d_inode->i_ino;
 	else
@@ -450,6 +445,7 @@ SR_32 vsentry_inode_create(struct inode *dir, struct dentry *dentry, umode_t mod
 	disp.fileinfo.id.gid = (int)rcred->gid.val;
 	disp.fileinfo.id.tid = (int)rcred->uid.val;
 	disp.fileinfo.id.pid = current->pid;
+	disp.fileinfo.fileop = SR_FILEOPS_WRITE;
 	
 #ifdef DEBUG_EVENT_MEDIATOR
 #pragma GCC diagnostic ignored "-Wdeclaration-after-statement"
@@ -486,19 +482,16 @@ SR_32 vsentry_file_open(struct file *file, const struct cred *cred)
 	HOOK_FILTER
 
 	/* gather metadata */
-	disp.fileinfo.id.event = HOOK_FILE_OPEN;
 	if (file->f_path.dentry->d_inode)
 		disp.fileinfo.current_inode = file->f_path.dentry->d_inode->i_ino;
 	else
 		sal_kernel_print_err("[%s] inode in null\n", hook_event_names[HOOK_FILE_OPEN].name);
-	if ((file->f_path.dentry->d_parent) && (file->f_path.dentry->d_parent->d_inode))
-		disp.fileinfo.parent_inode = file->f_path.dentry->d_parent->d_inode->i_ino;
-	else
-		sal_kernel_print_err("[%s] parent inode in null\n", hook_event_names[HOOK_FILE_OPEN].name);
+	disp.fileinfo.parent_inode = 0;
 		
 	disp.fileinfo.id.gid = (int)rcred->gid.val;
 	disp.fileinfo.id.tid = (int)rcred->uid.val;
 	disp.fileinfo.id.pid = current->pid;
+	disp.fileinfo.fileop = SR_FILEOPS_READ; // open requires read access
 
 #ifdef DEBUG_EVENT_MEDIATOR
 #pragma GCC diagnostic ignored "-Wdeclaration-after-statement"
@@ -533,7 +526,6 @@ SR_32 vsentry_inode_link(struct dentry *old_dentry, struct inode *dir, struct de
 	HOOK_FILTER
 
 	/* gather metadata */
-	disp.fileinfo.id.event = HOOK_INODE_LINK;	
 	if ((new_dentry->d_parent) && (new_dentry->d_parent->d_inode))
 		disp.fileinfo.parent_inode = new_dentry->d_parent->d_inode->i_ino;
 	else
@@ -546,6 +538,7 @@ SR_32 vsentry_inode_link(struct dentry *old_dentry, struct inode *dir, struct de
 	disp.fileinfo.id.gid = (int)rcred->gid.val;
 	disp.fileinfo.id.tid = (int)rcred->uid.val;
 	disp.fileinfo.id.pid = current->pid;
+	disp.fileinfo.fileop = SR_FILEOPS_WRITE;
 	
 #ifdef DEBUG_EVENT_MEDIATOR
 #pragma GCC diagnostic ignored "-Wdeclaration-after-statement"
@@ -596,8 +589,6 @@ SR_32 vsentry_socket_create(SR_32 family, SR_32 type, SR_32 protocol, SR_32 kern
 	HOOK_FILTER
 
 	/* gather metadata */
-	strncpy(disp.socket_info.id.event_name, __FUNCTION__,
-		MIN(sizeof(disp.socket_info.id.event_name), 1+strlen(__FUNCTION__)));
 	strncpy(disp.socket_info.family, protocol_family[family],
 		MIN(sizeof(disp.socket_info.family), 1+strlen(protocol_family[family])));
 	sprintf(disp.socket_info.type,"socket type: %d",type);
@@ -645,7 +636,6 @@ SR_32 vsentry_socket_sendmsg(struct socket *sock,struct msghdr *msg,SR_32 size)
 	HOOK_FILTER
 	
 	/* gather metadata */
-	disp.can_info.id.event = HOOK_SOCK_MSG_SEND;
 	disp.can_info.id.gid = (int)rcred->gid.val;
 	disp.can_info.id.tid = (int)rcred->uid.val;
 	disp.can_info.id.pid = current->pid;

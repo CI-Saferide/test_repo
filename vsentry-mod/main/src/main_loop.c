@@ -28,52 +28,6 @@ SR_32 sr_module_loop(void *arg)
 			while ((msg = (sr_msg_cls_t*)sr_read_msg(ENG2MOD_BUF, &ret)) > 0) {
 				/* TODO: Currently reading hardcoded file classifier messages which are always 17 bytes. later needs a different implementation */
 				sr_msg_dispatch((char*)msg, ret);
-				switch (msg->msg_type) {
-				case SR_MSG_TYPE_CLS_FILE:
-					sal_printf("MSG type CLS_FILE ");
-					switch (msg->sub_msg.msg_type) {
-					case SR_CLS_INODE_INHERIT:
-						sal_printf("[INODE_INHERIT] ");
-						break;
-					case SR_CLS_INODE_DEL_RULE:
-						sal_printf("[INODE_DEL_RULE] ");
-						break;
-					case SR_CLS_INODE_ADD_RULE:
-						sal_printf("[INODE_ADD_RULE] ");
-						break;
-					case SR_CLS_INODE_REMOVE:
-						sal_printf("[INODE_REMOVE] ");
-						break;
-					default:
-						sal_printf("wrong sub_msg->msg_type\n");
-						break;
-					} /* end of SR_MSG_TYPE_CLS_FILE */
-					sal_printf("rulenum %d inode1 %d inode2 %d\n",
-						msg->sub_msg.rulenum, msg->sub_msg.inode1, msg->sub_msg.inode2);
-					break;
-				case SR_MSG_TYPE_CLS_NETWORK:
-					sal_printf("MSG type CLS_NETWORK ");
-					switch (msg->sub_msg.msg_type) {
-						case SR_CLS_IPV4_DEL_RULE:
-						sal_printf("[IPV4_DEL] ");
-						break;
-						case SR_CLS_IPV4_ADD_RULE:
-						sal_printf("[IPV4_ADD] ");
-						break;
-						case SR_CLS_IPV6_DEL_RULE:
-						sal_printf("[IPV6_DEL] ");
-						break;
-						case SR_CLS_IPV6_ADD_RULE:
-						sal_printf("[IPV6_DEL] ");
-						break;
-					default:
-						sal_printf("wrong sub_msg->msg_type\n");
-						break;
-					} /* end of SR_MSG_TYPE_CLS_NETWORK */
-					break;
-				case SR_MSG_TYPE_DEFAULT:
-					break;
-				}
 				sr_free_msg(ENG2MOD_BUF);
 			}
 

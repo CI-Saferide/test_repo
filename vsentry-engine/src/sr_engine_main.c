@@ -88,10 +88,16 @@ SR_32 sr_engine_start(void)
 	}
 
 	/* hardcoded configuration */
+	sr_cls_file_add_rule("/templab/file1", 1, 1);
+	sr_cls_file_add_rule("/templab/dir2", 2, 1);
+	sr_cls_file_add_rule("/templab/dir1", 3, 1);
+	sr_cls_file_add_rule("/templab", 4, 1);
+#if 0
 	sr_cls_file_add_rule("/sbin", 1, 1);
 	sr_cls_file_add_rule("/bin", 2, 1);
 	sr_cls_file_add_rule("/proc", 3, 1);
 	sr_cls_file_add_rule("/var", 4, 1);
+#endif
 	
 	while (run) {
 		SR_8 input = getchar();
