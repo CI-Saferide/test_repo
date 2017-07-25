@@ -636,7 +636,6 @@ SR_32 vsentry_socket_sendmsg(struct socket *sock,struct msghdr *msg,SR_32 size)
 	HOOK_FILTER
 	
 	/* gather metadata */
-	disp.socket_info.id.event = HOOK_SOCK_MSG_SEND;
 	disp.socket_info.id.gid = (int)rcred->gid.val;
 	disp.socket_info.id.tid = (int)rcred->uid.val;
 	disp.socket_info.id.pid = current->pid;
