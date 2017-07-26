@@ -43,11 +43,11 @@ SR_32 engine_main_loop(void *data)
 
 static void eng2mod_test(void)
 {
-	sr_msg_cls_t *msg;
+	sr_file_msg_cls_t *msg;
 	SR_U8 count = 0;
 
 	while (count < 32) {
-		msg = (sr_msg_cls_t*)sr_get_msg(ENG2MOD_BUF, ENG2MOD_MSG_MAX_SIZE);
+		msg = (sr_file_msg_cls_t*)sr_get_msg(ENG2MOD_BUF, ENG2MOD_MSG_MAX_SIZE);
 		if (msg) {
 			msg->msg_type = SR_MSG_TYPE_CLS_FILE;
 			msg->sub_msg.msg_type = (count % SR_CLS_INODE_TOTAL);
@@ -88,16 +88,30 @@ SR_32 sr_engine_start(void)
 	}
 
 	/* hardcoded configuration */
-	sr_cls_file_add_rule("/templab/file1", 1, 1);
-	sr_cls_file_add_rule("/templab/dir2", 2, 1);
-	sr_cls_file_add_rule("/templab/dir1", 3, 1);
-	sr_cls_file_add_rule("/templab", 4, 1);
-#if 0
-	sr_cls_file_add_rule("/sbin", 1, 1);
-	sr_cls_file_add_rule("/bin", 2, 1);
-	sr_cls_file_add_rule("/proc", 3, 1);
-	sr_cls_file_add_rule("/var", 4, 1);
-#endif
+	//sr_cls_file_add_rule("/sbin", 1, 1);
+	sr_cls_file_add_rule("/home/artur/Downloads", 2, 1);
+	//sr_cls_file_add_rule("/proc", 3, 1);
+	//sr_cls_file_add_rule("/var", 4, 1);
+
+	sr_cls_canid_add_rule(0x107,10);
+	sr_cls_canid_add_rule(0x116,11);
+	sr_cls_canid_add_rule(0x30b,12);
+	sr_cls_canid_add_rule(0x31b,13);
+	sr_cls_canid_add_rule(0x3c0,14);
+	sr_cls_canid_add_rule(0x3da,15);
+	sr_cls_canid_add_rule(0x101,16);
+
+	/* hardcoded configuration */
+	//sr_cls_file_add_rule("/templab/file1", 1, 1);
+	//sr_cls_file_add_rule("/templab/dir2", 2, 1);
+	//sr_cls_file_add_rule("/templab/dir1", 3, 1);
+	//sr_cls_file_add_rule("/templab", 4, 1);
+//#if 0
+	//sr_cls_file_add_rule("/sbin", 1, 1);
+	//sr_cls_file_add_rule("/bin", 2, 1);
+	//sr_cls_file_add_rule("/proc", 3, 1);
+	//sr_cls_file_add_rule("/var", 4, 1);
+//#endif
 	
 	while (run) {
 		SR_8 input = getchar();

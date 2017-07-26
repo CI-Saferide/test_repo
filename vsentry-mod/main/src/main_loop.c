@@ -7,6 +7,7 @@
 #include "sr_sal_common.h"
 #include "sr_cls_file.h"
 #include "sr_cls_network.h"
+#include "sr_cls_canid.h"
 
 #define MAX_RX_MSG_LEN 	512
 
@@ -14,7 +15,7 @@ SR_32 sr_module_loop(void *arg)
 {
 	sr_shmem* vsshmem;
 	SR_32 ret;
-	sr_msg_cls_t *msg;
+	char *msg;
 
 	sal_printf("module_loop: started ...\n");
 
@@ -25,7 +26,7 @@ SR_32 sr_module_loop(void *arg)
 		/* if allocated (i.e. engine started ... */
 		if (vsshmem && vsshmem->buffer) {
 			/* check for incoming msgs from engine */
-			while ((msg = (sr_msg_cls_t*)sr_read_msg(ENG2MOD_BUF, &ret)) > 0) {
+			while ((msg = (char *)sr_read_msg(ENG2MOD_BUF, &ret)) > 0) {
 				/* TODO: Currently reading hardcoded file classifier messages which are always 17 bytes. later needs a different implementation */
 				sr_msg_dispatch((char*)msg, ret);
 				sr_free_msg(ENG2MOD_BUF);
@@ -63,11 +64,21 @@ SR_32 sr_msg_dispatch(char *msg, int size)
 	sr_msg_dispatch_hdr_t *hdr = (sr_msg_dispatch_hdr_t *)msg;
 	if (!hdr)
 		return SR_ERROR;
-	if (hdr->msg_type == SR_MSG_TYPE_CLS_FILE) {
-		sr_cls_file_msg_dispatch((struct sr_cls_msg *)hdr->msg_payload);
-	} else if (hdr->msg_type == SR_MSG_TYPE_CLS_NETWORK) {
-		sr_cls_network_msg_dispatch((struct sr_cls_network_msg *)hdr->msg_payload);
+	switch (hdr->msg_type) {	
+		case SR_MSG_TYPE_CLS_FILE:
+			sr_cls_file_msg_dispatch((struct sr_cls_file_msg *)hdr->msg_payload);
+			break;
+		case SR_MSG_TYPE_CLS_NETWORK:
+			sr_cls_network_msg_dispatch((struct sr_cls_network_msg *)hdr->msg_payload);
+			break;
+		case SR_MSG_TYPE_CLS_CANBUS:
+			sr_cls_canid_msg_dispatch((struct sr_cls_canbus_msg *)hdr->msg_payload);
+			break;
+		case SR_MSG_TYPE_DEFAULT:
+			sal_printf("wrong msg_type\n");
+			break;
 	}
+
 	return SR_SUCCESS;
 
 }
