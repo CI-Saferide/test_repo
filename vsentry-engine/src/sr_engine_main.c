@@ -6,7 +6,9 @@
 #include "sr_sal_common.h"
 #include "sr_log.h"
 #include "sr_msg_dispatch.h"
-#include "sr_cls_control.h"
+#include "sr_cls_file_control.h"
+#include "sr_cls_network_control.h"
+#include "sr_cls_canbus_control.h"
 
 SR_32 engine_main_loop(void *data)
 {

@@ -174,27 +174,6 @@ static int dummy_tx_thread_loop(void *arg)
 
 void sr_demo(void) 
 {
-	// Populate rules for demo on 7/13/2017
-	/* 
-appropriate MsgID
-	107  00 00 00 2A 0F 00 00 00 ...*....
-	116  ED 00 A5 96 5A 6A A9 55 ....Zj.U
-	30b  00 00 00 00 00 00 38 02 ......8.
-	31b  00 00 DC 64 00 00 00 00 ...d....
-	3c0  81 01 43 00             ..C.
-	3da  00 00 00 18 47 00 96 01 ....G...
-	3ea  00 00 00 00 00 00 B6 00 ........
-	6b2  00 E4 86 C2 88 80 9E 04 ........
-	6b4  01 FF FF FF FF FF FF FF ........	  
-	 */
-	//sr_cls_canid_add_rule(0x123,10);
-	//sr_cls_canid_add_rule(0x107,10);
-	//sr_cls_canid_add_rule(0x116,11);
-	//sr_cls_canid_add_rule(0x30b,12);
-	//sr_cls_canid_add_rule(0x31b,13);
-	//sr_cls_canid_add_rule(0x3c0,14);
-	//sr_cls_canid_add_rule(0x3da,15);
-	//sr_cls_canid_add_rule(0x101,16);
 
 	//sr_cls_add_ipv4(htonl(0x0a0a0a00), htonl(0xFFFFFF00), 50, SR_DIR_SRC);
 	//sr_cls_port_add_rule(22, 50, SR_DIR_SRC, IPPROTO_TCP);
