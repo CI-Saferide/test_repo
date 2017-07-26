@@ -6,11 +6,15 @@
 #include "sr_cls_file_common.h"
 #include "sr_cls_canbus_common.h"
 #include "sr_cls_network_common.h"
+#include "sr_cls_port_common.h"
+#include "sr_cls_rules_common.h"
 
 typedef enum {
 	SR_MSG_TYPE_DEFAULT=0,
+	SR_MSG_TYPE_CLS_RULES,
 	SR_MSG_TYPE_CLS_FILE,
 	SR_MSG_TYPE_CLS_NETWORK,
+	SR_MSG_TYPE_CLS_PORT,
 	SR_MSG_TYPE_CLS_CANBUS,	
 } sr_msg_dispatch_type;
 
@@ -21,6 +25,11 @@ typedef struct {
 } sr_msg_dispatch_hdr_t;
 #pragma pack(pop)
 #pragma pack(push, 1)
+typedef struct {
+	SR_8 msg_type;
+	struct sr_cls_rules_msg sub_msg;
+} sr_rules_msg_cls_t;
+
 typedef struct {
 	SR_8 msg_type;
 	struct sr_cls_file_msg sub_msg;
@@ -35,6 +44,12 @@ typedef struct {
 	SR_8 msg_type;
 	struct sr_cls_network_msg sub_msg;
 } sr_network_msg_cls_t;
+
+typedef struct {
+	SR_8 msg_type;
+	struct sr_cls_port_msg sub_msg;
+} sr_port_msg_cls_t;
+
 #pragma pack(pop)
 
 SR_32 sr_msg_dispatch(char *msg, int size);

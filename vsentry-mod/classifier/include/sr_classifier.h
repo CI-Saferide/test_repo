@@ -8,6 +8,7 @@
 #include "sr_cls_network.h"
 #include "sr_cls_canid.h"
 #include "sal_bitops.h"
+#include "sr_cls_rules_common.h"
 
 SR_32 sr_classifier_init(void);
 SR_32 sr_cls_inode_add_rule(SR_U32 inode, SR_U32 rulenum);
@@ -74,5 +75,6 @@ void sr_cls_rule_del(SR_32 rule_type, SR_U16 rulenum);
 enum cls_actions sr_cls_network_rule_match(SR_U16 rulenum);
 enum cls_actions sr_cls_file_rule_match(SR_8 fileop, SR_U16 rulenum);
 enum cls_actions sr_cls_can_rule_match(SR_U16 rulenum);
+SR_8 sr_cls_rules_msg_dispatch(struct sr_cls_rules_msg *msg);
 
 #endif
