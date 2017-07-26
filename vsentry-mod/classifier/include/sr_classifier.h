@@ -1,9 +1,16 @@
 #ifndef SR_CLASSIFIER_H
 #define SR_CLASSIFIER_H
 
+enum sr_rule_type{
+        SR_NET_RULES = 0,
+        SR_FILE_RULES,
+        SR_RULES_TYPE_MAX,
+};
+
 #include "sr_types.h"
 #include "dispatcher.h"
 #include "sr_cls_port.h"
+#include "sr_cls_uid.h"
 #include "sr_cls_file.h"
 #include "sr_cls_network.h"
 #include "sal_bitops.h"
@@ -19,11 +26,6 @@ void sr_cls_rules_init(void);
 SR_32 sr_classifier_network(disp_info_t* info);
 SR_32 sr_classifier_file(disp_info_t* info);
 
-enum sr_rule_type{
-        SR_NET_RULES = 0,
-        SR_FILE_RULES,
-        SR_RULES_TYPE_MAX,
-};
 
 // rules actions are a bitmap - some rules are not mutually exclusive - e.g. drop + SMS...
 // enum defines actions as bits. 

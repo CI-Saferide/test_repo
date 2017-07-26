@@ -248,6 +248,7 @@ static int __init vsentry_init(void)
 	pr_info("[%s]: registration to lsm succeedded\n", MODULE_NAME);	
 
 	sr_cls_port_init();	
+	sr_cls_uid_init();	
 	sr_netfilter_init();
 	sr_classifier_init();
 	sr_cls_canid_init();
@@ -255,6 +256,7 @@ static int __init vsentry_init(void)
 #ifdef UNIT_TEST
 	sal_bitops_test (0);
 	sr_cls_port_ut();
+	sr_cls_uid_ut();
 	sr_cls_canid_ut();
 #endif /* UNIT_TEST */
 
@@ -281,6 +283,7 @@ static void __exit vsentry_cleanup(void)
 	
 	sr_classifier_uninit();
 	sr_cls_port_uninit();
+	sr_cls_uid_uninit();
 	sr_cls_canid_uninit();
 	sr_netfilter_uninit();
 
