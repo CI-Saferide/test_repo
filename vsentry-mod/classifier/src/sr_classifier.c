@@ -68,7 +68,6 @@ SR_32 sr_classifier_network(disp_info_t* info)
 	if (array_is_clear(ba_res)) {
 		return SR_CLS_ACTION_ALLOW;
 	}
-	// IP Proto - TODO
 	// Src Port
 	ptr = sr_cls_match_port(info->tuple_info.sport, SR_DIR_SRC, info->tuple_info.ip_proto);
 	if (ptr) {
@@ -79,6 +78,21 @@ SR_32 sr_classifier_network(disp_info_t* info)
 	if (array_is_clear(ba_res)) {
 		return SR_CLS_ACTION_ALLOW;
 	}
+	// UID
+	if (info->tuple_info.id.uid != UID_ANY) {
+		ptr = sr_cls_match_uid(SR_NET_RULES, info->tuple_info.id.uid);
+	} else {
+		ptr = NULL;
+	}
+	if (ptr) {
+		sal_and_self_op_two_arrays(&ba_res, ptr, sr_cls_uid_any(SR_NET_RULES));
+	} else { // take only dst/any
+		sal_and_self_op_arrays(&ba_res, sr_cls_uid_any(SR_NET_RULES));
+	}
+	if (array_is_clear(ba_res)) {
+		return SR_CLS_ACTION_ALLOW;
+	}
+	// IP Proto - TODO
 
 	while ((rule = sal_ffs_and_clear_array (&ba_res)) != -1) {
 		action = sr_cls_network_rule_match(rule);
@@ -96,21 +110,37 @@ SR_32 sr_classifier_network(disp_info_t* info)
 
 SR_32 sr_classifier_file(disp_info_t* info)
 {
-	bit_array *ba_inode, ba_res;
+	bit_array *ptr, ba_res;
 	SR_16 rule;
 	SR_U16 action;
 
         if (info->fileinfo.parent_inode) { // create within a directory - match parent only
-                ba_inode = sr_cls_file_find(info->fileinfo.parent_inode);
+                ptr = sr_cls_file_find(info->fileinfo.parent_inode);
         } else {
-                ba_inode = sr_cls_file_find(info->fileinfo.current_inode);
+                ptr = sr_cls_file_find(info->fileinfo.current_inode);
         }
-
-	if (!ba_inode) {
-		//sal_kernel_print_alert("sr_classifier_file: No matching rule!\n");
-		return SR_CLS_ACTION_NOOP;
+	if (ptr) {
+		sal_or_op_arrays(ptr, sr_cls_file_any(), &ba_res);
+	} else { // take only src/any
+		sal_or_self_op_arrays(&ba_res, sr_cls_file_any());
 	}
-	memcpy(&ba_res, ba_inode, sizeof(bit_array)); // Perform arbitration
+	if (array_is_clear(ba_res)) {
+		return SR_CLS_ACTION_ALLOW;
+	}
+	// UID
+	if (info->tuple_info.id.uid != UID_ANY) {
+		ptr = sr_cls_match_uid(SR_NET_RULES, info->tuple_info.id.uid);
+	} else {
+		ptr = NULL;
+	}
+	if (ptr) {
+		sal_and_self_op_two_arrays(&ba_res, ptr, sr_cls_uid_any(SR_NET_RULES));
+	} else { // take only dst/any
+		sal_and_self_op_arrays(&ba_res, sr_cls_uid_any(SR_NET_RULES));
+	}
+	if (array_is_clear(ba_res)) {
+		return SR_CLS_ACTION_ALLOW;
+	}
 
 	while ((rule = sal_ffs_and_clear_array (&ba_res)) != -1) {
 		action = sr_cls_file_rule_match(info->fileinfo.fileop, rule);

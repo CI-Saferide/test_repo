@@ -193,18 +193,29 @@ void sr_demo(void)
 	sr_cls_port_add_rule(0, 110, SR_DIR_SRC, IPPROTO_TCP);
 	sr_cls_port_add_rule(22, 110, SR_DIR_DST, IPPROTO_TCP);
 	sr_cls_rule_add(SR_NET_RULES, 50, SR_CLS_ACTION_ALLOW, 0, 0, SR_CLS_ACTION_DROP, 0, 0, 0, 0);
+	sr_cls_uid_add_rule(SR_NET_RULES, UID_ANY, 50);
 	sr_cls_rule_add(SR_NET_RULES, 60, SR_CLS_ACTION_ALLOW, 0, 0, SR_CLS_ACTION_DROP, 0, 0, 0, 0);
+	sr_cls_uid_add_rule(SR_NET_RULES, UID_ANY, 60);
 	sr_cls_rule_add(SR_NET_RULES, 70, SR_CLS_ACTION_ALLOW, 0, 0, SR_CLS_ACTION_DROP, 0, 0, 0, 0);
+	sr_cls_uid_add_rule(SR_NET_RULES, UID_ANY, 70);
 	sr_cls_rule_add(SR_NET_RULES, 80, SR_CLS_ACTION_ALLOW|SR_CLS_ACTION_LOG, 0, 0, SR_CLS_ACTION_DROP, 0, 0, 0, 0);
+	sr_cls_uid_add_rule(SR_NET_RULES, UID_ANY, 80);
 	sr_cls_rule_add(SR_NET_RULES, 90, SR_CLS_ACTION_ALLOW, 0, 0, SR_CLS_ACTION_DROP, 0, 0, 0, 0);
+	sr_cls_uid_add_rule(SR_NET_RULES, UID_ANY, 90);
 	sr_cls_rule_add(SR_NET_RULES, 100, SR_CLS_ACTION_DROP, 0, 0, SR_CLS_ACTION_DROP, 0, 0, 0, 0);
+	sr_cls_uid_add_rule(SR_NET_RULES, UID_ANY, 100);
 	sr_cls_rule_add(SR_NET_RULES, 110, SR_CLS_ACTION_DROP, 0, 0, SR_CLS_ACTION_DROP, 0, 0, 0, 0);
+	sr_cls_uid_add_rule(SR_NET_RULES, UID_ANY, 110);
 
 
 	sr_cls_inode_add_rule(1603491, 1); // /templab/file1
+	sr_cls_uid_add_rule(SR_FILE_RULES, UID_ANY, 1);
 	sr_cls_inode_add_rule(1605650, 2); // /templab/dir2
+	sr_cls_uid_add_rule(SR_FILE_RULES, UID_ANY, 2);
 	sr_cls_inode_add_rule(1605649, 3); // /templab/dir1
+	sr_cls_uid_add_rule(SR_FILE_RULES, UID_ANY, 3);
 	sr_cls_inode_add_rule(1603488, 4); // /templab
+	sr_cls_uid_add_rule(SR_FILE_RULES, UID_ANY, 4);
 	
 	sr_cls_rule_add(SR_FILE_RULES, 1, SR_CLS_ACTION_ALLOW, SR_FILEOPS_READ,0, SR_CLS_ACTION_DROP, 0, 0, 0, 0);
 	sr_cls_rule_add(SR_FILE_RULES, 2, SR_CLS_ACTION_DROP, SR_FILEOPS_READ,0, SR_CLS_ACTION_DROP, 0, 0, 0, 0);

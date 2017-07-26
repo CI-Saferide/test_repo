@@ -5,21 +5,30 @@
 #include "sal_bitops.h"
 
 struct sr_hash_table_t *sr_cls_file_table;
+bit_array sr_cls_file_any_rules;
 
+bit_array *sr_cls_file_any(void)
+{
+        return &sr_cls_file_any_rules;
+}
 int sr_cls_inode_add_rule(SR_U32 inode, SR_U32 rulenum)
 {
-	struct sr_hash_ent_t *ent=sr_hash_lookup(sr_cls_file_table, inode);
-	if (!ent) {
-		ent = SR_ZALLOC(sizeof(*ent));
+	if (likely(inode)) {
+		struct sr_hash_ent_t *ent=sr_hash_lookup(sr_cls_file_table, inode);
 		if (!ent) {
-			sal_kernel_print_alert("Error: Failed to allocate memory\n");
-			return SR_ERROR;
-		} else {
-			ent->key = inode;
-			sr_hash_insert(sr_cls_file_table, ent);
+			ent = SR_ZALLOC(sizeof(*ent));
+			if (!ent) {
+				sal_kernel_print_alert("Error: Failed to allocate memory\n");
+				return SR_ERROR;
+			} else {
+				ent->key = inode;
+				sr_hash_insert(sr_cls_file_table, ent);
+			}
 		}
+		sal_set_bit_array(rulenum, &ent->rules);
+	} else { // ANY rules
+		sal_set_bit_array(rulenum, &sr_cls_file_any_rules);
 	}
-	sal_set_bit_array(rulenum, &ent->rules);
 	return SR_SUCCESS;
 }
 
@@ -28,15 +37,19 @@ int sr_cls_inode_add_rule(SR_U32 inode, SR_U32 rulenum)
 // treetop: 1 for the first call, 0 for recursive calls further down.
 int sr_cls_inode_del_rule(SR_U32 inode, SR_U32 rulenum)
 {
-	struct sr_hash_ent_t *ent=sr_hash_lookup(sr_cls_file_table, inode);
-	if (!ent) {
-		sal_kernel_print_alert("Error: inode rule not found\n");
-		return SR_ERROR;
-	}
-	sal_clear_bit_array(rulenum, &ent->rules);
+	if (likely(inode)) {
+		struct sr_hash_ent_t *ent=sr_hash_lookup(sr_cls_file_table, inode);
+		if (!ent) {
+			sal_kernel_print_alert("Error: inode rule not found\n");
+			return SR_ERROR;
+		}
+		sal_clear_bit_array(rulenum, &ent->rules);
 
-	if (!ent->rules.summary) {
-		sr_cls_inode_remove(inode);
+		if (!ent->rules.summary) {
+			sr_cls_inode_remove(inode);
+		}
+	} else {
+		sal_clear_bit_array(rulenum, &sr_cls_file_any_rules);
 	}
 	return SR_SUCCESS;
 }
@@ -184,9 +197,8 @@ int sr_cls_fs_init(void)
 		sal_kernel_print_alert("Failed to allocate hash table!\n");
 		return SR_ERROR;
 	}
+	memset(&sr_cls_file_any_rules, 0, sizeof(bit_array));
 	sal_kernel_print_alert("Successfully initialized file classifier!\n");
-	//sr_cls_ut();
-	sal_kernel_print_alert("Finished running UTs\n");
 	return SR_SUCCESS;
 }
 

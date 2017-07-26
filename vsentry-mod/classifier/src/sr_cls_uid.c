@@ -56,7 +56,7 @@ void sr_cls_uid_uninit(void)
 	sal_printf("[%s]: Successfully removed UID classifier!\n", MODULE_NAME);
 }
 
-bit_array *src_cls_uid_any_src(enum sr_rule_type type)
+bit_array *sr_cls_uid_any(enum sr_rule_type type)
 {
         return &sr_cls_uid_any_rules[type];
 }
@@ -89,6 +89,7 @@ int sr_cls_uid_add_rule(enum sr_rule_type type, SR_32 uid, SR_U32 rulenum)
 	}
 	return SR_SUCCESS;
 }
+
 int sr_cls_uid_del_rule(enum sr_rule_type type, SR_32 uid, SR_U32 rulenum)
 {
 	if (uid>=0) { // 0 is a valid uid. any negative would be considered as *
