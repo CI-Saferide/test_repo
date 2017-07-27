@@ -1,4 +1,3 @@
-
 #include "dispatcher.h"
 #include "sal_module.h"
 #include "sal_bitops.h"

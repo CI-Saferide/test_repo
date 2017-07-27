@@ -5,6 +5,7 @@
 #include "sr_classifier.h"
 #include "sr_sal_common.h"
 #include "sr_cls_network_common.h"
+#include "sr_cls_rules_common.h"
 
 struct cls_rule_action_t sr_rules_db[SR_RULES_TYPE_MAX][SR_MAX_RULES];
 
@@ -166,4 +167,31 @@ enum cls_actions sr_cls_can_rule_match(SR_U16 rulenum)
 		// TODO
 	}
 	return action;
+}
+	
+SR_8 sr_cls_rules_msg_dispatch(struct sr_cls_rules_msg *msg)
+{
+
+	switch (msg->msg_type) {
+		case SR_CLS_RULES_DEL:
+			sal_kernel_print_alert("SR_CLS_RULES_DEL\n");
+			sr_cls_rule_del(msg->rule_type, msg->rulenum);
+			break;
+		case SR_CLS_RULES_ADD:
+			sal_kernel_print_alert("SR_CLS_RULES_ADD\n");
+			sr_cls_rule_add(msg->rule_type,
+			msg->rulenum,
+			msg->actions,
+			msg->file_ops,
+			msg->rl_max_rate,
+			msg->rl_exceed_action,
+			msg->log_target,
+			msg->email_id,
+			msg->phone_id,
+			msg->skip_rulenum);
+			break;
+		default:
+			break;
+	}
+	return SR_SUCCESS;
 }

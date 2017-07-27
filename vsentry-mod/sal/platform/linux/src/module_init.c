@@ -172,71 +172,6 @@ static int dummy_tx_thread_loop(void *arg)
 }
 #endif
 
-void sr_demo(void) 
-{
-	// Populate rules for demo on 7/13/2017
-	/* 
-appropriate MsgID
-	107  00 00 00 2A 0F 00 00 00 ...*....
-	116  ED 00 A5 96 5A 6A A9 55 ....Zj.U
-	30b  00 00 00 00 00 00 38 02 ......8.
-	31b  00 00 DC 64 00 00 00 00 ...d....
-	3c0  81 01 43 00             ..C.
-	3da  00 00 00 18 47 00 96 01 ....G...
-	3ea  00 00 00 00 00 00 B6 00 ........
-	6b2  00 E4 86 C2 88 80 9E 04 ........
-	6b4  01 FF FF FF FF FF FF FF ........	  
-	 */
-	//sr_cls_canid_add_rule(0x123,10);
-	//sr_cls_canid_add_rule(0x107,10);
-	//sr_cls_canid_add_rule(0x116,11);
-	//sr_cls_canid_add_rule(0x30b,12);
-	//sr_cls_canid_add_rule(0x31b,13);
-	//sr_cls_canid_add_rule(0x3c0,14);
-	//sr_cls_canid_add_rule(0x3da,15);
-	//sr_cls_canid_add_rule(0x101,16);
-
-	//sr_cls_add_ipv4(htonl(0x0a0a0a00), htonl(0xFFFFFF00), 50, SR_DIR_SRC);
-	//sr_cls_port_add_rule(22, 50, SR_DIR_SRC, IPPROTO_TCP);
-	//sr_cls_add_ipv4(htonl(0x0a0a0a00), htonl(0xFFFFFF00), 60, SR_DIR_SRC);
-	//sr_cls_port_add_rule(24, 60, SR_DIR_SRC, IPPROTO_TCP);
-	//sr_cls_add_ipv4(htonl(0x709), htonl(0xFFFFFFFF), 70, SR_DIR_SRC);
-	//sr_cls_port_add_rule(22, 70, SR_DIR_SRC, IPPROTO_TCP);
-	//sr_cls_add_ipv4(htonl(0x0a0a0a2e), htonl(0xFFFFFFFF), 80, SR_DIR_SRC);
-	//sr_cls_port_add_rule(22, 80, SR_DIR_SRC, IPPROTO_TCP);
-	//sr_cls_add_ipv4(htonl(0x555), htonl(0xFFFFFFFF), 90, SR_DIR_SRC);
-	//sr_cls_port_add_rule(555, 90, SR_DIR_SRC, IPPROTO_TCP);
-	//sr_cls_add_ipv4(htonl(0x0a000000), htonl(0xFF000000), 100, SR_DIR_SRC);
-	//sr_cls_port_add_rule(22, 100, SR_DIR_SRC, IPPROTO_TCP);
-	//sr_cls_add_ipv4(htonl(0x00000000), htonl(0x00000000), 110, SR_DIR_SRC);
-	//sr_cls_add_ipv4(htonl(0x0a0a0a32), htonl(0xFFFFFFFF), 110, SR_DIR_DST);
-	//sr_cls_port_add_rule(0, 110, SR_DIR_SRC, IPPROTO_TCP);
-	//sr_cls_port_add_rule(22, 110, SR_DIR_DST, IPPROTO_TCP);
-
-	//sr_cls_rule_add(SR_NET_RULES, 50, SR_CLS_ACTION_ALLOW, 0, 0, SR_CLS_ACTION_DROP, 0, 0, 0, 0);
-	//sr_cls_rule_add(SR_NET_RULES, 60, SR_CLS_ACTION_ALLOW, 0, 0, SR_CLS_ACTION_DROP, 0, 0, 0, 0);
-	//sr_cls_rule_add(SR_NET_RULES, 70, SR_CLS_ACTION_ALLOW, 0, 0, SR_CLS_ACTION_DROP, 0, 0, 0, 0);
-	//sr_cls_rule_add(SR_NET_RULES, 80, SR_CLS_ACTION_ALLOW|SR_CLS_ACTION_LOG, 0, 0, SR_CLS_ACTION_DROP, 0, 0, 0, 0);
-	//sr_cls_rule_add(SR_NET_RULES, 90, SR_CLS_ACTION_ALLOW, 0, 0, SR_CLS_ACTION_DROP, 0, 0, 0, 0);
-	//sr_cls_rule_add(SR_NET_RULES, 100, SR_CLS_ACTION_DROP, 0, 0, SR_CLS_ACTION_DROP, 0, 0, 0, 0);
-	//sr_cls_rule_add(SR_NET_RULES, 110, SR_CLS_ACTION_DROP, 0, 0, SR_CLS_ACTION_DROP, 0, 0, 0, 0);
-
-	sr_cls_rule_add(SR_CAN_RULES, 10, SR_CLS_ACTION_DROP, 0, 0, SR_CLS_ACTION_DROP, 0, 0, 0, 0);
-	sr_cls_rule_add(SR_CAN_RULES, 11, SR_CLS_ACTION_DROP, 0, 0, SR_CLS_ACTION_DROP, 0, 0, 0, 0);
-	sr_cls_rule_add(SR_CAN_RULES, 15, SR_CLS_ACTION_ALLOW|SR_CLS_ACTION_LOG, 0, 0, SR_CLS_ACTION_DROP, 0, 0, 0, 0);
-	sr_cls_rule_add(SR_CAN_RULES, 16, SR_CLS_ACTION_DROP, 0, 0, SR_CLS_ACTION_DROP, 0, 0, 0, 0);
-
-	//sr_cls_inode_add_rule(1603491, 1); // /templab/file1
-	//sr_cls_inode_add_rule(1605650, 2); // /templab/dir2
-	//sr_cls_inode_add_rule(1605649, 3); // /templab/dir1
-	//sr_cls_inode_add_rule(1603488, 4); // /templab
-	
-	sr_cls_rule_add(SR_FILE_RULES, 1, SR_CLS_ACTION_ALLOW, SR_FILEOPS_READ,0, SR_CLS_ACTION_DROP, 0, 0, 0, 0);
-	sr_cls_rule_add(SR_FILE_RULES, 2, SR_CLS_ACTION_DROP, SR_FILEOPS_READ,0, SR_CLS_ACTION_DROP, 0, 0, 0, 0);
-	sr_cls_rule_add(SR_FILE_RULES, 3, SR_CLS_ACTION_ALLOW, SR_FILEOPS_WRITE|SR_FILEOPS_READ,0, SR_CLS_ACTION_DROP, 0, 0, 0, 0);
-	sr_cls_rule_add(SR_FILE_RULES, 4, SR_CLS_ACTION_DROP, SR_FILEOPS_WRITE|SR_FILEOPS_READ,0, SR_CLS_ACTION_DROP, 0, 0, 0, 0);
-
-}
 
 static int __init vsentry_init(void)
 {	
@@ -283,7 +218,6 @@ static int __init vsentry_init(void)
 #if 0
 	tx_thread = kthread_run(dummy_tx_thread_loop, NULL, "vsentry dummy tx thread");
 #endif
-	sr_demo();
 
 	return rc;
 }

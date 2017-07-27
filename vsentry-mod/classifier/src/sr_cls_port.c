@@ -2,6 +2,8 @@
 #include "sal_bitops.h"
 #include "sr_hash.h"
 #include "sr_classifier.h"
+#include "sr_cls_port.h"
+
 
 //#include <linux/time.h> // for unit testing
 
@@ -192,7 +194,6 @@ void sr_cls_print_port_rules(SR_U32 port, SR_8 dir, SR_8 proto)
 	while ((rule = sal_ffs_and_clear_array (&rules)) != -1) {
 		sal_printf("\t\t\tRule #%d\n", rule);
 	}
-	
 }
 
 bit_array *sr_cls_match_port(SR_U32 port, SR_8 dir, SR_8 proto)
@@ -203,6 +204,24 @@ bit_array *sr_cls_match_port(SR_U32 port, SR_8 dir, SR_8 proto)
 		return NULL;
 	}
 	return(&ent->rules);
+}
+
+SR_8 sr_cls_port_msg_dispatch(struct sr_cls_port_msg *msg)
+{
+
+	switch (msg->msg_type) {
+		case SR_CLS_PORT_DEL_RULE:
+			sal_kernel_print_alert("[PORT]Delete port %d,rulenum %d ,dir %d, proto %d\n", msg->port, msg->rulenum,msg->dir, msg->proto);
+			return sr_cls_port_del_rule(msg->port, msg->rulenum,msg->dir, msg->proto);
+			break;
+		case SR_CLS_PORT_ADD_RULE:
+			sal_kernel_print_alert("[PORT]Add port %d,rulenum %d ,dir %d, proto %d\n", msg->port, msg->rulenum,msg->dir, msg->proto);
+			return sr_cls_port_add_rule(msg->port, msg->rulenum,msg->dir, msg->proto);
+			break;
+		default:
+			break;
+	}
+	return SR_SUCCESS;
 }
 
 int myRandom(int bottom, int top){ // for unit testing
