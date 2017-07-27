@@ -114,6 +114,9 @@ SR_32 sr_classifier_file(disp_info_t* info)
 	SR_16 rule;
 	SR_U16 action;
 
+	if (!info->tuple_info.id.uid) return SR_CLS_ACTION_ALLOW; // Don't mess up root access
+	memset(&ba_res, 0, sizeof(bit_array));
+
         if (info->fileinfo.parent_inode) { // create within a directory - match parent only
                 ptr = sr_cls_file_find(info->fileinfo.parent_inode);
         } else {
@@ -129,14 +132,14 @@ SR_32 sr_classifier_file(disp_info_t* info)
 	}
 	// UID
 	if (info->tuple_info.id.uid != UID_ANY) {
-		ptr = sr_cls_match_uid(SR_NET_RULES, info->tuple_info.id.uid);
+		ptr = sr_cls_match_uid(SR_FILE_RULES, info->tuple_info.id.uid);
 	} else {
 		ptr = NULL;
 	}
 	if (ptr) {
-		sal_and_self_op_two_arrays(&ba_res, ptr, sr_cls_uid_any(SR_NET_RULES));
+		sal_and_self_op_two_arrays(&ba_res, ptr, sr_cls_uid_any(SR_FILE_RULES));
 	} else { // take only dst/any
-		sal_and_self_op_arrays(&ba_res, sr_cls_uid_any(SR_NET_RULES));
+		sal_and_self_op_arrays(&ba_res, sr_cls_uid_any(SR_FILE_RULES));
 	}
 	if (array_is_clear(ba_res)) {
 		return SR_CLS_ACTION_ALLOW;

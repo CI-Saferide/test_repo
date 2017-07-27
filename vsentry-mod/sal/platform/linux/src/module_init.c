@@ -216,11 +216,24 @@ void sr_demo(void)
 	sr_cls_uid_add_rule(SR_FILE_RULES, UID_ANY, 3);
 	sr_cls_inode_add_rule(1603488, 4); // /templab
 	sr_cls_uid_add_rule(SR_FILE_RULES, UID_ANY, 4);
+
+	sr_cls_inode_add_rule(4089093, 5); // /tmp/hilik
+	sr_cls_uid_add_rule(SR_FILE_RULES, 1002, 5); // user hilik
+	sr_cls_inode_add_rule(4089093, 6); // /tmp/hilik
+	sr_cls_uid_add_rule(SR_FILE_RULES, 1001, 6); // user hilik2
+	sr_cls_inode_add_rule(4089094, 7); // /tmp/hilik2
+	sr_cls_uid_add_rule(SR_FILE_RULES, 1001, 7); // user hilik2
+	sr_cls_inode_add_rule(0, 8); // ANY
+	sr_cls_uid_add_rule(SR_FILE_RULES, 1001, 8); // user hilik2
 	
 	sr_cls_rule_add(SR_FILE_RULES, 1, SR_CLS_ACTION_ALLOW, SR_FILEOPS_READ,0, SR_CLS_ACTION_DROP, 0, 0, 0, 0);
 	sr_cls_rule_add(SR_FILE_RULES, 2, SR_CLS_ACTION_DROP, SR_FILEOPS_READ,0, SR_CLS_ACTION_DROP, 0, 0, 0, 0);
 	sr_cls_rule_add(SR_FILE_RULES, 3, SR_CLS_ACTION_ALLOW, SR_FILEOPS_WRITE|SR_FILEOPS_READ,0, SR_CLS_ACTION_DROP, 0, 0, 0, 0);
 	sr_cls_rule_add(SR_FILE_RULES, 4, SR_CLS_ACTION_DROP, SR_FILEOPS_WRITE|SR_FILEOPS_READ,0, SR_CLS_ACTION_DROP, 0, 0, 0, 0);
+	sr_cls_rule_add(SR_FILE_RULES, 5, SR_CLS_ACTION_DROP, SR_FILEOPS_READ,0, SR_CLS_ACTION_DROP, 0, 0, 0, 0);
+	sr_cls_rule_add(SR_FILE_RULES, 6, SR_CLS_ACTION_ALLOW, SR_FILEOPS_READ,0, SR_CLS_ACTION_DROP, 0, 0, 0, 0);
+	sr_cls_rule_add(SR_FILE_RULES, 7, SR_CLS_ACTION_ALLOW, SR_FILEOPS_WRITE,0, SR_CLS_ACTION_DROP, 0, 0, 0, 0);
+	sr_cls_rule_add(SR_FILE_RULES, 8, SR_CLS_ACTION_DROP, SR_FILEOPS_WRITE,0, SR_CLS_ACTION_DROP, 0, 0, 0, 0);
 }
 
 static int __init vsentry_init(void)
