@@ -13,7 +13,7 @@
 int sr_cls_file_add_rule(char *filename, SR_U32 rulenum, SR_U8 treetop)
 {
 	struct stat buf;
-	sr_msg_cls_t *msg;
+	sr_file_msg_cls_t *msg;
 
 	if(lstat(filename, &buf)) { // Error
 		perror("lstat");
@@ -25,7 +25,7 @@ int sr_cls_file_add_rule(char *filename, SR_U32 rulenum, SR_U8 treetop)
 			return SR_ERROR;
 		}
 		// sr_cls_inode_add_rule(buf.st_ino, rulenum)
-		msg = (sr_msg_cls_t*)sr_get_msg(ENG2MOD_BUF, ENG2MOD_MSG_MAX_SIZE);
+		msg = (sr_file_msg_cls_t*)sr_get_msg(ENG2MOD_BUF, ENG2MOD_MSG_MAX_SIZE);
 		if (msg) {
 			msg->msg_type = SR_MSG_TYPE_CLS_FILE;
 			msg->sub_msg.msg_type = SR_CLS_INODE_ADD_RULE;
@@ -36,7 +36,7 @@ int sr_cls_file_add_rule(char *filename, SR_U32 rulenum, SR_U8 treetop)
 	}
 	if (S_ISDIR(buf.st_mode))  {
 		// first update the directory itself
-		msg = (sr_msg_cls_t*)sr_get_msg(ENG2MOD_BUF, ENG2MOD_MSG_MAX_SIZE);
+		msg = (sr_file_msg_cls_t*)sr_get_msg(ENG2MOD_BUF, ENG2MOD_MSG_MAX_SIZE);
 		if (msg) {
 			msg->msg_type = SR_MSG_TYPE_CLS_FILE;
 			msg->sub_msg.msg_type = SR_CLS_INODE_ADD_RULE;
@@ -68,7 +68,7 @@ int sr_cls_file_add_rule(char *filename, SR_U32 rulenum, SR_U8 treetop)
 	if (S_ISLNK(buf.st_mode))  {
 		// first update the link itself
 		// sr_cls_inode_add_rule(buf.st_ino, rulenum)
-		msg = (sr_msg_cls_t*)sr_get_msg(ENG2MOD_BUF, ENG2MOD_MSG_MAX_SIZE);
+		msg = (sr_file_msg_cls_t*)sr_get_msg(ENG2MOD_BUF, ENG2MOD_MSG_MAX_SIZE);
 		if (msg) {
 			msg->msg_type = SR_MSG_TYPE_CLS_FILE;
 			msg->sub_msg.msg_type = SR_CLS_INODE_ADD_RULE;
@@ -89,7 +89,7 @@ int sr_cls_file_add_rule(char *filename, SR_U32 rulenum, SR_U8 treetop)
 int sr_cls_file_del_rule(char *filename, SR_U32 rulenum, SR_U8 treetop)
 {
 	struct stat buf;
-	sr_msg_cls_t *msg;
+	sr_file_msg_cls_t *msg;
 
 	if(lstat(filename, &buf)) { // Error
 		return SR_ERROR;
@@ -99,7 +99,7 @@ int sr_cls_file_del_rule(char *filename, SR_U32 rulenum, SR_U8 treetop)
 			printf("Error: Cannot del classification rules for hard links\n");
 			return SR_ERROR;
 		}
-		msg = (sr_msg_cls_t*)sr_get_msg(ENG2MOD_BUF, ENG2MOD_MSG_MAX_SIZE);
+		msg = (sr_file_msg_cls_t*)sr_get_msg(ENG2MOD_BUF, ENG2MOD_MSG_MAX_SIZE);
 		if (msg) {
 			msg->msg_type = SR_MSG_TYPE_CLS_FILE;
 			msg->sub_msg.msg_type = SR_CLS_INODE_DEL_RULE;
@@ -110,7 +110,7 @@ int sr_cls_file_del_rule(char *filename, SR_U32 rulenum, SR_U8 treetop)
 	}
 	if (S_ISDIR(buf.st_mode))  {
 		// first update the directory itself
-		msg = (sr_msg_cls_t*)sr_get_msg(ENG2MOD_BUF, ENG2MOD_MSG_MAX_SIZE);
+		msg = (sr_file_msg_cls_t*)sr_get_msg(ENG2MOD_BUF, ENG2MOD_MSG_MAX_SIZE);
 		if (msg) {
 			msg->msg_type = SR_MSG_TYPE_CLS_FILE;
 			msg->sub_msg.msg_type = SR_CLS_INODE_DEL_RULE;
@@ -141,7 +141,7 @@ int sr_cls_file_del_rule(char *filename, SR_U32 rulenum, SR_U8 treetop)
 	}
 	if (S_ISLNK(buf.st_mode))  {
 		// first update the link itself
-		msg = (sr_msg_cls_t*)sr_get_msg(ENG2MOD_BUF, ENG2MOD_MSG_MAX_SIZE);
+		msg = (sr_file_msg_cls_t*)sr_get_msg(ENG2MOD_BUF, ENG2MOD_MSG_MAX_SIZE);
 		if (msg) {
 			msg->msg_type = SR_MSG_TYPE_CLS_FILE;
 			msg->sub_msg.msg_type = SR_CLS_INODE_DEL_RULE;
@@ -161,7 +161,7 @@ int sr_cls_file_create(char *filename)
 { 
 	struct stat buf,buf2;
 	char parentdir[SR_MAX_PATH];
-	sr_msg_cls_t *msg;
+	sr_file_msg_cls_t *msg;
 
 	if(lstat(filename, &buf)) { // Error
 		return SR_ERROR;
@@ -175,7 +175,7 @@ int sr_cls_file_create(char *filename)
 		if (lstat(parentdir, &buf2)) {
 			return SR_ERROR;
 		}
-		msg = (sr_msg_cls_t*)sr_get_msg(ENG2MOD_BUF, ENG2MOD_MSG_MAX_SIZE);
+		msg = (sr_file_msg_cls_t*)sr_get_msg(ENG2MOD_BUF, ENG2MOD_MSG_MAX_SIZE);
 		if (msg) {
 			msg->msg_type = SR_MSG_TYPE_CLS_FILE;
 			msg->sub_msg.msg_type = SR_CLS_INODE_INHERIT;
@@ -192,13 +192,13 @@ int sr_cls_file_create(char *filename)
 void sr_cls_file_delete(char *filename)
 { 
 	struct stat buf;
-	sr_msg_cls_t *msg;
+	sr_file_msg_cls_t *msg;
 
 	if(lstat(filename, &buf)) { // Error
 		return;
 	}
 	if ((S_ISREG(buf.st_mode)) && (buf.st_nlink == 1)) {
-		msg = (sr_msg_cls_t*)sr_get_msg(ENG2MOD_BUF, ENG2MOD_MSG_MAX_SIZE);
+		msg = (sr_file_msg_cls_t*)sr_get_msg(ENG2MOD_BUF, ENG2MOD_MSG_MAX_SIZE);
 		if (msg) {
 			msg->msg_type = SR_MSG_TYPE_CLS_FILE;
 			msg->sub_msg.msg_type = SR_CLS_INODE_REMOVE;
@@ -208,7 +208,7 @@ void sr_cls_file_delete(char *filename)
 	}
 	if (S_ISDIR(buf.st_mode)) {
 		// sr_cls_inode_remove(buf.st_mode)
-		msg = (sr_msg_cls_t*)sr_get_msg(ENG2MOD_BUF, ENG2MOD_MSG_MAX_SIZE);
+		msg = (sr_file_msg_cls_t*)sr_get_msg(ENG2MOD_BUF, ENG2MOD_MSG_MAX_SIZE);
 		if (msg) {
 			msg->msg_type = SR_MSG_TYPE_CLS_FILE;
 			msg->sub_msg.msg_type = SR_CLS_INODE_REMOVE;
@@ -237,6 +237,7 @@ void sr_cls_file_delete(char *filename)
 		}
 	}
 }
+
 
 void sr_cls_control_ut(void)
 {

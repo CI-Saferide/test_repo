@@ -113,7 +113,7 @@ bit_array *sr_cls_file_find(SR_U32 inode)
 	return (&ent->rules);
 }
 
-SR_8 sr_cls_file_msg_dispatch(struct sr_cls_msg *msg)
+SR_8 sr_cls_file_msg_dispatch(struct sr_cls_file_msg *msg)
 {
 	switch (msg->msg_type) {
 		case SR_CLS_INODE_INHERIT:

@@ -11,7 +11,7 @@ enum {
 	SR_CLS_INODE_TOTAL = (SR_CLS_INODE_MAX + 1),
 };
 
-struct sr_cls_msg {
+struct sr_cls_file_msg {
 	SR_U8 	msg_type;
 	SR_U32	rulenum;
 	SR_U32  inode1;

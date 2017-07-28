@@ -13,8 +13,7 @@
 #include "sal_linux.h"
 #include "dispatcher.h"
 #include "sr_classifier.h"
-#include "sr_cls_port.h"
-#include "sr_cls_canid.h"
+
 #include "sr_ring_buf.h"
 #include "sr_shmem.h"
 #include "sr_msg.h"
@@ -173,6 +172,7 @@ static int dummy_tx_thread_loop(void *arg)
 }
 #endif
 
+#ifdef SR_DEMO
 void sr_demo(void) 
 {
 	// Populate rules for demo on 7/13/2017
@@ -235,6 +235,8 @@ void sr_demo(void)
 	sr_cls_rule_add(SR_FILE_RULES, 7, SR_CLS_ACTION_ALLOW, SR_FILEOPS_WRITE,0, SR_CLS_ACTION_DROP, 0, 0, 0, 0);
 	sr_cls_rule_add(SR_FILE_RULES, 8, SR_CLS_ACTION_DROP, SR_FILEOPS_WRITE,0, SR_CLS_ACTION_DROP, 0, 0, 0, 0);
 }
+#endif // SR_DEMO
+
 
 static int __init vsentry_init(void)
 {	
@@ -273,9 +275,9 @@ static int __init vsentry_init(void)
 
 	sr_cls_port_init();	
 	sr_cls_uid_init();	
+
 	sr_netfilter_init();
 	sr_classifier_init();
-	sr_cls_canid_init();
 	
 #ifdef UNIT_TEST
 	sal_bitops_test (0);
@@ -287,7 +289,6 @@ static int __init vsentry_init(void)
 #if 0
 	tx_thread = kthread_run(dummy_tx_thread_loop, NULL, "vsentry dummy tx thread");
 #endif
-	sr_demo();
 
 	return rc;
 }
@@ -309,6 +310,7 @@ static void __exit vsentry_cleanup(void)
 	sr_cls_port_uninit();
 	sr_cls_uid_uninit();
 	sr_cls_canid_uninit();
+
 	sr_netfilter_uninit();
 
 	cdev_del(cdev_p);

@@ -623,6 +623,7 @@ SR_32 vsentry_socket_sendmsg(struct socket *sock,struct msghdr *msg,SR_32 size)
 	HOOK_FILTER
 	
 	/* gather metadata */
+
 	disp.socket_info.id.uid = (int)rcred->uid.val;
 	disp.socket_info.id.pid = current->pid;
 	
@@ -658,13 +659,15 @@ SR_32 vsentry_socket_sendmsg(struct socket *sock,struct msghdr *msg,SR_32 size)
 						disp.can_info.payload[7],
 						disp.fileinfo.id.pid,
 						disp.fileinfo.id.uid);
+
+			/* call dispatcher */
+			kfree_skb(skb);
+			return (disp_socket_sendmsg(&disp));
 			break;
 		default:
 			/* we are not interested in the message */
-			return 0;
 			break;
 	}
-
-	/* call dispatcher */
-	return (disp_socket_sendmsg(&disp));
+	
+	return 0;
 }

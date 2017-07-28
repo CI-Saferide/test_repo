@@ -4,6 +4,7 @@
 #include "sr_sal_common.h"
 #include "sal_bitops.h"
 #include "sr_hash.h"
+#include "sr_cls_port_common.h"
 #define SR_MAX_PORT 65535
 #define SR_PROTO_SELECTOR(proto) (proto==IPPROTO_UDP)?1:0
 
@@ -27,5 +28,6 @@ void sr_cls_print_port_rules(SR_U32 port, SR_8 dir, SR_8 proto);
 bit_array *sr_cls_match_port(SR_U32 port, SR_8 dir, SR_8 proto);
 bit_array *src_cls_port_any_src(void);
 bit_array *src_cls_port_any_dst(void);
+SR_8 sr_cls_port_msg_dispatch(struct sr_cls_port_msg *msg);
 
 #endif

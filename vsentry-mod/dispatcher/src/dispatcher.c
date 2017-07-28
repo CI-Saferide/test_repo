@@ -135,7 +135,9 @@ SR_32 disp_socket_sendmsg(disp_info_t* info)
 	SR_32		classifier_rc = -EACCES;
 	
 	/* call classifier */
-	classifier_rc = 0;
+	//classifier_rc = 0;
+	classifier_rc = sr_classifier_canbus(info);;
+
 
 	/* create event message */
 
@@ -160,6 +162,9 @@ SR_32 disp_socket_sendmsg(disp_info_t* info)
 
 	/* send event message to user space */
 	//sr_send_msg(MOD2LOG_BUF, sizeof(CEF_payload));
-	
-	return classifier_rc;	
+	if (classifier_rc == SR_CLS_ACTION_ALLOW) {
+		return 0;
+	} else {
+		return -EACCES;
+	}	
 }

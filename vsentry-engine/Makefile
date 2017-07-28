@@ -20,7 +20,11 @@ VPATH 		:=  $(TOP_DIR)/sal/platform/linux/src \
 SRCS 		:=  main.c \
 				sal_shmem_linux.c \
 				sal_linux.c \
-				sr_cls_control.c \
+				sr_cls_file_control.c \
+				sr_cls_network_control.c \
+				sr_cls_canbus_control.c \
+				sr_cls_port_control.c \
+				sr_cls_rules_control.c \
 				sr_msg.c \
 				sr_ring_buf.c \
 				sr_tasks.c \

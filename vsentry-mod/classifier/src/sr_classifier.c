@@ -1,4 +1,3 @@
-
 #include "dispatcher.h"
 #include "sal_module.h"
 #include "sal_bitops.h"
@@ -11,7 +10,16 @@ SR_32 sr_classifier_init(void)
 {
 	sr_cls_network_init();
 	sr_cls_fs_init();
+	
+	sr_cls_port_init();		
+	sr_cls_canid_init();
+	
 	sr_cls_rules_init();
+//#ifdef UNIT_TEST
+	//sr_cls_network_ut();
+	//sr_cls_port_ut();
+	//sr_cls_canid_ut();
+//#endif
 
 	sr_cls_network_ut();
 
@@ -22,6 +30,9 @@ void sr_classifier_uninit(void)
 {
 	sr_cls_network_uninit();
 	sr_cls_fs_uninit();
+	
+	sr_cls_port_uninit();
+	sr_cls_canid_uninit();	
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -101,9 +112,8 @@ SR_32 sr_classifier_network(disp_info_t* info)
 			sal_printf("sr_classifier_network: Rule drop\n");
 			return SR_CLS_ACTION_DROP;
 		}
-        }
+	}
 
-	
 	return SR_CLS_ACTION_ALLOW;
 }
 
@@ -147,7 +157,7 @@ SR_32 sr_classifier_file(disp_info_t* info)
 
 	while ((rule = sal_ffs_and_clear_array (&ba_res)) != -1) {
 		action = sr_cls_file_rule_match(info->fileinfo.fileop, rule);
-                sal_printf("sr_classifier_file: Matched Rule #%d, action is %d\n", rule, action);
+		sal_printf("sr_classifier_file: Matched Rule #%d, action is %d\n", rule, action);
 		if (action & SR_CLS_ACTION_DROP) {
 			sal_printf("sr_classifier_file: Rule drop\n");
 			return SR_CLS_ACTION_DROP;
@@ -156,8 +166,32 @@ SR_32 sr_classifier_file(disp_info_t* info)
 			sal_printf("sr_classifier_file: Rule allow\n");
 			return SR_CLS_ACTION_ALLOW;
 		}
-        }
+	}
+	return SR_CLS_ACTION_ALLOW;
+}
 
-	
+// CAN-BUS events classifier
+SR_32 sr_classifier_canbus(disp_info_t* info)
+{
+	bit_array *ba_canid, ba_res;
+	SR_16 rule;
+	SR_U16 action;
+
+	ba_canid = sr_cls_match_canid(info->can_info.msg_id);
+
+	if (!ba_canid) {
+		//sal_kernel_print_alert("sr_classifier_canID: No matching rule!\n");
+		return SR_CLS_ACTION_ALLOW;
+	}
+	memcpy(&ba_res, ba_canid, sizeof(bit_array)); // Perform arbitration
+
+	while ((rule = sal_ffs_and_clear_array (&ba_res)) != -1) {
+		action = sr_cls_can_rule_match(rule);
+                sal_printf("sr_classifier_canID: Matched Rule #%d, action is %d\n", rule, action);
+		if (action & SR_CLS_ACTION_DROP) {
+			sal_printf("sr_classifier_canID: Rule drop\n");
+			return SR_CLS_ACTION_DROP;
+		}
+	}
 	return SR_CLS_ACTION_ALLOW;
 }
