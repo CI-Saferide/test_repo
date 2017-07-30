@@ -14,6 +14,11 @@ enum {
 	SR_CLS_NETOWRK_TOTAL = (SR_CLS_NETWORK_MAX + 1),
 };
 
+enum {
+	SR_PROTO_TCP = 6,
+	SR_PROTO_UDP = 17,
+};
+
 struct sr_cls_network_msg {
 	SR_U8 	msg_type;
 	SR_U8   dir; // SR_DIR_SRC/DST

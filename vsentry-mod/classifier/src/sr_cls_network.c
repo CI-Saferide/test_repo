@@ -270,6 +270,8 @@ SR_8 sr_cls_network_msg_dispatch(struct sr_cls_network_msg *msg)
 							msg->addr, msg->netmask, msg->rulenum);	
 			break;
 		case SR_CLS_IPV4_ADD_RULE:
+			printk("[add_ipv4] addr=%x, netmask=%x, rulenum=%d\n",
+							msg->addr, msg->netmask, msg->rulenum);
 			return sr_cls_add_ipv4(msg->addr, msg->netmask, msg->rulenum, msg->dir);
 			break;
 		case SR_CLS_IPV6_DEL_RULE:

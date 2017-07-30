@@ -7,7 +7,7 @@
 #include "sr_cls_canbus_common.h"
 #include "sr_cls_network_common.h"
 #include "sr_cls_port_common.h"
-#include "sr_cls_rules_common.h"
+#include "sr_actions_common.h"
 
 typedef enum {
 	SR_MSG_TYPE_DEFAULT=0,
