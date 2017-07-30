@@ -211,6 +211,13 @@ static int __init vsentry_init(void)
 	sr_netfilter_init();
 	sr_classifier_init();
 	
+	//sr_cls_add_ipv4(htonl(0x0a0a0a00), htonl(0xFFFFFF00), 60, SR_DIR_SRC);
+	//sr_cls_add_ipv4(htonl(0x0a0a0a00), htonl(0xFFFFFF00), 60, SR_DIR_DST);
+	//sr_cls_port_add_rule(0, 60, SR_DIR_SRC, IPPROTO_TCP);
+	//sr_cls_port_add_rule(22, 60, SR_DIR_DST, IPPROTO_TCP);
+
+	//sr_cls_rule_add(SR_NET_RULES, 60, SR_CLS_ACTION_DROP, 0, 0, SR_CLS_ACTION_DROP, 0, 0, 0, 0);
+	
 #ifdef UNIT_TEST
 	sal_bitops_test (0);
 #endif /* UNIT_TEST */

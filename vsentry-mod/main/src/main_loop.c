@@ -73,8 +73,12 @@ SR_32 sr_msg_dispatch(char *msg, int size)
 		case SR_MSG_TYPE_CLS_FILE:
 			sr_cls_file_msg_dispatch((struct sr_cls_file_msg *)hdr->msg_payload);
 			break;
-		case SR_MSG_TYPE_CLS_NETWORK:
+		case SR_MSG_TYPE_CLS_NETWORK: {
+			struct sr_cls_network_msg* net_msg=(struct sr_cls_network_msg*)hdr->msg_payload;
+			printk("[add_ipv4----] addr=%x, netmask=%x, rulenum=%d\n",
+							net_msg->addr, net_msg->netmask, net_msg->rulenum);
 			sr_cls_network_msg_dispatch((struct sr_cls_network_msg *)hdr->msg_payload);
+			}
 			break;
 		case SR_MSG_TYPE_CLS_CANBUS:
 			sr_cls_canid_msg_dispatch((struct sr_cls_canbus_msg *)hdr->msg_payload);

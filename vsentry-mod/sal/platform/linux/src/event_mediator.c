@@ -368,13 +368,13 @@ SR_32 vsentry_incoming_connection(struct sk_buff *skb)
 	disp.tuple_info.dport = sal_packet_dest_port(skb);
 	disp.tuple_info.ip_proto = sal_packet_ip_proto(skb);
 
-#ifdef DEBUG_EVENT_MEDIATOR
+//#ifdef DEBUG_EVENT_MEDIATOR
 	sal_kernel_print_info("vsentry_incoming_connection=%lx[%d] -> %lx[%d]\n",
 			(unsigned long)disp.tuple_info.saddr.v4addr.s_addr,
 			disp.tuple_info.sport,
 			(unsigned long)disp.tuple_info.daddr.v4addr.s_addr,
 			disp.tuple_info.dport);
-#endif /* DEBUG_EVENT_MEDIATOR */
+//#endif /* DEBUG_EVENT_MEDIATOR */
 
 	/* call dispatcher */
 	return (disp_incoming_connection(&disp));

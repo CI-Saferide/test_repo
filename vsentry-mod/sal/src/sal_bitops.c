@@ -137,5 +137,8 @@ void sal_and_self_op_two_arrays (bit_array *base, bit_array *A, bit_array *B)
 	base->summary = summary;
 	while ((index = sal_ffs_and_clear_bitmask(&summary)) != -1) {
 		base->level2[index] &= (A->level2[index]|B->level2[index]);
+		if (!base->level2[index]) { // need to clean summary bit !!!
+ 			base->summary &= (~(1<<index));
+ 		}
 	}
 }

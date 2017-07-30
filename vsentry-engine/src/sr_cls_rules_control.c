@@ -1,5 +1,5 @@
 #include "sr_sal_common.h"
-#include "sr_cls_rules_common.h"
+#include "sr_actions_common.h"
 #include "sr_shmem.h"
 #include "sr_msg.h"
 #include "sr_msg_dispatch.h"
