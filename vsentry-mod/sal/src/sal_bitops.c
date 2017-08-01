@@ -149,18 +149,16 @@ void sal_and_self_op_two_arrays (bit_array *base, bit_array *A, bit_array *B)
 	}
 }
 void sal_print_bit_array(bit_array *arr)
-{
-	bit_array tmp;
-	SR_16 rule;
-
-	memcpy(&tmp, arr, sizeof (bit_array));
-
-	sal_printf("sal_print_bit_array: Printing ruleset for array %p\n", arr);
-
-	while ((rule = sal_ffs_and_clear_array (&tmp)) != -1) {
-                sal_printf("Rule #%d is set\n", rule);
- 			base->summary &= (~(1<<index));
- 		}
-	}
-	sal_printf("sal_print_bit_array: Done printing\n");
-}
+ {
+ 	bit_array tmp;
+ 	SR_16 rule;
+ 
+ 	memcpy(&tmp, arr, sizeof (bit_array));
+ 
+ 	sal_printf("sal_print_bit_array: Printing ruleset for array %p\n", arr);
+ 
+ 	while ((rule = sal_ffs_and_clear_array (&tmp)) != -1) {
+                 sal_printf("Rule #%d is set\n", rule);
+ 	}
+ 	sal_printf("sal_print_bit_array: Done printing\n");
+ }
