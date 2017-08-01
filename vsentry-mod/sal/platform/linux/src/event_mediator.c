@@ -9,6 +9,7 @@
 #include "sr_sal_common.h"
 #include "sr_types.h"
 #include "sr_classifier.h"
+#include "sr_actions_common.h"
 #include <uapi/linux/can.h>
 #include <linux/can/skb.h>
 

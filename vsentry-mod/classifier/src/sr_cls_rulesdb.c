@@ -5,7 +5,7 @@
 #include "sr_classifier.h"
 #include "sr_sal_common.h"
 #include "sr_cls_network_common.h"
-#include "sr_cls_rules_common.h"
+#include "sr_actions_common.h"
 
 struct cls_rule_action_t sr_rules_db[SR_RULES_TYPE_MAX][SR_MAX_RULES];
 
