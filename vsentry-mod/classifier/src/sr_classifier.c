@@ -5,6 +5,7 @@
 #include "sr_classifier.h"
 #include "sr_sal_common.h"
 #include "sr_cls_network_common.h"
+#include "sr_actions_common.h"
 
 SR_32 sr_classifier_init(void)
 {

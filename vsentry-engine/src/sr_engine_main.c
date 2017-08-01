@@ -11,7 +11,7 @@
 #include "sr_cls_canbus_control.h"
 #include "sr_cls_port_control.h"
 #include "sr_cls_rules_control.h"
-
+#include "sr_config.h"
 #include <arpa/inet.h> // TODO: take care of the agnostic part
 
 SR_32 engine_main_loop(void *data)
@@ -92,7 +92,7 @@ SR_32 sr_engine_start(void)
 		sal_printf("failed to init ENG2MOD msg_buf\n");
 		return SR_ERROR;
 	}
-	
+	config_ut();
 	while (run) {
 		SR_8 input = getchar();
 

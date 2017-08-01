@@ -159,6 +159,8 @@ void sal_print_bit_array(bit_array *arr)
 
 	while ((rule = sal_ffs_and_clear_array (&tmp)) != -1) {
                 sal_printf("Rule #%d is set\n", rule);
+ 			base->summary &= (~(1<<index));
+ 		}
 	}
 	sal_printf("sal_print_bit_array: Done printing\n");
 }
