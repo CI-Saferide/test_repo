@@ -5,6 +5,9 @@
 */
 
 #include "sal_bitops.h"
+#include "sal_module.h"
+#include "sr_sal_common.h"
+
 
 SR_BOOL sal_bit_array_is_set (SR_U16 bit, bit_array *arr)
 {
@@ -127,6 +130,9 @@ void sal_and_self_op_arrays (bit_array *base, bit_array *addon)
 	base->summary &= addon->summary;
 	while ((index = sal_ffs_and_clear_bitmask(&summary)) != -1) {
 		base->level2[index] &= addon->level2[index];
+		if (!base->level2[index]) { // need to clean summary bit !!!
+			base->summary &= (~(1<<index));
+		}
 	}
 }
 
@@ -137,5 +143,22 @@ void sal_and_self_op_two_arrays (bit_array *base, bit_array *A, bit_array *B)
 	base->summary = summary;
 	while ((index = sal_ffs_and_clear_bitmask(&summary)) != -1) {
 		base->level2[index] &= (A->level2[index]|B->level2[index]);
+		if (!base->level2[index]) { // need to clean summary bit !!!
+			base->summary &= (~(1<<index));
+		}
 	}
+}
+void sal_print_bit_array(bit_array *arr)
+{
+	bit_array tmp;
+	SR_16 rule;
+
+	memcpy(&tmp, arr, sizeof (bit_array));
+
+	sal_printf("sal_print_bit_array: Printing ruleset for array %p\n", arr);
+
+	while ((rule = sal_ffs_and_clear_array (&tmp)) != -1) {
+                sal_printf("Rule #%d is set\n", rule);
+	}
+	sal_printf("sal_print_bit_array: Done printing\n");
 }

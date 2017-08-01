@@ -135,7 +135,7 @@ int sr_cls_file_del_rule(char *filename, SR_U32 rulenum, SR_U8 treetop)
 				if ((!strcmp(de->d_name, ".")) || (!strcmp(de->d_name, "..")))
 					continue;
 				snprintf(fullpath, SR_MAX_PATH, "%s/%s", filename, de->d_name);
-				sr_cls_file_add_rule(fullpath, rulenum, 0);
+				sr_cls_file_del_rule(fullpath, rulenum, 0);
 			}
 		}
 	}

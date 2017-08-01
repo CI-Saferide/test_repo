@@ -172,6 +172,71 @@ static int dummy_tx_thread_loop(void *arg)
 }
 #endif
 
+#ifdef SR_DEMO
+void sr_demo(void) 
+{
+	// Populate rules for demo on 7/13/2017
+	sr_cls_add_ipv4(htonl(0x0a0a0a00), htonl(0xFFFFFF00), 50, SR_DIR_SRC);
+	sr_cls_port_add_rule(22, 50, SR_DIR_SRC, IPPROTO_TCP);
+	sr_cls_add_ipv4(htonl(0x0a0a0a00), htonl(0xFFFFFF00), 60, SR_DIR_SRC);
+	sr_cls_port_add_rule(24, 60, SR_DIR_SRC, IPPROTO_TCP);
+	sr_cls_add_ipv4(htonl(0x709), htonl(0xFFFFFFFF), 70, SR_DIR_SRC);
+	sr_cls_port_add_rule(22, 70, SR_DIR_SRC, IPPROTO_TCP);
+	sr_cls_add_ipv4(htonl(0x0a0a0a2e), htonl(0xFFFFFFFF), 80, SR_DIR_SRC);
+	sr_cls_port_add_rule(22, 80, SR_DIR_SRC, IPPROTO_TCP);
+	sr_cls_add_ipv4(htonl(0x555), htonl(0xFFFFFFFF), 90, SR_DIR_SRC);
+	sr_cls_port_add_rule(555, 90, SR_DIR_SRC, IPPROTO_TCP);
+	sr_cls_add_ipv4(htonl(0x0a000000), htonl(0xFF000000), 100, SR_DIR_SRC);
+	sr_cls_port_add_rule(22, 100, SR_DIR_SRC, IPPROTO_TCP);
+	sr_cls_add_ipv4(htonl(0x00000000), htonl(0x00000000), 110, SR_DIR_SRC);
+	sr_cls_add_ipv4(htonl(0x0a0a0a32), htonl(0xFFFFFFFF), 110, SR_DIR_DST);
+	sr_cls_port_add_rule(0, 110, SR_DIR_SRC, IPPROTO_TCP);
+	sr_cls_port_add_rule(22, 110, SR_DIR_DST, IPPROTO_TCP);
+	sr_cls_rule_add(SR_NET_RULES, 50, SR_CLS_ACTION_ALLOW, 0, 0, SR_CLS_ACTION_DROP, 0, 0, 0, 0);
+	sr_cls_uid_add_rule(SR_NET_RULES, UID_ANY, 50);
+	sr_cls_rule_add(SR_NET_RULES, 60, SR_CLS_ACTION_ALLOW, 0, 0, SR_CLS_ACTION_DROP, 0, 0, 0, 0);
+	sr_cls_uid_add_rule(SR_NET_RULES, UID_ANY, 60);
+	sr_cls_rule_add(SR_NET_RULES, 70, SR_CLS_ACTION_ALLOW, 0, 0, SR_CLS_ACTION_DROP, 0, 0, 0, 0);
+	sr_cls_uid_add_rule(SR_NET_RULES, UID_ANY, 70);
+	sr_cls_rule_add(SR_NET_RULES, 80, SR_CLS_ACTION_ALLOW|SR_CLS_ACTION_LOG, 0, 0, SR_CLS_ACTION_DROP, 0, 0, 0, 0);
+	sr_cls_uid_add_rule(SR_NET_RULES, UID_ANY, 80);
+	sr_cls_rule_add(SR_NET_RULES, 90, SR_CLS_ACTION_ALLOW, 0, 0, SR_CLS_ACTION_DROP, 0, 0, 0, 0);
+	sr_cls_uid_add_rule(SR_NET_RULES, UID_ANY, 90);
+	sr_cls_rule_add(SR_NET_RULES, 100, SR_CLS_ACTION_DROP, 0, 0, SR_CLS_ACTION_DROP, 0, 0, 0, 0);
+	sr_cls_uid_add_rule(SR_NET_RULES, UID_ANY, 100);
+	sr_cls_rule_add(SR_NET_RULES, 110, SR_CLS_ACTION_DROP, 0, 0, SR_CLS_ACTION_DROP, 0, 0, 0, 0);
+	sr_cls_uid_add_rule(SR_NET_RULES, UID_ANY, 110);
+
+
+	sr_cls_inode_add_rule(1603491, 1); // /templab/file1
+	sr_cls_uid_add_rule(SR_FILE_RULES, UID_ANY, 1);
+	sr_cls_inode_add_rule(1605650, 2); // /templab/dir2
+	sr_cls_uid_add_rule(SR_FILE_RULES, UID_ANY, 2);
+	sr_cls_inode_add_rule(1605649, 3); // /templab/dir1
+	sr_cls_uid_add_rule(SR_FILE_RULES, UID_ANY, 3);
+	sr_cls_inode_add_rule(1603488, 4); // /templab
+	sr_cls_uid_add_rule(SR_FILE_RULES, UID_ANY, 4);
+
+	sr_cls_inode_add_rule(4089093, 5); // /tmp/hilik
+	sr_cls_uid_add_rule(SR_FILE_RULES, 1002, 5); // user hilik
+	sr_cls_inode_add_rule(4089093, 6); // /tmp/hilik
+	sr_cls_uid_add_rule(SR_FILE_RULES, 1001, 6); // user hilik2
+	sr_cls_inode_add_rule(4089094, 7); // /tmp/hilik2
+	sr_cls_uid_add_rule(SR_FILE_RULES, 1001, 7); // user hilik2
+	sr_cls_inode_add_rule(0, 8); // ANY
+	sr_cls_uid_add_rule(SR_FILE_RULES, 1001, 8); // user hilik2
+	
+	sr_cls_rule_add(SR_FILE_RULES, 1, SR_CLS_ACTION_ALLOW, SR_FILEOPS_READ,0, SR_CLS_ACTION_DROP, 0, 0, 0, 0);
+	sr_cls_rule_add(SR_FILE_RULES, 2, SR_CLS_ACTION_DROP, SR_FILEOPS_READ,0, SR_CLS_ACTION_DROP, 0, 0, 0, 0);
+	sr_cls_rule_add(SR_FILE_RULES, 3, SR_CLS_ACTION_ALLOW, SR_FILEOPS_WRITE|SR_FILEOPS_READ,0, SR_CLS_ACTION_DROP, 0, 0, 0, 0);
+	sr_cls_rule_add(SR_FILE_RULES, 4, SR_CLS_ACTION_DROP, SR_FILEOPS_WRITE|SR_FILEOPS_READ,0, SR_CLS_ACTION_DROP, 0, 0, 0, 0);
+	sr_cls_rule_add(SR_FILE_RULES, 5, SR_CLS_ACTION_DROP, SR_FILEOPS_READ,0, SR_CLS_ACTION_DROP, 0, 0, 0, 0);
+	sr_cls_rule_add(SR_FILE_RULES, 6, SR_CLS_ACTION_ALLOW, SR_FILEOPS_READ,0, SR_CLS_ACTION_DROP, 0, 0, 0, 0);
+	sr_cls_rule_add(SR_FILE_RULES, 7, SR_CLS_ACTION_ALLOW, SR_FILEOPS_WRITE,0, SR_CLS_ACTION_DROP, 0, 0, 0, 0);
+	sr_cls_rule_add(SR_FILE_RULES, 8, SR_CLS_ACTION_DROP, SR_FILEOPS_WRITE,0, SR_CLS_ACTION_DROP, 0, 0, 0, 0);
+}
+#endif // SR_DEMO
+
 
 static int __init vsentry_init(void)
 {	
@@ -208,11 +273,17 @@ static int __init vsentry_init(void)
 	}
 	pr_info("[%s]: registration to lsm succeedded\n", MODULE_NAME);	
 
+	sr_cls_port_init();	
+	sr_cls_uid_init();	
+
 	sr_netfilter_init();
 	sr_classifier_init();
 	
 #ifdef UNIT_TEST
 	sal_bitops_test (0);
+	sr_cls_port_ut();
+	sr_cls_uid_ut();
+	sr_cls_canid_ut();
 #endif /* UNIT_TEST */
 
 #if 0
@@ -236,6 +307,10 @@ static void __exit vsentry_cleanup(void)
 	unregister_lsm_hooks();
 	
 	sr_classifier_uninit();
+	sr_cls_port_uninit();
+	sr_cls_uid_uninit();
+	sr_cls_canid_uninit();
+
 	sr_netfilter_uninit();
 
 	cdev_del(cdev_p);

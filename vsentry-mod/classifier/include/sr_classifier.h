@@ -4,11 +4,12 @@
 #include "sr_types.h"
 #include "dispatcher.h"
 #include "sr_cls_port.h"
+#include "sr_cls_uid.h"
 #include "sr_cls_file.h"
 #include "sr_cls_network.h"
 #include "sr_cls_canid.h"
 #include "sal_bitops.h"
-#include "sr_cls_rules_common.h"
+#include "sr_actions_common.h"
 
 SR_32 sr_classifier_init(void);
 SR_32 sr_cls_inode_add_rule(SR_U32 inode, SR_U32 rulenum);
@@ -21,33 +22,6 @@ void sr_cls_rules_init(void);
 SR_32 sr_classifier_network(disp_info_t* info);
 SR_32 sr_classifier_file(disp_info_t* info);
 SR_32 sr_classifier_canbus(disp_info_t* info);
-
-enum sr_rule_type{
-        SR_NET_RULES = 0,
-        SR_FILE_RULES,
-        SR_CAN_RULES,
-        SR_RULES_TYPE_MAX,
-};
-
-// rules actions are a bitmap - some rules are not mutually exclusive - e.g. drop + SMS...
-// enum defines actions as bits. 
-enum cls_actions{
-	SR_CLS_ACTION_NOOP = (1<<0), // Fallthrough
-	SR_CLS_ACTION_ALLOW = (1<<1),
-	SR_CLS_ACTION_DROP=(1<<2),
-	SR_CLS_ACTION_RATE=(1<<3),
-	SR_CLS_ACTION_WL=(1<<4),
-	SR_CLS_ACTION_BL=(1<<5), // Redundant with DROP ?
-	SR_CLS_ACTION_LOG=(1<<6),
-	SR_CLS_ACTION_SMS=(1<<7),
-	SR_CLS_ACTION_EMAIL=(1<<8),
-	SR_CLS_ACTION_TERMINATE=(1<<9), // e.g. kill the process that initiated this violation
-	SR_CLS_ACTION_SKIP_RULE=(1<<10),
-	SR_CLS_ACTION_MAX		// MUST not be more than 8K - this is stored in a 13 bits variable
-};
-#define SR_FILEOPS_READ  (1<<0)
-#define SR_FILEOPS_WRITE (1<<1)
-#define SR_FILEOPS_EXEC  (1<<2)
 
 struct sr_rl_t{ // rate limit tracking
 	SR_U32 max_rate; 	// max allowable rate per timestamp period

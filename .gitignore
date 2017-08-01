@@ -35,7 +35,7 @@
 *~
 *.cmd
 .tmp_versions
-vsentry-mod/files/Module.symvers
 modules.order
 *.mod.c
 vsentry-engine/build/
+vsentry-mod/Module.symvers

@@ -37,8 +37,7 @@ typedef struct _identifier {
 	a tid is actually the identifier of the schedulable object in the kernel (thread), 
 	while the pid is the identifier of the group of schedulable objects that share memory and fds (process).
 */	
-	SR_U32 				gid; /* group identifier */
-	SR_U32 				tid; /* thread identifier */
+	SR_32 				uid; /* user identifier */
 	SR_U32 				pid; /* process identifier */
 }identifier;
 
