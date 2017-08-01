@@ -168,3 +168,12 @@ SR_32 disp_socket_sendmsg(disp_info_t* info)
 		return -EACCES;
 	}	
 }
+
+SR_32 disp_file_exec(disp_info_t* info)
+{
+	if (unlikely(sr_classifier_file(info) == SR_CLS_ACTION_DROP)) {
+		return -EACCES;
+	} else {
+		return 0;
+	}
+}

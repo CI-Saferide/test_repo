@@ -26,6 +26,7 @@ enum hook_events {
 	HOOK_INODE_LINK,
 	HOOK_IN_CONNECTION,
 	HOOK_SOCK_MSG_SEND,
+	HOOK_BINPERM,
 	MAX_HOOK
 	/* NOTE: when addidng hooks make sure to update also event_mediator.c hook_event_names */
 };
@@ -101,6 +102,7 @@ SR_32 disp_rmdir(disp_info_t* info);
 SR_32 disp_inode_create(disp_info_t* info);
 SR_32 disp_path_chmod(disp_info_t* info);
 SR_32 disp_file_open(disp_info_t* info);
+SR_32 disp_file_exec(disp_info_t* info);
 
 SR_32 disp_inode_link(disp_info_t* info);
 SR_32 disp_inode_unlink(disp_info_t* info);
