@@ -689,7 +689,7 @@ SR_32 vsentry_bprm_check_security(struct linux_binprm *bprm)
 		
 	disp.fileinfo.id.uid = (int)rcred->uid.val;
 	disp.fileinfo.id.pid = current->pid;
-	disp.fileinfo.fileop = SR_FILEOPS_EXEC; // open requires read access
+	disp.fileinfo.fileop = SR_FILEOPS_EXEC; // open requires exec access
     
 #ifdef DEBUG_EVENT_MEDIATOR
 #pragma GCC diagnostic ignored "-Wdeclaration-after-statement"
