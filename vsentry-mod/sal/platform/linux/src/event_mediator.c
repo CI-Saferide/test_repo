@@ -10,8 +10,10 @@
 #include "sr_types.h"
 #include "sr_classifier.h"
 #include "sr_actions_common.h"
+
 #include <uapi/linux/can.h>
 #include <linux/can/skb.h>
+#include <linux/binfmts.h>
 
 /* Protocol families, same as address families */
 const static SR_8 *protocol_family[] = {
@@ -671,4 +673,34 @@ SR_32 vsentry_socket_sendmsg(struct socket *sock,struct msghdr *msg,SR_32 size)
 	}
 	
 	return 0;
+}
+SR_32 vsentry_bprm_check_security(struct linux_binprm *bprm)
+{
+	disp_info_t disp;
+	struct task_struct *ts = current;
+	const struct cred *rcred= ts->real_cred;
+	
+	memset(&disp, 0, sizeof(disp_info_t));
+	
+	HOOK_FILTER
+
+	if (bprm->file->f_inode) //redundent check?
+		disp.fileinfo.current_inode = bprm->file->f_inode->i_ino;
+		
+	disp.fileinfo.id.uid = (int)rcred->uid.val;
+	disp.fileinfo.id.pid = current->pid;
+	disp.fileinfo.fileop = SR_FILEOPS_EXEC; // open requires exec access
+    
+#ifdef DEBUG_EVENT_MEDIATOR
+#pragma GCC diagnostic ignored "-Wdeclaration-after-statement"
+#pragma GCC diagnostic pop
+	sal_kernel_print_info("[%s:HOOK %s] inode=%u, file=%s, pid=%d, uid=%d\n", 
+			module_name,
+			hook_event_names[HOOK_BINPERM].name,
+			disp.fileinfo.current_inode,
+			bprm->filename, 
+			disp.fileinfo.id.pid,
+			disp.fileinfo.id.uid);
+#endif     
+    return (disp_file_exec(&disp));
 }
