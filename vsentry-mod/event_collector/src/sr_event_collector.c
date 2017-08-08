@@ -11,7 +11,8 @@ static inline SR_32 sr_ec_allocate_buffer(void)
 {
 	sr_ec_buffer = sr_get_msg(MOD2ENG_BUF, MOD2ENG_MSG_MAX_SIZE); // allocate buffer of 2K size
 	if (!sr_ec_buffer) {
-		sal_kernel_print_alert("sr_ec_allocate_buffer: Failed to allocate buffer\n");
+		// As long as the engine isn't initialized this will not be available, don't spam the log
+		//sal_kernel_print_alert("sr_ec_allocate_buffer: Failed to allocate buffer\n");
 		return SR_ERROR;
 	}
 	memset(sr_ec_buffer, 0, MOD2ENG_MSG_MAX_SIZE);
@@ -31,7 +32,7 @@ static inline SR_BOOL sr_ec_sample_period_exceeded(void)
 
 SR_32 sr_event_collector_init(void)
 {
-	return sr_ec_allocate_buffer();
+	return sr_ec_allocate_buffer(); // Buffer will only be available once engine initializes
 }
 
 void sr_event_collector_uninit(void)
@@ -56,6 +57,9 @@ int sr_ec_send_event(SR_U8 event_type, void *data)
 
 void sr_ec_append_event(SR_U8 event_type, void *sample_data, SR_U32 data_length) 
 {
+	if ( (!sr_ec_buffer) && (sr_ec_allocate_buffer() == SR_ERROR)) {
+		return;
+	}
 	if ( (sr_ec_offset+data_length > MOD2ENG_MSG_MAX_SIZE) || // buffer full
 			(sr_ec_sample_period_exceeded()) ) { // time based constraint
 		// send old buffer and allocate a new one
@@ -65,9 +69,6 @@ void sr_ec_append_event(SR_U8 event_type, void *sample_data, SR_U32 data_length)
 		}
 	}
 	
-	if (!sr_ec_buffer) {
-		sr_ec_allocate_buffer();
-	}
 	sr_ec_buffer[sr_ec_offset++] = event_type;
 	memcpy(&sr_ec_buffer[sr_ec_offset], sample_data, data_length);
 	sr_ec_offset += data_length;
