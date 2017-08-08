@@ -23,6 +23,7 @@ SRCS 		:=  main.c \
 				sr_cls_file_control.c \
 				sr_cls_network_control.c \
 				sr_cls_canbus_control.c \
+				sr_cls_uid_control.c \
 				sr_cls_port_control.c \
 				sr_cls_rules_control.c \
 				sr_msg.c \
