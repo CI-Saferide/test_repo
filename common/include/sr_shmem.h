@@ -29,7 +29,7 @@ typedef struct {
 
 /* define the max size of each msg by type */
 #define ENG2MOD_MSG_MAX_SIZE 	64   /* eng -> mod max msg size 64 bytes */
-#define MOD2ENG_MSG_MAX_SIZE 	64   /* mod -> eng max msg size 64 bytes */
+#define MOD2ENG_MSG_MAX_SIZE 	1024   /* mod -> eng max msg size 1024 bytes - it is aggregated */
 #define LOG_MSG_MAX_SIZE 		2048 /* mod/eng -> log max msg size 2KB */ 
 
 /* define the total number of msgs in each ring buffer */

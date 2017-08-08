@@ -46,7 +46,7 @@ void log_print_cef_msg(CEF_payload *cef)
 SR_32 engine_log_loop(void *data)
 {
 	SR_32 ret;
-	SR_U8 *msg;
+	SR_8 *msg;
 
 	sal_printf("engine_log_loop started\n");
 

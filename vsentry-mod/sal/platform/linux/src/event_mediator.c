@@ -327,6 +327,7 @@ SR_32 vsentry_socket_connect(struct socket *sock, struct sockaddr *address, SR_3
 
 	/* gather metadata */
 	disp.tuple_info.id.uid = (int)rcred->uid.val;
+	disp.tuple_info.id.pid = current->pid;
 	disp.tuple_info.saddr.v4addr.s_addr = 0;
 	disp.tuple_info.sport = 0;
 
