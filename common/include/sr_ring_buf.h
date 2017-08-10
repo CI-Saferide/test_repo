@@ -24,9 +24,9 @@ typedef struct {
 SR_32 sr_ring_buf_calc_buffers(SR_32 mem_size, SR_32 each_buf_size);
 SR_32 sr_ring_buf_calc_mem(SR_32 num_of_buffers, SR_32 each_buf_size);
 SR_32 sr_init_ring_buf(sr_ring_buffer *rb, SR_32 mem_size, SR_32 num_of_buffers, SR_32 each_buf_size);
-SR_U8 *sr_get_buf(sr_ring_buffer *rb, SR_32 size);
+SR_8 *sr_get_buf(sr_ring_buffer *rb, SR_32 size);
 SR_32 sr_write_buf(sr_ring_buffer *rb, SR_32 size);
-SR_U8 *sr_read_buf(sr_ring_buffer *rb, SR_32 *size);
+SR_8 *sr_read_buf(sr_ring_buffer *rb, SR_32 *size);
 void sr_free_buf(sr_ring_buffer *rb);
 void sr_print_rb_info(sr_ring_buffer *rb);
 

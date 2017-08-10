@@ -23,11 +23,13 @@ SRCS 		:=  main.c \
 				sr_cls_file_control.c \
 				sr_cls_network_control.c \
 				sr_cls_canbus_control.c \
+				sr_cls_uid_control.c \
 				sr_cls_port_control.c \
 				sr_cls_rules_control.c \
 				sr_msg.c \
 				sr_ring_buf.c \
 				sr_tasks.c \
+				sr_event_receiver.c \
 				sr_engine_main.c \
 				sr_config.c \
 				sr_cli.c \

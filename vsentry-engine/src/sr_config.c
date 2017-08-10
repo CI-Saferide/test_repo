@@ -91,6 +91,10 @@ SR_BOOL read_config_file (void)
 	enum sr_header_type		rec_type;
 	conf_file = fopen(filename,"rb");
 	
+	if (!conf_file) {
+		return SR_TRUE;
+	}
+
 	while (!feof(conf_file)) {
 		if (1 != fread(&rec_type, sizeof(rec_type), 1, conf_file)) {
 				fclose (conf_file);

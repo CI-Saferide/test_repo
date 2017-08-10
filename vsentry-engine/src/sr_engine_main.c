@@ -11,13 +11,14 @@
 #include "sr_cls_canbus_control.h"
 #include "sr_cls_port_control.h"
 #include "sr_cls_rules_control.h"
+#include "sr_event_receiver.h"
 #include "sr_config.h"
 #include <arpa/inet.h> // TODO: take care of the agnostic part
 
 SR_32 engine_main_loop(void *data)
 {
 	SR_32 ret;
-	SR_U8 *msg;
+	SR_8 *msg;
 
 	sal_printf("engine_main_loop started\n");
 
@@ -31,7 +32,7 @@ SR_32 engine_main_loop(void *data)
 	while (!sr_task_should_stop(SR_ENGINE_TASK)) {
 		msg = sr_read_msg(MOD2ENG_BUF, &ret);
 		if (ret > 0) {
-			sal_printf("MOD2ENG msg[len %d]. msg: %s\n", ret, msg);
+			sr_event_receiver(msg, ret);
 			sr_free_msg(MOD2ENG_BUF);
 		}
 
