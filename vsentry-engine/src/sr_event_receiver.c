@@ -35,11 +35,6 @@ void sr_event_receiver(SR_8 *msg_buff, SR_U32 msg_len)
 	struct sr_ec_new_connection_t *pNewConnection;
 	SR_U32 offset = 0;
 
-	if (!(++counter % 3)) {
-		sr_ml_changemode(ML_MODE_DETECT);
-	} else {
-		sr_ml_changemode(ML_MODE_LEARN);
-	}
 	while (offset < msg_len) {
 		switch  (msg_buff[offset++]) {
 			case SR_EC_NEW_CONNECTION:
