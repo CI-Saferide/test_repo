@@ -90,7 +90,6 @@ int sr_ml_node_save(struct radix_node *node, void *fd)
 	struct sockaddr_in *ip=(struct sockaddr_in *)(node->rn_u.rn_leaf.rn_Key);
 	char c;
 
-	printf("Node: %x\n", ip->sin_addr.s_addr);
 	c=4; // ipv4/ipv6
 	if (write((int)*(int*)fd, &c, 1) != 1) { 
 		printf("Failed to write to conngraph conf file!\n");
