@@ -42,6 +42,8 @@ void sr_event_collector_uninit(void)
 
 int sr_ec_send_event(SR_U8 event_type, void *data)
 {
+	struct sr_ec_new_connection_t *pNewConnection = (struct sr_ec_new_connection_t *)data;
+
 	switch (event_type) {
 		case SR_EC_NEW_CONNECTION:
 			// collect
