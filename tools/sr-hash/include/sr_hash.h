@@ -23,8 +23,8 @@ struct sr_hash_ent_t{
 	SR_U32 key;
 	SR_U32 type;
 	struct sr_hash_ent_t *next;
-	bit_array rules;
 	enum policy_cls ent_type;
+	bit_array rules;
 };
 
 struct sr_hash_bucket_t{
@@ -41,7 +41,7 @@ struct sr_hash_table_t{
 
 
 struct sr_hash_table_t *sr_hash_new_table(int count);
-int sr_hash_insert(struct sr_hash_table_t *table, struct sr_hash_ent_t *ent);
+int sr_hash_insert(struct sr_hash_table_t *table, void *ent);
 void sr_hash_delete(struct sr_hash_table_t *table, SR_U32 key);
 struct sr_hash_ent_t *sr_hash_lookup(struct sr_hash_table_t *table, SR_U32 key);
 void sr_hash_free_table(struct sr_hash_table_t *table);

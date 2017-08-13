@@ -110,10 +110,10 @@ SR_BOOL read_config_file (void)
 				fclose (conf_file);
 				return SR_FALSE;
 			}
-			sr_cls_port_add_rule(net_rec.src_port, net_rec.rulenum, SR_DIR_SRC, net_rec.proto);
-			sr_cls_port_add_rule(net_rec.dst_port, net_rec.rulenum, SR_DIR_DST, net_rec.proto);
-			sr_cls_add_ipv4(htonl(net_rec.src_addr), htonl(net_rec.src_netmask), net_rec.rulenum, SR_DIR_SRC);
-			sr_cls_add_ipv4(htonl(net_rec.dst_addr), htonl(net_rec.dst_netmask), net_rec.rulenum, SR_DIR_DST);
+			sr_cls_port_add_rule(net_rec.src_port, process, net_rec.rulenum, SR_DIR_SRC, net_rec.proto);
+			sr_cls_port_add_rule(net_rec.dst_port, process, net_rec.rulenum, SR_DIR_DST, net_rec.proto);
+			sr_cls_add_ipv4(htonl(net_rec.src_addr), process, htonl(net_rec.src_netmask), net_rec.rulenum, SR_DIR_SRC);
+			sr_cls_add_ipv4(htonl(net_rec.dst_addr), process, htonl(net_rec.dst_netmask), net_rec.rulenum, SR_DIR_DST);
 			sr_cls_rule_add(SR_NET_RULES, net_rec.rulenum, net_rec.action.actions_bitmap, 0, net_rec.max_rate, net_rec.rate_action, net_rec.action.log_target, net_rec.action.email_id, net_rec.action.phone_id, net_rec.action.skip_rulenum);
 			break;
 			}
@@ -137,7 +137,7 @@ SR_BOOL read_config_file (void)
 				fclose (conf_file);
 				return SR_FALSE;
 			}
-			sr_cls_file_add_rule(filename, file_rec.rulenum, 1);
+			sr_cls_file_add_rule(filename, process, file_rec.rulenum, 1);
 			sr_cls_rule_add(SR_FILE_RULES, file_rec.rulenum, file_rec.action.actions_bitmap, SR_FILEOPS_READ, file_rec.max_rate, file_rec.rate_action, file_rec.action.log_target, file_rec.action.email_id, file_rec.action.phone_id, file_rec.action.skip_rulenum);
 			break;
 			}
@@ -148,13 +148,13 @@ SR_BOOL read_config_file (void)
 				fclose (conf_file);
 				return SR_FALSE;
 			}
-			//memset(process, 0, 4096); //TODO: debug why it erase the process string
+			memset(process, 0, 4096);
 			if (can_rec.process_size != fread(&process, sizeof(SR_8), can_rec.process_size, conf_file)) {
 				sal_printf("fail to read from config file, line %d\n", __LINE__);
 				fclose (conf_file);
 				return SR_FALSE;
 			}
-			sr_cls_canid_add_rule(can_rec.msg_id,can_rec.rulenum);
+			sr_cls_canid_add_rule(can_rec.msg_id, process, can_rec.rulenum);
 			sr_cls_rule_add(SR_CAN_RULES, can_rec.rulenum, can_rec.action.actions_bitmap, 0, can_rec.max_rate, can_rec.rate_action, can_rec.action.log_target, can_rec.action.email_id, can_rec.action.phone_id, can_rec.action.skip_rulenum);
 			break;
 			}
@@ -221,48 +221,79 @@ SR_BOOL read_config_file (void)
 
 SR_BOOL config_ut(void)
 {
-	//struct sr_file_entry		file_rec = {0};
-	//struct sr_net_entry			net_rec = {0};
-	//struct sr_can_entry			can_rec = {0};
-	////struct sr_phone_record		phone_rec = {0};
-	////struct sr_email_entry		email_rec = {0};
-	////struct sr_log_entry			log_rec = {0};
-	
-	//net_rec.rulenum = 80;
-	//net_rec.src_addr = 0x0a0a0a00;
-	//net_rec.src_netmask = 0xFFFFFF00;
-	//net_rec.dst_addr = 0x0a0a0a00;
-	//net_rec.dst_netmask = 0xFFFFFF00;
-	//net_rec.action.actions_bitmap = SR_CLS_ACTION_DROP;
-	//net_rec.action.email_id = 7;
-	//net_rec.src_port = 0;
-	//net_rec.dst_port = 22;
-	//net_rec.proto = SR_PROTO_TCP;
-	//net_rec.action.log_target = 8;
-	//net_rec.action.phone_id = 4;
+/*
+	struct sr_file_entry		file_rec = {0};
+	struct sr_net_entry			net_rec = {0};
+	struct sr_can_entry			can_rec = {0};
+	struct sr_phone_record		phone_rec = {0};
+	struct sr_email_entry		email_rec = {0};
+	struct sr_log_entry			log_rec = {0};
+
+	net_rec.rulenum = 80;
+	net_rec.src_addr = 0x0a0a0a00;
+	net_rec.src_netmask = 0x0;
+	net_rec.dst_addr = 0x0a0a0a00;
+	net_rec.dst_netmask = 0x0;
+	net_rec.action.actions_bitmap = SR_CLS_ACTION_DROP;
+	net_rec.action.email_id = 7;
+	net_rec.src_port = 0;
+	net_rec.dst_port = 7777;
+	net_rec.proto = SR_PROTO_TCP;
+	net_rec.action.log_target = 8;
+	net_rec.action.phone_id = 4;
 	//net_rec.action.skip_rulenum = 258;
-	//net_rec.uid = 13579;
-	//strncpy(net_rec.process, "/sbin/../bin/sh", strlen("/sbin/../bin/sh"));
-	//net_rec.process_size = strlen(net_rec.process);
-	//write_config_record(&net_rec, CONFIG_NET_RULE);
+        //net_rec.uid = 13579;
+	strncpy(net_rec.process, "/home/arik/arik/client", strlen("/home/arik/arik/client"));
+	//strncpy(net_rec.process, "*", strlen("*"));
+	net_rec.process_size = strlen(net_rec.process);
+	write_config_record(&net_rec, CONFIG_NET_RULE);
+
+	net_rec.rulenum = 85;
+	net_rec.src_addr = 0x0a0a0a00;
+	net_rec.src_netmask = 0x0;
+	net_rec.dst_addr = 0x0a0a0a00;
+	net_rec.dst_netmask = 0x0;
+	net_rec.action.actions_bitmap = SR_CLS_ACTION_DROP;
+	net_rec.action.email_id = 7;
+	net_rec.src_port = 7778;
+	net_rec.dst_port = 0;
+	net_rec.proto = SR_PROTO_TCP;
+	net_rec.action.log_target = 8;
+	net_rec.action.phone_id = 4;
+	//net_rec.action.skip_rulenum = 258;
+        //net_rec.uid = 13579;
+	strncpy(net_rec.process, "/home/arik/arik/server", strlen("/home/arik/arik/server"));
+	//strncpy(net_rec.process, "*", strlen("*"));
+	net_rec.process_size = strlen(net_rec.process);
+	write_config_record(&net_rec, CONFIG_NET_RULE);
 	
-			
-	//file_rec.rulenum=457;	
-	//file_rec.action.actions_bitmap=SR_CLS_ACTION_DROP;		
-	//file_rec.uid=30;		
-	//strncpy(file_rec.filename, "/home/shay/Downloads", strlen("/home/shay/Downloads"));
-	//strncpy(file_rec.process, "/bin/chmod", strlen("/bin/chmod"));
-	//file_rec.process_size = strlen(file_rec.process);
-	//file_rec.filename_size = strlen(file_rec.filename);
-	//write_config_record(&file_rec, CONFIG_FILE_RULE);
+	file_rec.rulenum=457;	
+	file_rec.action.actions_bitmap=SR_CLS_ACTION_DROP;		
+	file_rec.uid=-1;
+	strncpy(file_rec.filename, "/home/arik/arik/log", strlen("/home/arik/arik/log"));
+	strncpy(file_rec.process, "/bin/cat", strlen("/bin/cat"));
+	file_rec.process_size = strlen(file_rec.process);
+	file_rec.filename_size = strlen(file_rec.filename);
+	write_config_record(&file_rec, CONFIG_FILE_RULE);
+
+	file_rec.rulenum=404;	
+	file_rec.action.actions_bitmap=SR_CLS_ACTION_DROP;		
+	file_rec.uid=-1;
+	strncpy(file_rec.filename, "/home/arik/arik/log1", strlen("/home/arik/arik/log1"));
+	//strncpy(file_rec.process, "/bin/cat", strlen("/bin/cat"));
+	strncpy(file_rec.process, "*", strlen("*"));
+	file_rec.process_size = strlen(file_rec.process);
+	file_rec.filename_size = strlen(file_rec.filename);
+	write_config_record(&file_rec, CONFIG_FILE_RULE);
 		
-    //can_rec.rulenum=4095;	
-    //can_rec.msg_id=0x123;		
-    //can_rec.action.actions_bitmap=SR_CLS_ACTION_DROP;	
-    //can_rec.uid=20;
-    //strncpy(file_rec.process, "/bin/cansend", strlen("/bin/cansend"));
-	//can_rec.process_size = strlen(can_rec.process);
-	//write_config_record(&can_rec, CONFIG_CAN_RULE);
+        can_rec.rulenum=40;	
+        can_rec.msg_id=0x123;		
+        can_rec.action.actions_bitmap=SR_CLS_ACTION_DROP;	
+        can_rec.uid=20;
+        strncpy(can_rec.process, "/usr/bin/cansend", strlen("/usr/bin/cansend"));
+        //strncpy(can_rec.process, "*", strlen("*"));
+	can_rec.process_size = strlen(can_rec.process);
+	write_config_record(&can_rec, CONFIG_CAN_RULE);
 
 	//phone_rec.phone_id=17;
 	//strncpy(phone_rec.phone_number, "054-7653982", strlen("054-7653982"));
@@ -277,6 +308,7 @@ SR_BOOL config_ut(void)
 	//strncpy(log_rec.log_target, "/var/log/syslog", strlen("/var/log/syslog"));
 	//log_rec.log_size = strlen(log_rec.log_target);
 	//write_config_record(&log_rec, CONFIG_LOG_TARGET);
+*/
 
 	read_config_file();
 	return SR_TRUE;

@@ -3,6 +3,7 @@
 #include "sr_shmem.h"
 #include "sr_msg.h"
 #include "sr_msg_dispatch.h"
+#include "sr_engine_utils.h"
 
 //#include "sr_cls_file.h"
 //#include "sr_hash.h"
@@ -10,15 +11,23 @@
 // filename: path of file/dir to add rule to
 // rulenum: index of rule to be added
 // treetop: 1 for the first call, 0 for recursive calls further down.
-int sr_cls_file_add_rule(char *filename, SR_U32 rulenum, SR_U8 treetop)
+int sr_cls_file_add_rule(char *filename, char *exec, SR_U32 rulenum, SR_U8 treetop)
 {
 	struct stat buf;
 	sr_file_msg_cls_t *msg;
+	SR_U32 exec_inode;
+        int st;
 
 	if(lstat(filename, &buf)) { // Error
 		perror("lstat");
 		return SR_ERROR;
 	}
+
+	if ((st = sr_get_inode(exec, 0, &exec_inode)) != SR_SUCCESS) {
+	    sal_printf("Error: %s failed getting inode \n", __FUNCTION__);
+	    return st;
+	}
+
 	if (S_ISREG(buf.st_mode)) {
 		if ((buf.st_nlink > 1) && (treetop)) {
 			sal_printf("Error: Cannot add classification rules for hard links\n");
@@ -31,6 +40,7 @@ int sr_cls_file_add_rule(char *filename, SR_U32 rulenum, SR_U8 treetop)
 			msg->sub_msg.msg_type = SR_CLS_INODE_ADD_RULE;
 			msg->sub_msg.rulenum = rulenum;
 			msg->sub_msg.inode1=buf.st_ino;
+			msg->sub_msg.exec_inode= exec_inode;
 			sr_send_msg(ENG2MOD_BUF, sizeof(msg));
 		}
 	}
@@ -42,6 +52,7 @@ int sr_cls_file_add_rule(char *filename, SR_U32 rulenum, SR_U8 treetop)
 			msg->sub_msg.msg_type = SR_CLS_INODE_ADD_RULE;
 			msg->sub_msg.rulenum = rulenum;
 			msg->sub_msg.inode1=buf.st_ino;
+			msg->sub_msg.exec_inode=exec_inode;
 			sr_send_msg(ENG2MOD_BUF, sizeof(msg));
 		}
 		// Now iterate subtree
@@ -61,7 +72,7 @@ int sr_cls_file_add_rule(char *filename, SR_U32 rulenum, SR_U8 treetop)
 				if ((!strcmp(de->d_name, ".")) || (!strcmp(de->d_name, "..")))
 					continue;
 				snprintf(fullpath, SR_MAX_PATH, "%s/%s", filename, de->d_name);
-				sr_cls_file_add_rule(fullpath, rulenum, 0);
+				sr_cls_file_add_rule(fullpath, exec, rulenum, 0);
 			}
 		}
 	}
@@ -74,6 +85,7 @@ int sr_cls_file_add_rule(char *filename, SR_U32 rulenum, SR_U8 treetop)
 			msg->sub_msg.msg_type = SR_CLS_INODE_ADD_RULE;
 			msg->sub_msg.rulenum = rulenum;
 			msg->sub_msg.inode1=buf.st_ino;
+			msg->sub_msg.exec_inode=exec_inode;
 			sr_send_msg(ENG2MOD_BUF, sizeof(msg));
 		}
 		//TODO: Do I need to update the destination file as well ???
@@ -86,14 +98,22 @@ int sr_cls_file_add_rule(char *filename, SR_U32 rulenum, SR_U8 treetop)
 // filename: path of file/dir to add rule to
 // rulenum: index of rule to be added
 // treetop: 1 for the first call, 0 for recursive calls further down.
-int sr_cls_file_del_rule(char *filename, SR_U32 rulenum, SR_U8 treetop)
+int sr_cls_file_del_rule(char *filename, char *exec, SR_U32 rulenum, SR_U8 treetop)
 {
 	struct stat buf;
 	sr_file_msg_cls_t *msg;
+	SR_U32 exec_inode;
+        int st;
 
 	if(lstat(filename, &buf)) { // Error
 		return SR_ERROR;
 	}
+
+	if ((st = sr_get_inode(exec, 0, &exec_inode)) != SR_SUCCESS) {
+	    sal_printf("Error: %s failed getting inode \n", __FUNCTION__);
+	   return st;
+	}
+
 	if (S_ISREG(buf.st_mode)) {
 		if ((buf.st_nlink > 1) && (treetop)) {
 			printf("Error: Cannot del classification rules for hard links\n");
@@ -105,6 +125,7 @@ int sr_cls_file_del_rule(char *filename, SR_U32 rulenum, SR_U8 treetop)
 			msg->sub_msg.msg_type = SR_CLS_INODE_DEL_RULE;
 			msg->sub_msg.rulenum = rulenum;
 			msg->sub_msg.inode1=buf.st_ino;
+			msg->sub_msg.exec_inode=exec_inode;
 			sr_send_msg(ENG2MOD_BUF, sizeof(msg));
 		}
 	}
@@ -116,6 +137,7 @@ int sr_cls_file_del_rule(char *filename, SR_U32 rulenum, SR_U8 treetop)
 			msg->sub_msg.msg_type = SR_CLS_INODE_DEL_RULE;
 			msg->sub_msg.rulenum = rulenum;
 			msg->sub_msg.inode1=buf.st_ino;
+			msg->sub_msg.exec_inode=exec_inode;
 			sr_send_msg(ENG2MOD_BUF, sizeof(msg));
 		}
 		// Now iterate subtree
@@ -135,7 +157,7 @@ int sr_cls_file_del_rule(char *filename, SR_U32 rulenum, SR_U8 treetop)
 				if ((!strcmp(de->d_name, ".")) || (!strcmp(de->d_name, "..")))
 					continue;
 				snprintf(fullpath, SR_MAX_PATH, "%s/%s", filename, de->d_name);
-				sr_cls_file_del_rule(fullpath, rulenum, 0);
+				sr_cls_file_del_rule(fullpath, exec, rulenum, 0);
 			}
 		}
 	}
@@ -241,7 +263,7 @@ void sr_cls_file_delete(char *filename)
 
 void sr_cls_control_ut(void)
 {
-	sr_cls_file_add_rule("/home/hilik/Desktop/git/vsentry/", 10, 1);
+	sr_cls_file_add_rule("/home/hilik/Desktop/git/vsentry/", "ls", 10, 1);
 	sr_cls_file_create("/usr/lib/shotwell");
 	return ;
 }

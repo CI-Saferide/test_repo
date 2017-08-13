@@ -5,6 +5,8 @@
 #include "dispatcher.h"
 #include "sr_cls_port.h"
 #include "sr_cls_uid.h"
+#include "sr_cls_exec_file.h"
+#include "sr_cls_process.h"
 #include "sr_cls_file.h"
 #include "sr_cls_network.h"
 #include "sr_cls_canid.h"

@@ -13,6 +13,7 @@
 #include "sal_linux.h"
 #include "dispatcher.h"
 #include "sr_classifier.h"
+#include "sr_cls_process.h"
 
 #include "sr_ring_buf.h"
 #include "sr_shmem.h"
@@ -176,6 +177,7 @@ static int dummy_tx_thread_loop(void *arg)
 void sr_demo(void) 
 {
 	// Populate rules for demo on 7/13/2017
+#ifdef 0
 	sr_cls_add_ipv4(htonl(0x0a0a0a00), htonl(0xFFFFFF00), 50, SR_DIR_SRC);
 	sr_cls_port_add_rule(22, 50, SR_DIR_SRC, IPPROTO_TCP);
 	sr_cls_add_ipv4(htonl(0x0a0a0a00), htonl(0xFFFFFF00), 60, SR_DIR_SRC);
@@ -234,6 +236,7 @@ void sr_demo(void)
 	sr_cls_rule_add(SR_FILE_RULES, 6, SR_CLS_ACTION_ALLOW, SR_FILEOPS_READ,0, SR_CLS_ACTION_DROP, 0, 0, 0, 0);
 	sr_cls_rule_add(SR_FILE_RULES, 7, SR_CLS_ACTION_ALLOW, SR_FILEOPS_WRITE,0, SR_CLS_ACTION_DROP, 0, 0, 0, 0);
 	sr_cls_rule_add(SR_FILE_RULES, 8, SR_CLS_ACTION_DROP, SR_FILEOPS_WRITE,0, SR_CLS_ACTION_DROP, 0, 0, 0, 0);
+#endif
 }
 #endif // SR_DEMO
 
@@ -275,6 +278,8 @@ static int __init vsentry_init(void)
 
 	sr_cls_port_init();	
 	sr_cls_uid_init();	
+	sr_cls_exec_file_init();
+	sr_cls_process_init();
 
 	sr_netfilter_init();
 	sr_classifier_init();
@@ -291,6 +296,8 @@ static int __init vsentry_init(void)
 	sr_cls_port_ut();
 	sr_cls_uid_ut();
 	sr_cls_canid_ut();
+	sr_cls_exec_file_ut();
+	sr_cls_process_ut();
 #endif /* UNIT_TEST */
 
 #if 0
@@ -315,6 +322,8 @@ static void __exit vsentry_cleanup(void)
 	
 	sr_classifier_uninit();
 	sr_cls_port_uninit();
+	sr_cls_exec_file_uninit();	
+	sr_cls_process_uninit();
 	sr_cls_uid_uninit();
 	sr_cls_canid_uninit();
 

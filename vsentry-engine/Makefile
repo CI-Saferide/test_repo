@@ -28,6 +28,7 @@ SRCS 		:=  main.c \
 				sr_msg.c \
 				sr_ring_buf.c \
 				sr_tasks.c \
+				sr_engine_utils.c \
 				sr_engine_main.c \
 				sr_config.c \
 				sr_cli.c \
