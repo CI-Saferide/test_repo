@@ -161,7 +161,7 @@ SR_32 sr_classifier_file(disp_info_t* info)
 		return SR_CLS_ACTION_ALLOW;
 	}
 
-/* XXX UID should be fixed */
+/* XXX UID should be fixed. The UID values are not updated in rules or any bitmaps */
 #if 0
 	// UID
 	if (info->tuple_info.id.uid != UID_ANY) {
