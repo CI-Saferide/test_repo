@@ -1,11 +1,11 @@
 #include "dispatcher.h"
 #include "sal_module.h"
 #include "sal_bitops.h"
-#include "sr_radix.h"
 #include "sr_cls_file.h"
 #include "sr_classifier.h"
 #include "sr_sal_common.h"
 #include "sr_cls_network_common.h"
+#include "sr_radix.h"
 
 struct radix_head *sr_cls_src_ipv4;
 bit_array sr_cls_network_src_any_rules;

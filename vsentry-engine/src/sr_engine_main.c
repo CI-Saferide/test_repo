@@ -13,7 +13,9 @@
 #include "sr_cls_rules_control.h"
 #include "sr_event_receiver.h"
 #include "sr_config.h"
+#include "sr_ml_conngraph.h"
 #include "sr_sal_common.h"
+
 
 SR_32 engine_main_loop(void *data)
 {
@@ -78,6 +80,12 @@ SR_32 sr_engine_start(void)
 	ret = sr_log_init("[VSENTRY]", 0);
 	if (ret != SR_SUCCESS){
 		sal_printf("failed to init sr_log\n");
+		return SR_ERROR;
+	}
+
+	ret = sr_ml_conngraph_init();
+	if (ret != SR_SUCCESS){
+		sal_printf("failed to init sr_ml_conngraph\n");
 		return SR_ERROR;
 	}
 

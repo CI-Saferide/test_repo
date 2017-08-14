@@ -17,6 +17,9 @@
 #include <sys/mman.h>
 #include  <sys/stat.h>
 #include <arpa/inet.h>
+#include <netinet/in.h>
+#include <sys/types.h>
+#include <sys/stat.h>
 
 #define VS_FILE_NAME 	"/dev/vsentry"
 

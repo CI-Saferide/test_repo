@@ -12,12 +12,18 @@ enum sr_ec_event_type {
 #pragma pack(push, 1)
 struct sr_ec_new_connection_t{
         SR_U32 pid;
+        SR_U32 uid;
+        union {
+                SR_U32 v4addr;
+                // FUTURE struct in6_addr v6addr;
+        } source_addr;
         union {
                 SR_U32 v4addr;
                 // FUTURE struct in6_addr v6addr;
         } remote_addr;
-        SR_U8 ip_proto;
         SR_U16 dport;
+        SR_U16 sport;
+        SR_U8 ip_proto;
         // TODO: do we need the classification result ?
 };
 #pragma pack(pop)

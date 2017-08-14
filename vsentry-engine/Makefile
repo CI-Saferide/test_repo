@@ -23,7 +23,9 @@ SRCS 		:=  main.c \
 				sr_cls_file_control.c \
 				sr_cls_network_control.c \
 				sr_cls_canbus_control.c \
+				sr_ml_conngraph.c \
 				sr_cls_uid_control.c \
+				sr_radix.c \
 				sr_cls_port_control.c \
 				sr_cls_rules_control.c \
 				sr_msg.c \
@@ -38,6 +40,7 @@ SRCS 		:=  main.c \
 # include folders
 INCLUDES 	:=  -I../common/include \
 				-Iinclude \
+				-I$(TOP_DIR)/../tools/radix/include \
 				-Isal/platform/linux/include \
 				-I../tools/sr-log/include
 

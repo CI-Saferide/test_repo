@@ -116,9 +116,12 @@ SR_32 disp_socket_connect(disp_info_t* info)
 	struct sr_ec_new_connection_t sample_data;
 
 	sample_data.pid = info->tuple_info.id.pid;
+	sample_data.uid = info->tuple_info.id.uid;
 	sample_data.remote_addr.v4addr = info->tuple_info.daddr.v4addr.s_addr;
+	sample_data.source_addr.v4addr = info->tuple_info.saddr.v4addr.s_addr; //TODO: source is still 0 in most cases
 	sample_data.ip_proto = info->tuple_info.ip_proto;
 	sample_data.dport = info->tuple_info.dport;
+	sample_data.sport = info->tuple_info.sport;
 	sr_ec_send_event(SR_EC_NEW_CONNECTION, &sample_data);
 	return (sr_classifier_network(info));
 }
@@ -128,9 +131,12 @@ SR_32 disp_incoming_connection(disp_info_t* info)
 	struct sr_ec_new_connection_t sample_data;
 
 	sample_data.pid = info->tuple_info.id.pid;
+	sample_data.uid = info->tuple_info.id.uid;
 	sample_data.remote_addr.v4addr = info->tuple_info.saddr.v4addr.s_addr;
+	sample_data.source_addr.v4addr = info->tuple_info.daddr.v4addr.s_addr;
 	sample_data.ip_proto = info->tuple_info.ip_proto;
 	sample_data.dport = info->tuple_info.sport;
+	sample_data.sport = info->tuple_info.dport;
 	sr_ec_send_event(SR_EC_NEW_CONNECTION, &sample_data);
 
 	return sr_classifier_network(info);

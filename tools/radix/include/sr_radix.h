@@ -34,7 +34,10 @@
 #define	_RADIX_H_
 
 #include "sal_linux.h"
+#include "sr_types.h"
+#ifdef __KERNEL__
 #include "sal_bitops.h"
+#endif // __KERNEL__
 
 #ifdef MALLOC_DECLARE
 MALLOC_DECLARE(M_RTABLE);
@@ -65,9 +68,11 @@ struct radix_node {
 			struct	radix_node *rn_R;/* progeny */
 		} rn_node;
 	}		rn_u;
+#ifdef __KERNEL__
 	struct {
 		bit_array rules;
 	} sr_private;
+#endif // __KERNEL__
 
 #ifdef RN_DEBUG
 	int rn_info;
@@ -149,9 +154,15 @@ struct radix_mask_head {
 void rn_inithead_internal(struct radix_head *rh, struct radix_node *base_nodes,
     int off);
 
+#ifdef __KERNEL__
 #define R_Malloc(p, t, n) (p = (t) SR_ALLOC((unsigned long)(n)))
 #define R_Zalloc(p, t, n) (p = (t) SR_ZALLOC((unsigned long)(n)))
 #define R_Free(p) SR_FREE((caddr_t)p);
+#else
+#define R_Malloc(p, t, n) (p = (t) malloc((unsigned long)(n)))
+#define R_Zalloc(p, t, n) (p = (t) calloc(1, (unsigned long)(n)))
+#define R_Free(p) free((caddr_t)p);
+#endif
 
 #define	RADIX_NODE_HEAD_LOCK_INIT(rnh)	\
     rw_init_flags(&(rnh)->rnh_lock, "radix node head", 0)
