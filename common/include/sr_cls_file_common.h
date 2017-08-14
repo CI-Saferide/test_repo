@@ -16,6 +16,7 @@ struct sr_cls_file_msg {
 	SR_U32	rulenum;
 	SR_U32  inode1;
 	SR_U32  inode2;
+	SR_U32  exec_inode;
 };
 
 #endif /* SR_CLS_FILE_COMMON_H */

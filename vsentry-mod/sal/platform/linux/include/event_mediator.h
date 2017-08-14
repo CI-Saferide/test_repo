@@ -66,4 +66,5 @@ SR_32 vsentry_socket_create(SR_32 family, SR_32 type, SR_32 protocol, SR_32 kern
 SR_32 vsentry_incoming_connection(struct sk_buff *skb);
 SR_32 vsentry_socket_sendmsg(struct socket *sock,struct msghdr *msg, SR_32 size);
 SR_32 vsentry_bprm_check_security(struct linux_binprm *bprm);
+void vsentry_task_free(struct task_struct *task);
 #endif /* _EVENT_MEDIATOR_H */

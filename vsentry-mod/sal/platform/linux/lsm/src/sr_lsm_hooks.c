@@ -231,14 +231,6 @@ static int vsentry_task_create(unsigned long clone_flags)
 	return 0;
 }
 
-static void vsentry_task_free(struct task_struct *task)
-{
-	if(hook_filter())
-		return;
-
-	return;
-}
-
 static int vsentry_kernel_module_request(char *kmod_name)
 {
 	if(hook_filter())

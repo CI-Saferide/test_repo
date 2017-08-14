@@ -163,3 +163,25 @@ SR_U32 sal_get_curr_time_nsec(void)
 
 	return (ts.tv_nsec);
 }
+
+SR_U32 sal_get_exec_inode(SR_32 pid)
+{
+        struct task_struct *p;
+        struct mm_struct *mm;
+        struct file *exe_file;
+ 	
+	if (!pid)
+	   return 0;
+
+	if (!(p = pid_task(find_vpid(pid), PIDTYPE_PID)))
+	   return 0; // Not found
+
+	mm = p->mm;
+	if (!mm)
+	   return 0;
+	exe_file = mm->exe_file;
+	if (!exe_file)
+	   return 0;
+	return exe_file->f_path.dentry->d_inode->i_ino;
+}
+
