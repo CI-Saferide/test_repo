@@ -160,6 +160,9 @@ SR_32 sr_classifier_file(disp_info_t* info)
 	if (array_is_clear(ba_res)) {
 		return SR_CLS_ACTION_ALLOW;
 	}
+
+/* XXX UID should be fixed */
+#if 0
 	// UID
 	if (info->tuple_info.id.uid != UID_ANY) {
 		ptr = sr_cls_match_uid(SR_FILE_RULES, info->tuple_info.id.uid);
@@ -174,6 +177,7 @@ SR_32 sr_classifier_file(disp_info_t* info)
 	if (array_is_clear(ba_res)) {
 		return SR_CLS_ACTION_ALLOW;
 	}
+#endif
 
 	// PID
 	if ((st = sr_cls_process_add(info->fileinfo.id.pid)) != SR_SUCCESS) {
