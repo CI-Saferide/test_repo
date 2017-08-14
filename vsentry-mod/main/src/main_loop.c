@@ -80,6 +80,9 @@ SR_32 sr_msg_dispatch(char *msg, int size)
 			sr_cls_network_msg_dispatch((struct sr_cls_network_msg *)hdr->msg_payload);
 			}
 			break;
+		case SR_MSG_TYPE_CLS_UID:
+			sr_cls_uid_msg_dispatch((struct sr_cls_uid_msg *)hdr->msg_payload);
+			break;
 		case SR_MSG_TYPE_CLS_CANBUS:
 			sr_cls_canid_msg_dispatch((struct sr_cls_canbus_msg *)hdr->msg_payload);
 			break;

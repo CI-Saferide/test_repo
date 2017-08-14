@@ -327,6 +327,7 @@ SR_32 vsentry_socket_connect(struct socket *sock, struct sockaddr *address, SR_3
 
 	/* gather metadata */
 	disp.tuple_info.id.uid = (int)rcred->uid.val;
+	disp.tuple_info.id.pid = current->pid;
 	disp.tuple_info.saddr.v4addr.s_addr = 0;
 	disp.tuple_info.sport = 0;
 	disp.tuple_info.id.pid = current->pid;
@@ -482,11 +483,17 @@ SR_32 vsentry_file_open(struct file *file, const struct cred *cred)
 		disp.fileinfo.current_inode = file->f_path.dentry->d_inode->i_ino;
 	else
 		sal_kernel_print_err("[%s] inode in null\n", hook_event_names[HOOK_FILE_OPEN].name);
+	//printk("vsentry_file_open: f_mode is %d, f_flags is %d\n", file->f_mode, file->f_flags);
 	disp.fileinfo.parent_inode = 0;
 		
 	disp.fileinfo.id.uid = (int)rcred->uid.val;
 	disp.fileinfo.id.pid = current->pid;
-	disp.fileinfo.fileop = SR_FILEOPS_READ; // open requires read access
+	if (file->f_mode & FMODE_WRITE)
+		disp.fileinfo.fileop |= SR_FILEOPS_WRITE;
+	if (file->f_mode & FMODE_READ)
+		disp.fileinfo.fileop |= SR_FILEOPS_READ;
+	if (file->f_mode & FMODE_EXEC)
+		disp.fileinfo.fileop |= SR_FILEOPS_EXEC;
 
 #ifdef DEBUG_EVENT_MEDIATOR
 #pragma GCC diagnostic ignored "-Wdeclaration-after-statement"

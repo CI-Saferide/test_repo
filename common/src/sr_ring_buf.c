@@ -53,10 +53,10 @@ SR_32 sr_init_ring_buf(sr_ring_buffer *rb, SR_32 mem_size, SR_32 num_of_buffers,
 	return total_mem_needed;
 }
 
-SR_U8 *sr_get_buf(sr_ring_buffer *rb, SR_32 size)
+SR_8 *sr_get_buf(sr_ring_buffer *rb, SR_32 size)
 {
 	sr_buffer *buf_ptr = (sr_buffer *)((SR_U8*)rb + sizeof(sr_ring_buffer));
-	SR_U8 *ptr = NULL;
+	SR_8 *ptr = NULL;
 	SR_32 read_ptr = rb->read_ptr;
 
 	if (size > rb->each_buf_size) {
@@ -75,7 +75,7 @@ SR_U8 *sr_get_buf(sr_ring_buffer *rb, SR_32 size)
 	}
 
 	buf_ptr = &buf_ptr[rb->free_ptr];
-	ptr = (SR_U8*)rb + rb->buf_mem_offset + buf_ptr->offset;
+	ptr = (SR_8*)rb + rb->buf_mem_offset + buf_ptr->offset;
 
 	rb->free_ptr = (rb->free_ptr + 1) % rb->num_of_bufs;
 #ifdef SR_RB_DEBUG
@@ -119,10 +119,10 @@ SR_32 sr_write_buf(sr_ring_buffer *rb, SR_32 size)
 	return size;
 }
 
-SR_U8 *sr_read_buf(sr_ring_buffer *rb, SR_32 *size)
+SR_8 *sr_read_buf(sr_ring_buffer *rb, SR_32 *size)
 {
 	sr_buffer *buf_ptr = (sr_buffer *)((SR_U8*)rb + sizeof(sr_ring_buffer));
-	SR_U8 *ptr = NULL;
+	SR_8 *ptr = NULL;
 	SR_32 write_ptr = rb->write_ptr;
 
 	if (rb->read_ptr == write_ptr) {
@@ -143,7 +143,7 @@ SR_U8 *sr_read_buf(sr_ring_buffer *rb, SR_32 *size)
 	rb->total_read_bytes += buf_ptr->content_size;
 	rb->total_read_bufs++;
 
-	ptr = (SR_U8*)rb + rb->buf_mem_offset + buf_ptr->offset;
+	ptr = (SR_8*)rb + rb->buf_mem_offset + buf_ptr->offset;
 
 	return ptr;
 }

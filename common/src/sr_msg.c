@@ -93,7 +93,7 @@ SR_32 sr_msg_free_buf(SR_U8 type)
 
 }
 
-SR_U8 *sr_read_msg(SR_U8 type, SR_32 *length)
+SR_8 *sr_read_msg(SR_U8 type, SR_32 *length)
 {
 	sr_ring_buffer *rb;
 
@@ -133,7 +133,7 @@ SR_32 sr_free_msg(SR_U8 type)
 	return SR_SUCCESS;
 }
 
-SR_U8 *sr_get_msg(SR_U8 type, SR_32 size)
+SR_8 *sr_get_msg(SR_U8 type, SR_32 size)
 {
 	sr_ring_buffer *rb;
 

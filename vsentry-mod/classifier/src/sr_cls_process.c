@@ -53,19 +53,15 @@ bit_array *sr_cls_process_match(enum sr_rule_type type, SR_32 pid)
 
 	if (!(exec_inode = sr_cls_process_find_inode(pid)))
 	   return NULL;
-printk("**** Arik p1 in %s inode:%d pid:%d \n", __FUNCTION__, exec_inode, pid);
-
         ent = (struct sr_hash_ent_multy_t *)sr_cls_exec_inode_find(type, exec_inode);
 	if (!ent)
 	    return NULL;
-printk("**** Arik p2 in %s \n", __FUNCTION__);
-
 	return &(ent->rules[type]);
 }
 
+#ifdef UNIT_TEST
 void sr_cls_process_ut(void)
 {
-#if 0
 	int st;
 
 	if ((st = sr_cls_process_add(3084)) != SR_SUCCESS) {
@@ -78,8 +74,9 @@ void sr_cls_process_ut(void)
 	    return;
 	}
         printk("The inode :%d \n", sr_cls_process_find_inode(3084));
-#endif
+
 }
+#endif /* UNIT_TEST */
 
 int sr_cls_process_init(void)
 {

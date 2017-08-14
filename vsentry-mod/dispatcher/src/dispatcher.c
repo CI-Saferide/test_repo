@@ -6,6 +6,7 @@
 #include "sr_msg.h"
 #include "sr_sal_common.h"
 #include "sr_classifier.h"
+#include "sr_event_collector.h"
 
 #ifdef DEBUG_DISPATCHER
 static SR_8 module_name[] = "dispatcher"; /* module_name used only when DEBUG_DISPATCHER is enabled */
@@ -112,12 +113,25 @@ SR_32 disp_inode_symlink(disp_info_t* info)
 // TODO: might not have full 5-tuple at this stage !?!?!?
 SR_32 disp_socket_connect(disp_info_t* info)
 {
+	struct sr_ec_new_connection_t sample_data;
+
+	sample_data.pid = info->tuple_info.id.pid;
+	sample_data.remote_addr.v4addr = info->tuple_info.daddr.v4addr.s_addr;
+	sample_data.ip_proto = info->tuple_info.ip_proto;
+	sample_data.dport = info->tuple_info.dport;
+	sr_ec_send_event(SR_EC_NEW_CONNECTION, &sample_data);
 	return (sr_classifier_network(info));
 }
 
 SR_32 disp_incoming_connection(disp_info_t* info)
 {
-	//sal_kernel_print_info("disp_incoming_connection: Entry\n");
+	struct sr_ec_new_connection_t sample_data;
+
+	sample_data.pid = info->tuple_info.id.pid;
+	sample_data.remote_addr.v4addr = info->tuple_info.saddr.v4addr.s_addr;
+	sample_data.ip_proto = info->tuple_info.ip_proto;
+	sample_data.dport = info->tuple_info.sport;
+	sr_ec_send_event(SR_EC_NEW_CONNECTION, &sample_data);
 
 	return sr_classifier_network(info);
 }

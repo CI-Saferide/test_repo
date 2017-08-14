@@ -117,6 +117,7 @@ void sr_cls_exec_file_uninit(void)
 	sr_cls_exec_file_table = NULL;
 }
 
+#ifdef UNIT_TEST
 void sr_cls_exec_file_ut(void)
 {
         struct sr_hash_ent_multy_t *ent;
@@ -205,4 +206,4 @@ void sr_cls_exec_file_ut(void)
         else
             sal_printf("sr_cls_uid_ut: SUCCESS\n");
 }
-
+#endif /* UNIT_TEST */

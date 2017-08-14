@@ -1,6 +1,7 @@
 EXTRA_CFLAGS += -I$(TOP_DIR)/sal/platform/linux/lsm/include 
 EXTRA_CFLAGS += -I$(TOP_DIR)/multiplexer/include
 EXTRA_CFLAGS += -I$(TOP_DIR)/classifier/include
+EXTRA_CFLAGS += -I$(TOP_DIR)/event_collector/include
 EXTRA_CFLAGS += -I$(TOP_DIR)/sal/include
 EXTRA_CFLAGS += -I$(TOP_DIR)/sal/test
 EXTRA_CFLAGS += -I$(TOP_DIR)/sal/platform/linux/include
@@ -30,6 +31,7 @@ $(TARGET)-objs := sal/platform/linux/src/module_init.o \
 				  sal/platform/linux/lsm/src/sr_lsm_hooks.o \
 				  sal/platform/linux/src/event_mediator.o \
 				  sal/platform/linux/netfilter/src/sr_netfilter.o \
+				  event_collector/src/sr_event_collector.o \
 				  dispatcher/src/dispatcher.o \
 				  dispatcher/src/msg_process.o \
 				  scanner_det/src/sr_scanner_det.o \

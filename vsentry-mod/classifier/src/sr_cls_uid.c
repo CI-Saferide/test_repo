@@ -128,6 +128,24 @@ bit_array *sr_cls_match_uid(enum sr_rule_type type, SR_32 uid)
 	return(&ent->rules);
 }
 
+SR_8 sr_cls_uid_msg_dispatch(struct sr_cls_uid_msg *msg)
+{
+        switch (msg->msg_type) {
+                case SR_CLS_UID_DEL_RULE:
+                        sal_kernel_print_alert("Delete rule %d from %d\n", msg->rulenum, msg->uid);
+                        return sr_cls_uid_del_rule(msg->rule_type, msg->uid, msg->rulenum);
+                        break;
+                case SR_CLS_UID_ADD_RULE:
+                        sal_kernel_print_alert("Add rule %d to %d\n", msg->rulenum, msg->uid);
+                        return sr_cls_uid_add_rule(msg->rule_type, msg->uid, msg->rulenum);
+                        break;
+                default:
+                        break;
+        }
+        return SR_SUCCESS;
+}
+
+
 void sr_cls_uid_ut(void)
 {
 	struct sr_hash_ent_t *ent;

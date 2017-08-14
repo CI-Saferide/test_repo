@@ -14,6 +14,7 @@
 #include "dispatcher.h"
 #include "sr_classifier.h"
 #include "sr_cls_process.h"
+#include "sr_event_collector.h"
 
 #include "sr_ring_buf.h"
 #include "sr_shmem.h"
@@ -268,6 +269,8 @@ static int __init vsentry_init(void)
 		return -EIO;
 	}
 
+	sr_event_collector_init();
+
 	rc = register_lsm_hooks();
 	if (rc)	{
 		pr_info("[%s]: registration to lsm failed!\n", MODULE_NAME);
@@ -280,7 +283,7 @@ static int __init vsentry_init(void)
 	sr_cls_uid_init();	
 	sr_cls_exec_file_init();
 	sr_cls_process_init();
-
+	sr_cls_canid_init();
 	sr_netfilter_init();
 	sr_classifier_init();
 	
