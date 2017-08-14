@@ -11,6 +11,7 @@ struct sr_cls_canbus_msg {
 	SR_U8 	msg_type;
 	SR_U32	rulenum;
 	SR_U32  canid;
+	SR_U32  exec_inode;
 };
 
 #endif /* SR_CLS_CANBUS_COMMON_H */

@@ -104,6 +104,24 @@ SR_32 sr_classifier_network(disp_info_t* info)
 	if (array_is_clear(ba_res)) {
 		return SR_CLS_ACTION_ALLOW;
 	}
+	// PID
+/* XXX Currently in network classifier process match is not done. 
+   Netfiler which runs on buttomhalf context is not associated with a process descriptor, 
+   therefore a match a packet level can not be done. 
+   Another place to handle incomming packets at process context is not found yet. */
+#if 0
+	if (info->tuple_info.id.pid) { 
+	    if ((st = sr_cls_process_add(info->tuple_info.id.pid)) != SR_SUCCESS) {
+	        sal_printf("*** Error add process \n");
+	    }
+	    ptr = sr_cls_process_match(SR_NET_RULES, info->tuple_info.id.pid);
+	    if (ptr) {
+	       sal_and_self_op_two_arrays(&ba_res, ptr, sr_cls_exec_file_any(SR_NET_RULES));
+	    } else { // take only dst/any
+	       sal_and_self_op_arrays(&ba_res, sr_cls_exec_file_any(SR_NET_RULES));
+	    }
+	}
+#endif
 	// IP Proto - TODO
 
 	while ((rule = sal_ffs_and_clear_array (&ba_res)) != -1) {
@@ -124,6 +142,7 @@ SR_32 sr_classifier_file(disp_info_t* info)
 	bit_array *ptr, ba_res;
 	SR_16 rule;
 	SR_U16 action;
+	int st;
 
 	if (!info->tuple_info.id.uid) return SR_CLS_ACTION_ALLOW; // Don't mess up root access
 	memset(&ba_res, 0, sizeof(bit_array));
@@ -156,6 +175,20 @@ SR_32 sr_classifier_file(disp_info_t* info)
 		return SR_CLS_ACTION_ALLOW;
 	}
 
+	// PID
+	if ((st = sr_cls_process_add(info->fileinfo.id.pid)) != SR_SUCCESS) {
+	    sal_printf("*** Error add process \n");
+	}
+	ptr = sr_cls_process_match(SR_FILE_RULES, info->fileinfo.id.pid);
+	if (ptr) {
+	   sal_and_self_op_two_arrays(&ba_res, ptr, sr_cls_exec_file_any(SR_FILE_RULES));
+	} else { // take only dst/any
+	   sal_and_self_op_arrays(&ba_res, sr_cls_exec_file_any(SR_FILE_RULES));
+	}
+	if (array_is_clear(ba_res)) {
+		return SR_CLS_ACTION_ALLOW;
+	}
+
 	while ((rule = sal_ffs_and_clear_array (&ba_res)) != -1) {
 		action = sr_cls_file_rule_match(info->fileinfo.fileop, rule);
 		sal_printf("sr_classifier_file: Matched Rule #%d, action is %d\n", rule, action);
@@ -174,17 +207,30 @@ SR_32 sr_classifier_file(disp_info_t* info)
 // CAN-BUS events classifier
 SR_32 sr_classifier_canbus(disp_info_t* info)
 {
-	bit_array *ba_canid, ba_res;
+	bit_array *ptr, ba_res;
 	SR_16 rule;
 	SR_U16 action;
+	int st;
 
-	ba_canid = sr_cls_match_canid(info->can_info.msg_id);
+	ptr = sr_cls_match_canid(info->can_info.msg_id);
 
-	if (!ba_canid) {
+	if (!ptr) {
 		//sal_kernel_print_alert("sr_classifier_canID: No matching rule!\n");
 		return SR_CLS_ACTION_ALLOW;
 	}
-	memcpy(&ba_res, ba_canid, sizeof(bit_array)); // Perform arbitration
+	memcpy(&ba_res, ptr, sizeof(bit_array)); // Perform arbitration
+
+	if (info->can_info.id.pid) { 
+	    if ((st = sr_cls_process_add(info->can_info.id.pid)) != SR_SUCCESS) {
+	        sal_printf("*** Error add process \n");
+	    }
+	    ptr = sr_cls_process_match(SR_CAN_RULES, info->can_info.id.pid);
+	    if (ptr) {
+	        sal_and_self_op_two_arrays(&ba_res, ptr, sr_cls_exec_file_any(SR_CAN_RULES));
+	    } else { // take only dst/any
+	        sal_and_self_op_arrays(&ba_res, sr_cls_exec_file_any(SR_CAN_RULES));
+	    }
+	}
 
 	while ((rule = sal_ffs_and_clear_array (&ba_res)) != -1) {
 		action = sr_cls_can_rule_match(rule);

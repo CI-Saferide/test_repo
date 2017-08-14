@@ -39,6 +39,8 @@ $(TARGET)-objs := sal/platform/linux/src/module_init.o \
 				  classifier/src/sr_classifier.o \
 				  classifier/src/sr_cls_rulesdb.o \
 				  classifier/src/sr_cls_file.o \
+				  classifier/src/sr_cls_exec_file.o \
+				  classifier/src/sr_cls_process.o \
 				  classifier/src/sr_cls_port.o \
 				  classifier/src/sr_cls_uid.o \
 				  classifier/src/sr_cls_canid.o \

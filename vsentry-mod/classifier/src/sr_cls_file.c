@@ -1,5 +1,6 @@
 #include "sal_linux.h"
 #include "sr_cls_file.h"
+#include "sr_cls_exec_file.h"
 #include "sr_cls_file_common.h"
 #include "sr_hash.h"
 #include "sal_bitops.h"
@@ -115,6 +116,8 @@ bit_array *sr_cls_file_find(SR_U32 inode)
 
 SR_8 sr_cls_file_msg_dispatch(struct sr_cls_file_msg *msg)
 {
+	int st;
+
 	switch (msg->msg_type) {
 		case SR_CLS_INODE_INHERIT:
 			//sal_kernel_print_alert("Inherit from %x to %x\n", msg->inode1, msg->inode2);
@@ -122,11 +125,15 @@ SR_8 sr_cls_file_msg_dispatch(struct sr_cls_file_msg *msg)
 			break;
 		case SR_CLS_INODE_DEL_RULE:
 			//sal_kernel_print_alert("delete rule %d from %x\n", msg->rulenum, msg->inode1);
-			return sr_cls_inode_del_rule(msg->inode1, msg->rulenum);
+			if ((st = sr_cls_inode_del_rule(msg->inode1, msg->rulenum)) != SR_SUCCESS)
+			    return st;
+			return sr_cls_exec_inode_del_rule(SR_FILE_RULES, msg->exec_inode, msg->rulenum);
 			break;
 		case SR_CLS_INODE_ADD_RULE:
 			//sal_kernel_print_alert("add rule %d to %x\n", msg->rulenum, msg->inode1);
-			return sr_cls_inode_add_rule(msg->inode1, msg->rulenum);
+			if ((st = sr_cls_inode_add_rule(msg->inode1, msg->rulenum)) != SR_SUCCESS)
+			    return st;
+			return sr_cls_exec_inode_add_rule(SR_FILE_RULES, msg->exec_inode, msg->rulenum);
 			break;
 		case SR_CLS_INODE_REMOVE:
 			//sal_kernel_print_alert("remove inode %x\n", msg->inode1);

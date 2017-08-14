@@ -36,9 +36,10 @@ static inline SR_U32 sr_hash_get_index(SR_U32 key, SR_U32 size)
 	return key % size; // TODO: create a better distribution by replacing function
 }
 
-int sr_hash_insert(struct sr_hash_table_t *table, struct sr_hash_ent_t *ent)
+int sr_hash_insert(struct sr_hash_table_t *table, void *ptr)
 { 
 	SR_U32 index;
+	struct sr_hash_ent_t *ent = (struct sr_hash_ent_t *)ptr;
 	
 	index = sr_hash_get_index(ent->key, table->size);
 	table->count++;

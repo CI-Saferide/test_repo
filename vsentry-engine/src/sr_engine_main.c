@@ -13,7 +13,7 @@
 #include "sr_cls_rules_control.h"
 #include "sr_event_receiver.h"
 #include "sr_config.h"
-#include <arpa/inet.h> // TODO: take care of the agnostic part
+#include "sr_sal_common.h"
 
 SR_32 engine_main_loop(void *data)
 {
