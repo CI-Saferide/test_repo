@@ -279,11 +279,6 @@ static int __init vsentry_init(void)
 	}
 	pr_info("[%s]: registration to lsm succeedded\n", MODULE_NAME);	
 
-	sr_cls_port_init();	
-	sr_cls_uid_init();	
-	sr_cls_exec_file_init();
-	sr_cls_process_init();
-	sr_cls_canid_init();
 	sr_netfilter_init();
 	sr_classifier_init();
 	
@@ -322,14 +317,7 @@ static void __exit vsentry_cleanup(void)
 		sr_stop_task(i);
 
 	unregister_lsm_hooks();
-	
 	sr_classifier_uninit();
-	sr_cls_port_uninit();
-	sr_cls_exec_file_uninit();	
-	sr_cls_process_uninit();
-	sr_cls_uid_uninit();
-	sr_cls_canid_uninit();
-
 	sr_netfilter_uninit();
 
 	cdev_del(cdev_p);
