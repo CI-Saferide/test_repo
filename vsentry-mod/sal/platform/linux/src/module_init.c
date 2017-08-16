@@ -317,8 +317,8 @@ static void __exit vsentry_cleanup(void)
 		sr_stop_task(i);
 
 	unregister_lsm_hooks();
-	sr_classifier_uninit();
 	sr_netfilter_uninit();
+	sr_classifier_uninit();
 
 	cdev_del(cdev_p);
 	unregister_chrdev_region(vsentry_dev, 1);
