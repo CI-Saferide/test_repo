@@ -11,11 +11,13 @@ SR_32 sr_classifier_init(void)
 {
 	sr_cls_network_init();
 	sr_cls_fs_init();
-	
 	sr_cls_port_init();		
 	sr_cls_canid_init();
-	
 	sr_cls_rules_init();
+	sr_cls_uid_init();
+	sr_cls_exec_file_init();
+	sr_cls_process_init();
+
 //#ifdef UNIT_TEST
 	//sr_cls_network_ut();
 	//sr_cls_port_ut();
@@ -31,9 +33,11 @@ void sr_classifier_uninit(void)
 {
 	sr_cls_network_uninit();
 	sr_cls_fs_uninit();
-	
 	sr_cls_port_uninit();
 	sr_cls_canid_uninit();	
+	sr_cls_exec_file_uninit();
+	sr_cls_process_uninit();
+	sr_cls_uid_uninit();
 }
 
 ///////////////////////////////////////////////////////////////////////////

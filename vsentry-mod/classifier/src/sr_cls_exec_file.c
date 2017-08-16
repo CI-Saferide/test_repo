@@ -7,6 +7,8 @@
 struct sr_hash_table_t *sr_cls_exec_file_table;
 bit_array sr_cls_exec_file_any_rules[SR_RULES_TYPE_MAX];
 
+#define EXEC_FILE_HASH_TABLE_SIZE 8192
+
 static int is_multy_entry_clear(struct sr_hash_ent_multy_t *ent)
 {
 	int is_clear = 1, i;
@@ -44,6 +46,7 @@ int sr_cls_exec_inode_add_rule(enum sr_rule_type type, SR_U32 exec_inode, SR_U32
 				return SR_ERROR;
 			} else {
 				ent->key = exec_inode;
+				sal_printf("\t\tADD exec file inode : %u\n",ent->key);
 				sr_hash_insert(sr_cls_exec_file_table, ent);
 			}
 		}
@@ -98,7 +101,7 @@ struct sr_hash_ent_multy_t *sr_cls_exec_inode_find(enum sr_rule_type type, SR_U3
 
 int sr_cls_exec_file_init(void)
 {
-	sr_cls_exec_file_table = sr_hash_new_table(8192);
+	sr_cls_exec_file_table = sr_hash_new_table(EXEC_FILE_HASH_TABLE_SIZE);
 	if (!sr_cls_exec_file_table) {
 		sal_kernel_print_alert("Failed to allocate hash table!\n");
 		return SR_ERROR;
@@ -109,12 +112,33 @@ int sr_cls_exec_file_init(void)
 }
 
 void sr_cls_exec_file_uninit(void)
-{
+{ 
+	SR_32 i;
+	struct sr_hash_ent_t *curr, *next;
+	
 	if (!sr_cls_exec_file_table)
 		return;
-	SR_FREE(sr_cls_exec_file_table->buckets);
+
+	for(i = 0; i < EXEC_FILE_HASH_TABLE_SIZE; i++) {
+		if (sr_cls_exec_file_table->buckets[i].head != NULL){
+			sal_printf("hash_index[%d] - DELETEING\n",i);
+			curr = sr_cls_exec_file_table->buckets[i].head;				
+			while (curr != NULL){
+				sal_printf("\t\texec file inode : %u\n",curr->key);
+				next = curr->next;
+				SR_FREE(curr);
+				curr= next;
+			}
+		}
+	}
+
+	if(sr_cls_exec_file_table->buckets != NULL){
+		sal_printf("DELETEING exec_file table->bucket\n");
+		SR_FREE(sr_cls_exec_file_table->buckets);
+	}
 	SR_FREE(sr_cls_exec_file_table);
 	sr_cls_exec_file_table = NULL;
+	sal_printf("[%s]: Successfully removed exec file classifier!\n", MODULE_NAME);
 }
 
 #ifdef UNIT_TEST
