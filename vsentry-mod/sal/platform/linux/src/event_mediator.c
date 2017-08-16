@@ -14,6 +14,7 @@
 #include <uapi/linux/can.h>
 #include <linux/can/skb.h>
 #include <linux/binfmts.h>
+#include "sr_control.h"
 
 /* Protocol families, same as address families */
 const static SR_8 *protocol_family[] = {
@@ -127,6 +128,9 @@ SR_32 vsentry_inode_mkdir(struct inode *dir, struct dentry *dentry, umode_t mask
 	
 	memset(&disp, 0, sizeof(disp_info_t));
 	
+	/* check vsentry state */
+	CHECK_STATE
+	
 	/* check hook filter */
 	HOOK_FILTER
 
@@ -173,6 +177,9 @@ SR_32 vsentry_inode_unlink(struct inode *dir, struct dentry *dentry)
 	
 	memset(&disp, 0, sizeof(disp_info_t));
 	
+	/* check vsentry state */
+	CHECK_STATE
+
 	/* check hook filter */
 	HOOK_FILTER
 	
@@ -225,6 +232,9 @@ SR_32 vsentry_inode_symlink(struct inode *dir, struct dentry *dentry, const SR_8
 	
 	memset(&disp, 0, sizeof(disp_info_t));
 	
+	/* check vsentry state */
+	CHECK_STATE
+
 	/* check hook filter */
 	HOOK_FILTER
 
@@ -270,6 +280,9 @@ SR_32 vsentry_inode_rmdir(struct inode *dir, struct dentry *dentry)
 	
 	memset(&disp, 0, sizeof(disp_info_t));
 	
+	/* check vsentry state */
+	CHECK_STATE
+
 	/* check hook filter */
 	HOOK_FILTER
 
@@ -322,6 +335,9 @@ SR_32 vsentry_socket_connect(struct socket *sock, struct sockaddr *address, SR_3
 
 	memset(&disp, 0, sizeof(disp_info_t));
 	
+	/* check vsentry state */
+	CHECK_STATE
+
 	/* check hook filter */
 	HOOK_FILTER
 
@@ -358,6 +374,9 @@ SR_32 vsentry_incoming_connection(struct sk_buff *skb)
 
 	memset(&disp, 0, sizeof(disp_info_t));
 	
+	/* check vsentry state */
+	CHECK_STATE
+
 	/* check hook filter */
 	HOOK_FILTER
 
@@ -390,6 +409,9 @@ SR_32 vsentry_path_chmod(struct path *path, umode_t mode)
 	
 	memset(&disp, 0, sizeof(disp_info_t));
 	
+	/* check vsentry state */
+	CHECK_STATE
+
 	/* check hook filter */
 	HOOK_FILTER
 
@@ -432,6 +454,9 @@ SR_32 vsentry_inode_create(struct inode *dir, struct dentry *dentry, umode_t mod
 	
 	memset(&disp, 0, sizeof(disp_info_t));
 	
+	/* check vsentry state */
+	CHECK_STATE
+
 	/* check hook filter */
 	HOOK_FILTER
 
@@ -475,6 +500,9 @@ SR_32 vsentry_file_open(struct file *file, const struct cred *cred)
 	
 	memset(&disp, 0, sizeof(disp_info_t));
 	
+	/* check vsentry state */
+	CHECK_STATE
+
 	/* check hook filter */
 	HOOK_FILTER
 
@@ -523,6 +551,9 @@ SR_32 vsentry_inode_link(struct dentry *old_dentry, struct inode *dir, struct de
 	
 	memset(&disp, 0, sizeof(disp_info_t));
 	
+	/* check vsentry state */
+	CHECK_STATE
+
 	/* check hook filter */
 	HOOK_FILTER
 
@@ -584,6 +615,9 @@ SR_32 vsentry_socket_create(SR_32 family, SR_32 type, SR_32 protocol, SR_32 kern
 	
 	memset(&disp, 0, sizeof(disp_info_t));
 	
+	/* check vsentry state */
+	CHECK_STATE
+
 	/* check hook filter */
 	HOOK_FILTER
 
@@ -630,6 +664,9 @@ SR_32 vsentry_socket_sendmsg(struct socket *sock,struct msghdr *msg,SR_32 size)
 	
 	memset(&disp, 0, sizeof(disp_info_t));
 	
+	/* check vsentry state */
+	CHECK_STATE
+
 	/* check hook filter */
 	HOOK_FILTER
 	
@@ -690,6 +727,10 @@ SR_32 vsentry_bprm_check_security(struct linux_binprm *bprm)
 	
 	memset(&disp, 0, sizeof(disp_info_t));
 	
+	/* check vsentry state */
+	CHECK_STATE
+
+	/* check hook filter */
 	HOOK_FILTER
 
 	if (bprm->file->f_inode) //redundent check?

@@ -8,6 +8,7 @@
 #include "sr_cls_uid_common.h"
 #include "sr_cls_network_common.h"
 #include "sr_cls_port_common.h"
+#include "sr_control_common.h"
 #include "sr_actions_common.h"
 
 typedef enum {
@@ -17,7 +18,8 @@ typedef enum {
 	SR_MSG_TYPE_CLS_NETWORK,
 	SR_MSG_TYPE_CLS_PORT,
 	SR_MSG_TYPE_CLS_CANBUS,	
-	SR_MSG_TYPE_CLS_UID,	
+	SR_MSG_TYPE_CLS_UID,
+	SR_MSG_TYPE_CONTROL,
 } sr_msg_dispatch_type;
 
 #pragma pack(push, 1)
@@ -56,6 +58,11 @@ typedef struct {
 	SR_8 msg_type;
 	struct sr_cls_port_msg sub_msg;
 } sr_port_msg_cls_t;
+
+typedef struct {
+	SR_8 msg_type;
+	struct sr_control_msg sub_msg;
+} sr_control_msg_t;
 
 #pragma pack(pop)
 

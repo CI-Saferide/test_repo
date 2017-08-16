@@ -36,6 +36,7 @@ SRCS 		:=  main.c \
 				sr_engine_main.c \
 				sr_config.c \
 				sr_cli.c \
+				sr_control.c \
 
 # include folders
 INCLUDES 	:=  -I../common/include \

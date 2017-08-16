@@ -1,6 +1,8 @@
 #ifndef _EVENT_MEDIATOR_H
 #define _EVENT_MEDIATOR_H
 
+#define CHECK_STATE	if(SR_FALSE == vsentry_get_state()) return 0;
+
 /* Supported address families */
 #define SR_AF_UNSPEC		0
 #define SR_AF_UNIX			1	/* Unix domain sockets 		*/
