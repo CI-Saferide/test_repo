@@ -55,6 +55,7 @@ $(TARGET)-objs := sal/platform/linux/src/module_init.o \
 				  sal/platform/linux/src/sal_shmem_linux.o \
 				  ../common/src/sr_msg.o \
 				  ../common/src/sr_tasks.o \
+				  main/src/sr_control.o \
 
 else
 
