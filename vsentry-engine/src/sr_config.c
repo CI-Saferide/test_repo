@@ -279,12 +279,27 @@ static void extract_can_rules(int rsock, int num_of_rules)
 	}
 }
 
+static void convert_permissions(char *permissions, SR_U8 *premisions_bitmaps)
+{
+	if (!permissions)
+		return;
+
+	*premisions_bitmaps = 0;
+	if (strchr(permissions, 'x'))
+		*premisions_bitmaps |= SR_FILEOPS_EXEC;
+	if (strchr(permissions, 'w'))
+		*premisions_bitmaps |= SR_FILEOPS_WRITE;
+	if (strchr(permissions, 'r'))
+		*premisions_bitmaps |= SR_FILEOPS_READ;
+}
+
 static void extract_system_rules(int rsock, int num_of_rules)
 {
         int i, j, num_of_tuples;
         file_rule file_rule = {};
         char action_name[ACTION_NAME_SIZE] = "";
-	SR_U16 actions_bitmap = 0;
+		SR_U16 actions_bitmap = 0;
+		SR_U8 permissions = 0;
 
         for (i = 0; i < num_of_rules; i++) {
             cdb_cd(rsock, CONFD_PATH_PREFIX "/system/file/rule[%d]", i);
@@ -300,6 +315,8 @@ static void extract_system_rules(int rsock, int num_of_rules)
 		 cdb_get_str(rsock, file_rule.tuple.name, FILE_NAME_SIZE, "tuple[%d]/name", j);
 		 cdb_get_str(rsock, file_rule.tuple.program, PROG_NAME_SIZE, "tuple[%d]/program", j);
 		 cdb_get_str(rsock, file_rule.tuple.user, USER_NAME_SIZE, "tuple[%d]/user", j);
+		 cdb_get_str(rsock, file_rule.tuple.permission, FILE_PERM_SIZE, "tuple[%d]/permission", j);
+		 convert_permissions(*file_rule.tuple.permission ? file_rule.tuple.permission : "xwr" , &permissions);
 		 switch (file_rule.action.action) {
 			case SR_ACTION_DROP:
 			   actions_bitmap = SR_CLS_ACTION_DROP;
@@ -312,7 +329,7 @@ static void extract_system_rules(int rsock, int num_of_rules)
 			   continue;
 		 }
 		 sr_cls_file_add_rule(file_rule.tuple.name, *file_rule.tuple.program ? file_rule.tuple.program : "*", file_rule.rulenum, 1);
-                 sr_cls_rule_add(SR_FILE_RULES, file_rule.rulenum, actions_bitmap, SR_FILEOPS_READ, /* file_rule_tuple.max_rate */ 0, /* file_rule.rate_action */ 0 ,
+                 sr_cls_rule_add(SR_FILE_RULES, file_rule.rulenum, actions_bitmap, permissions, /* file_rule_tuple.max_rate */ 0, /* file_rule.rate_action */ 0 ,
 			 /* file_ruole.action.log_target */ 0 , /* file_rule.tuple.action.email_id */ 0 , /* file_rule.tuple.action.phone_id */ 0 , /* file_rule.action.skip_rulenum */ 0);
 	    }
 	}
