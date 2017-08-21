@@ -7,6 +7,7 @@
 
 int sr_cls_fs_init(void);
 void sr_cls_fs_uninit(void);
+void sr_cls_fs_empty_table(void);
 bit_array *sr_cls_file_any(void);
 int sr_cls_inode_add_rule(SR_U32 inode, SR_U32 rulenum);
 int sr_cls_inode_del_rule(SR_U32 inode, SR_U32 rulenum);

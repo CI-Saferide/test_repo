@@ -19,6 +19,7 @@ struct sr_hash_ent_multy_t{
 int sr_cls_exec_file_init(void);
 void sr_cls_exec_file_ut(void);
 void sr_cls_exec_file_uninit(void);
+void sr_cls_exec_file_empty_table(void);
 
 int sr_cls_exec_inode_add_rule(enum sr_rule_type type, SR_U32 exec_inode, SR_U32 rulenum);
 int sr_cls_exec_inode_del_rule(enum sr_rule_type type, SR_U32 exec_inode, SR_U32 rulenum);

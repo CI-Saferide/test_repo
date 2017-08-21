@@ -38,6 +38,16 @@ int sr_cls_port_init(void)
 	return SR_SUCCESS;
 }
 
+void sr_cls_port_empty_table(void)
+{
+	memset(&sr_cls_port_src_any_rules, 0, sizeof(bit_array));
+	memset(&sr_cls_port_dst_any_rules, 0, sizeof(bit_array));
+	sr_hash_empty_table(sr_cls_dport_table[0]);
+	sr_hash_empty_table(sr_cls_dport_table[1]);
+	sr_hash_empty_table(sr_cls_sport_table[0]);
+	sr_hash_empty_table(sr_cls_dport_table[1]);
+}
+
 void sr_cls_port_uninit(void)
 { 
 	SR_32 i, j;

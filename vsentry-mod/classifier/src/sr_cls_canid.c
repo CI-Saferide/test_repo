@@ -22,6 +22,11 @@ int sr_cls_canid_init(void)
 	return SR_SUCCESS;
 }
 
+void sr_cls_canid_empty_table(void)
+{
+        sr_hash_empty_table(sr_cls_canid_table);
+}
+
 void sr_cls_canid_uninit(void)
 { 
 	SR_32 i;

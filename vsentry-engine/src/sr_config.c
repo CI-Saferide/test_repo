@@ -1,5 +1,7 @@
 /* sr_config.c */
 
+#include <sys/socket.h>
+#include <netinet/in.h>
 #include "sr_config.h"
 #include "sr_cls_network_common.h"
 #include "sr_cls_port_control.h"
@@ -8,8 +10,109 @@
 #include "sr_cls_canbus_control.h"
 #include "sr_cls_file_control.h"
 #include <arpa/inet.h> // TODO: take care of the agnostic part
+#include <confd_lib.h>
+#include <sr_msg.h>
+#include <confd_cdb.h>
+#include <saferide.h>
+#include <pthread.h>
+#include <poll.h>
+#include "sr_msg_dispatch.h"
+#include "sr_control.h"
+#include "sr_confd.h"
 
-static SR_8* filename = "sr_config.cfg";
+static int send_cleanup_messgae(void)
+{
+	sr_msg_dispatch_hdr_t *msg;
+
+        msg = (sr_msg_dispatch_hdr_t *)sr_get_msg(ENG2MOD_BUF, ENG2MOD_MSG_MAX_SIZE);
+	if (msg) {
+		msg->msg_type = SR_MSG_TYPE_CLS_CLEANUP;
+		sr_send_msg(ENG2MOD_BUF, sizeof(msg));
+	}
+
+        return SR_SUCCESS;
+}
+
+static void *handle_commit_trd(void *p)
+{
+	struct sockaddr_in addr;
+	int subsock;
+	int status;
+	int spoint;
+
+	addr.sin_addr.s_addr = inet_addr(CONFD_SERVER);
+	addr.sin_family = AF_INET;
+	addr.sin_port = htons(CONFD_PORT);
+
+	confd_init("SafeRide", stderr, CONFD_TRACE);
+
+	if ((subsock = socket(PF_INET, SOCK_STREAM, 0)) < 0 )
+		confd_fatal("Failed to open socket\n");
+
+	if (cdb_connect(subsock, CDB_SUBSCRIPTION_SOCKET, (struct sockaddr*)&addr,
+					sizeof (struct sockaddr_in)) < 0)
+		confd_fatal("Failed to confd_connect() to confd \n");
+
+	if ((status = cdb_subscribe(subsock, 3, saferide__ns, &spoint,"/vsentry"))
+		!= CONFD_OK) {
+		fprintf(stderr, "Terminate: subscribe %d\n", status);
+		exit(0);
+	}
+
+	if (cdb_subscribe_done(subsock) != CONFD_OK)
+		confd_fatal("cdb_subscribe_done() failed");
+
+	fprintf(stderr, "Subscription point = %d\n", spoint);
+
+	while (1) {
+		struct pollfd set[1];
+
+		set[0].fd = subsock;
+		set[0].events = POLLIN;
+		set[0].revents = 0;
+
+		if (poll(set, sizeof(set)/sizeof(*set), -1) < 0) {
+			perror("Poll failed:");
+			continue;
+		}
+
+		/* Check for I/O */
+		if (set[0].revents & POLLIN) {
+			int sub_points[1];
+			int reslen;
+			if ((status = cdb_read_subscription_socket(subsock,
+						   &sub_points[0], &reslen)) != CONFD_OK)
+				exit(status);
+
+			if (reslen > 0) {
+	    			sal_printf("Got COMMIT notification \n");
+				sr_control_set_state(SR_FALSE);
+				send_cleanup_messgae();
+				sr_control_set_state(SR_TRUE);
+        			read_config_db();
+			}
+			/* This is the place where we may act on the newly read configuration */
+
+			if ((status = cdb_sync_subscription_socket(subsock, CDB_DONE_PRIORITY))
+				!= CONFD_OK) {
+				exit(status);
+			}
+		}
+	}
+
+	cdb_close(subsock);
+
+	return NULL;
+}
+
+SR_BOOL handle_commit_events(void)
+{
+	pthread_t t;
+
+        pthread_create(&t, NULL, handle_commit_trd, NULL);
+
+	return SR_TRUE;
+}
 
 SR_BOOL write_config_record (void* ptr, enum sr_header_type rec_type)
 {
@@ -81,6 +184,226 @@ SR_BOOL write_config_record (void* ptr, enum sr_header_type rec_type)
 	};
 	
 	fclose (conf_file);
+	return SR_TRUE;
+}
+
+static void extract_action(int rsock, sr_action_cfg* action, char *action_name)
+{
+       char list_action_name[ACTION_NAME_SIZE];
+        char tmp[128];
+        int i, j, n;
+
+        memset(action, 0, sizeof(sr_action_cfg));
+
+        n = cdb_num_instances(rsock, CONFD_PATH_PREFIX "/sr_actions/list_actions");
+
+        for (i=0; i<n; i++) {
+                memset(list_action_name, 0, ACTION_NAME_SIZE);
+                cdb_get_str(rsock, list_action_name, ACTION_NAME_SIZE, CONFD_PATH_PREFIX "/sr_actions/list_actions[%d]/name", i);
+
+                if(strncmp(action_name, list_action_name, strlen(action_name)) == 0) {
+                        strncpy(action->action_name, action_name, ACTION_NAME_SIZE);
+
+                        memset(tmp, 0, 128);
+                        cdb_get_str(rsock, tmp, ACTION_NAME_SIZE, CONFD_PATH_PREFIX "/sr_actions/list_actions[%d]/action", i);
+			action->action = SR_ACTION_ALLOW; /* Default */
+			if (!strncmp(tmp, ACTION_DROP, ACTION_NAME_SIZE))
+			    action->action = SR_ACTION_DROP;
+
+                        memset(tmp, 0, 128);
+                        cdb_get_str(rsock, tmp, ACTION_NAME_SIZE, CONFD_PATH_PREFIX "/sr_actions/list_actions[%d]/log/log_facility", i);
+                        for (j=0; j<SR_LOG_TOTAL; j++) {
+                                if (strncmp(tmp, sr_log_facility_str[j], strlen(tmp)) == 0) {
+                                        action->log_facility = j;
+                                        break;
+                                }
+                        }
+
+                        memset(tmp, 0, 128);
+                        cdb_get_str(rsock, tmp, ACTION_NAME_SIZE, CONFD_PATH_PREFIX "/sr_actions/list_actions[%d]/log/log_severity", i);
+                        for (j=0; j<SR_LOG_SEVERITY_TOTAL; j++) {
+                                if (strncmp(tmp, sr_log_severity_str[j], strlen(tmp)) == 0) {
+                                        action->log_severity = j;
+                                        break;
+                                }
+                        }
+
+                        cdb_get_bool(rsock, &action->black_list, CONFD_PATH_PREFIX "/sr_actions/list_actions[%d]/black-list", i);
+                        cdb_get_bool(rsock, &action->terminate, CONFD_PATH_PREFIX "/sr_actions/list_actions[%d]/terminate", i);
+                }
+        }
+}
+
+static void convert_action(sr_action_cfg *action, SR_U16 *bitmap)
+{
+	switch (action->action) {
+		case SR_ACTION_DROP:
+			*bitmap = SR_CLS_ACTION_DROP;
+			break;
+		case SR_ACTION_ALLOW:
+			*bitmap = SR_CLS_ACTION_ALLOW;
+			break;
+		case SR_ACTION_TOTAL:
+		defualt:
+			printf("No action\n");
+			break;
+	}
+} 
+
+static void extract_can_rules(int rsock, int num_of_rules)
+{
+        int i, j, num_of_tuples;
+        can_rule can_rule = {};
+        char action_name[ACTION_NAME_SIZE] = "";
+	SR_U16 actions_bitmap = 0;
+
+        for (i = 0; i < num_of_rules; i++) {
+            cdb_cd(rsock, CONFD_PATH_PREFIX "/net/can/rule[%d]", i);
+	    /* get rule number */
+	    cdb_get_u_int16(rsock, &can_rule.rulenum, "num");
+	    cdb_get_str(rsock, action_name , ACTION_NAME_SIZE, "action");
+            if (strlen(action_name) > 0) {
+                extract_action(rsock, &can_rule.action, action_name);
+		convert_action(&can_rule.action, &actions_bitmap);
+            }
+	    num_of_tuples = cdb_num_instances(rsock, "tuple");
+	    for (j = 0; j < num_of_tuples; j++) {
+		 cdb_get_u_int32(rsock, &can_rule.tuple.msg_id, "tuple[%d]/msg_id", j);
+		 cdb_get_str(rsock, can_rule.tuple.user, USER_NAME_SIZE, "tuple[%d]/user", j);
+		 cdb_get_str(rsock, can_rule.tuple.program, PROG_NAME_SIZE, "tuple[%d]/program", j);
+		 cdb_get_u_int32(rsock, &can_rule.tuple.max_rate, "tuple[%d]/max_rate", j);
+		 sr_cls_canid_add_rule(can_rule.tuple.msg_id, *can_rule.tuple.program ? can_rule.tuple.program : "*", can_rule.rulenum);
+                 sr_cls_rule_add(SR_CAN_RULES, can_rule.rulenum, actions_bitmap, 0, can_rule.tuple.max_rate, /* can_rule.rate_action */ 0,  /* can_rule.action.log_target */ 0,
+			/* email_id*/ 0, /* can_rule.action.phone_id*/ 0, /*can_rule.action.skip_rulenum */ 0);
+	    }
+	}
+}
+
+static void extract_system_rules(int rsock, int num_of_rules)
+{
+        int i, j, num_of_tuples;
+        file_rule file_rule = {};
+        char action_name[ACTION_NAME_SIZE] = "";
+	SR_U16 actions_bitmap = 0;
+
+        for (i = 0; i < num_of_rules; i++) {
+            cdb_cd(rsock, CONFD_PATH_PREFIX "/system/file/rule[%d]", i);
+	    /* get rule number */
+	    cdb_get_u_int16(rsock, &file_rule.rulenum, "num");
+	    cdb_get_str(rsock, action_name , ACTION_NAME_SIZE, "action");
+            if (strlen(action_name) > 0) {
+                extract_action(rsock, &file_rule.action, action_name);
+		convert_action(&file_rule.action, &actions_bitmap);
+            }
+	    num_of_tuples = cdb_num_instances(rsock, "tuple");
+	    for (j = 0; j < num_of_tuples; j++) {
+		 cdb_get_str(rsock, file_rule.tuple.name, FILE_NAME_SIZE, "tuple[%d]/name", j);
+		 cdb_get_str(rsock, file_rule.tuple.program, PROG_NAME_SIZE, "tuple[%d]/program", j);
+		 cdb_get_str(rsock, file_rule.tuple.user, USER_NAME_SIZE, "tuple[%d]/user", j);
+		 switch (file_rule.action.action) {
+			case SR_ACTION_DROP:
+			   actions_bitmap = SR_CLS_ACTION_DROP;
+			   break;
+			case SR_ACTION_ALLOW:
+			   actions_bitmap = SR_CLS_ACTION_ALLOW;
+			   break;
+			defualt:
+			   printf("No action\n");
+			   continue;
+		 }
+		 sr_cls_file_add_rule(file_rule.tuple.name, *file_rule.tuple.program ? file_rule.tuple.program : "*", file_rule.rulenum, 1);
+                 sr_cls_rule_add(SR_FILE_RULES, file_rule.rulenum, actions_bitmap, SR_FILEOPS_READ, /* file_rule_tuple.max_rate */ 0, /* file_rule.rate_action */ 0 ,
+			 /* file_ruole.action.log_target */ 0 , /* file_rule.tuple.action.email_id */ 0 , /* file_rule.tuple.action.phone_id */ 0 , /* file_rule.action.skip_rulenum */ 0);
+	    }
+	}
+}
+
+static void extract_net_rules(int rsock, int num_of_rules)
+{
+        int i, j, num_of_tuples;
+        network_rule net_rule = {};
+        char action_name[ACTION_NAME_SIZE] = "";
+	SR_U16 actions_bitmap = 0;
+
+        for (i = 0; i < num_of_rules; i++) {
+            cdb_cd(rsock, CONFD_PATH_PREFIX "/net/ip/rule[%d]", i);
+	    /* get rule number */
+	    cdb_get_u_int16(rsock, &net_rule.rulenum, "num");
+	    cdb_get_str(rsock, action_name , ACTION_NAME_SIZE, "action");
+            if (strlen(action_name) > 0) {
+                extract_action(rsock, &net_rule.action, action_name);
+		convert_action(&net_rule.action, &actions_bitmap);
+            }
+	    num_of_tuples = cdb_num_instances(rsock, "tuple");
+	    for (j = 0; j < num_of_tuples; j++) {
+		cdb_get_ipv4(rsock, &net_rule.tuple.srcaddr, "tuple[%d]/srcaddr", j);
+		cdb_get_ipv4(rsock, &net_rule.tuple.srcnetmask, "tuple[%d]/srcnetmask", j);
+		cdb_get_ipv4(rsock, &net_rule.tuple.dstaddr, "tuple[%d]/dstaddr", j);
+		cdb_get_ipv4(rsock, &net_rule.tuple.dstnetmask, "tuple[%d]/dstnetmask", j);
+		cdb_get_u_int16(rsock, &net_rule.tuple.dstport, "tuple[%d]/dstport", j);
+		cdb_get_u_int16(rsock, &net_rule.tuple.srcport, "tuple[%d]/srcport", j);
+		cdb_get_u_int8(rsock, &net_rule.tuple.proto, "tuple[%d]/proto", j);
+		cdb_get_str(rsock, net_rule.tuple.program, PROG_NAME_SIZE, "tuple[%d]/program", j);
+		switch (net_rule.action.action) {
+			case SR_ACTION_DROP:
+			   actions_bitmap = SR_CLS_ACTION_DROP;
+			   break;
+			case SR_ACTION_ALLOW:
+			   actions_bitmap = SR_CLS_ACTION_ALLOW;
+			   break;
+			defualt:
+			   printf("No action\n");
+			   continue;
+		 }
+		sr_cls_port_add_rule(net_rule.tuple.srcport, *net_rule.tuple.program ? net_rule.tuple.program : "*", net_rule.rulenum, SR_DIR_SRC, net_rule.tuple.proto);
+		sr_cls_port_add_rule(net_rule.tuple.dstport, *net_rule.tuple.program ? net_rule.tuple.program : "*", net_rule.rulenum, SR_DIR_DST, net_rule.tuple.proto);
+	 	sr_cls_add_ipv4(net_rule.tuple.srcaddr.s_addr , *net_rule.tuple.program ? net_rule.tuple.program : "*", net_rule.tuple.srcnetmask.s_addr, net_rule.rulenum, SR_DIR_SRC);
+	 	sr_cls_add_ipv4(net_rule.tuple.dstaddr.s_addr, *net_rule.tuple.program ? net_rule.tuple.program : "*", net_rule.tuple.dstnetmask.s_addr, net_rule.rulenum, SR_DIR_DST);
+                sr_cls_rule_add(SR_NET_RULES, net_rule.rulenum, actions_bitmap, SR_FILEOPS_READ, /* net_rule_tuple.max_rate */ 0, /* net_rule.rate_action */ 0 ,
+			 /* net_ruole.action.log_target */ 0 , /* net_rule.tuple.action.email_id */ 0 , /* net_rule.tuple.action.phone_id */ 0 , /* net_rule.action.skip_rulenum */ 0);
+	    }
+	}
+}
+
+SR_BOOL read_config_db (void)
+{
+	struct sockaddr_in addr;
+	int rsock, n;
+
+	addr.sin_addr.s_addr = inet_addr(CONFD_SERVER);
+	addr.sin_family = AF_INET;
+	addr.sin_port = htons(CONFD_PORT);
+
+	confd_init("SafeRide", stderr, CONFD_TRACE);
+
+        if ((rsock = socket(PF_INET, SOCK_STREAM, 0)) < 0 ) {
+	    sal_printf("fail to open confd socket \n");
+	    return SR_FALSE;
+	}
+
+	if (cdb_connect(rsock, CDB_READ_SOCKET, (struct sockaddr*)&addr,
+                sizeof (struct sockaddr_in)) < 0) {
+	         sal_printf("fail to connect to confd socket \n");
+                return SR_FALSE;
+        }
+
+        if (cdb_start_session(rsock, CDB_RUNNING) != CONFD_OK)
+                return CONFD_ERR;
+
+        cdb_set_namespace(rsock, saferide__ns);
+
+	n = cdb_num_instances(rsock, CONFD_PATH_PREFIX "/net/can/rule");
+	if (n > 0)
+        	extract_can_rules(rsock, n);
+	n = cdb_num_instances(rsock, CONFD_PATH_PREFIX "/system/file/rule");
+	if (n > 0)
+        	extract_system_rules(rsock, n);
+	n = cdb_num_instances(rsock, CONFD_PATH_PREFIX "/net/ip/rule");
+	if (n > 0)
+        	extract_net_rules(rsock, n);
+
+	cdb_close(rsock);
+
 	return SR_TRUE;
 }
 
@@ -225,23 +548,27 @@ SR_BOOL read_config_file (void)
 
 SR_BOOL config_ut(void)
 {
-/*
 	struct sr_file_entry		file_rec = {0};
 	struct sr_net_entry			net_rec = {0};
+#if 0
 	struct sr_can_entry			can_rec = {0};
 	struct sr_phone_record		phone_rec = {0};
 	struct sr_email_entry		email_rec = {0};
 	struct sr_log_entry			log_rec = {0};
+#endif
 
+#if 0
 	net_rec.rulenum = 80;
 	net_rec.src_addr = 0x0a0a0a00;
 	net_rec.src_netmask = 0x0;
+	//net_rec.src_netmask = 0xFFFFFFFF;
 	net_rec.dst_addr = 0x0a0a0a00;
+	net_rec.dst_netmask = 0xFFFFFFFF;
 	net_rec.dst_netmask = 0x0;
 	net_rec.action.actions_bitmap = SR_CLS_ACTION_DROP;
 	net_rec.action.email_id = 7;
 	net_rec.src_port = 0;
-	net_rec.dst_port = 7777;
+	net_rec.dst_port = 22;
 	net_rec.proto = SR_PROTO_TCP;
 	net_rec.action.log_target = 8;
 	net_rec.action.phone_id = 4;
@@ -251,16 +578,17 @@ SR_BOOL config_ut(void)
 	//strncpy(net_rec.process, "*", strlen("*"));
 	net_rec.process_size = strlen(net_rec.process);
 	write_config_record(&net_rec, CONFIG_NET_RULE);
+#endif
 
 	net_rec.rulenum = 85;
-	net_rec.src_addr = 0x0a0a0a00;
-	net_rec.src_netmask = 0x0;
-	net_rec.dst_addr = 0x0a0a0a00;
-	net_rec.dst_netmask = 0x0;
+	net_rec.src_addr = 0xc0a8020d;
+	net_rec.src_netmask = 0xFFFFFFFF;
+	net_rec.dst_addr = 0xc0a80114;
+	net_rec.dst_netmask = 0xFFFFFFFF;
 	net_rec.action.actions_bitmap = SR_CLS_ACTION_DROP;
 	net_rec.action.email_id = 7;
-	net_rec.src_port = 7778;
-	net_rec.dst_port = 0;
+	net_rec.src_port = 0;
+	net_rec.dst_port = 22;
 	net_rec.proto = SR_PROTO_TCP;
 	net_rec.action.log_target = 8;
 	net_rec.action.phone_id = 4;
@@ -280,6 +608,7 @@ SR_BOOL config_ut(void)
 	file_rec.filename_size = strlen(file_rec.filename);
 	write_config_record(&file_rec, CONFIG_FILE_RULE);
 
+#if 0
 	file_rec.rulenum=404;	
 	file_rec.action.actions_bitmap=SR_CLS_ACTION_DROP;		
 	file_rec.uid=-1;
@@ -299,6 +628,7 @@ SR_BOOL config_ut(void)
 	can_rec.process_size = strlen(can_rec.process);
 	write_config_record(&can_rec, CONFIG_CAN_RULE);
 
+/*
 	//phone_rec.phone_id=17;
 	//strncpy(phone_rec.phone_number, "054-7653982", strlen("054-7653982"));
 	//write_config_record(&phone_rec, CONFIG_PHONE_ENTRY);
@@ -314,6 +644,13 @@ SR_BOOL config_ut(void)
 	//write_config_record(&log_rec, CONFIG_LOG_TARGET);
 */
 
-	read_config_file();
+#endif
+	//read_config_file();
+
+	/* Load DB from confd */
+        read_config_db();
+        /* Handle commit evenets from confd */
+	handle_commit_events();
+
 	return SR_TRUE;
 }
