@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<edit-config>
+    <target>
+      <running/>
+    </target>
+   <config xmlns="http://saferide.io/ns/saferide">
+     <config>
+        <system>
+          <file>
+            <rule>
+              <num>0</num>
+              <tuple operation="delete">
+                <id>1</id>
+              </tuple>
+            </rule>
+          </file>
+        </system>
+     </config>
+   </config>
+</edit-config>
