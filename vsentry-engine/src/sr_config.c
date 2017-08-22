@@ -195,23 +195,23 @@ static void extract_action(int rsock, sr_action_cfg* action, char *action_name)
 
         memset(action, 0, sizeof(sr_action_cfg));
 
-        n = cdb_num_instances(rsock, CONFD_PATH_PREFIX "/sr_actions/list_actions");
+        n = cdb_num_instances(rsock, CONFD_CONFIG_PATH_PREFIX "/sr_actions/list_actions");
 
         for (i=0; i<n; i++) {
                 memset(list_action_name, 0, ACTION_NAME_SIZE);
-                cdb_get_str(rsock, list_action_name, ACTION_NAME_SIZE, CONFD_PATH_PREFIX "/sr_actions/list_actions[%d]/name", i);
+                cdb_get_str(rsock, list_action_name, ACTION_NAME_SIZE, CONFD_CONFIG_PATH_PREFIX "/sr_actions/list_actions[%d]/name", i);
 
                 if(strncmp(action_name, list_action_name, strlen(action_name)) == 0) {
                         strncpy(action->action_name, action_name, ACTION_NAME_SIZE);
 
                         memset(tmp, 0, 128);
-                        cdb_get_str(rsock, tmp, ACTION_NAME_SIZE, CONFD_PATH_PREFIX "/sr_actions/list_actions[%d]/action", i);
+                        cdb_get_str(rsock, tmp, ACTION_NAME_SIZE, CONFD_CONFIG_PATH_PREFIX "/sr_actions/list_actions[%d]/action", i);
 			action->action = SR_ACTION_ALLOW; /* Default */
 			if (!strncmp(tmp, ACTION_DROP, ACTION_NAME_SIZE))
 			    action->action = SR_ACTION_DROP;
 
                         memset(tmp, 0, 128);
-                        cdb_get_str(rsock, tmp, ACTION_NAME_SIZE, CONFD_PATH_PREFIX "/sr_actions/list_actions[%d]/log/log_facility", i);
+                        cdb_get_str(rsock, tmp, ACTION_NAME_SIZE, CONFD_CONFIG_PATH_PREFIX "/sr_actions/list_actions[%d]/log/log_facility", i);
                         for (j=0; j<SR_LOG_TOTAL; j++) {
                                 if (strncmp(tmp, sr_log_facility_str[j], strlen(tmp)) == 0) {
                                         action->log_facility = j;
@@ -220,7 +220,7 @@ static void extract_action(int rsock, sr_action_cfg* action, char *action_name)
                         }
 
                         memset(tmp, 0, 128);
-                        cdb_get_str(rsock, tmp, ACTION_NAME_SIZE, CONFD_PATH_PREFIX "/sr_actions/list_actions[%d]/log/log_severity", i);
+                        cdb_get_str(rsock, tmp, ACTION_NAME_SIZE, CONFD_CONFIG_PATH_PREFIX "/sr_actions/list_actions[%d]/log/log_severity", i);
                         for (j=0; j<SR_LOG_SEVERITY_TOTAL; j++) {
                                 if (strncmp(tmp, sr_log_severity_str[j], strlen(tmp)) == 0) {
                                         action->log_severity = j;
@@ -228,8 +228,8 @@ static void extract_action(int rsock, sr_action_cfg* action, char *action_name)
                                 }
                         }
 
-                        cdb_get_bool(rsock, &action->black_list, CONFD_PATH_PREFIX "/sr_actions/list_actions[%d]/black-list", i);
-                        cdb_get_bool(rsock, &action->terminate, CONFD_PATH_PREFIX "/sr_actions/list_actions[%d]/terminate", i);
+                        cdb_get_bool(rsock, &action->black_list, CONFD_CONFIG_PATH_PREFIX "/sr_actions/list_actions[%d]/black-list", i);
+                        cdb_get_bool(rsock, &action->terminate, CONFD_CONFIG_PATH_PREFIX "/sr_actions/list_actions[%d]/terminate", i);
                 }
         }
 }
@@ -250,6 +250,19 @@ static void convert_action(sr_action_cfg *action, SR_U16 *bitmap)
 	}
 } 
 
+static void handle_engine_start_stop(int rsock)
+{
+        char engine[ENGINE_NAME_SIZE] = "";
+
+	cdb_cd(rsock, CONFD_CONTROL_PATH_PREFIX "/");
+	cdb_get_str(rsock, engine , ACTION_NAME_SIZE, "engine");
+	if (!strncmp(engine, ENGINE_START, ENGINE_NAME_SIZE)) {
+		sr_control_set_state(SR_TRUE);
+	} else if (!strncmp(engine, ENGINE_STOP, ENGINE_NAME_SIZE)) {
+		sr_control_set_state(SR_FALSE);
+	}
+}
+
 static void extract_can_rules(int rsock, int num_of_rules)
 {
         int i, j, num_of_tuples;
@@ -258,7 +271,7 @@ static void extract_can_rules(int rsock, int num_of_rules)
 	SR_U16 actions_bitmap = 0;
 
         for (i = 0; i < num_of_rules; i++) {
-            cdb_cd(rsock, CONFD_PATH_PREFIX "/net/can/rule[%d]", i);
+            cdb_cd(rsock, CONFD_CONFIG_PATH_PREFIX "/net/can/rule[%d]", i);
 	    /* get rule number */
 	    cdb_get_u_int16(rsock, &can_rule.rulenum, "num");
 	    cdb_get_str(rsock, action_name , ACTION_NAME_SIZE, "action");
@@ -302,7 +315,7 @@ static void extract_system_rules(int rsock, int num_of_rules)
 		SR_U8 permissions = 0;
 
         for (i = 0; i < num_of_rules; i++) {
-            cdb_cd(rsock, CONFD_PATH_PREFIX "/system/file/rule[%d]", i);
+            cdb_cd(rsock, CONFD_CONFIG_PATH_PREFIX "/system/file/rule[%d]", i);
 	    /* get rule number */
 	    cdb_get_u_int16(rsock, &file_rule.rulenum, "num");
 	    cdb_get_str(rsock, action_name , ACTION_NAME_SIZE, "action");
@@ -343,7 +356,7 @@ static void extract_net_rules(int rsock, int num_of_rules)
 	SR_U16 actions_bitmap = 0;
 
         for (i = 0; i < num_of_rules; i++) {
-            cdb_cd(rsock, CONFD_PATH_PREFIX "/net/ip/rule[%d]", i);
+            cdb_cd(rsock, CONFD_CONFIG_PATH_PREFIX "/net/ip/rule[%d]", i);
 	    /* get rule number */
 	    cdb_get_u_int16(rsock, &net_rule.rulenum, "num");
 	    cdb_get_str(rsock, action_name , ACTION_NAME_SIZE, "action");
@@ -409,13 +422,14 @@ SR_BOOL read_config_db (void)
 
         cdb_set_namespace(rsock, saferide__ns);
 
-	n = cdb_num_instances(rsock, CONFD_PATH_PREFIX "/net/can/rule");
+	n = cdb_num_instances(rsock, CONFD_CONFIG_PATH_PREFIX "/net/can/rule");
+	handle_engine_start_stop(rsock);
 	if (n > 0)
         	extract_can_rules(rsock, n);
-	n = cdb_num_instances(rsock, CONFD_PATH_PREFIX "/system/file/rule");
+	n = cdb_num_instances(rsock, CONFD_CONFIG_PATH_PREFIX "/system/file/rule");
 	if (n > 0)
         	extract_system_rules(rsock, n);
-	n = cdb_num_instances(rsock, CONFD_PATH_PREFIX "/net/ip/rule");
+	n = cdb_num_instances(rsock, CONFD_CONFIG_PATH_PREFIX "/net/ip/rule");
 	if (n > 0)
         	extract_net_rules(rsock, n);
 
