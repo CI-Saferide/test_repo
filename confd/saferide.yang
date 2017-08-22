@@ -11,330 +11,344 @@ module saferide {
 		prefix tailf;
 	}
 
-	container vsentry {
+	revision 2017-08-01 {
+		description
+			"This revision adds the following new data types:
+			- ip-address-no-zone
+			- ipv4-address-no-zone
+			- ipv6-address-no-zone";
+		reference
+			"RFC 6991: Common YANG Data Types";
+	}
+
+	container control {
 		tailf:cli-add-mode;
-		tailf:info "SafeRide vSentry configuration";
+		tailf:cli-mode-name control;
+		tailf:info "control";
 
-		container control {
+		leaf engine {
+			tailf:info "engine control (start, stop, reload)";
+			type string {
+				pattern "start|stop|reload";
+			}
+			default "start";
+		}
+	}
+
+	container config {
+		tailf:cli-add-mode;
+		tailf:cli-mode-name config;
+		tailf:info "configuration";
+
+		container sr_actions {
 			tailf:cli-add-mode;
-			tailf:cli-mode-name vsentry-control;
-			tailf:info "SafeRide vSentry control";
+			tailf:cli-mode-name config-sr_actions;
+			tailf:info "actions";
 
-			leaf engine {
-				tailf:info "SafeRide vSentry engine control (start, stop, reload-conf";
-				type string {
-					pattern "start|stop|reload-con";
+			list list_actions {
+				key name;
+				max-elements 4096;
+				tailf:info "action configuration";
+				tailf:cli-mode-name config-sr_actions-action-$(name);
+
+				leaf name {
+					tailf:info "action name";
+					type string {
+						length "min .. 31";
+					}
 				}
-				default "start";
+
+				leaf action {
+					type string {
+						pattern "allow|drop";
+					}
+					default "allow";
+					tailf:info "action (allow|drop)";
+				}
+
+				container log {
+					tailf:info "action logging";
+
+					leaf log_facility {
+						tailf:info "action logging facility (syslog|file)";
+						type string {
+							pattern "syslog|file";
+						}
+						default "file";
+					}
+
+					leaf log_severity {
+						tailf:info "action logging severity (critical|error|warning|info|debug)";
+						type string {
+							pattern "crtical|error|warning|info|debug";
+						}
+						default "error";
+					}
+				}
+
+				leaf black-list {
+					tailf:info "action black-list: (true|false)";
+					type boolean;
+					default false;
+				}
+
+				leaf terminate {
+					tailf:info "action terminate: (true|false)";
+					type boolean;
+					default false;
+				}
 			}
 		}
 
-		container config {
+		container net {
 			tailf:cli-add-mode;
-			tailf:cli-mode-name vsentry-config;
-			tailf:info "SafeRide vSentry configuration";
-
-			container sr_actions {
+			tailf:cli-mode-name config-net;
+			tailf:info "network configuration";
+			
+			container ip {
 				tailf:cli-add-mode;
-				tailf:cli-mode-name vsentry-config-sr_actions;
-				tailf:info "SafeRide vSentry actions";
+				tailf:cli-mode-name config-net-ip;
+				tailf:info "network ip configuration";
 
-				list list_actions {
-					key name;
+				list rule {
+					key num;
 					max-elements 4096;
-					tailf:info "SafeRide vSentry action configuration";
-					tailf:cli-mode-name vsentry-config-sr_actions-action-$(name);
+					tailf:info "network ip rules configuration";
+					tailf:cli-mode-name config-net-ip-rule$(num);
 
-					leaf name {
-						tailf:info "SafeRide vSentry action name";
-						type string {
-							length "min .. 31";
+					leaf num {
+						type uint16 {
+							range "0 .. 4095";
 						}
+						tailf:info "rule number 0 .. 4095";
 					}
 
 					leaf action {
-						type string {
-							pattern "allow|drop";
+						tailf:info "associate this rule with action $name";
+						type leafref {
+							path "/config/sr_actions/list_actions/name";
 						}
-						default "allow";
-						tailf:info "SafeRide vSentry action (allow|drop)";
 					}
 
-					container log {
-						tailf:info "SafeRide vSentry action logging";
+					list tuple {
+						tailf:info "specify the rule tuple";
+						tailf:cli-mode-name config-net-ip-rule$(num)-tuple$(id);
+						key id;
 
-						leaf log_facility {
-							tailf:info "SafeRide vSentry action logging facility (syslog|file)";
+						leaf id {
+							tailf:info "";
+							type uint32;
+						}
+
+						leaf direction {
+							tailf:info "ip rule direction (in/out)";
 							type string {
-								pattern "syslog|file";
-							}
-							default "file";
-						}
-
-						leaf log_severity {
-							tailf:info "SafeRide vSentry action logging severity (critical|error|warning|info|debug)";
-							type string {
-								pattern "crtical|error|warning|info|debug";
-							}
-							default "error";
-						}
-					}
-
-					leaf black-list {
-						tailf:info "SafeRide vSentry action black-list: (true|false)";
-						type boolean;
-						default false;
-					}
-
-					leaf terminate {
-						tailf:info "SafeRide vSentry action terminate: (true|false)";
-						type boolean;
-						default false;
-					}
-				}
-			}
-
-			container net {
-				tailf:cli-add-mode;
-				tailf:cli-mode-name vsentry-config-net;
-				tailf:info "SafeRide vSentry network configuration";
-				
-				container ip {
-					tailf:cli-add-mode;
-					tailf:cli-mode-name vsentry-config-net-ip;
-					tailf:info "SafeRide vSentry network ip configuration";
-
-					list rule {
-						key num;
-						max-elements 4096;
-						tailf:info "SafeRide vSentry network ip rules configuration";
-						tailf:cli-mode-name vsentry-config-net-ip-rule$(num);
-
-						leaf num {
-							type uint16 {
-								range "0 .. 4095";
-							}
-							tailf:info "rule number 0 .. 4095";
-						}
-
-						leaf action {
-							tailf:info "associate this rule with action $name";
-							type leafref {
-								path "/vsentry/config/sr_actions/list_actions/name";
+								pattern "in|out";
 							}
 						}
 
-						list tuple {
-							tailf:info "specify the rule tuple";
-							tailf:cli-mode-name vsentry-config-net-ip-rule$(num)-tuple$(id);
-							key id;
-
-							leaf id {
-								tailf:info "";
-								type uint32;
-							}
-
-							leaf srcaddr {
-								type inet:ipv4-address;
-								tailf:info "IP source address";
-								default 0.0.0.0;
-							}
-
-							leaf srcnetmask {
-								type inet:ipv4-address;
-								tailf:info "IP source netmask";
-								default 0.0.0.0;
-							}
-
-							leaf dstaddr {
-								type inet:ipv4-address;
-								tailf:info "IP Dest address";
-								default 0.0.0.0;
-							}
-
-							leaf dstnetmask {
-								type inet:ipv4-address;
-								tailf:info "IP Dest netmask";
-								default 0.0.0.0;
-							}
-
-							leaf srcport {
-								type inet:port-number;
-								tailf:info "Source port number";
-								default 0;
-							}
-
-							leaf dstport {
-								type inet:port-number;
-								tailf:info "Dest port number";
-								default 0;
-							}
-
-							leaf proto {
-								type uint8 {
-									range "0 .. 255";
-								}
-								tailf:info "Protocol type number";
-								default 0;
-							}
-
-							leaf user {
-								tailf:info "User";
-								type string;
-								default "";
-							}
-
-							leaf program { 
-								tailf:info "Program name";
-								type string;
-								default "";
-							}
-
-							leaf max_rate {
-								tailf:info "Max rate";
-								type uint32;
-								default 0;
-							}
-						}
-					}
-				}
-
-				container can {
-					tailf:cli-add-mode;
-					tailf:cli-mode-name vsentry-config-net-can;
-					tailf:info "SafeRide vSentry network can configuration";
-
-					list rule {
-						key num;
-						max-elements 4096;
-						tailf:info "SafeRide vSentry can rules configuration";
-						tailf:cli-mode-name vsentry-config-net-can-rule$(num);
-
-						leaf num {
-							type uint16 {
-								range "0 .. 4095";
-							}
-							tailf:info "rule number 0 .. 4095";
+						leaf srcaddr {
+							type inet:ipv4-address;
+							tailf:info "IP source address";
+							default 0.0.0.0;
 						}
 
-						leaf action {
-							tailf:info "associate this rule with action $name";
-							type leafref {
-								path "/vsentry/config/sr_actions/list_actions/name";
-							}
+						leaf srcnetmask {
+							type inet:ipv4-address;
+							tailf:info "IP source netmask";
+							default 255.255.255.255;
 						}
 
-						list tuple {
-							tailf:info "specify the rule tuple";
-							tailf:cli-mode-name vsentry-config-net-can-rule$(../num)-tuple$(id);
-							key id;
+						leaf dstaddr {
+							type inet:ipv4-address;
+							tailf:info "IP Dest address";
+							default 0.0.0.0;
+						}
 
-							leaf id {
-								tailf:info "";
-								type uint32;
-							}
+						leaf dstnetmask {
+							type inet:ipv4-address;
+							tailf:info "IP Dest netmask";
+							default 255.255.255.255;
+						}
 
-							leaf msg_id {
-								type uint32 {
-									range "0 .. 536870911";
-								}
-								tailf:info "Can msg id";
-								default 0;
-							}
+						leaf srcport {
+							type inet:port-number;
+							tailf:info "Source port number";
+							default 0;
+							when "../proto = 6 or ../proto = 17";
+						}
 
-							leaf user {
-								tailf:info "User";
-								type string;
-								default "";
-							}
+						leaf dstport {
+							type inet:port-number;
+							tailf:info "Dest port number";
+							default 0;
+							when "../proto = 6 or ../proto = 17";
+						}
 
-							leaf program { 
-								tailf:info "Program name";
-								type string;
-								default "";
+						leaf proto {
+							type uint8 {
+								range "0 .. 255";
 							}
+							tailf:info "Protocol type number (6-TCP, 17-UDP, 0-255)";
+							default 0;
+						}
 
-							leaf max_rate {
-								tailf:info "Max rate";
-								type uint32;
-								default 0;
-							}
+						leaf user {
+							tailf:info "user name";
+							type string;
+							default "";
+						}
+
+						leaf program { 
+							tailf:info "program name";
+							type string;
+							default "";
+						}
+
+						leaf max_rate {
+							tailf:info "max access rate";
+							type uint32;
+							default 0;
 						}
 					}
 				}
 			}
 
-			container system {
+			container can {
 				tailf:cli-add-mode;
-				tailf:cli-mode-name vsentry-config-system;
-				tailf:info "SafeRide vSentry system configuration";
+				tailf:cli-mode-name config-net-can;
+				tailf:info "network can configuration";
 
-				container file {
-					tailf:info "SafeRide vSentry file permissions";
-					tailf:cli-add-mode;
-					tailf:cli-mode-name vsentry-config-system-file;
+				list rule {
+					key num;
+					max-elements 4096;
+					tailf:info "can rules configuration";
+					tailf:cli-mode-name config-net-can-rule$(num);
 
-					list rule {
-						key num;
-						max-elements 4096;
-						tailf:info "SafeRide vSentry system file rule configuration";
-						tailf:cli-mode-name vsentry-config-system-file-rule$(num);
+					leaf num {
+						type uint16 {
+							range "0 .. 4095";
+						}
+						tailf:info "rule number 0 .. 4095";
+					}
 
-						leaf num {
-							type uint16 {
-								range "0 .. 4095";
-							}
-							tailf:info "rule number 0 .. 4095";
+					leaf action {
+						tailf:info "associate this rule with action $name";
+						type leafref {
+							path "/config/sr_actions/list_actions/name";
+						}
+					}
+
+					list tuple {
+						tailf:info "specify the rule tuple";
+						tailf:cli-mode-name config-net-can-rule$(../num)-tuple$(id);
+						key id;
+
+						leaf id {
+							tailf:info "";
+							type uint32;
 						}
 
-						leaf action {
-							tailf:info "associate this rule with ana action $name";
-							type leafref {
-								path "/vsentry/config/sr_actions/list_actions/name";
+						leaf msg_id {
+							type uint32 {
+								range "0 .. 536870911";
+							}
+							tailf:info "Can msg id";
+							default 0;
+						}
+
+						leaf user {
+							tailf:info "user name";
+							type string;
+							default "";
+						}
+
+						leaf program { 
+							tailf:info "program name";
+							type string;
+							default "";
+						}
+
+						leaf max_rate {
+							tailf:info "max access rate";
+							type uint32;
+							default 0;
+						}
+					}
+				}
+			}
+		}
+
+		container system {
+			tailf:cli-add-mode;
+			tailf:cli-mode-name config-system;
+			tailf:info "system configuration";
+
+			container file {
+				tailf:info "file permissions";
+				tailf:cli-add-mode;
+				tailf:cli-mode-name config-system-file;
+
+				list rule {
+					key num;
+					max-elements 4096;
+					tailf:info "system file rule configuration";
+					tailf:cli-mode-name config-system-file-rule$(num);
+
+					leaf num {
+						type uint16 {
+							range "0 .. 4095";
+						}
+						tailf:info "rule number 0 .. 4095";
+					}
+
+					leaf action {
+						tailf:info "associate this rule with ana action $name";
+						type leafref {
+							path "/config/sr_actions/list_actions/name";
+						}
+					}
+
+
+					list tuple {
+						tailf:info "specify the rule tuple";
+						tailf:cli-mode-name config-system-file-rule$(num)-tuple$(id);
+						key id;
+
+						leaf id {
+							tailf:info "";
+							type uint32;
+						}
+
+						leaf filename {
+							tailf:info "filename";
+							type string;
+						}
+
+						leaf permission {
+							tailf:info "file permission: x|r|w";
+							type string {
+								pattern "r|w|x|rw|wr|rx|xr|wx|xw|rwx|wrx|wxr|xwr|xrw|rxw";
+								length "min .. 3";
 							}
 						}
 
+						leaf user {
+							tailf:info "user name";
+							type string;
+							default "";
+						}
 
-						list tuple {
-							tailf:info "specify the rule tuple";
-							tailf:cli-mode-name vsentry-config-system-file-rule$(num)-tuple$(id);
-							key id;
+						leaf program { 
+							tailf:info "program name";
+							type string;
+							default "";
+						}
 
-							leaf id {
-								tailf:info "";
-								type uint32;
-							}
-
-							leaf name {
-								tailf:info "File path";
-								type string;
-							}
-
-							leaf permission {
-								tailf:info "File permission: x|r|w";
-								type string {
-									pattern "r|w|x|rw|wr|rx|xr|wx|xw|rwx|wrx|wxr|xwr|xrw|rxw";
-									length "min .. 3";
-								}
-							}
-
-							leaf user {
-								tailf:info "User";
-								type string;
-								default "";
-							}
-
-							leaf program { 
-								tailf:info "Program name";
-								type string;
-								default "";
-							}
-
-							leaf max_rate {
-								tailf:info "Max rate";
-								type uint32;
-								default 0;
-							}
+						leaf max_rate {
+							tailf:info "max access rate";
+							type uint32;
+							default 0;
 						}
 					}
 				}
