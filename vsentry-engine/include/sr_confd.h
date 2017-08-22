@@ -4,7 +4,7 @@
 static char *filename = "sr_config.cfg";
 
 #define CONFD_SERVER "127.0.0.1"
-#define CONFD_PATH_PREFIX "/vsentry/config"
+#define CONFD_PATH_PREFIX "/config"
         
 #define IF_NAME_SIZE            32
 #define ACTION_NAME_SIZE        32

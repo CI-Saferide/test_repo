@@ -53,7 +53,7 @@ static void *handle_commit_trd(void *p)
 					sizeof (struct sockaddr_in)) < 0)
 		confd_fatal("Failed to confd_connect() to confd \n");
 
-	if ((status = cdb_subscribe(subsock, 3, saferide__ns, &spoint,"/vsentry"))
+	if ((status = cdb_subscribe(subsock, 3, saferide__ns, &spoint,"/"))
 		!= CONFD_OK) {
 		fprintf(stderr, "Terminate: subscribe %d\n", status);
 		exit(0);
@@ -312,7 +312,7 @@ static void extract_system_rules(int rsock, int num_of_rules)
             }
 	    num_of_tuples = cdb_num_instances(rsock, "tuple");
 	    for (j = 0; j < num_of_tuples; j++) {
-		 cdb_get_str(rsock, file_rule.tuple.name, FILE_NAME_SIZE, "tuple[%d]/name", j);
+		 cdb_get_str(rsock, file_rule.tuple.name, FILE_NAME_SIZE, "tuple[%d]/filename", j);
 		 cdb_get_str(rsock, file_rule.tuple.program, PROG_NAME_SIZE, "tuple[%d]/program", j);
 		 cdb_get_str(rsock, file_rule.tuple.user, USER_NAME_SIZE, "tuple[%d]/user", j);
 		 cdb_get_str(rsock, file_rule.tuple.permission, FILE_PERM_SIZE, "tuple[%d]/permission", j);

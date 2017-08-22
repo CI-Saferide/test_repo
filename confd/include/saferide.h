@@ -37,8 +37,9 @@ extern "C" {
 #define saferide_terminate 625613193
 #define saferide_black_list 862062469
 #define saferide_tuple 958203093
+#define saferide_filename 410894381
 #define saferide_dstaddr 1617334360
-#define saferide_vsentry 452359654
+#define saferide_direction 1468062370
 #define saferide_log 1285913844
 #define saferide_list_actions 1825198973
 #define saferide_user 1529217067
