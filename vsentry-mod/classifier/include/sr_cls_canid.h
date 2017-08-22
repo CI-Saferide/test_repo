@@ -21,7 +21,7 @@ struct canid_ent_t {
 int sr_cls_canid_init(void);
 void sr_cls_canid_ut(void);
 void sr_cls_canid_uninit(void);
-void sr_cls_canid_empty_table(void);
+void sr_cls_canid_empty_table(SR_BOOL is_lock);
 int sr_cls_canid_add_rule(SR_U32 canid, SR_U32 rulenum);
 int sr_cls_canid_del_rule(SR_U32 canid, SR_U32 rulenum);
 struct sr_hash_ent_t *sr_cls_canid_find(SR_U32 canid);

@@ -46,6 +46,6 @@ void sr_hash_delete(struct sr_hash_table_t *table, SR_U32 key);
 struct sr_hash_ent_t *sr_hash_lookup(struct sr_hash_table_t *table, SR_U32 key);
 void sr_hash_free_table(struct sr_hash_table_t *table);
 void sr_hash_print_table(struct sr_hash_table_t *table);
-void sr_hash_empty_table(struct sr_hash_table_t *table);
+void sr_hash_empty_table(struct sr_hash_table_t *table, SR_BOOL is_lock);
 
 #endif

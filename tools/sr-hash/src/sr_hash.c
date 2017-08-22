@@ -110,7 +110,7 @@ struct sr_hash_ent_t *sr_hash_lookup(struct sr_hash_table_t *table, SR_U32 key)
 	return (ptr);
 }
 
-void sr_hash_empty_table(struct sr_hash_table_t *table)
+void sr_hash_empty_table(struct sr_hash_table_t *table, SR_BOOL is_lock)
 {
         struct sr_hash_ent_t *curr, *next;
         SR_32 i;
@@ -120,7 +120,8 @@ void sr_hash_empty_table(struct sr_hash_table_t *table)
 
         for(i = 0; i < table->size; i++) {
                 if (table->buckets[i].head != NULL){
-                        SR_LOCK(&table->buckets[i].bucket_lock);
+			if (is_lock)
+                        	SR_LOCK(&table->buckets[i].bucket_lock);
                         curr = table->buckets[i].head;
                         while (curr != NULL){
                                 next = curr->next;
@@ -128,14 +129,15 @@ void sr_hash_empty_table(struct sr_hash_table_t *table)
                                 curr= next;
                         }
                         table->buckets[i].head = NULL;
-                        SR_UNLOCK(&table->buckets[i].bucket_lock);
+			if (is_lock)
+                        	SR_UNLOCK(&table->buckets[i].bucket_lock);
                 }
         }
 }
 
 void sr_hash_free_table(struct sr_hash_table_t *table)
 {
-	sr_hash_empty_table(table);
+	sr_hash_empty_table(table, SR_TRUE);
 
 	sal_kernel_print_alert("Cleaned entire table, count is %u\n", table->count);
 	SR_FREE(table->buckets);

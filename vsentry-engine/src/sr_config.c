@@ -26,7 +26,7 @@ static int send_cleanup_messgae(void)
 
         msg = (sr_msg_dispatch_hdr_t *)sr_get_msg(ENG2MOD_BUF, ENG2MOD_MSG_MAX_SIZE);
 	if (msg) {
-		msg->msg_type = SR_MSG_TYPE_CLS_CLEANUP;
+		msg->msg_type = SR_MSG_TYPE_CLS_CLEANUP_NOLOCK;
 		sr_send_msg(ENG2MOD_BUF, sizeof(msg));
 	}
 

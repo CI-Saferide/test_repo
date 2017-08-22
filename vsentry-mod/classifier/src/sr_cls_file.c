@@ -197,10 +197,10 @@ void sr_cls_ut(void)
 
 }
 
-void sr_cls_fs_empty_table(void)
+void sr_cls_fs_empty_table(SR_BOOL is_lock)
 {
 	memset(&sr_cls_file_any_rules, 0, sizeof(bit_array));
-	sr_hash_empty_table(sr_cls_file_table);
+	sr_hash_empty_table(sr_cls_file_table, is_lock);
 }
 
 

@@ -40,12 +40,12 @@ void sr_classifier_uninit(void)
 	sr_cls_uid_uninit();
 }
 
-void sr_classifier_empty_tables(void)
+void sr_classifier_empty_tables(SR_BOOL is_lock)
 {
-	sr_cls_exec_file_empty_table();
-	sr_cls_fs_empty_table();
-	sr_cls_canid_empty_table();
-	sr_cls_port_empty_table();
+	sr_cls_exec_file_empty_table(is_lock);
+	sr_cls_fs_empty_table(is_lock);
+	sr_cls_canid_empty_table(is_lock);
+	sr_cls_port_empty_table(is_lock);
 	sr_cls_network_uninit();
 	sr_cls_network_init();
 }

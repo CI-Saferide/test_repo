@@ -13,11 +13,11 @@ static char *filename = "sr_config.cfg";
 #define PROG_NAME_SIZE          256
 #define FILE_NAME_SIZE          4096
 #define FILE_PERM_SIZE          8
-#define RULE_NAME_SIZE          16
 #define ENGINE_STATE_SIZE       16
 #define ACTION_DROP "drop"
 #define ACTION_ALLOW "allow"
 
+/* confd DB enums */
 typedef enum {
         SR_ACTION_DROP,
         SR_ACTION_ALLOW,

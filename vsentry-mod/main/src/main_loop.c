@@ -90,8 +90,8 @@ SR_32 sr_msg_dispatch(char *msg, int size)
 		case SR_MSG_TYPE_CONTROL:
 			sr_control_msg_dispatch((struct sr_control_msg *)hdr->msg_payload);
 			break;
-		case SR_MSG_TYPE_CLS_CLEANUP:
-			sr_classifier_empty_tables();
+		case SR_MSG_TYPE_CLS_CLEANUP_NOLOCK:
+			sr_classifier_empty_tables(SR_FALSE);
 			break;	
 		case SR_MSG_TYPE_DEFAULT:
 			sal_printf("wrong msg_type\n");

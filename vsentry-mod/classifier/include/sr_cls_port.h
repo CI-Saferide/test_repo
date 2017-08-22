@@ -19,7 +19,7 @@ struct port_ent_t {
 };
 
 int sr_cls_port_init(void);
-void sr_cls_port_empty_table(void);
+void sr_cls_port_empty_table(SR_BOOL is_lock);
 void sr_cls_port_ut(void);
 void sr_cls_port_uninit(void);
 int sr_cls_port_add_rule(SR_U32 port, SR_U32 rulenum, SR_8 dir, SR_8 proto);

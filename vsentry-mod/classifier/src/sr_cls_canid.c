@@ -22,9 +22,9 @@ int sr_cls_canid_init(void)
 	return SR_SUCCESS;
 }
 
-void sr_cls_canid_empty_table(void)
+void sr_cls_canid_empty_table(SR_BOOL is_lock)
 {
-        sr_hash_empty_table(sr_cls_canid_table);
+        sr_hash_empty_table(sr_cls_canid_table, is_lock);
 }
 
 void sr_cls_canid_uninit(void)

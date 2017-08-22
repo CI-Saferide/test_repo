@@ -141,10 +141,10 @@ void sr_cls_exec_file_uninit(void)
 	sal_printf("[%s]: Successfully removed exec file classifier!\n", MODULE_NAME);
 }
 
-void sr_cls_exec_file_empty_table(void)
+void sr_cls_exec_file_empty_table(SR_BOOL is_lock)
 {
 	memset(&sr_cls_exec_file_any_rules, 0, sizeof(bit_array) * SR_RULES_TYPE_MAX);
-	sr_hash_empty_table(sr_cls_exec_file_table);
+	sr_hash_empty_table(sr_cls_exec_file_table, is_lock);
 }
 
 #ifdef UNIT_TEST
