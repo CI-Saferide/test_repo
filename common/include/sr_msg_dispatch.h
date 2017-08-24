@@ -20,6 +20,7 @@ typedef enum {
 	SR_MSG_TYPE_CLS_CANBUS,	
 	SR_MSG_TYPE_CLS_UID,
 	SR_MSG_TYPE_CONTROL,
+	SR_MSG_TYPE_CLS_CLEANUP_NOLOCK,	
 } sr_msg_dispatch_type;
 
 #pragma pack(push, 1)

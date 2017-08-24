@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<edit-config>
+    <target>
+      <running/>
+    </target>
+   <config xmlns="http://saferide.io/ns/saferide">
+     <control>
+        <engine>start</engine>
+     </control>
+   </config>
+</edit-config>

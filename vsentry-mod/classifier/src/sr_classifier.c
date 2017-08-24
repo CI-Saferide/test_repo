@@ -41,6 +41,16 @@ void sr_classifier_uninit(void)
 	sr_cls_uid_uninit();
 }
 
+void sr_classifier_empty_tables(SR_BOOL is_lock)
+{
+	sr_cls_exec_file_empty_table(is_lock);
+	sr_cls_fs_empty_table(is_lock);
+	sr_cls_canid_empty_table(is_lock);
+	sr_cls_port_empty_table(is_lock);
+	sr_cls_network_uninit();
+	sr_cls_network_init();
+}
+
 ///////////////////////////////////////////////////////////////////////////
 /////// Actual classifiers entry points
 ///////////////////////////////////////////////////////////////////////////
@@ -96,6 +106,7 @@ SR_32 sr_classifier_network(disp_info_t* info)
 		return SR_CLS_ACTION_ALLOW;
 	}
 	// UID
+#if 0
 	if (info->tuple_info.id.uid != UID_ANY) {
 		ptr = sr_cls_match_uid(SR_NET_RULES, info->tuple_info.id.uid);
 	} else {
@@ -109,6 +120,7 @@ SR_32 sr_classifier_network(disp_info_t* info)
 	if (array_is_clear(ba_res)) {
 		return SR_CLS_ACTION_ALLOW;
 	}
+#endif
 	// PID
 /* XXX Currently in network classifier process match is not done. 
    Netfiler which runs on buttomhalf context is not associated with a process descriptor, 

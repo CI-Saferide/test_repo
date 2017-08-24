@@ -110,28 +110,35 @@ struct sr_hash_ent_t *sr_hash_lookup(struct sr_hash_table_t *table, SR_U32 key)
 	return (ptr);
 }
 
+void sr_hash_empty_table(struct sr_hash_table_t *table, SR_BOOL is_lock)
+{
+        struct sr_hash_ent_t *curr, *next;
+        SR_32 i;
+
+        if (!table)
+                return;
+
+        for(i = 0; i < table->size; i++) {
+                if (table->buckets[i].head != NULL){
+			if (is_lock)
+                        	SR_LOCK(&table->buckets[i].bucket_lock);
+                        curr = table->buckets[i].head;
+                        while (curr != NULL){
+                                next = curr->next;
+                                SR_FREE(curr);
+                                curr= next;
+                        }
+                        table->buckets[i].head = NULL;
+			if (is_lock)
+                        	SR_UNLOCK(&table->buckets[i].bucket_lock);
+                }
+        }
+}
+
 void sr_hash_free_table(struct sr_hash_table_t *table)
 {
-	SR_U32 i;
-	struct sr_hash_ent_t *ptr,*ptr1;
-	
-	for (i=0; (i < table->size) && table->count; i++) {
-		if (table->buckets[i].head) {
-			sal_kernel_print_alert("sr_hash_free_table: Table still has member in location %u\n", i);
-			SR_LOCK(&table->buckets[index].bucket_lock);
-			ptr = table->buckets[i].head->next;
-			while (ptr) {
-				ptr1 = ptr->next;
-				SR_FREE(ptr);
-				table->count--;
-				ptr = ptr1;
-			}
-			SR_FREE(table->buckets[i].head);
-			table->buckets[i].head = NULL;
-			table->count--;
-			SR_UNLOCK(&table->buckets[index].bucket_lock);
-		}
-	}
+	sr_hash_empty_table(table, SR_TRUE);
+
 	sal_kernel_print_alert("Cleaned entire table, count is %u\n", table->count);
 	SR_FREE(table->buckets);
 	SR_FREE(table);

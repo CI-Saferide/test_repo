@@ -11,6 +11,10 @@ BINDIR 		:= $(BUILD_DIR)/bin
 
 TARGET 		:= sr_engine
 
+CONFD_DIR       ?= /var/vsentry/confd
+
+LDFLAGS += $(CONFD_DIR)/lib/libconfd.a
+
 # where to search for sources
 VPATH 		:=  $(TOP_DIR)/sal/platform/linux/src \
 				$(TOP_DIR)/src \
@@ -43,19 +47,22 @@ INCLUDES 	:=  -I../common/include \
 				-Iinclude \
 				-I$(TOP_DIR)/../tools/radix/include \
 				-Isal/platform/linux/include \
-				-I../tools/sr-log/include
+				-I../tools/sr-log/include \
+				-I$(CONFD_DIR)/include \
+				-I../confd/include
 
 OBJS		:=  $(addprefix $(OBJDIR)/,$(SRCS:.c=.o))
 DEPS		:=  $(OBJS:.o=.d)
 
 # libs to link with
-LIBS		:= -lpthread -lsr_log
+LIBS		:= -lpthread -lsr_log ../confd/lib/libconfd.a
 # and where to search them 
 LIB_PATH 	:= -L$(LIBDIR)
 
 CFLAGS 		+= -MMD -Wall
 
 #CFLAGS 		+= -DSR_RB_DEBUG -DSR_MSG_DEBUG
+CFLAGS 		+= -D__linux
 
 ifdef DEBUG
 CFLAGS		+= -g -O0
@@ -67,7 +74,7 @@ all: $(TARGET)
 
 $(TARGET): $(OBJDIR) $(OBJS) libsr_log
 	@echo "linking $(notdir $@)"
-	@$(CC) $(OBJS) -o $(BINDIR)/$(TARGET) $(LIB_PATH) $(LIBS)
+	$(CC) $(OBJS) -o $(BINDIR)/$(TARGET) $(LIB_PATH) $(LIBS)
 
 $(OBJDIR):
 	@mkdir -p $(OBJDIR)

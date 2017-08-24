@@ -52,5 +52,6 @@ enum cls_actions sr_cls_network_rule_match(SR_U16 rulenum);
 enum cls_actions sr_cls_file_rule_match(SR_8 fileop, SR_U16 rulenum);
 enum cls_actions sr_cls_can_rule_match(SR_U16 rulenum);
 SR_8 sr_cls_rules_msg_dispatch(struct sr_cls_rules_msg *msg);
+void sr_classifier_empty_tables(SR_BOOL is_lock);
 
 #endif
