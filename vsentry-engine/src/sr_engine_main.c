@@ -13,8 +13,9 @@
 #include "sr_cls_rules_control.h"
 #include "sr_event_receiver.h"
 #include "sr_config.h"
-#include <arpa/inet.h> // TODO: take care of the agnostic part
 #include "sr_ml_conngraph.h"
+#include "sr_sal_common.h"
+#include "sr_control.h"
 
 
 SR_32 engine_main_loop(void *data)
@@ -102,6 +103,7 @@ SR_32 sr_engine_start(void)
 		return SR_ERROR;
 	}
 	config_ut();
+	//sr_control_set_state(SR_FALSE); /* just an example */
 	while (run) {
 		SR_8 input = getchar();
 

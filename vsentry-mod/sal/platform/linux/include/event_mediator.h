@@ -1,6 +1,8 @@
 #ifndef _EVENT_MEDIATOR_H
 #define _EVENT_MEDIATOR_H
 
+#define CHECK_STATE	if(SR_FALSE == vsentry_get_state()) return 0;
+
 /* Supported address families */
 #define SR_AF_UNSPEC		0
 #define SR_AF_UNIX			1	/* Unix domain sockets 		*/
@@ -66,4 +68,5 @@ SR_32 vsentry_socket_create(SR_32 family, SR_32 type, SR_32 protocol, SR_32 kern
 SR_32 vsentry_incoming_connection(struct sk_buff *skb);
 SR_32 vsentry_socket_sendmsg(struct socket *sock,struct msghdr *msg, SR_32 size);
 SR_32 vsentry_bprm_check_security(struct linux_binprm *bprm);
+void vsentry_task_free(struct task_struct *task);
 #endif /* _EVENT_MEDIATOR_H */

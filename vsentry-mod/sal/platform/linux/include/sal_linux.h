@@ -75,4 +75,8 @@ SR_U32 sal_packet_dest_addr(void *skb);
 // Time functions
 SR_U32 sal_get_curr_time(void);
 SR_U32 sal_get_curr_time_nsec(void);
+
+// Process functions
+SR_U32 sal_get_exec_inode(SR_32 pid);
+
 #endif /* SAL_LINUX_H*/

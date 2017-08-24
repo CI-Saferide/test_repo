@@ -3,6 +3,7 @@
 #include "sr_hash.h"
 #include "sr_cls_canid.h"
 #include "sr_cls_canbus_common.h"
+#include "sr_classifier.h"
 
 #include <linux/time.h> // for unit testing
 
@@ -160,14 +161,20 @@ bit_array *sr_cls_match_canid(SR_U32 canid)
 
 SR_8 sr_cls_canid_msg_dispatch(struct sr_cls_canbus_msg *msg)
 {
+	int st;
+
 	switch (msg->msg_type) {
 		case SR_CLS_CANID_DEL_RULE:
 			sal_kernel_print_alert("Delete rule %d from %d\n", msg->rulenum, msg->canid);
-			return sr_cls_canid_del_rule(msg->canid, msg->rulenum);
+			if ((st =  sr_cls_canid_del_rule(msg->canid, msg->rulenum)) != SR_SUCCESS)
+			   return st;
+			return sr_cls_exec_inode_del_rule(SR_CAN_RULES, msg->exec_inode, msg->rulenum);
 			break;
 		case SR_CLS_CANID_ADD_RULE:
 			sal_kernel_print_alert("Add rule %d to %d\n", msg->rulenum, msg->canid);
-			return sr_cls_canid_add_rule(msg->canid, msg->rulenum);
+			if ((st = sr_cls_canid_add_rule(msg->canid, msg->rulenum)) != SR_SUCCESS)
+			   return st;
+			return sr_cls_exec_inode_add_rule(SR_CAN_RULES, msg->exec_inode, msg->rulenum);
 			break;
 		default:
 			break;

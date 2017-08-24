@@ -1,13 +1,8 @@
 #include "sr_sal_common.h"
 #include "sr_event_receiver.h"
 #include "sr_radix.h"
-#include <netinet/in.h>
+#include "sr_sal_common.h"
 #include "sr_ml_conngraph.h"
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <fcntl.h>
-
-
 
 struct radix_head *sr_ml_conngraph_table;
 

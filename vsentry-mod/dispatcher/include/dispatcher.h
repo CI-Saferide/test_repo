@@ -109,6 +109,7 @@ SR_32 disp_inode_unlink(disp_info_t* info);
 SR_32 disp_inode_symlink(disp_info_t* info);
 
 SR_32 disp_socket_connect(disp_info_t* info);
+SR_32 disp_socket_accept(disp_info_t* info);
 SR_32 disp_incoming_connection(disp_info_t* info);
 SR_32 disp_socket_create(disp_info_t* info);
 SR_32 disp_socket_sendmsg(disp_info_t* info);

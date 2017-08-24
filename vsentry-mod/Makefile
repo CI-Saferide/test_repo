@@ -39,6 +39,8 @@ $(TARGET)-objs := sal/platform/linux/src/module_init.o \
 				  classifier/src/sr_classifier.o \
 				  classifier/src/sr_cls_rulesdb.o \
 				  classifier/src/sr_cls_file.o \
+				  classifier/src/sr_cls_exec_file.o \
+				  classifier/src/sr_cls_process.o \
 				  classifier/src/sr_cls_port.o \
 				  classifier/src/sr_cls_uid.o \
 				  classifier/src/sr_cls_canid.o \
@@ -53,6 +55,7 @@ $(TARGET)-objs := sal/platform/linux/src/module_init.o \
 				  sal/platform/linux/src/sal_shmem_linux.o \
 				  ../common/src/sr_msg.o \
 				  ../common/src/sr_tasks.o \
+				  main/src/sr_control.o \
 
 else
 
