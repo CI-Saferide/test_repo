@@ -208,15 +208,22 @@ bit_array *sr_cls_match_port(SR_U32 port, SR_8 dir, SR_8 proto)
 
 SR_8 sr_cls_port_msg_dispatch(struct sr_cls_port_msg *msg)
 {
+	int st;
 
 	switch (msg->msg_type) {
 		case SR_CLS_PORT_DEL_RULE:
 			sal_kernel_print_alert("[PORT]Delete port %d,rulenum %d ,dir %d, proto %d\n", msg->port, msg->rulenum,msg->dir, msg->proto);
-			return sr_cls_port_del_rule(msg->port, msg->rulenum,msg->dir, msg->proto);
+			if ((st = sr_cls_port_del_rule(msg->port, msg->rulenum,msg->dir, msg->proto)) != SR_SUCCESS) { 
+			   return st;
+			}
+			return sr_cls_exec_inode_del_rule(SR_NET_RULES, msg->exec_inode, msg->rulenum);
 			break;
 		case SR_CLS_PORT_ADD_RULE:
 			sal_kernel_print_alert("[PORT]Add port %d,rulenum %d ,dir %d, proto %d\n", msg->port, msg->rulenum,msg->dir, msg->proto);
-			return sr_cls_port_add_rule(msg->port, msg->rulenum,msg->dir, msg->proto);
+			if ((st = sr_cls_port_add_rule(msg->port, msg->rulenum,msg->dir, msg->proto)) != SR_SUCCESS) { 
+			   return st;
+			}
+			return sr_cls_exec_inode_add_rule(SR_NET_RULES, msg->exec_inode, msg->rulenum);
 			break;
 		default:
 			break;

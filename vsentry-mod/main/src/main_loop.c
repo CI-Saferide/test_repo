@@ -10,6 +10,7 @@
 #include "sr_cls_network.h"
 #include "sr_cls_canid.h"
 #include "sr_cls_port.h"
+#include "sr_control.h"
 
 #define MAX_RX_MSG_LEN 	512
 
@@ -74,9 +75,6 @@ SR_32 sr_msg_dispatch(char *msg, int size)
 			sr_cls_file_msg_dispatch((struct sr_cls_file_msg *)hdr->msg_payload);
 			break;
 		case SR_MSG_TYPE_CLS_NETWORK: {
-			struct sr_cls_network_msg* net_msg=(struct sr_cls_network_msg*)hdr->msg_payload;
-			printk("[add_ipv4----] addr=%x, netmask=%x, rulenum=%d\n",
-							net_msg->addr, net_msg->netmask, net_msg->rulenum);
 			sr_cls_network_msg_dispatch((struct sr_cls_network_msg *)hdr->msg_payload);
 			}
 			break;
@@ -88,6 +86,9 @@ SR_32 sr_msg_dispatch(char *msg, int size)
 			break;
 		case SR_MSG_TYPE_CLS_PORT:
 			sr_cls_port_msg_dispatch((struct sr_cls_port_msg *)hdr->msg_payload);
+			break;
+		case SR_MSG_TYPE_CONTROL:
+			sr_control_msg_dispatch((struct sr_control_msg *)hdr->msg_payload);
 			break;
 		case SR_MSG_TYPE_DEFAULT:
 			sal_printf("wrong msg_type\n");
