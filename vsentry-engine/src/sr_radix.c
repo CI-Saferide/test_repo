@@ -492,8 +492,8 @@ rn_addmask(void *n_arg, struct radix_mask_head *maskhead, int search, int skip)
 
 	memset(addmask_key, 0, RADIX_MAX_KEY_LEN);
 	if (skip > 1)
-		memcpy(rn_ones + 1, addmask_key + 1, skip - 1);
-	memcpy(netmask + skip, addmask_key + skip, mlen - skip);
+		memcpy(addmask_key + 1, rn_ones + 1, skip - 1);
+	memcpy(addmask_key + skip, netmask + skip, mlen - skip);
 	/*
 	 * Trim trailing zeroes.
 	 */
@@ -512,7 +512,7 @@ rn_addmask(void *n_arg, struct radix_mask_head *maskhead, int search, int skip)
 	if ((saved_x = x) == NULL)
 		return (0);
 	netmask = cp = (unsigned char *)(x + 2);
-	memcpy(addmask_key, cp, mlen);
+	memcpy(cp, addmask_key, mlen);
 	x = rn_insert(cp, &maskhead->head, &maskduplicated, x);
 	if (maskduplicated) {
 		R_Free(saved_x);
