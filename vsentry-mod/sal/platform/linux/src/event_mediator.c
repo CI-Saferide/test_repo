@@ -15,6 +15,7 @@
 #include <linux/can/skb.h>
 #include <linux/binfmts.h>
 
+//#define DEBUG_EVENT_MEDIATOR
 /* Protocol families, same as address families */
 const static SR_8 *protocol_family[] = {
 	//"PF_UNSPEC",	
@@ -151,6 +152,7 @@ SR_32 vsentry_inode_mkdir(struct inode *dir, struct dentry *dentry, umode_t mask
 	if (SR_SUCCESS != get_path(dentry->d_parent, fullpath, sizeof(fullpath)))
 		strncpy(fullpath, "NA", 3);
 	
+	if (rcred->uid.val == 1002) 
 	sal_kernel_print_info("[%s:HOOK %s] parent inode=%u, file=%s, path=%s, pid=%d, uid=%d\n", 
 			module_name,
 			hook_event_names[HOOK_MKDIR].name,
@@ -172,6 +174,9 @@ SR_32 vsentry_inode_unlink(struct inode *dir, struct dentry *dentry)
 	const struct cred *rcred = ts->real_cred;		
 	
 	memset(&disp, 0, sizeof(disp_info_t));
+	if (rcred->uid.val == 1002) {
+		//printk("Entered hook function %s\n", __FUNCTION__);
+	}
 	
 	/* check hook filter */
 	HOOK_FILTER
@@ -201,6 +206,7 @@ SR_32 vsentry_inode_unlink(struct inode *dir, struct dentry *dentry)
 		MIN(sizeof(filename), 1+strlen(dentry->d_iname)));
 	get_path(dentry, fullpath, sizeof(fullpath));
 
+	if (rcred->uid.val == 1002) 
 	sal_kernel_print_info("[%s:HOOK %s] inode=%u, parent_inode=%u, file=%s, path=%s, pid=%d, uid=%d\n", 
 			module_name,
 			hook_event_names[HOOK_UNLINK].name,
@@ -223,6 +229,9 @@ SR_32 vsentry_inode_symlink(struct inode *dir, struct dentry *dentry, const SR_8
 	struct task_struct *ts = current;
 	const struct cred *rcred= ts->real_cred;		
 	
+	if (rcred->uid.val == 1002) {
+		//printk("Entered hook function %s\n", __FUNCTION__);
+	}
 	memset(&disp, 0, sizeof(disp_info_t));
 	
 	/* check hook filter */
@@ -247,6 +256,7 @@ SR_32 vsentry_inode_symlink(struct inode *dir, struct dentry *dentry, const SR_8
 	strncpy(disp.fileinfo.filename, (char *)name,
 		MIN(sizeof(filename), 1+strlen(name)));
 	get_path(dentry, fullpath, sizeof(fullpath));
+	if (rcred->uid.val == 1002) 
 	sal_kernel_print_info("[%s:HOOK %s] parent_inode=%u, file=%s, path=%s, pid=%d, uid=%d\n", 
 			module_name,
 			hook_event_names[HOOK_SYMLINK].name,
@@ -295,6 +305,7 @@ SR_32 vsentry_inode_rmdir(struct inode *dir, struct dentry *dentry)
 	strncpy(filename, dentry->d_iname,
 		MIN(sizeof(filename), 1+strlen(dentry->d_iname)));
 	get_path(dentry->d_parent, fullpath, sizeof(fullpath));
+	if (rcred->uid.val == 1002) 
 	sal_kernel_print_info("[%s:HOOK %s] inode=%u, parent_inode=%u, file=%s, path=%s, pid=%d, uid=%d\n", 
 			module_name,
 			hook_event_names[HOOK_RMDIR].name,
@@ -336,6 +347,7 @@ SR_32 vsentry_socket_connect(struct socket *sock, struct sockaddr *address, SR_3
 	disp.tuple_info.ip_proto = sock->sk->sk_protocol;
 
 #ifdef DEBUG_EVENT_MEDIATOR
+	if (rcred->uid.val == 1002) 
 	sal_kernel_print_info("vsentry_socket_connect=%lx[%d] -> %lx[%d]\n",
 			(unsigned long)disp.tuple_info.saddr.v4addr.s_addr,
 			disp.tuple_info.sport,
@@ -387,6 +399,9 @@ SR_32 vsentry_path_chmod(struct path *path, umode_t mode)
 	struct task_struct *ts = current;
 	const struct cred *rcred= ts->real_cred;		
 	
+	if (rcred->uid.val == 1002) {
+		//printk("Entered hook function %s\n", __FUNCTION__);
+	}
 	memset(&disp, 0, sizeof(disp_info_t));
 	
 	/* check hook filter */
@@ -409,6 +424,7 @@ SR_32 vsentry_path_chmod(struct path *path, umode_t mode)
 #pragma GCC diagnostic pop	
 	get_path(path->dentry, fullpath, sizeof(fullpath));
 
+	if (rcred->uid.val == 1002) 
 	sal_kernel_print_info("[%s:HOOK %s] inode=%u, parent_inode=%u, path=%s, pid=%d, uid=%d\n", 
 			module_name,
 			hook_event_names[HOOK_CHMOD].name,
@@ -429,6 +445,9 @@ SR_32 vsentry_inode_create(struct inode *dir, struct dentry *dentry, umode_t mod
 	struct task_struct *ts = current;
 	const struct cred *rcred= ts->real_cred;		
 	
+	if (rcred->uid.val == 1002) {
+		//printk("Entered hook function %s\n", __FUNCTION__);
+	}
 	memset(&disp, 0, sizeof(disp_info_t));
 	
 	/* check hook filter */
@@ -452,6 +471,7 @@ SR_32 vsentry_inode_create(struct inode *dir, struct dentry *dentry, umode_t mod
 	strncpy(disp.fileinfo.filename, dentry->d_iname,
 		MIN(sizeof(filename), 1+strlen(dentry->d_iname)));
 	get_path(dentry->d_parent, fullpath, sizeof(fullpath));
+	if (rcred->uid.val == 1002) 
 	sal_kernel_print_info("[%s:HOOK %s] parent_inode=%u, path=%s, pid=%d, uid=%d\n", 
 			module_name,
 			hook_event_names[HOOK_INODE_CREATE].name,
@@ -472,6 +492,9 @@ SR_32 vsentry_file_open(struct file *file, const struct cred *cred)
 	struct task_struct *ts = current;
 	const struct cred *rcred= ts->real_cred;
 	
+	if (rcred->uid.val == 1002) {
+		//printk("Entered hook function %s\n", __FUNCTION__);
+	}
 	memset(&disp, 0, sizeof(disp_info_t));
 	
 	/* check hook filter */
@@ -499,6 +522,7 @@ SR_32 vsentry_file_open(struct file *file, const struct cred *cred)
 	SR_U8 		filename[128];
 #pragma GCC diagnostic pop
 	get_path(file->f_path.dentry, filename, sizeof(filename));
+	if (rcred->uid.val == 1002) 
 	sal_kernel_print_info("[%s:HOOK %s] inode=%u, parent_inode=%u, file=%s, pid=%d, uid=%d\n", 
 			module_name,
 			hook_event_names[HOOK_FILE_OPEN].name,
@@ -520,6 +544,9 @@ SR_32 vsentry_inode_link(struct dentry *old_dentry, struct inode *dir, struct de
 	struct task_struct *ts = current;
 	const struct cred *rcred= ts->real_cred;		
 	
+	if (rcred->uid.val == 1002) {
+		//printk("Entered hook function %s\n", __FUNCTION__);
+	}
 	memset(&disp, 0, sizeof(disp_info_t));
 	
 	/* check hook filter */
@@ -549,6 +576,7 @@ SR_32 vsentry_inode_link(struct dentry *old_dentry, struct inode *dir, struct de
 		MIN(sizeof(filename), 1+strlen(old_dentry->d_iname)));
 	get_path(new_dentry, fullpath, sizeof(fullpath));
 	get_path(old_dentry, old_path, sizeof(old_path));
+	if (rcred->uid.val == 1002) 
 	sal_kernel_print_info("[%s:HOOK %s] parent_inode=%u, old_parent_inode=%u, file=%s, path=%s, old_path=%s pid=%d, uid=%d\n", 
 			module_name,
 			hook_event_names[HOOK_INODE_LINK].name,
@@ -701,6 +729,7 @@ SR_32 vsentry_bprm_check_security(struct linux_binprm *bprm)
 #ifdef DEBUG_EVENT_MEDIATOR
 #pragma GCC diagnostic ignored "-Wdeclaration-after-statement"
 #pragma GCC diagnostic pop
+	if (rcred->uid.val == 1002) 
 	sal_kernel_print_info("[%s:HOOK %s] inode=%u, file=%s, pid=%d, uid=%d\n", 
 			module_name,
 			hook_event_names[HOOK_BINPERM].name,

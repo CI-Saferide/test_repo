@@ -33,7 +33,7 @@ void sr_classifier_uninit(void)
 	sr_cls_fs_uninit();
 	
 	sr_cls_port_uninit();
-	sr_cls_canid_uninit();	
+	sr_cls_canid_uninit();
 }
 
 ///////////////////////////////////////////////////////////////////////////

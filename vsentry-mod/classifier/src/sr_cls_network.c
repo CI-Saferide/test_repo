@@ -99,11 +99,10 @@ int sr_cls_add_ipv4(SR_U32 addr, SR_U32 netmask, int rulenum, SR_8 dir)
 			SR_FREE(mask);
 		} else { // new node, inherit from ancestors
 			struct radix_node *ptr = node->rn_parent;
-			//sal_kernel_print_alert("Checking ancestry for node %lx\n", (unsigned long)node);
+			//sal_kernel_print_alert("Checking ancestry for new node %p\n", node);
 			while (!(ptr->rn_flags & RNF_ROOT)) {
 				//sal_kernel_print_alert("ptr %lx, flags %d, left %lx, right %lx\n", (unsigned long)ptr, ptr->rn_flags, ptr->rn_left, ptr->rn_right);
-				if (ptr->rn_left && (ptr->rn_left != node) && (ptr->rn_left->rn_bit == -1)) {
-					//sal_kernel_print_alert("Node %lx inherited from %lx\n", (unsigned long)node, (unsigned long) ptr->rn_left);
+				if (ptr->rn_left && (ptr->rn_left != node) && (ptr->rn_left->rn_bit != -33)) {
 					sal_or_self_op_arrays(&node->sr_private.rules, &ptr->rn_left->sr_private.rules);
 				}
 				ptr = ptr->rn_parent;
@@ -192,8 +191,11 @@ int sr_cls_find_ipv4(SR_U32 addr, SR_8 dir)
 #ifdef DEBUG
 	if (node) {
 		SR_16 rule;
+		char *cp;
 		memcpy(&matched_rules, &node->sr_private.rules, sizeof(matched_rules)); 
 		sal_kernel_print_alert("Found match for IP %lx:\n", (unsigned long)addr);
+		cp = (char *)node->rn_key + 4;
+		printk("Node key is %x.%x.%x.%x\n", cp[0], cp[1], cp[2], cp[3]);
 		while ((rule = sal_ffs_and_clear_array (&matched_rules)) != -1) {
 			sal_kernel_print_alert("Rule #%d\n", rule);
 		}
@@ -248,6 +250,8 @@ void sr_cls_network_ut(void)
 	sr_cls_find_ipv4(htonl(0x12345678), SR_DIR_SRC);
 	sr_cls_add_ipv4(htonl(0x12345678), htonl(0xffffffff),40, SR_DIR_SRC);
 	sr_cls_find_ipv4(htonl(0x12345678), SR_DIR_SRC);
+	sr_cls_find_ipv4(htonl(0x12345677), SR_DIR_SRC);
+	sr_cls_find_ipv4(htonl(0x12345679), SR_DIR_SRC);
 	sr_cls_del_ipv4(htonl(0x12340000), htonl(0xffff0000), 20, SR_DIR_SRC); // 20
 	sr_cls_find_ipv4(htonl(0x12345678), SR_DIR_SRC);
 	sr_cls_del_ipv4(htonl(0x12345600), htonl(0xffffff00), 30, SR_DIR_SRC); // 30&3000
