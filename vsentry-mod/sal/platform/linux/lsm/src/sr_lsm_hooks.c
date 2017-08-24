@@ -43,15 +43,6 @@ char* get_path(struct dentry *dentry, char *buffer, int len)
 
 static int vsentry_path_unlink(struct path *path, struct dentry *dentry)
 {
-        disp_info_t disp;
-        struct task_struct *ts = current;
-        const struct cred *rcred = ts->real_cred;
-
-        memset(&disp, 0, sizeof(disp_info_t));
-        if (rcred->uid.val == 1002) {
-                //printk("Entered hook function %s\n", __FUNCTION__);
-        }
-
 	if(hook_filter())
 		return 0;
 
@@ -79,15 +70,6 @@ static int vsentry_path_rmdir(struct path *dir, struct dentry *dentry)
 
 static int vsentry_path_symlink(struct path *dir, struct dentry *dentry, const char *old_name)
 {
-        disp_info_t disp;
-        struct task_struct *ts = current;
-        const struct cred *rcred = ts->real_cred;
-
-        memset(&disp, 0, sizeof(disp_info_t));
-        if (rcred->uid.val == 1002) {
-                //printk("Entered hook function %s\n", __FUNCTION__);
-        }
-
 	if(hook_filter())
 		return 0;
 
@@ -97,15 +79,6 @@ static int vsentry_path_symlink(struct path *dir, struct dentry *dentry, const c
 
 static int vsentry_inode_mknod(struct inode *dir, struct dentry *dentry, umode_t mode, dev_t dev)
 {
-        disp_info_t disp;
-        struct task_struct *ts = current;
-        const struct cred *rcred = ts->real_cred;
-
-        memset(&disp, 0, sizeof(disp_info_t));
-        if (rcred->uid.val == 1002) {
-                //printk("Entered hook function %s\n", __FUNCTION__);
-        }
-
 	if(hook_filter())
 		return 0;
 
@@ -115,15 +88,6 @@ static int vsentry_inode_mknod(struct inode *dir, struct dentry *dentry, umode_t
 
 static int vsentry_path_mknod(struct path *dir, struct dentry *dentry, umode_t mode,unsigned int dev)
 {
-        disp_info_t disp;
-        struct task_struct *ts = current;
-        const struct cred *rcred = ts->real_cred;
-
-        memset(&disp, 0, sizeof(disp_info_t));
-        if (rcred->uid.val == 1002) {
-                //printk("Entered hook function %s\n", __FUNCTION__);
-        }
-
 	if(hook_filter())
 		return 0;
 
@@ -133,15 +97,6 @@ static int vsentry_path_mknod(struct path *dir, struct dentry *dentry, umode_t m
 
 static int vsentry_inode_rename(struct inode *old_dir, struct dentry *old_dentry, struct inode *new_dir,struct dentry *new_dentry)
 {
-        disp_info_t disp;
-        struct task_struct *ts = current;
-        const struct cred *rcred = ts->real_cred;
-
-        memset(&disp, 0, sizeof(disp_info_t));
-        if (rcred->uid.val == 1002) {
-                //printk("Entered hook function %s\n", __FUNCTION__);
-        }
-
 	if(hook_filter())
 		return 0;
 
@@ -151,15 +106,6 @@ static int vsentry_inode_rename(struct inode *old_dir, struct dentry *old_dentry
 
 static int vsentry_path_rename(struct path *old_dir, struct dentry *old_dentry, struct path *new_dir,struct dentry *new_dentry)
 {
-        disp_info_t disp;
-        struct task_struct *ts = current;
-        const struct cred *rcred = ts->real_cred;
-
-        memset(&disp, 0, sizeof(disp_info_t));
-        if (rcred->uid.val == 1002) {
-                //printk("Entered hook function %s\n", __FUNCTION__);
-        }
-
 	if(hook_filter())
 		return 0;
 
@@ -209,15 +155,6 @@ static int vsentry_file_permission(struct file *file, int mask)
 
 static int vsentry_file_alloc_security(struct file *file)
 {
-        disp_info_t disp;
-        struct task_struct *ts = current;
-        const struct cred *rcred = ts->real_cred;
-
-        memset(&disp, 0, sizeof(disp_info_t));
-        if (rcred->uid.val == 1002) {
-                //printk("Entered hook function %s\n", __FUNCTION__);
-        }
-
 	if(hook_filter())
 		return 0;
 
@@ -235,15 +172,6 @@ static void vsentry_file_free_security(struct file *file)
 
 static int vsentry_file_ioctl(struct file *file, unsigned int cmd,unsigned long arg)
 {
-        disp_info_t disp;
-        struct task_struct *ts = current;
-        const struct cred *rcred = ts->real_cred;
-
-        memset(&disp, 0, sizeof(disp_info_t));
-        if (rcred->uid.val == 1002) {
-                //printk("Entered hook function %s\n", __FUNCTION__);
-        }
-
 	if(hook_filter())
 		return 0;
 
