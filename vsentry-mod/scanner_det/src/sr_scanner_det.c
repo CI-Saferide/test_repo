@@ -46,13 +46,15 @@ SR_32 scanner_suspicious_conn(void *skb)
 	} else if (++scan_counter > MAX_SCAN_RATE) { // re-engage if still above threshold for this second
 		scan_start = sal_get_curr_time();
 		if (!scan_detected) {
+			char sip[24];
 			if (source_counter < scan_counter/3) { // heuristic number - could be anything...
-				sal_printf("SR Detected port scan. initiating counter measures\n");
+				sprintf(sip, "source=Multi-host");
 			} else {
 				unsigned int src_ip = sal_packet_src_addr(skb);
-				sal_printf("SR Detected port scan from source %02d.%02d.%02d.%02d. initiating counter measures\n",
+				sprintf(sip, "source=%02d.%02d.%02d.%02d",
 					(src_ip&0xff000000)>>24, (src_ip&0x00ff0000)>>16, (src_ip&0xff00)>> 8, src_ip&0xff);
 			}
+			CEF_log_event(SR_CEF_CID_NETWORK, "Port Scan detected. Initiating counter-measures", SEVERITY_MEDIUM, sip);
 			scan_detected = 1;
 		}
 	}
