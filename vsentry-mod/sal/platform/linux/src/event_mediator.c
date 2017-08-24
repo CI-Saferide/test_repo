@@ -16,6 +16,7 @@
 #include <linux/binfmts.h>
 #include "sr_control.h"
 
+//#define DEBUG_EVENT_MEDIATOR
 /* Protocol families, same as address families */
 const static SR_8 *protocol_family[] = {
 	//"PF_UNSPEC",	
