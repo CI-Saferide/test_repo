@@ -55,13 +55,14 @@ OBJS		:=  $(addprefix $(OBJDIR)/,$(SRCS:.c=.o))
 DEPS		:=  $(OBJS:.o=.d)
 
 # libs to link with
-LIBS		:= -lpthread -lsr_log $(CONFD_DIR)/lib/libconfd.a
+LIBS		:= -lpthread -lsr_log ../confd/lib/libconfd.a
 # and where to search them 
 LIB_PATH 	:= -L$(LIBDIR)
 
 CFLAGS 		+= -MMD -Wall
 
 #CFLAGS 		+= -DSR_RB_DEBUG -DSR_MSG_DEBUG
+CFLAGS 		+= -D__linux
 
 ifdef DEBUG
 CFLAGS		+= -g -O0

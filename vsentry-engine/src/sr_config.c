@@ -1,24 +1,25 @@
 /* sr_config.c */
-
-#include <sys/socket.h>
-#include <netinet/in.h>
 #include "sr_config.h"
+#include "sr_sal_common.h"
 #include "sr_cls_network_common.h"
 #include "sr_cls_port_control.h"
 #include "sr_cls_network_control.h"
 #include "sr_cls_rules_control.h"
 #include "sr_cls_canbus_control.h"
 #include "sr_cls_file_control.h"
-#include <arpa/inet.h> // TODO: take care of the agnostic part
-#include <confd_lib.h>
-#include <sr_msg.h>
-#include <confd_cdb.h>
-#include <saferide.h>
-#include <pthread.h>
-#include <poll.h>
+#include "confd_lib.h"
+#include "sr_msg.h"
+#include "confd_cdb.h"
+#include "saferide.h"
 #include "sr_msg_dispatch.h"
 #include "sr_control.h"
 #include "sr_confd.h"
+//need to move these headers to sal_linux.h
+#include <arpa/inet.h>
+#include <pthread.h>
+#include <poll.h>
+#include <netinet/in.h>
+#include <sys/socket.h>
 
 static int send_cleanup_messgae(void)
 {
@@ -244,7 +245,7 @@ static void convert_action(sr_action_cfg *action, SR_U16 *bitmap)
 			*bitmap = SR_CLS_ACTION_ALLOW;
 			break;
 		case SR_ACTION_TOTAL:
-		defualt:
+		default:
 			printf("No action\n");
 			break;
 	}
@@ -337,7 +338,7 @@ static void extract_system_rules(int rsock, int num_of_rules)
 			case SR_ACTION_ALLOW:
 			   actions_bitmap = SR_CLS_ACTION_ALLOW;
 			   break;
-			defualt:
+			default:
 			   printf("No action\n");
 			   continue;
 		 }
@@ -381,7 +382,7 @@ static void extract_net_rules(int rsock, int num_of_rules)
 			case SR_ACTION_ALLOW:
 			   actions_bitmap = SR_CLS_ACTION_ALLOW;
 			   break;
-			defualt:
+			default:
 			   printf("No action\n");
 			   continue;
 		 }
