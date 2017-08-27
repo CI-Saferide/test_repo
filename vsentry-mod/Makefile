@@ -5,7 +5,6 @@ EXTRA_CFLAGS += -I$(TOP_DIR)/event_collector/include
 EXTRA_CFLAGS += -I$(TOP_DIR)/sal/include
 EXTRA_CFLAGS += -I$(TOP_DIR)/sal/test
 EXTRA_CFLAGS += -I$(TOP_DIR)/sal/platform/linux/include
-EXTRA_CFLAGS += -I$(TOP_DIR)/../tools/sr-log/include
 EXTRA_CFLAGS += -I$(TOP_DIR)/../tools/radix/include
 EXTRA_CFLAGS += -I$(TOP_DIR)/../tools/sr-hash/include
 EXTRA_CFLAGS += -I$(TOP_DIR)/../common/include
@@ -46,6 +45,7 @@ $(TARGET)-objs := sal/platform/linux/src/module_init.o \
 				  classifier/src/sr_cls_canid.o \
 				  ../tools/radix/src/sr_radix.o \
 				  ../tools/sr-hash/src/sr_hash.o \
+				  ../tools/sr-log/src/sr_kernel_log.o \
 				  sal/platform/linux/src/sal_linux.o \
 				  sal/platform/linux/src/sal_bitops_linux.o \
 				  sal/src/sal_bitops.o \
