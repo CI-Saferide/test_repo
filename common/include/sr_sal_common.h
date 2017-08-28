@@ -16,3 +16,4 @@ SR_32 sal_task_start(void **data, SR_32 (*task_func)(void *data));
 void sal_schedule_timeout(SR_U32 timeout);
 void sal_schedule(void);
 SR_8 *sal_strstr(SR_8 *haystack, SR_8 *needle);
+SR_32 sal_get_uid(char *user_name);

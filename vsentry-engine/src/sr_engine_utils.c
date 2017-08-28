@@ -23,3 +23,10 @@ SR_U8 sr_get_inode(char *file_name, int is_dir, SR_U32 *inode)
 	return SR_SUCCESS;
 }
 
+
+SR_32 sr_get_uid(char *user) 
+{
+	if (!user || *user == '*')
+		return -1;
+	return sal_get_uid(user);
+}

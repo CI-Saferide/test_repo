@@ -286,7 +286,8 @@ static void extract_can_rules(int rsock, int num_of_rules)
 		 cdb_get_str(rsock, can_rule.tuple.user, USER_NAME_SIZE, "tuple[%d]/user", j);
 		 cdb_get_str(rsock, can_rule.tuple.program, PROG_NAME_SIZE, "tuple[%d]/program", j);
 		 cdb_get_u_int32(rsock, &can_rule.tuple.max_rate, "tuple[%d]/max_rate", j);
-		 sr_cls_canid_add_rule(can_rule.tuple.msg_id, *can_rule.tuple.program ? can_rule.tuple.program : "*", can_rule.rulenum);
+		 sr_cls_canid_add_rule(can_rule.tuple.msg_id, *can_rule.tuple.program ? can_rule.tuple.program : "*", 
+			*can_rule.tuple.user ? can_rule.tuple.user : "*", can_rule.rulenum);
                  sr_cls_rule_add(SR_CAN_RULES, can_rule.rulenum, actions_bitmap, 0, can_rule.tuple.max_rate, /* can_rule.rate_action */ 0,  /* can_rule.action.log_target */ 0,
 			/* email_id*/ 0, /* can_rule.action.phone_id*/ 0, /*can_rule.action.skip_rulenum */ 0);
 	    }
@@ -342,7 +343,8 @@ static void extract_system_rules(int rsock, int num_of_rules)
 			   printf("No action\n");
 			   continue;
 		 }
-		 sr_cls_file_add_rule(file_rule.tuple.name, *file_rule.tuple.program ? file_rule.tuple.program : "*", file_rule.rulenum, 1);
+		 sr_cls_file_add_rule(file_rule.tuple.name, *file_rule.tuple.program ? file_rule.tuple.program : "*", 
+			*file_rule.tuple.user ? file_rule.tuple.user : "*", file_rule.rulenum, 1);
                  sr_cls_rule_add(SR_FILE_RULES, file_rule.rulenum, actions_bitmap, permissions, /* file_rule_tuple.max_rate */ 0, /* file_rule.rate_action */ 0 ,
 			 /* file_ruole.action.log_target */ 0 , /* file_rule.tuple.action.email_id */ 0 , /* file_rule.tuple.action.phone_id */ 0 , /* file_rule.action.skip_rulenum */ 0);
 	    }
@@ -496,7 +498,7 @@ SR_BOOL read_config_file (void)
 				fclose (conf_file);
 				return SR_FALSE;
 			}
-			sr_cls_file_add_rule(filename, process, file_rec.rulenum, 1);
+			sr_cls_file_add_rule(filename, process, "*", file_rec.rulenum, 1);
 			sr_cls_rule_add(SR_FILE_RULES, file_rec.rulenum, file_rec.action.actions_bitmap, SR_FILEOPS_READ, file_rec.max_rate, file_rec.rate_action, file_rec.action.log_target, file_rec.action.email_id, file_rec.action.phone_id, file_rec.action.skip_rulenum);
 			break;
 			}
@@ -513,7 +515,7 @@ SR_BOOL read_config_file (void)
 				fclose (conf_file);
 				return SR_FALSE;
 			}
-			sr_cls_canid_add_rule(can_rec.msg_id, process, can_rec.rulenum);
+			sr_cls_canid_add_rule(can_rec.msg_id, process, "*", can_rec.rulenum);
 			sr_cls_rule_add(SR_CAN_RULES, can_rec.rulenum, can_rec.action.actions_bitmap, 0, can_rec.max_rate, can_rec.rate_action, can_rec.action.log_target, can_rec.action.email_id, can_rec.action.phone_id, can_rec.action.skip_rulenum);
 			break;
 			}

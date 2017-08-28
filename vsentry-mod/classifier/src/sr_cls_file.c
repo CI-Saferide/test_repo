@@ -4,6 +4,7 @@
 #include "sr_cls_file_common.h"
 #include "sr_hash.h"
 #include "sal_bitops.h"
+#include "sr_classifier.h"
 
 struct sr_hash_table_t *sr_cls_file_table;
 bit_array sr_cls_file_any_rules;
@@ -124,16 +125,20 @@ SR_8 sr_cls_file_msg_dispatch(struct sr_cls_file_msg *msg)
 			return sr_cls_inode_inherit(msg->inode1, msg->inode2);
 			break;
 		case SR_CLS_INODE_DEL_RULE:
-			//sal_kernel_print_alert("delete rule %d from %x\n", msg->rulenum, msg->inode1);
+			sal_kernel_print_alert("delete rule %d from %x\n", msg->rulenum, msg->inode1);
 			if ((st = sr_cls_inode_del_rule(msg->inode1, msg->rulenum)) != SR_SUCCESS)
 			    return st;
-			return sr_cls_exec_inode_del_rule(SR_FILE_RULES, msg->exec_inode, msg->rulenum);
+			if ((st = sr_cls_exec_inode_del_rule(SR_FILE_RULES, msg->exec_inode, msg->rulenum)) != SR_SUCCESS)
+			    return st;
+			return sr_cls_uid_del_rule(SR_FILE_RULES, msg->uid, msg->rulenum);
 			break;
 		case SR_CLS_INODE_ADD_RULE:
-			//sal_kernel_print_alert("add rule %d to %x\n", msg->rulenum, msg->inode1);
+			sal_kernel_print_alert("add rule %d to %x\n", msg->rulenum, msg->inode1);
 			if ((st = sr_cls_inode_add_rule(msg->inode1, msg->rulenum)) != SR_SUCCESS)
 			    return st;
-			return sr_cls_exec_inode_add_rule(SR_FILE_RULES, msg->exec_inode, msg->rulenum);
+			if ((st = sr_cls_exec_inode_add_rule(SR_FILE_RULES, msg->exec_inode, msg->rulenum)) != SR_SUCCESS)
+			    return st;
+			return sr_cls_uid_add_rule(SR_FILE_RULES, msg->uid, msg->rulenum);
 			break;
 		case SR_CLS_INODE_REMOVE:
 			//sal_kernel_print_alert("remove inode %x\n", msg->inode1);

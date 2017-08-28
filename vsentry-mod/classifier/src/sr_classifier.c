@@ -47,6 +47,7 @@ void sr_classifier_empty_tables(SR_BOOL is_lock)
 	sr_cls_fs_empty_table(is_lock);
 	sr_cls_canid_empty_table(is_lock);
 	sr_cls_port_empty_table(is_lock);
+	sr_cls_uid_empty_table(is_lock);
 	sr_cls_network_uninit();
 	sr_cls_network_init();
 }
@@ -186,8 +187,6 @@ SR_32 sr_classifier_file(disp_info_t* info)
 		return SR_CLS_ACTION_ALLOW;
 	}
 
-/* XXX UID should be fixed. The UID values are not updated in rules or any bitmaps */
-#if 0
 	// UID
 	if (info->tuple_info.id.uid != UID_ANY) {
 		ptr = sr_cls_match_uid(SR_FILE_RULES, info->tuple_info.id.uid);
@@ -202,7 +201,6 @@ SR_32 sr_classifier_file(disp_info_t* info)
 	if (array_is_clear(ba_res)) {
 		return SR_CLS_ACTION_ALLOW;
 	}
-#endif
 
 	// PID
 	if ((st = sr_cls_process_add(info->fileinfo.id.pid)) != SR_SUCCESS) {
@@ -262,6 +260,21 @@ SR_32 sr_classifier_canbus(disp_info_t* info)
 	    } else { // take only dst/any
 	        sal_and_self_op_arrays(&ba_res, sr_cls_exec_file_any(SR_CAN_RULES));
 	    }
+	}
+
+	// UID
+	if (info->tuple_info.id.uid != UID_ANY) {
+		ptr = sr_cls_match_uid(SR_CAN_RULES, info->tuple_info.id.uid);
+	} else {
+		ptr = NULL;
+	}
+	if (ptr) {
+		sal_and_self_op_two_arrays(&ba_res, ptr, sr_cls_uid_any(SR_CAN_RULES));
+	} else { 
+		sal_and_self_op_arrays(&ba_res, sr_cls_uid_any(SR_CAN_RULES));
+	}
+	if (array_is_clear(ba_res)) {
+		return SR_CLS_ACTION_ALLOW;
 	}
 
 	while ((rule = sal_ffs_and_clear_array (&ba_res)) != -1) {
