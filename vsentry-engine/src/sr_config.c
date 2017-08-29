@@ -376,6 +376,7 @@ static void extract_net_rules(int rsock, int num_of_rules)
 		cdb_get_u_int16(rsock, &net_rule.tuple.dstport, "tuple[%d]/dstport", j);
 		cdb_get_u_int16(rsock, &net_rule.tuple.srcport, "tuple[%d]/srcport", j);
 		cdb_get_u_int8(rsock, &net_rule.tuple.proto, "tuple[%d]/proto", j);
+		cdb_get_str(rsock, net_rule.tuple.user, USER_NAME_SIZE, "tuple[%d]/user", j);
 		cdb_get_str(rsock, net_rule.tuple.program, PROG_NAME_SIZE, "tuple[%d]/program", j);
 		switch (net_rule.action.action) {
 			case SR_ACTION_DROP:
@@ -388,10 +389,14 @@ static void extract_net_rules(int rsock, int num_of_rules)
 			   printf("No action\n");
 			   continue;
 		 }
-		sr_cls_port_add_rule(net_rule.tuple.srcport, *net_rule.tuple.program ? net_rule.tuple.program : "*", net_rule.rulenum, SR_DIR_SRC, net_rule.tuple.proto);
-		sr_cls_port_add_rule(net_rule.tuple.dstport, *net_rule.tuple.program ? net_rule.tuple.program : "*", net_rule.rulenum, SR_DIR_DST, net_rule.tuple.proto);
-	 	sr_cls_add_ipv4(net_rule.tuple.srcaddr.s_addr , *net_rule.tuple.program ? net_rule.tuple.program : "*", net_rule.tuple.srcnetmask.s_addr, net_rule.rulenum, SR_DIR_SRC);
-	 	sr_cls_add_ipv4(net_rule.tuple.dstaddr.s_addr, *net_rule.tuple.program ? net_rule.tuple.program : "*", net_rule.tuple.dstnetmask.s_addr, net_rule.rulenum, SR_DIR_DST);
+		sr_cls_port_add_rule(net_rule.tuple.srcport, *net_rule.tuple.program ? net_rule.tuple.program : "*", 
+			*net_rule.tuple.user ? net_rule.tuple.user : "*", net_rule.rulenum, SR_DIR_SRC, net_rule.tuple.proto);
+		sr_cls_port_add_rule(net_rule.tuple.dstport, *net_rule.tuple.program ? net_rule.tuple.program : "*", 
+			*net_rule.tuple.user ? net_rule.tuple.user : "*", net_rule.rulenum, SR_DIR_DST, net_rule.tuple.proto);
+	 	sr_cls_add_ipv4(net_rule.tuple.srcaddr.s_addr , *net_rule.tuple.program ? net_rule.tuple.program : "*", 
+			*net_rule.tuple.user ? net_rule.tuple.user : "*", net_rule.tuple.srcnetmask.s_addr, net_rule.rulenum, SR_DIR_SRC);
+	 	sr_cls_add_ipv4(net_rule.tuple.dstaddr.s_addr, *net_rule.tuple.program ? net_rule.tuple.program : "*", 
+			*net_rule.tuple.user ? net_rule.tuple.user : "*", net_rule.tuple.dstnetmask.s_addr, net_rule.rulenum, SR_DIR_DST);
                 sr_cls_rule_add(SR_NET_RULES, net_rule.rulenum, actions_bitmap, SR_FILEOPS_READ, /* net_rule_tuple.max_rate */ 0, /* net_rule.rate_action */ 0 ,
 			 /* net_ruole.action.log_target */ 0 , /* net_rule.tuple.action.email_id */ 0 , /* net_rule.tuple.action.phone_id */ 0 , /* net_rule.action.skip_rulenum */ 0);
 	    }
@@ -471,10 +476,10 @@ SR_BOOL read_config_file (void)
 				fclose (conf_file);
 				return SR_FALSE;
 			}
-			sr_cls_port_add_rule(net_rec.src_port, process, net_rec.rulenum, SR_DIR_SRC, net_rec.proto);
-			sr_cls_port_add_rule(net_rec.dst_port, process, net_rec.rulenum, SR_DIR_DST, net_rec.proto);
-			sr_cls_add_ipv4(htonl(net_rec.src_addr), process, htonl(net_rec.src_netmask), net_rec.rulenum, SR_DIR_SRC);
-			sr_cls_add_ipv4(htonl(net_rec.dst_addr), process, htonl(net_rec.dst_netmask), net_rec.rulenum, SR_DIR_DST);
+			sr_cls_port_add_rule(net_rec.src_port, process, "*", net_rec.rulenum, SR_DIR_SRC, net_rec.proto);
+			sr_cls_port_add_rule(net_rec.dst_port, process, "*", net_rec.rulenum, SR_DIR_DST, net_rec.proto);
+			sr_cls_add_ipv4(htonl(net_rec.src_addr), process, "*", htonl(net_rec.src_netmask), net_rec.rulenum, SR_DIR_SRC);
+			sr_cls_add_ipv4(htonl(net_rec.dst_addr), process, "*", htonl(net_rec.dst_netmask), net_rec.rulenum, SR_DIR_DST);
 			sr_cls_rule_add(SR_NET_RULES, net_rec.rulenum, net_rec.action.actions_bitmap, 0, net_rec.max_rate, net_rec.rate_action, net_rec.action.log_target, net_rec.action.email_id, net_rec.action.phone_id, net_rec.action.skip_rulenum);
 			break;
 			}

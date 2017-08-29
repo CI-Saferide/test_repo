@@ -26,6 +26,7 @@ struct sr_cls_network_msg {
 	SR_U32	addr;
 	SR_U32  netmask;
 	SR_U32  exec_inode;
+	SR_32  uid;
 };
 
 #endif /* SR_CLS_NETWORK_COMMON_H */
