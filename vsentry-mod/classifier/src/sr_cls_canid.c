@@ -173,13 +173,16 @@ SR_8 sr_cls_canid_msg_dispatch(struct sr_cls_canbus_msg *msg)
 			sal_kernel_print_alert("Delete rule %d from %d\n", msg->rulenum, msg->canid);
 			if ((st =  sr_cls_canid_del_rule(msg->canid, msg->rulenum)) != SR_SUCCESS)
 			   return st;
-			return sr_cls_exec_inode_del_rule(SR_CAN_RULES, msg->exec_inode, msg->rulenum);
-			break;
+			if ((st = sr_cls_exec_inode_del_rule(SR_CAN_RULES, msg->exec_inode, msg->rulenum)) != SR_SUCCESS)
+			   return st;
+			return sr_cls_uid_del_rule(SR_CAN_RULES, msg->uid, msg->rulenum);
 		case SR_CLS_CANID_ADD_RULE:
-			sal_kernel_print_alert("Add rule %d to %d\n", msg->rulenum, msg->canid);
+			sal_kernel_print_alert("Add rule %d uid:%d  to %d \n", msg->rulenum, msg->uid, msg->canid);
 			if ((st = sr_cls_canid_add_rule(msg->canid, msg->rulenum)) != SR_SUCCESS)
 			   return st;
-			return sr_cls_exec_inode_add_rule(SR_CAN_RULES, msg->exec_inode, msg->rulenum);
+			if ((st =  sr_cls_exec_inode_add_rule(SR_CAN_RULES, msg->exec_inode, msg->rulenum)) != SR_SUCCESS)
+			   return st;
+			return sr_cls_uid_add_rule(SR_CAN_RULES, msg->uid, msg->rulenum);
 			break;
 		default:
 			break;

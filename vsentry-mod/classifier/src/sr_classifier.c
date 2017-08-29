@@ -47,6 +47,7 @@ void sr_classifier_empty_tables(SR_BOOL is_lock)
 	sr_cls_fs_empty_table(is_lock);
 	sr_cls_canid_empty_table(is_lock);
 	sr_cls_port_empty_table(is_lock);
+	sr_cls_uid_empty_table(is_lock);
 	sr_cls_network_uninit();
 	sr_cls_network_init();
 }
@@ -61,6 +62,7 @@ SR_32 sr_classifier_network(disp_info_t* info)
 	SR_16 rule;
 	SR_U16 action;
 	bit_array ba_res;
+	int st;
 
 	memset(&ba_res, 0, sizeof(bit_array));
 
@@ -105,40 +107,32 @@ SR_32 sr_classifier_network(disp_info_t* info)
 	if (array_is_clear(ba_res)) {
 		return SR_CLS_ACTION_ALLOW;
 	}
-	// UID
-#if 0
-	if (info->tuple_info.id.uid != UID_ANY) {
-		ptr = sr_cls_match_uid(SR_NET_RULES, info->tuple_info.id.uid);
-	} else {
-		ptr = NULL;
+	if (info->tuple_info.id.pid) {  // Zero PID is an indication that we are not in process context
+		// UID
+		if (info->tuple_info.id.uid != UID_ANY) {
+			ptr = sr_cls_match_uid(SR_NET_RULES, info->tuple_info.id.uid);
+		} else {
+			ptr = NULL;
+		}
+		if (ptr) {
+			sal_and_self_op_two_arrays(&ba_res, ptr, sr_cls_uid_any(SR_NET_RULES));
+		} else { // take only dst/any
+			sal_and_self_op_arrays(&ba_res, sr_cls_uid_any(SR_NET_RULES));
+		}
+		if (array_is_clear(ba_res)) {
+			return SR_CLS_ACTION_ALLOW;
+		}
+		//PID
+		if ((st = sr_cls_process_add(info->tuple_info.id.pid)) != SR_SUCCESS) {
+			sal_printf("*** Error add process \n");
+	    	}
+		ptr = sr_cls_process_match(SR_NET_RULES, info->tuple_info.id.pid);
+		if (ptr) {
+			sal_and_self_op_two_arrays(&ba_res, ptr, sr_cls_exec_file_any(SR_NET_RULES));
+		} else { // take only dst/any
+			sal_and_self_op_arrays(&ba_res, sr_cls_exec_file_any(SR_NET_RULES));
+		}
 	}
-	if (ptr) {
-		sal_and_self_op_two_arrays(&ba_res, ptr, sr_cls_uid_any(SR_NET_RULES));
-	} else { // take only dst/any
-		sal_and_self_op_arrays(&ba_res, sr_cls_uid_any(SR_NET_RULES));
-	}
-	if (array_is_clear(ba_res)) {
-		return SR_CLS_ACTION_ALLOW;
-	}
-#endif
-	// PID
-/* XXX Currently in network classifier process match is not done. 
-   Netfiler which runs on buttomhalf context is not associated with a process descriptor, 
-   therefore a match a packet level can not be done. 
-   Another place to handle incomming packets at process context is not found yet. */
-#if 0
-	if (info->tuple_info.id.pid) { 
-	    if ((st = sr_cls_process_add(info->tuple_info.id.pid)) != SR_SUCCESS) {
-	        sal_printf("*** Error add process \n");
-	    }
-	    ptr = sr_cls_process_match(SR_NET_RULES, info->tuple_info.id.pid);
-	    if (ptr) {
-	       sal_and_self_op_two_arrays(&ba_res, ptr, sr_cls_exec_file_any(SR_NET_RULES));
-	    } else { // take only dst/any
-	       sal_and_self_op_arrays(&ba_res, sr_cls_exec_file_any(SR_NET_RULES));
-	    }
-	}
-#endif
 	// IP Proto - TODO
 
 	while ((rule = sal_ffs_and_clear_array (&ba_res)) != -1) {
@@ -186,8 +180,6 @@ SR_32 sr_classifier_file(disp_info_t* info)
 		return SR_CLS_ACTION_ALLOW;
 	}
 
-/* XXX UID should be fixed. The UID values are not updated in rules or any bitmaps */
-#if 0
 	// UID
 	if (info->tuple_info.id.uid != UID_ANY) {
 		ptr = sr_cls_match_uid(SR_FILE_RULES, info->tuple_info.id.uid);
@@ -202,7 +194,6 @@ SR_32 sr_classifier_file(disp_info_t* info)
 	if (array_is_clear(ba_res)) {
 		return SR_CLS_ACTION_ALLOW;
 	}
-#endif
 
 	// PID
 	if ((st = sr_cls_process_add(info->fileinfo.id.pid)) != SR_SUCCESS) {
@@ -262,6 +253,21 @@ SR_32 sr_classifier_canbus(disp_info_t* info)
 	    } else { // take only dst/any
 	        sal_and_self_op_arrays(&ba_res, sr_cls_exec_file_any(SR_CAN_RULES));
 	    }
+	}
+
+	// UID
+	if (info->tuple_info.id.uid != UID_ANY) {
+		ptr = sr_cls_match_uid(SR_CAN_RULES, info->tuple_info.id.uid);
+	} else {
+		ptr = NULL;
+	}
+	if (ptr) {
+		sal_and_self_op_two_arrays(&ba_res, ptr, sr_cls_uid_any(SR_CAN_RULES));
+	} else { 
+		sal_and_self_op_arrays(&ba_res, sr_cls_uid_any(SR_CAN_RULES));
+	}
+	if (array_is_clear(ba_res)) {
+		return SR_CLS_ACTION_ALLOW;
 	}
 
 	while ((rule = sal_ffs_and_clear_array (&ba_res)) != -1) {

@@ -56,6 +56,16 @@ void sr_cls_uid_uninit(void)
 	sal_printf("[%s]: Successfully removed UID classifier!\n", MODULE_NAME);
 }
 
+void sr_cls_uid_empty_table(SR_BOOL is_lock)
+{
+	int i;
+	
+	for (i=0; i<SR_RULES_TYPE_MAX; i++) {
+        	memset(&sr_cls_uid_any_rules[i], 0, sizeof(bit_array));
+        	sr_hash_empty_table(sr_cls_uid_table[i], is_lock);
+	}
+}      
+
 bit_array *sr_cls_uid_any(enum sr_rule_type type)
 {
         return &sr_cls_uid_any_rules[type];

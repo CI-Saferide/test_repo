@@ -20,6 +20,7 @@
 #include <netinet/in.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <pwd.h>
 
 #define VS_FILE_NAME 	"/dev/vsentry"
 

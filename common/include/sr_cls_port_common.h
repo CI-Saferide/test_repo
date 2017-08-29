@@ -18,6 +18,7 @@ struct sr_cls_port_msg {
 	SR_U8   dir; // SR_DIR_SRC/DST
 	SR_8 proto;
 	SR_U32 exec_inode;
+	SR_32 uid;
 };
 
 #endif /* SR_CLS_PORT_COMMON_H */

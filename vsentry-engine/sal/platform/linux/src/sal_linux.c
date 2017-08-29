@@ -85,3 +85,15 @@ void sal_schedule_timeout(SR_U32 timeout)
 	usleep(timeout);
 }
 
+SR_32 sal_get_uid(char *user_name)
+{
+	struct passwd *pwd;
+     
+	if (!(pwd = getpwnam(user_name))) {
+		fprintf(stderr, "Failed to allocate struct passwd for getpwnam_r.\n");
+		return -1;
+	}
+
+	return pwd->pw_uid;
+}
+

@@ -271,18 +271,22 @@ SR_8 sr_cls_network_msg_dispatch(struct sr_cls_network_msg *msg)
 
 	switch (msg->msg_type) {
 		case SR_CLS_IPV4_DEL_RULE:
-			if ((st = sr_cls_del_ipv4(msg->addr, msg->netmask, msg->rulenum, msg->dir)) != SR_SUCCESS)
-			    return st;
-			return sr_cls_exec_inode_del_rule(SR_NET_RULES, msg->exec_inode, msg->rulenum);
 			sal_debug_network("[del_ipv4] addr=0x%x, netmask=0x%x, rulenum=%d\n",
 							msg->addr, msg->netmask, msg->rulenum);	
+			if ((st = sr_cls_del_ipv4(msg->addr, msg->netmask, msg->rulenum, msg->dir)) != SR_SUCCESS)
+			    return st;
+			if ((st = sr_cls_exec_inode_del_rule(SR_NET_RULES, msg->exec_inode, msg->rulenum)) != SR_SUCCESS)
+				return st;
+			return sr_cls_uid_del_rule(SR_NET_RULES, msg->uid, msg->rulenum);
 			break;
 		case SR_CLS_IPV4_ADD_RULE:
 			printk("[add_ipv4] addr=%x, netmask=%x, rulenum=%d\n",
 							msg->addr, msg->netmask, msg->rulenum);
 			if ((st = sr_cls_add_ipv4(msg->addr, msg->netmask, msg->rulenum, msg->dir)) != SR_SUCCESS)
 			    return st;
-			return sr_cls_exec_inode_add_rule(SR_NET_RULES, msg->exec_inode, msg->rulenum);
+			if ((st = sr_cls_exec_inode_add_rule(SR_NET_RULES, msg->exec_inode, msg->rulenum)) != SR_SUCCESS)
+				return st;
+			return sr_cls_uid_add_rule(SR_NET_RULES, msg->uid, msg->rulenum);
 			break;
 		case SR_CLS_IPV6_DEL_RULE:
 			/* not implemented yet */

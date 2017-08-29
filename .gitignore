@@ -10,7 +10,7 @@
 
 # Libraries
 *.lib
-*.a
+libsr_log.a
 *.la
 *.lo
 

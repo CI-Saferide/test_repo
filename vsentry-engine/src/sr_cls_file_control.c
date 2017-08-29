@@ -11,11 +11,12 @@
 // filename: path of file/dir to add rule to
 // rulenum: index of rule to be added
 // treetop: 1 for the first call, 0 for recursive calls further down.
-int sr_cls_file_add_rule(char *filename, char *exec, SR_U32 rulenum, SR_U8 treetop)
+int sr_cls_file_add_rule(char *filename, char *exec, char *user, SR_U32 rulenum, SR_U8 treetop)
 {
 	struct stat buf;
 	sr_file_msg_cls_t *msg;
 	SR_U32 exec_inode;
+	SR_32  uid;
         int st;
 
 	if(lstat(filename, &buf)) { // Error
@@ -27,6 +28,8 @@ int sr_cls_file_add_rule(char *filename, char *exec, SR_U32 rulenum, SR_U8 treet
 	    sal_printf("Error: %s failed getting inode \n", __FUNCTION__);
 	    return st;
 	}
+
+	uid = sr_get_uid(user);
 
 	if (S_ISREG(buf.st_mode)) {
 		if ((buf.st_nlink > 1) && (treetop)) {
@@ -41,6 +44,7 @@ int sr_cls_file_add_rule(char *filename, char *exec, SR_U32 rulenum, SR_U8 treet
 			msg->sub_msg.rulenum = rulenum;
 			msg->sub_msg.inode1=buf.st_ino;
 			msg->sub_msg.exec_inode= exec_inode;
+			msg->sub_msg.uid= uid;
 			sr_send_msg(ENG2MOD_BUF, sizeof(msg));
 		}
 	}
@@ -53,6 +57,7 @@ int sr_cls_file_add_rule(char *filename, char *exec, SR_U32 rulenum, SR_U8 treet
 			msg->sub_msg.rulenum = rulenum;
 			msg->sub_msg.inode1=buf.st_ino;
 			msg->sub_msg.exec_inode=exec_inode;
+			msg->sub_msg.uid=uid;
 			sr_send_msg(ENG2MOD_BUF, sizeof(msg));
 		}
 		// Now iterate subtree
@@ -72,7 +77,7 @@ int sr_cls_file_add_rule(char *filename, char *exec, SR_U32 rulenum, SR_U8 treet
 				if ((!strcmp(de->d_name, ".")) || (!strcmp(de->d_name, "..")))
 					continue;
 				snprintf(fullpath, SR_MAX_PATH, "%s/%s", filename, de->d_name);
-				sr_cls_file_add_rule(fullpath, exec, rulenum, 0);
+				sr_cls_file_add_rule(fullpath, exec, user, rulenum, 0);
 			}
 		}
 	}
@@ -86,6 +91,7 @@ int sr_cls_file_add_rule(char *filename, char *exec, SR_U32 rulenum, SR_U8 treet
 			msg->sub_msg.rulenum = rulenum;
 			msg->sub_msg.inode1=buf.st_ino;
 			msg->sub_msg.exec_inode=exec_inode;
+			msg->sub_msg.uid=uid;
 			sr_send_msg(ENG2MOD_BUF, sizeof(msg));
 		}
 		//TODO: Do I need to update the destination file as well ???
@@ -98,11 +104,12 @@ int sr_cls_file_add_rule(char *filename, char *exec, SR_U32 rulenum, SR_U8 treet
 // filename: path of file/dir to add rule to
 // rulenum: index of rule to be added
 // treetop: 1 for the first call, 0 for recursive calls further down.
-int sr_cls_file_del_rule(char *filename, char *exec, SR_U32 rulenum, SR_U8 treetop)
+int sr_cls_file_del_rule(char *filename, char *exec, char *user, SR_U32 rulenum, SR_U8 treetop)
 {
 	struct stat buf;
 	sr_file_msg_cls_t *msg;
 	SR_U32 exec_inode;
+	SR_32  uid;
         int st;
 
 	if(lstat(filename, &buf)) { // Error
@@ -113,6 +120,8 @@ int sr_cls_file_del_rule(char *filename, char *exec, SR_U32 rulenum, SR_U8 treet
 	    sal_printf("Error: %s failed getting inode \n", __FUNCTION__);
 	   return st;
 	}
+
+	uid = sr_get_uid(user);
 
 	if (S_ISREG(buf.st_mode)) {
 		if ((buf.st_nlink > 1) && (treetop)) {
@@ -126,6 +135,7 @@ int sr_cls_file_del_rule(char *filename, char *exec, SR_U32 rulenum, SR_U8 treet
 			msg->sub_msg.rulenum = rulenum;
 			msg->sub_msg.inode1=buf.st_ino;
 			msg->sub_msg.exec_inode=exec_inode;
+			msg->sub_msg.uid=uid;
 			sr_send_msg(ENG2MOD_BUF, sizeof(msg));
 		}
 	}
@@ -138,6 +148,7 @@ int sr_cls_file_del_rule(char *filename, char *exec, SR_U32 rulenum, SR_U8 treet
 			msg->sub_msg.rulenum = rulenum;
 			msg->sub_msg.inode1=buf.st_ino;
 			msg->sub_msg.exec_inode=exec_inode;
+			msg->sub_msg.uid=uid;
 			sr_send_msg(ENG2MOD_BUF, sizeof(msg));
 		}
 		// Now iterate subtree
@@ -157,7 +168,7 @@ int sr_cls_file_del_rule(char *filename, char *exec, SR_U32 rulenum, SR_U8 treet
 				if ((!strcmp(de->d_name, ".")) || (!strcmp(de->d_name, "..")))
 					continue;
 				snprintf(fullpath, SR_MAX_PATH, "%s/%s", filename, de->d_name);
-				sr_cls_file_del_rule(fullpath, exec, rulenum, 0);
+				sr_cls_file_del_rule(fullpath, exec, user, rulenum, 0);
 			}
 		}
 	}
@@ -263,7 +274,7 @@ void sr_cls_file_delete(char *filename)
 
 void sr_cls_control_ut(void)
 {
-	sr_cls_file_add_rule("/home/hilik/Desktop/git/vsentry/", "ls", 10, 1);
+	sr_cls_file_add_rule("/home/hilik/Desktop/git/vsentry/", "ls", "*", 10, 1);
 	sr_cls_file_create("/usr/lib/shotwell");
 	return ;
 }

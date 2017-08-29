@@ -12,6 +12,7 @@
 int sr_cls_uid_init(void);
 void sr_cls_uid_ut(void);
 void sr_cls_uid_uninit(void);
+void sr_cls_uid_empty_table(SR_BOOL is_lock);
 int sr_cls_uid_add_rule(enum sr_rule_type type, SR_32 uid, SR_U32 rulenum);
 int sr_cls_uid_del_rule(enum sr_rule_type type, SR_32 uid, SR_U32 rulenum);
 struct sr_hash_ent_t *sr_cls_uid_find(enum sr_rule_type type, SR_32 uid);

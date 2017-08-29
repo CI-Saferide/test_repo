@@ -226,14 +226,20 @@ SR_8 sr_cls_port_msg_dispatch(struct sr_cls_port_msg *msg)
 			if ((st = sr_cls_port_del_rule(msg->port, msg->rulenum,msg->dir, msg->proto)) != SR_SUCCESS) { 
 			   return st;
 			}
-			return sr_cls_exec_inode_del_rule(SR_NET_RULES, msg->exec_inode, msg->rulenum);
+			if ((st = sr_cls_exec_inode_del_rule(SR_NET_RULES, msg->exec_inode, msg->rulenum)) != SR_SUCCESS) {
+				return st;
+			}
+			return sr_cls_uid_del_rule(SR_NET_RULES, msg->uid, msg->rulenum);
 			break;
 		case SR_CLS_PORT_ADD_RULE:
 			sal_kernel_print_alert("[PORT]Add port %d,rulenum %d ,dir %d, proto %d\n", msg->port, msg->rulenum,msg->dir, msg->proto);
 			if ((st = sr_cls_port_add_rule(msg->port, msg->rulenum,msg->dir, msg->proto)) != SR_SUCCESS) { 
 			   return st;
 			}
-			return sr_cls_exec_inode_add_rule(SR_NET_RULES, msg->exec_inode, msg->rulenum);
+			if ((st = sr_cls_exec_inode_add_rule(SR_NET_RULES, msg->exec_inode, msg->rulenum)) != SR_SUCCESS) { 
+				return st;
+			}
+			return sr_cls_uid_add_rule(SR_NET_RULES, msg->uid, msg->rulenum);
 			break;
 		default:
 			break;
