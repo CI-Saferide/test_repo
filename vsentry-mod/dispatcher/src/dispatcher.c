@@ -126,6 +126,11 @@ SR_32 disp_socket_connect(disp_info_t* info)
 	return (sr_classifier_network(info));
 }
 
+SR_32 disp_ipv4_sendmsg(disp_info_t* info)
+{
+	return (sr_classifier_network(info));
+}
+
 SR_32 disp_incoming_connection(disp_info_t* info)
 {
 	struct sr_ec_new_connection_t sample_data;

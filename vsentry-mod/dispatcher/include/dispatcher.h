@@ -113,5 +113,6 @@ SR_32 disp_socket_accept(disp_info_t* info);
 SR_32 disp_incoming_connection(disp_info_t* info);
 SR_32 disp_socket_create(disp_info_t* info);
 SR_32 disp_socket_sendmsg(disp_info_t* info);
+SR_32 disp_ipv4_sendmsg(disp_info_t* info);
 
 #endif /* _DISPATCHER_H */
