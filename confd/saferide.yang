@@ -74,7 +74,6 @@ module saferide {
 						type string {
 							pattern "syslog|file";
 						}
-						default "file";
 					}
 
 					leaf log_severity {

@@ -192,7 +192,7 @@ static void extract_action(int rsock, sr_action_cfg* action, char *action_name)
 {
        char list_action_name[ACTION_NAME_SIZE];
         char tmp[128];
-        int i, j, n;
+        int i, j, n, st;
 
         memset(action, 0, sizeof(sr_action_cfg));
 
@@ -211,14 +211,17 @@ static void extract_action(int rsock, sr_action_cfg* action, char *action_name)
 			if (!strncmp(tmp, ACTION_DROP, ACTION_NAME_SIZE))
 			    action->action = SR_ACTION_DROP;
 
-                        memset(tmp, 0, 128);
-                        cdb_get_str(rsock, tmp, ACTION_NAME_SIZE, CONFD_CONFIG_PATH_PREFIX "/sr_actions/list_actions[%d]/log/log_facility", i);
-                        for (j=0; j<SR_LOG_TOTAL; j++) {
-                                if (strncmp(tmp, sr_log_facility_str[j], strlen(tmp)) == 0) {
-                                        action->log_facility = j;
-                                        break;
-                                }
-                        }
+			memset(tmp, 0, 128);
+			st = cdb_get_str(rsock, tmp, ACTION_NAME_SIZE, CONFD_CONFIG_PATH_PREFIX "/sr_actions/list_actions[%d]/log/log_facility", i);
+			if (!st) {
+				for (j=0; j<SR_LOG_TOTAL; j++) {
+					if (strncmp(tmp, sr_log_facility_str[j], strlen(tmp)) == 0) {
+						action->log_facility = j;
+						action->is_log = SR_TRUE;
+						break;
+					}
+				}
+			}
 
                         memset(tmp, 0, 128);
                         cdb_get_str(rsock, tmp, ACTION_NAME_SIZE, CONFD_CONFIG_PATH_PREFIX "/sr_actions/list_actions[%d]/log/log_severity", i);
@@ -249,6 +252,8 @@ static void convert_action(sr_action_cfg *action, SR_U16 *bitmap)
 			printf("No action\n");
 			break;
 	}
+	if (action->is_log)
+		*bitmap |= SR_CLS_ACTION_LOG;
 } 
 
 static void handle_engine_start_stop(int rsock)
@@ -332,17 +337,6 @@ static void extract_system_rules(int rsock, int num_of_rules)
 		 cdb_get_str(rsock, file_rule.tuple.user, USER_NAME_SIZE, "tuple[%d]/user", j);
 		 cdb_get_str(rsock, file_rule.tuple.permission, FILE_PERM_SIZE, "tuple[%d]/permission", j);
 		 convert_permissions(*file_rule.tuple.permission ? file_rule.tuple.permission : "xwr" , &permissions);
-		 switch (file_rule.action.action) {
-			case SR_ACTION_DROP:
-			   actions_bitmap = SR_CLS_ACTION_DROP;
-			   break;
-			case SR_ACTION_ALLOW:
-			   actions_bitmap = SR_CLS_ACTION_ALLOW;
-			   break;
-			default:
-			   printf("No action\n");
-			   continue;
-		 }
 		 sr_cls_file_add_rule(file_rule.tuple.name, *file_rule.tuple.program ? file_rule.tuple.program : "*", 
 			*file_rule.tuple.user ? file_rule.tuple.user : "*", file_rule.rulenum, 1);
                  sr_cls_rule_add(SR_FILE_RULES, file_rule.rulenum, actions_bitmap, permissions, /* file_rule_tuple.max_rate */ 0, /* file_rule.rate_action */ 0 ,
@@ -378,17 +372,6 @@ static void extract_net_rules(int rsock, int num_of_rules)
 		cdb_get_u_int8(rsock, &net_rule.tuple.proto, "tuple[%d]/proto", j);
 		cdb_get_str(rsock, net_rule.tuple.user, USER_NAME_SIZE, "tuple[%d]/user", j);
 		cdb_get_str(rsock, net_rule.tuple.program, PROG_NAME_SIZE, "tuple[%d]/program", j);
-		switch (net_rule.action.action) {
-			case SR_ACTION_DROP:
-			   actions_bitmap = SR_CLS_ACTION_DROP;
-			   break;
-			case SR_ACTION_ALLOW:
-			   actions_bitmap = SR_CLS_ACTION_ALLOW;
-			   break;
-			default:
-			   printf("No action\n");
-			   continue;
-		 }
 		sr_cls_port_add_rule(net_rule.tuple.srcport, *net_rule.tuple.program ? net_rule.tuple.program : "*", 
 			*net_rule.tuple.user ? net_rule.tuple.user : "*", net_rule.rulenum, SR_DIR_SRC, net_rule.tuple.proto);
 		sr_cls_port_add_rule(net_rule.tuple.dstport, *net_rule.tuple.program ? net_rule.tuple.program : "*", 
