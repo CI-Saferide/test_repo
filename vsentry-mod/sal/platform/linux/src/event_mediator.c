@@ -658,6 +658,7 @@ SR_32 vsentry_socket_sendmsg(struct socket *sock,struct msghdr *msg,SR_32 size)
 	const u8 family = sock->sk->sk_family;
 	struct socket copy_sock = *sock;
 	struct msghdr copy_msg = *msg;
+	struct sockaddr_in *addr;
 	
 	disp_info_t disp;
 	struct task_struct *ts = current;
@@ -671,13 +672,10 @@ SR_32 vsentry_socket_sendmsg(struct socket *sock,struct msghdr *msg,SR_32 size)
 	/* check hook filter */
 	HOOK_FILTER
 	
-	/* gather metadata */
-
-	disp.socket_info.id.uid = (int)rcred->uid.val;
-	disp.socket_info.id.pid = current->pid;
-	
 	switch (family) {
 		case AF_CAN:
+			disp.can_info.id.uid = (int)rcred->uid.val;
+			disp.can_info.id.pid = current->pid;
 			skb = sock_alloc_send_skb(copy_sock.sk, size + sizeof(struct can_skb_priv),
 						  copy_msg.msg_flags & MSG_DONTWAIT, &err);
 						  
@@ -712,6 +710,38 @@ SR_32 vsentry_socket_sendmsg(struct socket *sock,struct msghdr *msg,SR_32 size)
 			/* call dispatcher */
 			kfree_skb(skb);
 			return (disp_socket_sendmsg(&disp));
+			break;
+		case AF_INET:
+			if (!sock->sk)
+				return 0;
+			/* Hook is relevant only for UDP */
+			if (sock->sk->sk_protocol != 0x11)
+				return 0;
+            if (!msg || !msg->msg_name)
+				return 0;
+			/* gather metadata */
+			disp.tuple_info.id.uid = (int)rcred->uid.val;
+			disp.tuple_info.id.pid = current->pid;
+			addr = (struct sockaddr_in *)msg->msg_name;
+       		disp.tuple_info.saddr.v4addr.s_addr = 0; /* No information for saddr */
+       		disp.tuple_info.daddr.v4addr.s_addr = ntohl(addr->sin_addr.s_addr);
+       		disp.tuple_info.dport = ntohs(addr->sin_port);
+       		disp.tuple_info.sport = 0; /* No information for sport */
+       		disp.tuple_info.ip_proto = sock->sk->sk_protocol;
+#ifdef DEBUG_EVENT_MEDIATOR
+        		sal_kernel_print_info("vsentry_socket_connect=%lx[%d] -> %lx[%d]\n",
+                        		(unsigned long)disp.tuple_info.saddr.v4addr.s_addr,
+                        		disp.tuple_info.sport,
+                        		(unsigned long)disp.tuple_info.daddr.v4addr.s_addr,
+                        		disp.tuple_info.dport);
+#endif /* DEBUG_EVENT_MEDIATOR */
+
+			/* call dispatcher */
+			if (disp_ipv4_sendmsg(&disp) == SR_CLS_ACTION_ALLOW) {
+				return 0;
+			} else {
+				return -EACCES;
+			}
 			break;
 		default:
 			/* we are not interested in the message */

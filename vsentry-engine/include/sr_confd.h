@@ -68,6 +68,7 @@ char* sr_log_severity_str[SR_LOG_SEVERITY_TOTAL] = {
 typedef struct {
         char action_name[ACTION_NAME_SIZE];
         sr_action action;
+        int is_log;
         sr_log_facility log_facility;
         sr_log_severity log_severity;
         int black_list;
