@@ -345,6 +345,15 @@ static void extract_system_rules(int rsock, int num_of_rules)
 	}
 }
 
+static void handle_local_address(struct in_addr *addr)
+{
+	char ip[INET_ADDRSTRLEN];
+
+	inet_ntop(AF_INET, addr, ip, INET_ADDRSTRLEN); 
+	if (!strcmp(ip, "127.0.0.1"))
+		addr->s_addr = 0;
+}
+
 static void extract_net_rules(int rsock, int num_of_rules)
 {
         int i, j, num_of_tuples;
@@ -364,8 +373,10 @@ static void extract_net_rules(int rsock, int num_of_rules)
 	    num_of_tuples = cdb_num_instances(rsock, "tuple");
 	    for (j = 0; j < num_of_tuples; j++) {
 		cdb_get_ipv4(rsock, &net_rule.tuple.srcaddr, "tuple[%d]/srcaddr", j);
+		handle_local_address(&net_rule.tuple.srcaddr);
 		cdb_get_ipv4(rsock, &net_rule.tuple.srcnetmask, "tuple[%d]/srcnetmask", j);
 		cdb_get_ipv4(rsock, &net_rule.tuple.dstaddr, "tuple[%d]/dstaddr", j);
+		handle_local_address(&net_rule.tuple.dstaddr);
 		cdb_get_ipv4(rsock, &net_rule.tuple.dstnetmask, "tuple[%d]/dstnetmask", j);
 		cdb_get_u_int16(rsock, &net_rule.tuple.dstport, "tuple[%d]/dstport", j);
 		cdb_get_u_int16(rsock, &net_rule.tuple.srcport, "tuple[%d]/srcport", j);
