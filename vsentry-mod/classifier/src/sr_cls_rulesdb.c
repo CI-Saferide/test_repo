@@ -94,18 +94,7 @@ enum cls_actions sr_cls_network_rule_match(SR_U16 rulenum)
 	} else {
 		action = sr_rules_db[SR_NET_RULES][rulenum].actions;
 	}
-	// non-finite actions should be handled here rather than by the caller, so that 
-	// there's no need to expose the whole rule structure including emails IDs etc
-	// to callers.
-	if (sr_rules_db[SR_NET_RULES][rulenum].actions & SR_CLS_ACTION_LOG) {
-		// TODO
-	}
-	if (sr_rules_db[SR_NET_RULES][rulenum].actions & SR_CLS_ACTION_EMAIL) {
-		// TODO
-	}
-	if (sr_rules_db[SR_NET_RULES][rulenum].actions & SR_CLS_ACTION_SMS) {
-		// TODO
-	}
+	// Log action must be handled by caller, since all of the event metadata exists only there.
 	return action;
 }
 
@@ -130,18 +119,7 @@ enum cls_actions sr_cls_file_rule_match(SR_8 fileop, SR_U16 rulenum)
 	} else {
 		action = sr_rules_db[SR_FILE_RULES][rulenum].actions;
 	}
-	// non-finite actions should be handled here rather than by the caller, so that 
-	// there's no need to expose the whole rule structure including emails IDs etc
-	// to callers.
-	if (sr_rules_db[SR_FILE_RULES][rulenum].actions & SR_CLS_ACTION_LOG) {
-		// TODO
-	}
-	if (sr_rules_db[SR_FILE_RULES][rulenum].actions & SR_CLS_ACTION_EMAIL) {
-		// TODO
-	}
-	if (sr_rules_db[SR_FILE_RULES][rulenum].actions & SR_CLS_ACTION_SMS) {
-		// TODO
-	}
+	// Log action must be handled by caller, since all of the event metadata exists only there.
 	return action;
 }
 
@@ -154,18 +132,7 @@ enum cls_actions sr_cls_can_rule_match(SR_U16 rulenum)
 	} else {
 		action = sr_rules_db[SR_CAN_RULES][rulenum].actions;
 	}
-	// non-finite actions should be handled here rather than by the caller, so that 
-	// there's no need to expose the whole rule structure including emails IDs etc
-	// to callers.
-	if (sr_rules_db[SR_CAN_RULES][rulenum].actions & SR_CLS_ACTION_LOG) {
-		// TODO
-	}
-	if (sr_rules_db[SR_CAN_RULES][rulenum].actions & SR_CLS_ACTION_EMAIL) {
-		// TODO
-	}
-	if (sr_rules_db[SR_CAN_RULES][rulenum].actions & SR_CLS_ACTION_SMS) {
-		// TODO
-	}
+	// Log action must be handled by caller, since all of the event metadata exists only there.
 	return action;
 }
 	
