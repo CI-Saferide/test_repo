@@ -375,9 +375,13 @@ static void extract_net_rules(int rsock, int num_of_rules)
 		cdb_get_ipv4(rsock, &net_rule.tuple.srcaddr, "tuple[%d]/srcaddr", j);
 		handle_local_address(&net_rule.tuple.srcaddr);
 		cdb_get_ipv4(rsock, &net_rule.tuple.srcnetmask, "tuple[%d]/srcnetmask", j);
+		if (!net_rule.tuple.srcaddr.s_addr)
+			net_rule.tuple.srcnetmask.s_addr = 0;
 		cdb_get_ipv4(rsock, &net_rule.tuple.dstaddr, "tuple[%d]/dstaddr", j);
 		handle_local_address(&net_rule.tuple.dstaddr);
 		cdb_get_ipv4(rsock, &net_rule.tuple.dstnetmask, "tuple[%d]/dstnetmask", j);
+		if (!net_rule.tuple.dstaddr.s_addr)
+			net_rule.tuple.dstnetmask.s_addr = 0;
 		cdb_get_u_int16(rsock, &net_rule.tuple.dstport, "tuple[%d]/dstport", j);
 		cdb_get_u_int16(rsock, &net_rule.tuple.srcport, "tuple[%d]/srcport", j);
 		cdb_get_u_int8(rsock, &net_rule.tuple.proto, "tuple[%d]/proto", j);
