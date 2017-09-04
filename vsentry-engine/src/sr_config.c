@@ -258,14 +258,21 @@ static void convert_action(sr_action_cfg *action, SR_U16 *bitmap)
 
 static void handle_engine_start_stop(int rsock)
 {
-        char engine[ENGINE_NAME_SIZE] = "";
+	FILE *f;
+	char engine[ENGINE_NAME_SIZE] = "";
 
 	cdb_cd(rsock, CONFD_CONTROL_PATH_PREFIX "/");
 	cdb_get_str(rsock, engine , ACTION_NAME_SIZE, "engine");
 	if (!strncmp(engine, ENGINE_START, ENGINE_NAME_SIZE)) {
 		sr_control_set_state(SR_TRUE);
+		f = fopen("/tmp/sec_state", "w");
+		fprintf(f, "on");
+		fclose(f);
 	} else if (!strncmp(engine, ENGINE_STOP, ENGINE_NAME_SIZE)) {
 		sr_control_set_state(SR_FALSE);
+		f = fopen("/tmp/sec_state", "w");
+		fprintf(f, "off");
+		fclose(f);
 	}
 }
 

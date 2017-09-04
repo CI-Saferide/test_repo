@@ -75,6 +75,7 @@ SR_32 sr_engine_start(void)
 {
 	SR_32 ret;
 	SR_U8 run = 1;
+	FILE *f;
 
 	sal_printf("Welcome to sr-engine App!\n");
 
@@ -103,6 +104,10 @@ SR_32 sr_engine_start(void)
 		return SR_ERROR;
 	}
 	config_ut();
+	/* indicate VPI that we are running */
+	f = fopen("/tmp/sec_state", "w");
+	fprintf(f, "on");
+	fclose(f);
 	//sr_control_set_state(SR_FALSE); /* just an example */
 	while (run) {
 		SR_8 input = getchar();
