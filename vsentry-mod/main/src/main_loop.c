@@ -35,9 +35,9 @@ SR_32 sr_module_loop(void *arg)
 				sr_free_msg(ENG2MOD_BUF);
 			}
 
-			/* short sleep (2ms) to allow others to run so they 
+			/* short sleep (>2ms) to allow others to run so they 
 			   could fill the buffer */;
-			sal_schedule_timeout(2*1000);
+			sal_schedule_timeout(5*1000);
 		} else {
 			/* the rx buffer was not alloctaed, goto sleep 
 			   and wait for allocation */
