@@ -295,7 +295,7 @@ SR_32 sr_classifier_canbus(disp_info_t* info)
 			SR_U8 severity;
 			if (action & SR_CLS_ACTION_DROP) {
 				sprintf(actionstring, "Drop");
-				strncpy(msg, "CAN message droped by rule", 64);
+				strncpy(msg, "CAN message dropped by rule", 64);
 				severity = SEVERITY_HIGH;
 			} else if (action & SR_CLS_ACTION_ALLOW) {
 				sprintf(actionstring, "Allow");
