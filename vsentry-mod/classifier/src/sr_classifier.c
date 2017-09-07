@@ -303,7 +303,7 @@ SR_32 sr_classifier_canbus(disp_info_t* info)
 				severity = SEVERITY_UNKNOWN;
 			} else {
 				sprintf(actionstring, "log-only"); // TBD: when adding more terminal actions
-				strncpy(msg, "CAN message loged by rule", 64);
+				strncpy(msg, "CAN message logged by rule", 64);
 				severity = SEVERITY_UNKNOWN;
 			}
 
