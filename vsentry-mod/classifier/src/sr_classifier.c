@@ -291,17 +291,24 @@ SR_32 sr_classifier_canbus(disp_info_t* info)
 		action = sr_cls_can_rule_match(rule);
                 sal_printf("sr_classifier_canID: Matched Rule #%d, action is %d\n", rule, action);
 		if (action & SR_CLS_ACTION_DROP || action & SR_CLS_ACTION_LOG) {
-			char ext[64], actionstring[16];
+			char ext[64], actionstring[16], msg[64];
+			SR_U8 severity;
 			if (action & SR_CLS_ACTION_DROP) {
 				sprintf(actionstring, "Drop");
+				strncpy(msg, "CAN message droped by rule", 64);
+				severity = SEVERITY_HIGH;
 			} else if (action & SR_CLS_ACTION_ALLOW) {
 				sprintf(actionstring, "Allow");
+				strncpy(msg, "CAN message allowed by rule", 64);
+				severity = SEVERITY_UNKNOWN;
 			} else {
 				sprintf(actionstring, "log-only"); // TBD: when adding more terminal actions
+				strncpy(msg, "CAN message loged by rule", 64);
+				severity = SEVERITY_UNKNOWN;
 			}
 
 			sprintf(ext, "RuleNumber=%d Action=%s CanID=%x", rule, actionstring, info->can_info.msg_id);
-			CEF_log_event(SR_CEF_CID_CAN, "CAN message logged by rule" , SEVERITY_UNKNOWN, ext);
+			CEF_log_event(SR_CEF_CID_CAN, msg , severity, ext);
 		}
 		if (action & SR_CLS_ACTION_DROP)
 			return SR_CLS_ACTION_DROP;
