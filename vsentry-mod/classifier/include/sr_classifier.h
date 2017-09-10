@@ -36,6 +36,7 @@ struct cls_rule_action_t{
 	SR_U16 actions:13,
 	       file_ops:3; // read/write/excute
 	struct sr_rl_t rate;
+	struct sr_rl_t log_rate;
 	// TODO: consider using a union. some fields are not mutually exclusive though... (email/sms)
 	SR_U16 skip_rulenum; // for skip action
 	SR_U16 log_target; // syslog facility etc for log action
