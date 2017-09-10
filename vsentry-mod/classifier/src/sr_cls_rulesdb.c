@@ -99,7 +99,7 @@ enum cls_actions sr_cls_network_rule_match(SR_U16 rulenum)
 	}
 	// if action is drop - set log implicitly
 	if (action&(SR_CLS_ACTION_LOG|SR_CLS_ACTION_DROP)) {
-		should_log = (SR_CLS_ACTION_ALLOW == sr_cls_rl_check(&sr_rules_db[SR_NET_RULES][rulenum].log_rate, jiffies/100));
+		should_log = (SR_CLS_ACTION_ALLOW == sr_cls_rl_check(&sr_rules_db[SR_NET_RULES][rulenum].log_rate, jiffies/HZ));
 		if (should_log) { // set or clear the log bit accordingly
 			action |= SR_CLS_ACTION_LOG;
 		} else {
@@ -133,7 +133,7 @@ enum cls_actions sr_cls_file_rule_match(SR_8 fileop, SR_U16 rulenum)
 	}
 	// if action is drop - set log implicitly
 	if (action&(SR_CLS_ACTION_LOG|SR_CLS_ACTION_DROP)) {
-		should_log = (SR_CLS_ACTION_ALLOW == sr_cls_rl_check(&sr_rules_db[SR_NET_RULES][rulenum].log_rate, jiffies/100));
+		should_log = (SR_CLS_ACTION_ALLOW == sr_cls_rl_check(&sr_rules_db[SR_NET_RULES][rulenum].log_rate, jiffies/HZ));
 		if (should_log) { // set or clear the log bit accordingly
 			action |= SR_CLS_ACTION_LOG;
 		} else {
@@ -155,7 +155,7 @@ enum cls_actions sr_cls_can_rule_match(SR_U16 rulenum)
 	}
 	// if action is drop - set log implicitly
 	if (action&(SR_CLS_ACTION_LOG|SR_CLS_ACTION_DROP)) {
-		should_log = (SR_CLS_ACTION_ALLOW == sr_cls_rl_check(&sr_rules_db[SR_NET_RULES][rulenum].log_rate, jiffies/100));
+		should_log = (SR_CLS_ACTION_ALLOW == sr_cls_rl_check(&sr_rules_db[SR_NET_RULES][rulenum].log_rate, jiffies/HZ));
 		if (should_log) { // set or clear the log bit accordingly
 			action |= SR_CLS_ACTION_LOG;
 		} else {
