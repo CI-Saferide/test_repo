@@ -138,7 +138,7 @@ SR_32 sr_classifier_network(disp_info_t* info)
 	while ((rule = sal_ffs_and_clear_array (&ba_res)) != -1) {
 		action = sr_cls_network_rule_match(rule);
 		sal_printf("sr_classifier_network: Matched Rule #%d, action is %d\n", rule, action);
-		if (!(action & SR_CLS_ACTION_DROP) && action & SR_CLS_ACTION_LOG) {
+		if (action & SR_CLS_ACTION_LOG) {
 			char ext[256],sip[16],dip[16], actionstring[16];
 			SR_U32 sip_t, dip_t;
 			sip_t = info->tuple_info.saddr.v4addr.s_addr;
@@ -148,18 +148,11 @@ SR_32 sr_classifier_network(disp_info_t* info)
 			sprintf(sip, "%02d.%02d.%02d.%02d", (sip_t&0xff000000)>>24, (sip_t&0x00ff0000)>>16, (sip_t&0xff00)>> 8, sip_t&0xff);
 			sprintf(dip, "%02d.%02d.%02d.%02d", (dip_t&0xff000000)>>24, (dip_t&0x00ff0000)>>16, (dip_t&0xff00)>> 8, dip_t&0xff);
 			sprintf(ext, "RuleNumber=%d Action=%s proto=%s sip=%s sport=%d dip=%s dport=%d", rule, actionstring, info->tuple_info.ip_proto == IPPROTO_TCP?"TCP":"UDP", sip, info->tuple_info.sport, dip, info->tuple_info.dport); 
-			CEF_log_event(SR_CEF_CID_NETWORK, "Connection attempt logged by rule" , SEVERITY_UNKNOWN, ext);
-		}
-		if (action & SR_CLS_ACTION_DROP) {
-			char ext[256],sip[16],dip[16];
-			SR_U32 sip_t, dip_t;
-			sip_t = info->tuple_info.saddr.v4addr.s_addr;
-			dip_t = info->tuple_info.daddr.v4addr.s_addr;
-
-			sprintf(sip, "%02d.%02d.%02d.%02d", (sip_t&0xff000000)>>24, (sip_t&0x00ff0000)>>16, (sip_t&0xff00)>> 8, sip_t&0xff);
-			sprintf(dip, "%02d.%02d.%02d.%02d", (dip_t&0xff000000)>>24, (dip_t&0x00ff0000)>>16, (dip_t&0xff00)>> 8, dip_t&0xff);
-			sprintf(ext, "RuleNumber=%d proto=%s sip=%s sport=%d dip=%s dport=%d", rule, info->tuple_info.ip_proto == IPPROTO_TCP?"TCP":"UDP", sip, info->tuple_info.sport, dip, info->tuple_info.dport); 
-			CEF_log_event(SR_CEF_CID_NETWORK, "Connection denied by rule" , SEVERITY_HIGH, ext);
+			if (action & SR_CLS_ACTION_DROP) {
+				CEF_log_event(SR_CEF_CID_NETWORK, "Connection denied by rule" , SEVERITY_HIGH, ext);
+			} else {
+				CEF_log_event(SR_CEF_CID_NETWORK, "Connection attempt logged by rule" , SEVERITY_UNKNOWN, ext);
+			}
 		}
 		if (action & SR_CLS_ACTION_DROP)
 			return SR_CLS_ACTION_DROP;
@@ -225,7 +218,7 @@ SR_32 sr_classifier_file(disp_info_t* info)
 	while ((rule = sal_ffs_and_clear_array (&ba_res)) != -1) {
 		action = sr_cls_file_rule_match(info->fileinfo.fileop, rule);
 		sal_printf("sr_classifier_file: Matched Rule #%d, action is %d\n", rule, action);
-		if (action & SR_CLS_ACTION_DROP || action & SR_CLS_ACTION_LOG) {
+		if (action & SR_CLS_ACTION_LOG) {
 			char ext[64];
 			sprintf(ext, "RuleNumber=%d inode=%d Operation=%s", rule, info->fileinfo.parent_inode?info->fileinfo.parent_inode:info->fileinfo.current_inode,(info->fileinfo.fileop&SR_FILEOPS_WRITE)?"Write":(info->fileinfo.fileop&SR_FILEOPS_READ)?"Read":"Execute"); 
 			if (action & SR_CLS_ACTION_DROP)
@@ -290,7 +283,7 @@ SR_32 sr_classifier_canbus(disp_info_t* info)
 	while ((rule = sal_ffs_and_clear_array (&ba_res)) != -1) {
 		action = sr_cls_can_rule_match(rule);
                 sal_printf("sr_classifier_canID: Matched Rule #%d, action is %d\n", rule, action);
-		if (action & SR_CLS_ACTION_DROP || action & SR_CLS_ACTION_LOG) {
+		if (action & SR_CLS_ACTION_LOG) {
 			char ext[64], actionstring[16], msg[64];
 			SR_U8 severity;
 			if (action & SR_CLS_ACTION_DROP) {
