@@ -69,7 +69,7 @@ void sr_cls_rule_add(SR_32 rule_type, SR_U16 rulenum, SR_U16 actions, SR_8 file_
 		sr_rules_db[rule_type][rulenum].skip_rulenum = skip_rulenum;
 	}
 	sr_cls_rl_init(&sr_rules_db[rule_type][rulenum].log_rate);
-	sr_rules_db[rule_type][rulenum].log_rate.max_rate = 3;
+	sr_rules_db[rule_type][rulenum].log_rate.max_rate = 2;
 }
 enum cls_actions sr_cls_rl_check(struct sr_rl_t *rl, SR_U32 timestamp)
 {
