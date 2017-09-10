@@ -137,7 +137,6 @@ SR_32 sr_classifier_network(disp_info_t* info)
 
 	while ((rule = sal_ffs_and_clear_array (&ba_res)) != -1) {
 		action = sr_cls_network_rule_match(rule);
-		sal_printf("sr_classifier_network: Matched Rule #%d, action is %d\n", rule, action);
 		if (!(action & SR_CLS_ACTION_DROP) && action & SR_CLS_ACTION_LOG) {
 			char ext[256],sip[16],dip[16], actionstring[16];
 			SR_U32 sip_t, dip_t;
@@ -224,7 +223,6 @@ SR_32 sr_classifier_file(disp_info_t* info)
 
 	while ((rule = sal_ffs_and_clear_array (&ba_res)) != -1) {
 		action = sr_cls_file_rule_match(info->fileinfo.fileop, rule);
-		sal_printf("sr_classifier_file: Matched Rule #%d, action is %d\n", rule, action);
 		if (action & SR_CLS_ACTION_DROP || action & SR_CLS_ACTION_LOG) {
 			char ext[64];
 			sprintf(ext, "RuleNumber=%d inode=%d Operation=%s", rule, info->fileinfo.parent_inode?info->fileinfo.parent_inode:info->fileinfo.current_inode,(info->fileinfo.fileop&SR_FILEOPS_WRITE)?"Write":(info->fileinfo.fileop&SR_FILEOPS_READ)?"Read":"Execute"); 
@@ -289,7 +287,6 @@ SR_32 sr_classifier_canbus(disp_info_t* info)
 
 	while ((rule = sal_ffs_and_clear_array (&ba_res)) != -1) {
 		action = sr_cls_can_rule_match(rule);
-                sal_printf("sr_classifier_canID: Matched Rule #%d, action is %d\n", rule, action);
 		if (action & SR_CLS_ACTION_DROP || action & SR_CLS_ACTION_LOG) {
 			char ext[64], actionstring[16], msg[64];
 			SR_U8 severity;
