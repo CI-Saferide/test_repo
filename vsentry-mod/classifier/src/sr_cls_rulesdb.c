@@ -21,6 +21,7 @@ void sr_cls_rules_init(void)
 	for (j=0; j<SR_RULES_TYPE_MAX; j++) {
 		for (i=0; i<SR_MAX_RULES; i++) {
 			sr_cls_rl_init(&sr_rules_db[j][i].rate);
+			sr_cls_rl_init(&sr_rules_db[j][i].log_rate);
 			sr_rules_db[j][i].actions = SR_CLS_ACTION_ALLOW;
 		}
 	}
@@ -67,6 +68,8 @@ void sr_cls_rule_add(SR_32 rule_type, SR_U16 rulenum, SR_U16 actions, SR_8 file_
 	if (actions & SR_CLS_ACTION_SKIP_RULE) {
 		sr_rules_db[rule_type][rulenum].skip_rulenum = skip_rulenum;
 	}
+	sr_cls_rl_init(&sr_rules_db[rule_type][rulenum].log_rate);
+	sr_rules_db[rule_type][rulenum].log_rate.max_rate = 3;
 }
 enum cls_actions sr_cls_rl_check(struct sr_rl_t *rl, SR_U32 timestamp)
 {
@@ -79,7 +82,7 @@ enum cls_actions sr_cls_rl_check(struct sr_rl_t *rl, SR_U32 timestamp)
 		return SR_CLS_ACTION_ALLOW;
 	}
 	if (SR_ATOMIC_INC_RETURN(&rl->count) > rl->max_rate) {
-		sal_kernel_print_alert("sr_cls_rl_check: Rate exceeds configured rate\n");
+		//sal_kernel_print_alert("sr_cls_rl_check: Rate exceeds configured rate\n");
 		return rl->exceed_action;
 	}
 	return SR_CLS_ACTION_ALLOW;
@@ -87,12 +90,21 @@ enum cls_actions sr_cls_rl_check(struct sr_rl_t *rl, SR_U32 timestamp)
 
 enum cls_actions sr_cls_network_rule_match(SR_U16 rulenum)
 {
-	SR_U16 action;
+	SR_U16 action, should_log;
 
 	if (sr_rules_db[SR_NET_RULES][rulenum].actions & SR_CLS_ACTION_RATE) { 
 		action = sr_cls_rl_check(&sr_rules_db[SR_NET_RULES][rulenum].rate, jiffies);
 	} else {
 		action = sr_rules_db[SR_NET_RULES][rulenum].actions;
+	}
+	// if action is drop - set log implicitly
+	if (action&(SR_CLS_ACTION_LOG|SR_CLS_ACTION_DROP)) {
+		should_log = (SR_CLS_ACTION_ALLOW == sr_cls_rl_check(&sr_rules_db[SR_NET_RULES][rulenum].log_rate, jiffies/100));
+		if (should_log) { // set or clear the log bit accordingly
+			action |= SR_CLS_ACTION_LOG;
+		} else {
+			action &= (~SR_CLS_ACTION_LOG);
+		}
 	}
 	// Log action must be handled by caller, since all of the event metadata exists only there.
 	return action;
@@ -100,7 +112,7 @@ enum cls_actions sr_cls_network_rule_match(SR_U16 rulenum)
 
 enum cls_actions sr_cls_file_rule_match(SR_8 fileop, SR_U16 rulenum)
 {
-	SR_U16 action;
+	SR_U16 action, should_log;
 
 	switch (fileop) {
 		case SR_FILEOPS_READ:
@@ -119,18 +131,36 @@ enum cls_actions sr_cls_file_rule_match(SR_8 fileop, SR_U16 rulenum)
 	} else {
 		action = sr_rules_db[SR_FILE_RULES][rulenum].actions;
 	}
+	// if action is drop - set log implicitly
+	if (action&(SR_CLS_ACTION_LOG|SR_CLS_ACTION_DROP)) {
+		should_log = (SR_CLS_ACTION_ALLOW == sr_cls_rl_check(&sr_rules_db[SR_NET_RULES][rulenum].log_rate, jiffies/100));
+		if (should_log) { // set or clear the log bit accordingly
+			action |= SR_CLS_ACTION_LOG;
+		} else {
+			action &= (~SR_CLS_ACTION_LOG);
+		}
+	}
 	// Log action must be handled by caller, since all of the event metadata exists only there.
 	return action;
 }
 
 enum cls_actions sr_cls_can_rule_match(SR_U16 rulenum)
 {
-	SR_U16 action;
+	SR_U16 action, should_log;
 
 	if (sr_rules_db[SR_CAN_RULES][rulenum].actions & SR_CLS_ACTION_RATE) { 
 		action = sr_cls_rl_check(&sr_rules_db[SR_CAN_RULES][rulenum].rate, jiffies);
 	} else {
 		action = sr_rules_db[SR_CAN_RULES][rulenum].actions;
+	}
+	// if action is drop - set log implicitly
+	if (action&(SR_CLS_ACTION_LOG|SR_CLS_ACTION_DROP)) {
+		should_log = (SR_CLS_ACTION_ALLOW == sr_cls_rl_check(&sr_rules_db[SR_NET_RULES][rulenum].log_rate, jiffies/100));
+		if (should_log) { // set or clear the log bit accordingly
+			action |= SR_CLS_ACTION_LOG;
+		} else {
+			action &= (~SR_CLS_ACTION_LOG);
+		}
 	}
 	// Log action must be handled by caller, since all of the event metadata exists only there.
 	return action;
