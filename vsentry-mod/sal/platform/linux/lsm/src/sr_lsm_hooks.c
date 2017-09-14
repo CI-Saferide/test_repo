@@ -444,6 +444,10 @@ static vs_hook_t vsentry_hooks[] = {
 void init_vsentry_hooks(int type, void* func_ptr)
 {
 	switch (type) {
+	case VS_HOOK_BPRM_CHECK_SECURITY:
+		vsentry_security_hooks[type].hook.path_unlink = func_ptr;
+		vsentry_security_hooks[type].head = &lsm_hook_head_ptr->bprm_check_security;
+		break;
 	case VS_HOOK_PATH_UNLINK:
 		vsentry_security_hooks[type].hook.path_unlink = func_ptr;
 		vsentry_security_hooks[type].head = &lsm_hook_head_ptr->path_unlink;
