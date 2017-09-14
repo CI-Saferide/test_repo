@@ -101,6 +101,15 @@ SR_32 disp_inode_unlink(disp_info_t* info)
 	}
 }
 
+SR_32 disp_inode_rename(disp_info_t* info)
+{
+	if (unlikely(sr_classifier_file(info) == SR_CLS_ACTION_DROP)) {
+		return -EACCES;
+	} else {
+		return 0;
+	}
+}
+
 SR_32 disp_inode_symlink(disp_info_t* info)
 {	
 	if (unlikely(sr_classifier_file(info) == SR_CLS_ACTION_DROP)) {

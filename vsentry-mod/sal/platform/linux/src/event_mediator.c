@@ -94,6 +94,7 @@ const event_name hook_event_names[MAX_HOOK] = {
 	{HOOK_FILE_OPEN,		"file_open"},
 	{HOOK_INODE_LINK,		"inode_link"},
 	{HOOK_INODE_LINK,		"in_connection"},
+	{HOOK_INODE_RENAME,		"inode_rename"},
 	{HOOK_SOCK_MSG_SEND,	"sock_send_msg"},
 };
 
@@ -221,6 +222,46 @@ SR_32 vsentry_inode_unlink(struct inode *dir, struct dentry *dentry)
 #endif /* DEBUG_EVENT_MEDIATOR */
 	
 	/* call dispatcher */
+	return (disp_inode_unlink(&disp));
+}
+
+int vsentry_inode_rename(struct inode *old_dir, struct dentry *old_dentry, struct inode *new_dir,struct dentry *new_dentry)
+{
+	disp_info_t disp;
+	struct task_struct *ts = current;
+	const struct cred *rcred = ts->real_cred;		
+	
+	memset(&disp, 0, sizeof(disp_info_t));
+	
+	/* check vsentry state */
+	CHECK_STATE
+
+	/* check hook filter */
+	HOOK_FILTER
+	
+	/* gather metadata */
+	if (new_dentry->d_inode)
+		disp.fileinfo.current_inode = new_dentry->d_inode->i_ino;
+	else if (old_dentry->d_inode)
+		disp.fileinfo.current_inode = old_dentry->d_inode->i_ino;
+	else
+		sal_kernel_print_err("[%s] inode in null\n", hook_event_names[HOOK_INODE_RENAME].name);
+
+	disp.fileinfo.id.uid = (int)rcred->uid.val;
+	disp.fileinfo.id.pid = current->pid;
+	disp.fileinfo.fileop = SR_FILEOPS_WRITE;
+
+#ifdef DEBUG_EVENT_MEDIATOR
+        sal_kernel_print_info("[%s:HOOK %s] old inode=%d, new inode=%d, pid=%d, uid=%d\n",
+                        module_name,
+                        hook_event_names[HOOK_INODE_RENAME].name,
+                        old_dentry->d_inode ? old_dentry->d_inode->i_ino : -1,
+                        new_dentry->d_inode ? new_dentry->d_inode->i_ino : -1,
+                        disp.fileinfo.parent_inode,
+                        disp.fileinfo.id.pid,
+                        disp.fileinfo.id.uid);
+#endif /* DEBUG_EVENT_MEDIATOR */
+
 	return (disp_inode_unlink(&disp));
 }
 

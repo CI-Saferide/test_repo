@@ -57,6 +57,7 @@
 
 SR_32 vsentry_inode_mkdir(struct inode *dir, struct dentry *dentry, umode_t mask);
 SR_32 vsentry_inode_unlink(struct inode *dir, struct dentry *dentry);
+SR_32 vsentry_inode_rename(struct inode *old_dir, struct dentry *old_dentry, struct inode *new_dir,struct dentry *new_dentry);
 SR_32 vsentry_inode_symlink(struct inode *dir, struct dentry *dentry, const SR_8 *name);
 SR_32 vsentry_inode_rmdir(struct inode *dir, struct dentry *dentry);
 SR_32 vsentry_socket_connect(struct socket *sock, struct sockaddr *address, SR_32 addrlen);

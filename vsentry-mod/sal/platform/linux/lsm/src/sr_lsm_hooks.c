@@ -95,15 +95,6 @@ static int vsentry_path_mknod(struct path *dir, struct dentry *dentry, umode_t m
 	return 0;
 }
 
-static int vsentry_inode_rename(struct inode *old_dir, struct dentry *old_dentry, struct inode *new_dir,struct dentry *new_dentry)
-{
-	if(hook_filter())
-		return 0;
-
-	//TODO: handle permission for sys call
-	return 0;
-}
-
 static int vsentry_path_rename(struct path *old_dir, struct dentry *old_dentry, struct path *new_dir,struct dentry *new_dentry)
 {
 	if(hook_filter())
