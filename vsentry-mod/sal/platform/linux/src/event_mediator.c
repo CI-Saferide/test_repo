@@ -800,6 +800,57 @@ SR_32 vsentry_socket_sendmsg(struct socket *sock,struct msghdr *msg,SR_32 size)
 	
 	return 0;
 }
+
+/* @socket_recvmsg:
+ *      Check permission before receiving a message from a socket.
+ *      @sock contains the socket structure.
+ *      @msg contains the message structure.
+ *      @size contains the size of message structure.
+ *      @flags contains the operational flags.
+ *      Return 0 if permission is granted.
+ */
+int vsentry_socket_recvmsg(struct socket *sock,struct msghdr *msg,int size,int flags)
+{
+	const u8 family = sock->sk->sk_family;
+	disp_info_t disp;
+	struct task_struct *ts = current;
+	const struct cred *rcred= ts->real_cred;		
+
+	switch (family) {
+		case AF_INET:
+			if (sock->sk->sk_protocol != 0x11)
+				return 0;
+
+			disp.tuple_info.id.uid = (int)rcred->uid.val;
+			disp.tuple_info.id.pid = current->pid;
+       			disp.tuple_info.daddr.v4addr.s_addr = ntohl(sock->sk->sk_rcv_saddr); // This is the local address
+			disp.tuple_info.saddr.v4addr.s_addr = ntohl(sock->sk->sk_daddr); // This is the forighen address
+       			disp.tuple_info.sport = sock->sk->sk_dport;
+       			disp.tuple_info.dport = sock->sk->sk_num;
+       			disp.tuple_info.ip_proto = sock->sk->sk_protocol;
+#ifdef DEBUG_EVENT_MEDIATOR
+        		sal_kernel_print_info("vsentry_socket_connect=%lx[%d] -> %lx[%d]\n",
+                        		(unsigned long)disp.tuple_info.saddr.v4addr.s_addr,
+                        		disp.tuple_info.sport,
+                        		(unsigned long)disp.tuple_info.daddr.v4addr.s_addr,
+                        		disp.tuple_info.dport);
+#endif /* DEBUG_EVENT_MEDIATOR */
+
+			/* call dispatcher */
+			if (disp_ipv4_sendmsg(&disp) == SR_CLS_ACTION_ALLOW) {
+				return 0;
+			} else {
+				return -EACCES;
+			}
+			break;
+		default:
+			/* we are not interested in the message */
+			break;
+         }
+
+	return 0;
+}
+
 SR_32 vsentry_bprm_check_security(struct linux_binprm *bprm)
 {
 	disp_info_t disp;

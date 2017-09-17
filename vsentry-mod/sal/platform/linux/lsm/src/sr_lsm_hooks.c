@@ -332,22 +332,6 @@ static int vsentry_socket_accept(struct socket *sock,struct socket *newsock)
 }
 #endif // 0
 
-/* @socket_recvmsg:
- *	Check permission before receiving a message from a socket.
- *	@sock contains the socket structure.
- *	@msg contains the message structure.
- *	@size contains the size of message structure.
- *	@flags contains the operational flags.
- *	Return 0 if permission is granted.
- */
-static int vsentry_socket_recvmsg(struct socket *sock,struct msghdr *msg,int size,int flags)
-{
-	if(hook_filter())
-		return 0;
-
-	return 0;
-}
-
 static int vsentry_socket_sock_rcv_skb(struct sock *sk, struct sk_buff *skb)
 {
 	if(hook_filter())
