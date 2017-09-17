@@ -732,6 +732,15 @@ SR_32 vsentry_socket_sendmsg(struct socket *sock,struct msghdr *msg,SR_32 size)
 			for (i = 0; i < cfd->len; i++) {
 				disp.can_info.payload[i] = cfd->data[i];
 			}
+			/* XXXXXX */
+                        if (disp.can_info.payload[1] == 0 && 
+                        	disp.can_info.payload[2] == 0 && 
+                        	disp.can_info.payload[3] == 0 && 
+                        	disp.can_info.payload[4] == 0 && 
+                        	disp.can_info.payload[5] == 0 && 
+                        	disp.can_info.payload[6] == 0) {
+							return 0;
+                        }
 			sal_debug_em("[%s:HOOK %s] family=af_can msd_id=%x payload_len=%d payload= %02x %02x %02x %02x %02x %02x %02x %02x pid=%d, uid=%d\n", 
 						module_name,
 						hook_event_names[HOOK_SOCK_MSG_SEND].name,
