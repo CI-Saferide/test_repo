@@ -184,6 +184,18 @@ SR_32 sr_classifier_file(disp_info_t* info)
 			sal_or_self_op_arrays(&ba_res, ptr);
 		}
 	}
+	if (info->fileinfo.old_inode) {
+		ptr = sr_cls_file_find(info->fileinfo.old_inode);
+		if (ptr) {
+			sal_or_self_op_arrays(&ba_res, ptr);
+		}
+	}
+	if (info->fileinfo.old_parent_inode) {
+		ptr = sr_cls_file_find(info->fileinfo.old_parent_inode);
+		if (ptr) {
+			sal_or_self_op_arrays(&ba_res, ptr);
+		}
+	}
 	if (array_is_clear(ba_res)) {
 		return SR_CLS_ACTION_ALLOW;
 	}

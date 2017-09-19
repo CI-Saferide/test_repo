@@ -114,17 +114,12 @@ enum cls_actions sr_cls_file_rule_match(SR_8 fileop, SR_U16 rulenum)
 {
 	SR_U16 action, should_log;
 
-	switch (fileop) {
-		case SR_FILEOPS_READ:
-		case SR_FILEOPS_WRITE:
-		case SR_FILEOPS_EXEC:
-			if (!(sr_rules_db[SR_FILE_RULES][rulenum].file_ops & fileop)) { // not really a match
-				return SR_CLS_ACTION_NOOP;
-			}
-			break;
-		default:
-			sal_kernel_print_info("sr_cls_file_rule_match: Invalid file op\n");
-			return SR_CLS_ACTION_NOOP;
+	if (!(fileop & (SR_FILEOPS_READ | SR_FILEOPS_WRITE | SR_FILEOPS_EXEC))) {
+		sal_kernel_print_info("sr_cls_file_rule_match: Invalid file op\n");
+		return SR_CLS_ACTION_NOOP;
+	}
+	if (!(sr_rules_db[SR_FILE_RULES][rulenum].file_ops & fileop)) { // not really a match
+		return SR_CLS_ACTION_NOOP;
 	}
 	if (sr_rules_db[SR_FILE_RULES][rulenum].actions & SR_CLS_ACTION_RATE) { 
 		action = sr_cls_rl_check(&sr_rules_db[SR_FILE_RULES][rulenum].rate, jiffies);

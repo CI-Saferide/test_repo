@@ -240,16 +240,18 @@ int vsentry_inode_rename(struct inode *old_dir, struct dentry *old_dentry, struc
 	HOOK_FILTER
 	
 	/* gather metadata */
+	if (old_dentry->d_inode)
+	    disp.fileinfo.old_inode = old_dentry->d_inode->i_ino;
 	if (new_dentry->d_inode)
-		disp.fileinfo.current_inode = new_dentry->d_inode->i_ino;
-	else if (old_dentry->d_inode)
-		disp.fileinfo.current_inode = old_dentry->d_inode->i_ino;
-	else
-		sal_kernel_print_err("[%s] inode in null\n", hook_event_names[HOOK_INODE_RENAME].name);
+	    disp.fileinfo.current_inode = new_dentry->d_inode->i_ino;
+	if (old_dir)
+           disp.fileinfo.old_parent_inode = old_dir->i_ino;
+	if (new_dir)
+           disp.fileinfo.parent_inode = new_dir->i_ino;
 
 	disp.fileinfo.id.uid = (int)rcred->uid.val;
 	disp.fileinfo.id.pid = current->pid;
-	disp.fileinfo.fileop = SR_FILEOPS_WRITE;
+	disp.fileinfo.fileop = SR_FILEOPS_WRITE | SR_FILEOPS_READ;
 
 #ifdef DEBUG_EVENT_MEDIATOR
         sal_kernel_print_info("[%s:HOOK %s] old inode=%d, new inode=%d, pid=%d, uid=%d\n",
@@ -605,13 +607,15 @@ SR_32 vsentry_inode_link(struct dentry *old_dentry, struct inode *dir, struct de
 	else
 		sal_kernel_print_err("[%s] parent inode in null\n", hook_event_names[HOOK_INODE_LINK].name);
 	if ((old_dentry->d_parent) && (old_dentry->d_parent->d_inode))
-		disp.fileinfo.old_inode = old_dentry->d_parent->d_inode->i_ino;
+		disp.fileinfo.old_parent_inode = old_dentry->d_parent->d_inode->i_ino;
 	else
 		sal_kernel_print_err("[%s] old parent inode in null\n", hook_event_names[HOOK_INODE_LINK].name);
+	if (old_dentry->d_inode)
+		disp.fileinfo.old_inode = old_dentry->d_inode->i_ino;
 
 	disp.fileinfo.id.uid = (int)rcred->uid.val;
 	disp.fileinfo.id.pid = current->pid;
-	disp.fileinfo.fileop = SR_FILEOPS_WRITE;
+	disp.fileinfo.fileop = SR_FILEOPS_WRITE | SR_FILEOPS_READ;
 	
 #ifdef DEBUG_EVENT_MEDIATOR
 #pragma GCC diagnostic ignored "-Wdeclaration-after-statement"
