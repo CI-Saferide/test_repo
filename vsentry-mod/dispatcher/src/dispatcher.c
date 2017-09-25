@@ -140,7 +140,7 @@ SR_32 disp_ipv4_sendmsg(disp_info_t* info)
 	return (sr_classifier_network(info));
 }
 
-SR_32 disp_ipv4_recvdmsg(disp_info_t* info)
+SR_32 disp_ipv4_recvmsg(disp_info_t* info)
 {
 	return (sr_classifier_network(info));
 }

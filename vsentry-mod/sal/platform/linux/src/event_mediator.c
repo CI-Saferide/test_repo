@@ -264,7 +264,7 @@ int vsentry_inode_rename(struct inode *old_dir, struct dentry *old_dentry, struc
                         disp.fileinfo.id.uid);
 #endif /* DEBUG_EVENT_MEDIATOR */
 
-	return (disp_inode_unlink(&disp));
+	return (disp_inode_rename(&disp));
 }
 
 SR_32 vsentry_inode_symlink(struct inode *dir, struct dentry *dentry, const SR_8 *name)
@@ -841,7 +841,7 @@ int vsentry_socket_recvmsg(struct socket *sock,struct msghdr *msg,int size,int f
 #endif /* DEBUG_EVENT_MEDIATOR */
 
 			/* call dispatcher */
-			if (disp_ipv4_sendmsg(&disp) == SR_CLS_ACTION_ALLOW) {
+			if (disp_ipv4_recvmsg(&disp) == SR_CLS_ACTION_ALLOW) {
 				return 0;
 			} else {
 				return -EACCES;
