@@ -94,6 +94,7 @@ const event_name hook_event_names[MAX_HOOK] = {
 	{HOOK_FILE_OPEN,		"file_open"},
 	{HOOK_INODE_LINK,		"inode_link"},
 	{HOOK_INODE_LINK,		"in_connection"},
+	{HOOK_INODE_RENAME,		"inode_rename"},
 	{HOOK_SOCK_MSG_SEND,	"sock_send_msg"},
 };
 
@@ -222,6 +223,48 @@ SR_32 vsentry_inode_unlink(struct inode *dir, struct dentry *dentry)
 	
 	/* call dispatcher */
 	return (disp_inode_unlink(&disp));
+}
+
+int vsentry_inode_rename(struct inode *old_dir, struct dentry *old_dentry, struct inode *new_dir,struct dentry *new_dentry)
+{
+	disp_info_t disp;
+	struct task_struct *ts = current;
+	const struct cred *rcred = ts->real_cred;		
+	
+	memset(&disp, 0, sizeof(disp_info_t));
+	
+	/* check vsentry state */
+	CHECK_STATE
+
+	/* check hook filter */
+	HOOK_FILTER
+	
+	/* gather metadata */
+	if (old_dentry->d_inode)
+	    disp.fileinfo.old_inode = old_dentry->d_inode->i_ino;
+	if (new_dentry->d_inode)
+	    disp.fileinfo.current_inode = new_dentry->d_inode->i_ino;
+	if (old_dir)
+           disp.fileinfo.old_parent_inode = old_dir->i_ino;
+	if (new_dir)
+           disp.fileinfo.parent_inode = new_dir->i_ino;
+
+	disp.fileinfo.id.uid = (int)rcred->uid.val;
+	disp.fileinfo.id.pid = current->pid;
+	disp.fileinfo.fileop = SR_FILEOPS_WRITE | SR_FILEOPS_READ;
+
+#ifdef DEBUG_EVENT_MEDIATOR
+        sal_kernel_print_info("[%s:HOOK %s] old inode=%d, new inode=%d, pid=%d, uid=%d\n",
+                        module_name,
+                        hook_event_names[HOOK_INODE_RENAME].name,
+                        old_dentry->d_inode ? old_dentry->d_inode->i_ino : -1,
+                        new_dentry->d_inode ? new_dentry->d_inode->i_ino : -1,
+                        disp.fileinfo.parent_inode,
+                        disp.fileinfo.id.pid,
+                        disp.fileinfo.id.uid);
+#endif /* DEBUG_EVENT_MEDIATOR */
+
+	return (disp_inode_rename(&disp));
 }
 
 SR_32 vsentry_inode_symlink(struct inode *dir, struct dentry *dentry, const SR_8 *name)
@@ -564,13 +607,15 @@ SR_32 vsentry_inode_link(struct dentry *old_dentry, struct inode *dir, struct de
 	else
 		sal_kernel_print_err("[%s] parent inode in null\n", hook_event_names[HOOK_INODE_LINK].name);
 	if ((old_dentry->d_parent) && (old_dentry->d_parent->d_inode))
-		disp.fileinfo.old_inode = old_dentry->d_parent->d_inode->i_ino;
+		disp.fileinfo.old_parent_inode = old_dentry->d_parent->d_inode->i_ino;
 	else
 		sal_kernel_print_err("[%s] old parent inode in null\n", hook_event_names[HOOK_INODE_LINK].name);
+	if (old_dentry->d_inode)
+		disp.fileinfo.old_inode = old_dentry->d_inode->i_ino;
 
 	disp.fileinfo.id.uid = (int)rcred->uid.val;
 	disp.fileinfo.id.pid = current->pid;
-	disp.fileinfo.fileop = SR_FILEOPS_WRITE;
+	disp.fileinfo.fileop = SR_FILEOPS_WRITE | SR_FILEOPS_READ;
 	
 #ifdef DEBUG_EVENT_MEDIATOR
 #pragma GCC diagnostic ignored "-Wdeclaration-after-statement"
@@ -759,6 +804,57 @@ SR_32 vsentry_socket_sendmsg(struct socket *sock,struct msghdr *msg,SR_32 size)
 	
 	return 0;
 }
+
+/* @socket_recvmsg:
+ *      Check permission before receiving a message from a socket.
+ *      @sock contains the socket structure.
+ *      @msg contains the message structure.
+ *      @size contains the size of message structure.
+ *      @flags contains the operational flags.
+ *      Return 0 if permission is granted.
+ */
+int vsentry_socket_recvmsg(struct socket *sock,struct msghdr *msg,int size,int flags)
+{
+	const u8 family = sock->sk->sk_family;
+	disp_info_t disp;
+	struct task_struct *ts = current;
+	const struct cred *rcred= ts->real_cred;		
+
+	switch (family) {
+		case AF_INET:
+			if (sock->sk->sk_protocol != 0x11)
+				return 0;
+
+			disp.tuple_info.id.uid = (int)rcred->uid.val;
+			disp.tuple_info.id.pid = current->pid;
+       			disp.tuple_info.daddr.v4addr.s_addr = ntohl(sock->sk->sk_rcv_saddr); // This is the local address
+			disp.tuple_info.saddr.v4addr.s_addr = ntohl(sock->sk->sk_daddr); // This is the forighen address
+       			disp.tuple_info.sport = sock->sk->sk_dport;
+       			disp.tuple_info.dport = sock->sk->sk_num;
+       			disp.tuple_info.ip_proto = sock->sk->sk_protocol;
+#ifdef DEBUG_EVENT_MEDIATOR
+        		sal_kernel_print_info("vsentry_socket_connect=%lx[%d] -> %lx[%d]\n",
+                        		(unsigned long)disp.tuple_info.saddr.v4addr.s_addr,
+                        		disp.tuple_info.sport,
+                        		(unsigned long)disp.tuple_info.daddr.v4addr.s_addr,
+                        		disp.tuple_info.dport);
+#endif /* DEBUG_EVENT_MEDIATOR */
+
+			/* call dispatcher */
+			if (disp_ipv4_recvmsg(&disp) == SR_CLS_ACTION_ALLOW) {
+				return 0;
+			} else {
+				return -EACCES;
+			}
+			break;
+		default:
+			/* we are not interested in the message */
+			break;
+         }
+
+	return 0;
+}
+
 SR_32 vsentry_bprm_check_security(struct linux_binprm *bprm)
 {
 	disp_info_t disp;

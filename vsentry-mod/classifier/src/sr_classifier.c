@@ -163,7 +163,7 @@ SR_32 sr_classifier_network(disp_info_t* info)
 
 SR_32 sr_classifier_file(disp_info_t* info)
 {
-	bit_array *ptr, ba_res;
+	bit_array *ptr = NULL, ba_res;
 	SR_16 rule;
 	SR_U16 action;
 	int st;
@@ -171,15 +171,30 @@ SR_32 sr_classifier_file(disp_info_t* info)
 	if (!info->tuple_info.id.uid) return SR_CLS_ACTION_ALLOW; // Don't mess up root access
 	memset(&ba_res, 0, sizeof(bit_array));
 
-        if (info->fileinfo.parent_inode) { // create within a directory - match parent only
-                ptr = sr_cls_file_find(info->fileinfo.parent_inode);
-        } else {
-                ptr = sr_cls_file_find(info->fileinfo.current_inode);
+	sal_or_self_op_arrays(&ba_res, sr_cls_file_any());
+	if (info->fileinfo.current_inode) {
+		ptr = sr_cls_file_find(info->fileinfo.current_inode);
+		if (ptr) {
+			sal_or_self_op_arrays(&ba_res, ptr);
+		}
         }
-	if (ptr) {
-		sal_or_op_arrays(ptr, sr_cls_file_any(), &ba_res);
-	} else { // take only src/any
-		sal_or_self_op_arrays(&ba_res, sr_cls_file_any());
+	if (info->fileinfo.parent_inode) {
+		ptr = sr_cls_file_find(info->fileinfo.parent_inode);
+		if (ptr) {
+			sal_or_self_op_arrays(&ba_res, ptr);
+		}
+	}
+	if (info->fileinfo.old_inode) {
+		ptr = sr_cls_file_find(info->fileinfo.old_inode);
+		if (ptr) {
+			sal_or_self_op_arrays(&ba_res, ptr);
+		}
+	}
+	if (info->fileinfo.old_parent_inode) {
+		ptr = sr_cls_file_find(info->fileinfo.old_parent_inode);
+		if (ptr) {
+			sal_or_self_op_arrays(&ba_res, ptr);
+		}
 	}
 	if (array_is_clear(ba_res)) {
 		return SR_CLS_ACTION_ALLOW;

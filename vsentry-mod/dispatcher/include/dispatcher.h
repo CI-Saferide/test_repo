@@ -27,6 +27,7 @@ enum hook_events {
 	HOOK_IN_CONNECTION,
 	HOOK_SOCK_MSG_SEND,
 	HOOK_BINPERM,
+	HOOK_INODE_RENAME,
 	MAX_HOOK
 	/* NOTE: when addidng hooks make sure to update also event_mediator.c hook_event_names */
 };
@@ -51,6 +52,7 @@ typedef union {
 		SR_U32		current_inode;
 		SR_U32		parent_inode;
 		SR_U32		old_inode;
+		SR_U32		old_parent_inode;
 		SR_8		fileop;
 		SR_U8 		filename[128];
 		SR_U8 		fullpath[128];
@@ -107,6 +109,7 @@ SR_32 disp_file_exec(disp_info_t* info);
 SR_32 disp_inode_link(disp_info_t* info);
 SR_32 disp_inode_unlink(disp_info_t* info);
 SR_32 disp_inode_symlink(disp_info_t* info);
+SR_32 disp_inode_rename(disp_info_t* info);
 
 SR_32 disp_socket_connect(disp_info_t* info);
 SR_32 disp_socket_accept(disp_info_t* info);
@@ -114,5 +117,6 @@ SR_32 disp_incoming_connection(disp_info_t* info);
 SR_32 disp_socket_create(disp_info_t* info);
 SR_32 disp_socket_sendmsg(disp_info_t* info);
 SR_32 disp_ipv4_sendmsg(disp_info_t* info);
+SR_32 disp_ipv4_recvmsg(disp_info_t* info);
 
 #endif /* _DISPATCHER_H */

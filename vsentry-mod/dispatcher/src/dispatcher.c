@@ -101,6 +101,15 @@ SR_32 disp_inode_unlink(disp_info_t* info)
 	}
 }
 
+SR_32 disp_inode_rename(disp_info_t* info)
+{
+	if (unlikely(sr_classifier_file(info) == SR_CLS_ACTION_DROP)) {
+		return -EACCES;
+	} else {
+		return 0;
+	}
+}
+
 SR_32 disp_inode_symlink(disp_info_t* info)
 {	
 	if (unlikely(sr_classifier_file(info) == SR_CLS_ACTION_DROP)) {
@@ -127,6 +136,11 @@ SR_32 disp_socket_connect(disp_info_t* info)
 }
 
 SR_32 disp_ipv4_sendmsg(disp_info_t* info)
+{
+	return (sr_classifier_network(info));
+}
+
+SR_32 disp_ipv4_recvmsg(disp_info_t* info)
 {
 	return (sr_classifier_network(info));
 }

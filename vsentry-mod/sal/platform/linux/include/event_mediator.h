@@ -57,6 +57,7 @@
 
 SR_32 vsentry_inode_mkdir(struct inode *dir, struct dentry *dentry, umode_t mask);
 SR_32 vsentry_inode_unlink(struct inode *dir, struct dentry *dentry);
+SR_32 vsentry_inode_rename(struct inode *old_dir, struct dentry *old_dentry, struct inode *new_dir,struct dentry *new_dentry);
 SR_32 vsentry_inode_symlink(struct inode *dir, struct dentry *dentry, const SR_8 *name);
 SR_32 vsentry_inode_rmdir(struct inode *dir, struct dentry *dentry);
 SR_32 vsentry_socket_connect(struct socket *sock, struct sockaddr *address, SR_32 addrlen);
@@ -67,6 +68,7 @@ SR_32 vsentry_inode_link(struct dentry *old_dentry, struct inode *dir, struct de
 SR_32 vsentry_socket_create(SR_32 family, SR_32 type, SR_32 protocol, SR_32 kern);
 SR_32 vsentry_incoming_connection(struct sk_buff *skb);
 SR_32 vsentry_socket_sendmsg(struct socket *sock,struct msghdr *msg, SR_32 size);
+int vsentry_socket_recvmsg(struct socket *sock,struct msghdr *msg,int size,int flags);
 SR_32 vsentry_bprm_check_security(struct linux_binprm *bprm);
 void vsentry_task_free(struct task_struct *task);
 #endif /* _EVENT_MEDIATOR_H */

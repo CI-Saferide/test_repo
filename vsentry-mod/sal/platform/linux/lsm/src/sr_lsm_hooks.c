@@ -95,15 +95,6 @@ static int vsentry_path_mknod(struct path *dir, struct dentry *dentry, umode_t m
 	return 0;
 }
 
-static int vsentry_inode_rename(struct inode *old_dir, struct dentry *old_dentry, struct inode *new_dir,struct dentry *new_dentry)
-{
-	if(hook_filter())
-		return 0;
-
-	//TODO: handle permission for sys call
-	return 0;
-}
-
 static int vsentry_path_rename(struct path *old_dir, struct dentry *old_dentry, struct path *new_dir,struct dentry *new_dentry)
 {
 	if(hook_filter())
@@ -341,22 +332,6 @@ static int vsentry_socket_accept(struct socket *sock,struct socket *newsock)
 }
 #endif // 0
 
-/* @socket_recvmsg:
- *	Check permission before receiving a message from a socket.
- *	@sock contains the socket structure.
- *	@msg contains the message structure.
- *	@size contains the size of message structure.
- *	@flags contains the operational flags.
- *	Return 0 if permission is granted.
- */
-static int vsentry_socket_recvmsg(struct socket *sock,struct msghdr *msg,int size,int flags)
-{
-	if(hook_filter())
-		return 0;
-
-	return 0;
-}
-
 static int vsentry_socket_sock_rcv_skb(struct sock *sk, struct sk_buff *skb)
 {
 	if(hook_filter())
@@ -444,6 +419,10 @@ static vs_hook_t vsentry_hooks[] = {
 void init_vsentry_hooks(int type, void* func_ptr)
 {
 	switch (type) {
+	case VS_HOOK_BPRM_CHECK_SECURITY:
+		vsentry_security_hooks[type].hook.path_unlink = func_ptr;
+		vsentry_security_hooks[type].head = &lsm_hook_head_ptr->bprm_check_security;
+		break;
 	case VS_HOOK_PATH_UNLINK:
 		vsentry_security_hooks[type].hook.path_unlink = func_ptr;
 		vsentry_security_hooks[type].head = &lsm_hook_head_ptr->path_unlink;
