@@ -232,6 +232,7 @@ SR_32 vsentry_inode_unlink(struct inode *dir, struct dentry *dentry)
 	return rc;
 }
 
+/* TODO : Temporaray hack for remove noise from psad, Should be replaced with generic filter engine. */
 #define IGNORE_PREFIX "/var/log/psad"
 static SR_BOOL is_ignore_file_creation(char *name)
 {
