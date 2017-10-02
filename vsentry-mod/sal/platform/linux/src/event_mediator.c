@@ -68,9 +68,6 @@ const static SR_8 *protocol_family[] = {
 	"PF_MAX"
 };
 
-#ifdef DEBUG_EVENT_MEDIATOR
-static SR_8 module_name[] = "em";
-
 static SR_8 get_path(struct dentry *dentry, SR_8 *buffer, SR_32 len)
 {
 	SR_8 path[SR_MAX_PATH_SIZE], *path_ptr;
@@ -82,6 +79,9 @@ static SR_8 get_path(struct dentry *dentry, SR_8 *buffer, SR_32 len)
 	strncpy(buffer, path_ptr, MIN(len, 1+strlen(path_ptr)));
 	return SR_SUCCESS;
 }
+
+#ifdef DEBUG_EVENT_MEDIATOR
+static SR_8 module_name[] = "em";
 #endif /* DEBUG_EVENT_MEDIATOR */
 
 const event_name hook_event_names[MAX_HOOK] = {
@@ -176,6 +176,7 @@ SR_32 vsentry_inode_unlink(struct inode *dir, struct dentry *dentry)
 	disp_info_t disp;
 	struct task_struct *ts = current;
 	const struct cred *rcred = ts->real_cred;		
+	SR_32 rc;
 	
 	memset(&disp, 0, sizeof(disp_info_t));
 	
@@ -222,7 +223,19 @@ SR_32 vsentry_inode_unlink(struct inode *dir, struct dentry *dentry)
 #endif /* DEBUG_EVENT_MEDIATOR */
 	
 	/* call dispatcher */
-	return (disp_inode_unlink(&disp));
+	rc = disp_inode_unlink(&disp);
+	if (rc == 0) {
+		if (disp.fileinfo.current_inode)
+			disp_inode_remove(disp.fileinfo.current_inode);
+	}
+
+	return rc;
+}
+
+#define IGNORE_PREFIX "/var/log/psad"
+static SR_BOOL is_ignore_file_creation(char *name)
+{
+   return !memcmp(name, IGNORE_PREFIX, strlen(IGNORE_PREFIX));
 }
 
 int vsentry_inode_rename(struct inode *old_dir, struct dentry *old_dentry, struct inode *new_dir,struct dentry *new_dentry)
@@ -230,6 +243,7 @@ int vsentry_inode_rename(struct inode *old_dir, struct dentry *old_dentry, struc
 	disp_info_t disp;
 	struct task_struct *ts = current;
 	const struct cred *rcred = ts->real_cred;		
+	SR_32 rc;
 	
 	memset(&disp, 0, sizeof(disp_info_t));
 	
@@ -264,7 +278,24 @@ int vsentry_inode_rename(struct inode *old_dir, struct dentry *old_dentry, struc
                         disp.fileinfo.id.uid);
 #endif /* DEBUG_EVENT_MEDIATOR */
 
-	return (disp_inode_rename(&disp));
+	/* 
+	mv existing_file1 exsiting_file2 - The inode of file2, which is new dentry id remoed, its rules shuld be removed.
+	The inode of file1 is retained, so as its rules. its rules should be removed as well since 
+	the file has a new name now. For the new name the relevent rules are created.
+	*/
+	rc = disp_inode_rename(&disp);
+	if (rc == 0) {
+		if (disp.fileinfo.current_inode)
+			disp_inode_remove(disp.fileinfo.current_inode);
+		if (disp.fileinfo.old_inode)
+			disp_inode_remove(disp.fileinfo.old_inode);
+		get_path(new_dentry, disp.fileinfo.fullpath, sizeof(disp.fileinfo.fullpath));
+		if(!is_ignore_file_creation(disp.fileinfo.fullpath) && disp_file_created(&disp) != SR_SUCCESS) {
+			sal_kernel_print_err("[%s] failed disp_file_created\n", hook_event_names[HOOK_INODE_RENAME].name);
+ 		}
+	}
+
+       return rc;
 }
 
 SR_32 vsentry_inode_symlink(struct inode *dir, struct dentry *dentry, const SR_8 *name)
@@ -495,6 +526,7 @@ SR_32 vsentry_inode_create(struct inode *dir, struct dentry *dentry, umode_t mod
 	disp_info_t disp;
 	struct task_struct *ts = current;
 	const struct cred *rcred= ts->real_cred;		
+	SR_32 rc;
 	
 	memset(&disp, 0, sizeof(disp_info_t));
 	
@@ -532,7 +564,14 @@ SR_32 vsentry_inode_create(struct inode *dir, struct dentry *dentry, umode_t mod
 #endif /* DEBUG_EVENT_MEDIATOR */
 	
 	/* call dispatcher */
-	return disp_inode_create(&disp);
+	rc = disp_inode_create(&disp);
+	if (rc == 0) {
+		get_path(dentry, disp.fileinfo.fullpath, sizeof(disp.fileinfo.fullpath));
+		if(!is_ignore_file_creation(disp.fileinfo.fullpath) && disp_file_created(&disp) != SR_SUCCESS) {
+			sal_kernel_print_err("[%s] failed disp_file_created\n", hook_event_names[HOOK_INODE_CREATE].name);
+		}
+	}
+	return rc;
 }
 
 //__attribute__ ((unused))

@@ -4,9 +4,12 @@
 #include "sr_msg.h"
 #include "sr_msg_dispatch.h"
 #include "sr_engine_utils.h"
+#include "sr_file_hash.h"
+#include "sr_cls_rules_control.h"
+
+#define NUM_OF_LSTAT_ITERS 3
 
 //#include "sr_cls_file.h"
-//#include "sr_hash.h"
 
 // filename: path of file/dir to add rule to
 // rulenum: index of rule to be added
@@ -188,17 +191,43 @@ int sr_cls_file_del_rule(char *filename, char *exec, char *user, SR_U32 rulenum,
 	return SR_SUCCESS;
 }
 
+static SR_U32 sr_event_process_rule(char *filename, char *exec, char *user, SR_U32 rulenum, SR_U16 actions, SR_8 file_ops)
+{
+        sr_cls_file_add_rule(filename, exec, user, rulenum, 1);
+        sr_cls_rule_add(SR_FILE_RULES, rulenum, actions, file_ops, /* file_rule_tuple.max_rate */ 0, /* file_rule.rate_action */ 0 ,
+                         /* file_ruole.action.log_target */ 0 , /* file_rule.tuple.action.email_id */ 0 , /* file_rule.tuple.action.phone_id */ 0 , /* file_rule.action.skip_rulenum */ 0);
+
+        return SR_SUCCESS;
+}
+
 // This function should be invoked upon file creation. 
-// It will need to check if parent directory has rules associated with it and inherit accordingly
+// It will need to check if file has roules associated with it or 
+// parent directory has rules associated with it and inherit accordingly
 int sr_cls_file_create(char *filename)
 { 
 	struct stat buf,buf2;
 	char parentdir[SR_MAX_PATH];
 	sr_file_msg_cls_t *msg;
+	int rc, i;
+	SR_BOOL is_file_found = SR_FALSE;
 
-	if(lstat(filename, &buf)) { // Error
+	for (i = 0; i < NUM_OF_LSTAT_ITERS; i++) {
+		usleep(20000);
+		if (lstat(filename, &buf) == 0) { 
+			is_file_found = SR_TRUE;
+			break;
+		}
+	}
+	if (!is_file_found) {
+		sal_printf("Error %s: lstat failed, file:%s \n", __FUNCTION__, filename);
 		return SR_ERROR;
 	}
+
+	if ((rc = sr_file_hash_exec_for_file(filename, sr_event_process_rule)) != SR_SUCCESS) {
+		sal_printf("Error %s: sr_file_hash_exec_for_file failed, file:%s \n", __FUNCTION__, filename);
+		return rc;
+	}
+
 	if ((S_ISREG(buf.st_mode)) || (S_ISDIR(buf.st_mode))) {
 		char *pTmp = strrchr(filename, '/');
 		if (!pTmp)

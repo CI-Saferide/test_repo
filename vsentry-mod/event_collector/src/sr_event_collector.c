@@ -47,7 +47,10 @@ int sr_ec_send_event(SR_U8 event_type, void *data)
 	switch (event_type) {
 		case SR_EC_NEW_CONNECTION:
 			// collect
-			sr_ec_append_event(event_type, data, sizeof(struct sr_ec_new_connection_t));
+			sr_ec_append_event(event_type, data, sizeof(struct sr_ec_new_connection_t), SR_FALSE);
+			break;
+		case SR_EC_FILE_CREATED:
+			sr_ec_append_event(event_type, data, sizeof(struct sr_ec_file_t), SR_TRUE);
 			break;
 		default:
 			break;
@@ -57,13 +60,13 @@ int sr_ec_send_event(SR_U8 event_type, void *data)
 	
 }
 
-void sr_ec_append_event(SR_U8 event_type, void *sample_data, SR_U32 data_length) 
+void sr_ec_append_event(SR_U8 event_type, void *sample_data, SR_U32 data_length, SR_BOOL is_imidiate) 
 {
 	if ( (!sr_ec_buffer) && (sr_ec_allocate_buffer() == SR_ERROR)) {
 		return;
 	}
-	if ( (sr_ec_offset+data_length > MOD2ENG_MSG_MAX_SIZE) || // buffer full
-			(sr_ec_sample_period_exceeded()) ) { // time based constraint
+	if ( sr_ec_offset && ((sr_ec_offset+data_length > MOD2ENG_MSG_MAX_SIZE) || // buffer full
+			(sr_ec_sample_period_exceeded())) ) { // time based constraint
 		// send old buffer and allocate a new one
 		sr_send_msg(MOD2ENG_BUF, sr_ec_offset);
 		if (sr_ec_allocate_buffer() != SR_SUCCESS) {
@@ -74,5 +77,13 @@ void sr_ec_append_event(SR_U8 event_type, void *sample_data, SR_U32 data_length)
 	sr_ec_buffer[sr_ec_offset++] = event_type;
 	memcpy(&sr_ec_buffer[sr_ec_offset], sample_data, data_length);
 	sr_ec_offset += data_length;
+
+	if (is_imidiate) {
+		// send old buffer and allocate a new one
+		sr_send_msg(MOD2ENG_BUF, sr_ec_offset);
+		if (sr_ec_allocate_buffer() != SR_SUCCESS) {
+			return;
+		}
+	}
 }
 

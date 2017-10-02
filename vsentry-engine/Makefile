@@ -30,6 +30,8 @@ SRCS 		:=  main.c \
 				sr_ml_conngraph.c \
 				sr_cls_uid_control.c \
 				sr_radix.c \
+				sr_gen_hash.c \
+				sr_file_hash.c \
 				sr_cls_port_control.c \
 				sr_cls_rules_control.c \
 				sr_msg.c \
@@ -48,6 +50,7 @@ INCLUDES 	:=  -I../common/include \
 				-I$(TOP_DIR)/../tools/radix/include \
 				-Isal/platform/linux/include \
 				-I../tools/sr-log/include \
+				-I../tools/sr-hash/include \
 				-I$(CONFD_DIR)/include \
 				-I../confd/include
 

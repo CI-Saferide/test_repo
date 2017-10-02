@@ -4,7 +4,8 @@
 #include "sr_ec_common.h"
 #include "sr_ml_conngraph.h"
 #include "sr_event_receiver.h"
-
+#include "sr_cls_rules_control.h"
+#include "sr_cls_file_control.h"
 
 SR_32 sr_ml_mode = ML_MODE_LEARN;
 // TODO: load profile at startup, determine default loading state
@@ -33,7 +34,8 @@ int counter=0;
 void sr_event_receiver(SR_8 *msg_buff, SR_U32 msg_len)
 {
 	struct sr_ec_new_connection_t *pNewConnection;
-	SR_U32 offset = 0;
+	struct sr_ec_file_t *pNewFile;
+	SR_U32 offset = 0, rc;
 
 	while (offset < msg_len) {
 		switch  (msg_buff[offset++]) {
@@ -42,6 +44,13 @@ void sr_event_receiver(SR_8 *msg_buff, SR_U32 msg_len)
 				pNewConnection = (struct sr_ec_new_connection_t *) &msg_buff[offset];
 				sr_ml_conngraph_event(pNewConnection);
 				offset += sizeof(struct sr_ec_new_connection_t);
+				break;
+			case SR_EC_FILE_CREATED:
+				pNewFile = (struct sr_ec_file_t *) &msg_buff[offset];
+				offset += sizeof(struct sr_ec_file_t);
+				if ((rc = sr_cls_file_create((char *)(pNewFile->name))) != SR_SUCCESS) {
+					sal_printf("Error %s: handle_file_created, failed file:%s\n", __FUNCTION__, pNewFile->name);
+				}
 				break;
 			default:
 				break;

@@ -61,6 +61,7 @@ int sr_cls_inode_del_rule(SR_U32 inode, SR_U32 rulenum)
 int sr_cls_inode_inherit(SR_U32 from, SR_U32 to)
 { 
 	struct sr_hash_ent_t *parent, *fileent;
+	int rc;
 
 	parent=sr_hash_lookup(sr_cls_file_table, from);
 	if (parent) {
@@ -72,6 +73,11 @@ int sr_cls_inode_inherit(SR_U32 from, SR_U32 to)
 				return SR_ERROR;
 			} else {
 				fileent->key = to;
+			}
+			if ((rc = sr_hash_insert(sr_cls_file_table, fileent)) != SR_SUCCESS) {
+				SR_FREE(fileent);
+				sal_kernel_print_alert("Error: insert entry to file sr_cls_file_table\n");
+				return rc;
 			}
 		}
 		sal_or_self_op_arrays(&fileent->rules, &parent->rules);

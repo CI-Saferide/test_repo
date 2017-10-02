@@ -6,6 +6,7 @@
 
 enum sr_ec_event_type {
         SR_EC_NEW_CONNECTION,
+        SR_EC_FILE_CREATED,
         SR_EC_MAX_EVENT
 };
 
@@ -27,6 +28,14 @@ struct sr_ec_new_connection_t{
         // TODO: do we need the classification result ?
 };
 #pragma pack(pop)
+
+#pragma pack(push, 1)
+struct sr_ec_file_t{
+	unsigned char name[128];  
+};
+#pragma pack(pop)
+
+
 
 
 #endif /* SR_EC_COMMON_H */
