@@ -10,6 +10,7 @@
 #include "sr_types.h"
 #include "sr_classifier.h"
 #include "sr_actions_common.h"
+#include "sal_filter.h"
 
 #include <uapi/linux/can.h>
 #include <linux/can/skb.h>
@@ -232,13 +233,6 @@ SR_32 vsentry_inode_unlink(struct inode *dir, struct dentry *dentry)
 	return rc;
 }
 
-/* TODO : Temporaray hack for remove noise from psad, Should be replaced with generic filter engine. */
-#define IGNORE_PREFIX "/var/log/psad"
-static SR_BOOL is_ignore_file_creation(char *name)
-{
-   return !memcmp(name, IGNORE_PREFIX, strlen(IGNORE_PREFIX));
-}
-
 int vsentry_inode_rename(struct inode *old_dir, struct dentry *old_dentry, struct inode *new_dir,struct dentry *new_dentry)
 {
 	disp_info_t disp;
@@ -291,7 +285,7 @@ int vsentry_inode_rename(struct inode *old_dir, struct dentry *old_dentry, struc
 		if (disp.fileinfo.old_inode)
 			disp_inode_remove(disp.fileinfo.old_inode);
 		get_path(new_dentry, disp.fileinfo.fullpath, sizeof(disp.fileinfo.fullpath));
-		if(!is_ignore_file_creation(disp.fileinfo.fullpath) && disp_file_created(&disp) != SR_SUCCESS) {
+		if(!sal_filter_path_is_match(disp.fileinfo.fullpath) && disp_file_created(&disp) != SR_SUCCESS) {
 			sal_kernel_print_err("[%s] failed disp_file_created\n", hook_event_names[HOOK_INODE_RENAME].name);
  		}
 	}
@@ -568,7 +562,7 @@ SR_32 vsentry_inode_create(struct inode *dir, struct dentry *dentry, umode_t mod
 	rc = disp_inode_create(&disp);
 	if (rc == 0) {
 		get_path(dentry, disp.fileinfo.fullpath, sizeof(disp.fileinfo.fullpath));
-		if(!is_ignore_file_creation(disp.fileinfo.fullpath) && disp_file_created(&disp) != SR_SUCCESS) {
+		if(!sal_filter_path_is_match(disp.fileinfo.fullpath) && disp_file_created(&disp) != SR_SUCCESS) {
 			sal_kernel_print_err("[%s] failed disp_file_created\n", hook_event_names[HOOK_INODE_CREATE].name);
 		}
 	}

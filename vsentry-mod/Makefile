@@ -47,6 +47,7 @@ $(TARGET)-objs := sal/platform/linux/src/module_init.o \
 				  ../tools/sr-hash/src/sr_hash.o \
 				  ../tools/sr-log/src/sr_kernel_log.o \
 				  sal/platform/linux/src/sal_linux.o \
+				  sal/platform/linux/src/sal_filter.o \
 				  sal/platform/linux/src/sal_bitops_linux.o \
 				  sal/src/sal_bitops.o \
 				  sal/test/sal_bitops_test.o \

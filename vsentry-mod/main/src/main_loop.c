@@ -93,6 +93,9 @@ SR_32 sr_msg_dispatch(char *msg, int size)
 		case SR_MSG_TYPE_CLS_CLEANUP_NOLOCK:
 			sr_classifier_empty_tables(SR_FALSE);
 			break;	
+		case SR_MSG_TYPE_CLS_FILTER_PATH:
+			sr_cls_file_filter_path_msg_dispatch((struct sr_cls_filter_path_msg *)hdr->msg_payload);
+			break;	
 		case SR_MSG_TYPE_DEFAULT:
 			sal_printf("wrong msg_type\n");
 			break;

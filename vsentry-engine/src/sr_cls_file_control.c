@@ -1,5 +1,6 @@
 #include "sr_sal_common.h"
 #include "sr_cls_file_common.h"
+#include "sr_cls_filter_path_common.h"
 #include "sr_shmem.h"
 #include "sr_msg.h"
 #include "sr_msg_dispatch.h"
@@ -300,6 +301,20 @@ void sr_cls_file_delete(char *filename)
 	}
 }
 
+int sr_cls_file_add_remove_filter_path(char *path, SR_BOOL is_add)
+{
+	sr_filter_path_msg_cls_t *msg;
+
+	msg = (sr_filter_path_msg_cls_t*)sr_get_msg(ENG2MOD_BUF, ENG2MOD_MSG_MAX_SIZE);
+	if (msg) {
+		msg->msg_type = SR_MSG_TYPE_CLS_FILTER_PATH;
+		msg->sub_msg.msg_type = is_add ? SR_CLS_FILTER_PATH_ADD: SR_CLS_FILTER_PATH_REMOVE;
+		strncpy(msg->sub_msg.path, path, SR_MAX_FILTER_PATH_LEN);
+		sr_send_msg(ENG2MOD_BUF, sizeof(msg));
+	}
+
+	return SR_SUCCESS;
+}
 
 void sr_cls_control_ut(void)
 {

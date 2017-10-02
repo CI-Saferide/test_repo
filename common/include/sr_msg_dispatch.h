@@ -4,6 +4,7 @@
 #include "sr_types.h"
 #include "sr_shmem.h"
 #include "sr_cls_file_common.h"
+#include "sr_cls_filter_path_common.h"
 #include "sr_cls_canbus_common.h"
 #include "sr_cls_uid_common.h"
 #include "sr_cls_network_common.h"
@@ -21,6 +22,7 @@ typedef enum {
 	SR_MSG_TYPE_CLS_UID,
 	SR_MSG_TYPE_CONTROL,
 	SR_MSG_TYPE_CLS_CLEANUP_NOLOCK,	
+	SR_MSG_TYPE_CLS_FILTER_PATH,
 } sr_msg_dispatch_type;
 
 #pragma pack(push, 1)
@@ -39,6 +41,11 @@ typedef struct {
 	SR_8 msg_type;
 	struct sr_cls_file_msg sub_msg;
 } sr_file_msg_cls_t;
+
+typedef struct {
+	SR_8 msg_type;
+	struct sr_cls_filter_path_msg sub_msg;
+} sr_filter_path_msg_cls_t;
 
 typedef struct {
 	SR_8 msg_type;

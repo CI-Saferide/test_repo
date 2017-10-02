@@ -742,6 +742,8 @@ SR_BOOL config_ut(void)
 
 	/* Load DB from confd */
         read_config_db();
+
+	sr_cls_file_add_remove_filter_path("/var/log/psad", SR_TRUE);
         /* Handle commit evenets from confd */
 	handle_commit_events();
 
