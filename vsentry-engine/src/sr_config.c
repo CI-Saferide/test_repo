@@ -609,6 +609,26 @@ SR_U32 handle_rule_ut(char *filename, char *exec, char *user, SR_U32 rulenum, SR
  	return SR_SUCCESS;
 }
 
+SR_U32 sr_create_filter_paths(void)
+{
+	sal_os_t os;
+	
+	if (sal_get_os(&os) != SR_SUCCESS) {
+		sal_printf("%s failed sal_get_os\n");
+		return SR_ERROR;
+	}
+
+	switch (os) { 
+		case SAL_OS_LINUX_UBUNTO:
+			sr_cls_file_add_remove_filter_path("/var/log/psad", SR_TRUE);
+			break;
+		default:
+			break;
+	}
+
+	return SR_SUCCESS;
+}
+
 #if 0
 static void file_hash_ut(void)
 {
@@ -700,7 +720,6 @@ SR_BOOL config_ut(void)
 	file_rec.filename_size = strlen(file_rec.filename);
 	write_config_record(&file_rec, CONFIG_FILE_RULE);
 
-#if 0
 	file_rec.rulenum=404;	
 	file_rec.action.actions_bitmap=SR_CLS_ACTION_DROP;		
 	file_rec.uid=-1;
@@ -711,6 +730,7 @@ SR_BOOL config_ut(void)
 	file_rec.filename_size = strlen(file_rec.filename);
 	write_config_record(&file_rec, CONFIG_FILE_RULE);
 		
+#if 0
         can_rec.rulenum=40;	
         can_rec.msg_id=0x123;		
         can_rec.action.actions_bitmap=SR_CLS_ACTION_DROP;	
@@ -743,7 +763,6 @@ SR_BOOL config_ut(void)
 	/* Load DB from confd */
         read_config_db();
 
-	sr_cls_file_add_remove_filter_path("/var/log/psad", SR_TRUE);
         /* Handle commit evenets from confd */
 	handle_commit_events();
 

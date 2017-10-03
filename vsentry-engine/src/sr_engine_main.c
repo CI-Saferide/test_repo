@@ -111,6 +111,12 @@ SR_32 sr_engine_start(void)
 		return SR_ERROR;
 	}
 
+	ret = sr_create_filter_paths();
+	if (ret != SR_SUCCESS){
+		sal_printf("failed to init sr_create_fileter_faths\n");
+		return SR_ERROR;
+	}
+
 	config_ut();
 	/* indicate VPI that we are running */
 	f = fopen("/tmp/sec_state", "w");

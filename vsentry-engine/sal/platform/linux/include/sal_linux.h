@@ -21,7 +21,19 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <pwd.h>
+#include <sr_sal_common.h>
 
 #define VS_FILE_NAME 	"/dev/vsentry"
+
+#define UBUNTO "Ubuntu"
+
+typedef enum {
+	SAL_OS_UNKNOWN,	
+	SAL_OS_LINUX_UBUNTO,	
+	SAL_OS_MAX = SAL_OS_LINUX_UBUNTO,
+	SAL_OS_TOTAL = (SAL_OS_MAX + 1),
+} sal_os_t;
+
+SR_U32 sal_get_os(sal_os_t *os);
 
 #endif /* SAL_LINUX_ENGINE_H*/
