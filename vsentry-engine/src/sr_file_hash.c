@@ -104,7 +104,7 @@ static SR_32 update_rule_item(file_rules_item_t *file_rule_item, char *exec, cha
 	file_rules_data_t **iter;
 
 	for (iter = &(file_rule_item->file_rules_list); *iter && (*iter)->rulenum != rulenum; iter = &((*iter)->next));
-	/* If rulesecists update, otherwise add */
+	/* If rule exists update, otherwise add */
 	if (!*iter)  {
 		if (!(*iter = calloc(sizeof(file_rules_data_t), 1))) {
 			sal_printf("%s: calloc failed\n", __FUNCTION__);
@@ -142,13 +142,6 @@ SR_32 sr_file_hash_update_rule(char *filename, char *exec, char *user, SR_U32 ru
 
 	return SR_SUCCESS;
 }
-
-   SR_U32 rulenum;
-        char exec[MAX_SIZE];
-        char user[MAX_SIZE];
-        SR_U16 actions;
-        SR_8 file_ops;
-
 
 SR_32 sr_file_hash_exec_for_file(char *filename, SR_U32 (*cb)(char *filename, char *exec, char *user, SR_U32 rulenum, SR_U16 actions, SR_8 file_ops))
 {
