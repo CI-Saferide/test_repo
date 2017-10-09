@@ -45,11 +45,11 @@ int sr_ec_send_event(SR_U8 event_type, void *data)
 	//struct sr_ec_new_connection_t *pNewConnection = (struct sr_ec_new_connection_t *)data;
 
 	switch (event_type) {
-		case SR_EC_NEW_CONNECTION:
+		case SR_EVENT_NEW_CONNECTION:
 			// collect
 			sr_ec_append_event(event_type, data, sizeof(struct sr_ec_new_connection_t), SR_FALSE);
 			break;
-		case SR_EC_FILE_CREATED:
+		case SR_EVENT_FILE_CREATED:
 			sr_ec_append_event(event_type, data, sizeof(struct sr_ec_file_t), SR_TRUE);
 			break;
 		default:

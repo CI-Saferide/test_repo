@@ -39,13 +39,13 @@ void sr_event_receiver(SR_8 *msg_buff, SR_U32 msg_len)
 
 	while (offset < msg_len) {
 		switch  (msg_buff[offset++]) {
-			case SR_EC_NEW_CONNECTION:
+			case SR_EVENT_NEW_CONNECTION:
 				// collect
 				pNewConnection = (struct sr_ec_new_connection_t *) &msg_buff[offset];
 				sr_ml_conngraph_event(pNewConnection);
 				offset += sizeof(struct sr_ec_new_connection_t);
 				break;
-			case SR_EC_FILE_CREATED:
+			case SR_EVENT_FILE_CREATED:
 				pNewFile = (struct sr_ec_file_t *) &msg_buff[offset];
 				offset += sizeof(struct sr_ec_file_t);
 				if ((rc = sr_cls_file_create((char *)(pNewFile->name))) != SR_SUCCESS) {

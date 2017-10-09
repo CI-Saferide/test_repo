@@ -601,6 +601,7 @@ SR_BOOL read_config_file (void)
 	return SR_TRUE;
 }
 
+#ifdef UNIT_TEST
 SR_U32 handle_rule_ut(char *filename, char *exec, char *user, SR_U32 rulenum, SR_U16 actions, SR_8 file_ops)
 {
 	printf("**** Arik in handle_rule file:%s rule#%d exec:%s user:%s actions:%x file_ops:%x \n", 
@@ -608,6 +609,7 @@ SR_U32 handle_rule_ut(char *filename, char *exec, char *user, SR_U32 rulenum, SR
 
  	return SR_SUCCESS;
 }
+#endif
 
 SR_U32 sr_create_filter_paths(void)
 {
@@ -619,7 +621,7 @@ SR_U32 sr_create_filter_paths(void)
 	}
 
 	switch (os) { 
-		case SAL_OS_LINUX_UBUNTO:
+		case SAL_OS_LINUX_UBUNTU:
 			sr_cls_file_add_remove_filter_path("/var/log/psad", SR_TRUE);
 			break;
 		default:
@@ -629,7 +631,7 @@ SR_U32 sr_create_filter_paths(void)
 	return SR_SUCCESS;
 }
 
-#if 0
+#ifdef UNIT_TEST
 static void file_hash_ut(void)
 {
  	SR_32 rc;

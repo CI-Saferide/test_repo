@@ -1,5 +1,5 @@
-#ifndef __SR_MEM__H_
-#define __SR_MEM__H_
+#ifndef __SAL_MEM_H_
+#define __SAL_MEM_H_
 
 #ifdef __KERNEL__
 #define SR_Malloc(p, t, n) (p = (t) SR_ALLOC((unsigned long)(n)))

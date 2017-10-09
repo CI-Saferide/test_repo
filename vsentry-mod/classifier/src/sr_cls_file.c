@@ -6,10 +6,98 @@
 #include "sr_hash.h"
 #include "sal_bitops.h"
 #include "sr_classifier.h"
-#include "sal_filter.h"
 
 struct sr_hash_table_t *sr_cls_file_table;
 bit_array sr_cls_file_any_rules;
+
+struct filter_path {
+  SR_U8 *path;
+  struct filter_path *next;
+};
+
+static struct filter_path *filter_path_list;
+
+#ifdef UNIT_TEST
+static void sr_cls_filter_path_print(void)
+{
+	struct filter_path *iter;
+
+	for (iter = filter_path_list; iter; iter = iter->next) {
+		sal_printf("**** path :%s \n", iter->path);
+        }
+}
+#endif
+
+static SR_32 sr_cls_filter_path_add(SR_U8 *path)
+{
+	struct filter_path *new_item;
+
+	if (!(new_item = SR_ZALLOC(sizeof(struct filter_path))))
+		return SR_ERROR;
+	if (!(new_item->path = SR_ZALLOC(strlen(path) + 1))) {
+		SR_FREE(new_item);
+		return SR_ERROR;
+	}
+	strcpy(new_item->path, path);
+
+	new_item->next = filter_path_list;
+	filter_path_list = new_item;
+
+	return SR_SUCCESS;
+}
+
+static SR_32 sr_cls_filter_path_del(SR_U8 *path)
+{
+	struct filter_path **iter, *help;
+
+	for (iter = &filter_path_list; *iter && strcmp((*iter)->path, path); iter = &((*iter)->next));
+	if (!*iter) {
+		sal_printf("sal_filter_path_del path:%s not found\n", path);
+		return SR_ERROR;
+	}
+
+	SR_FREE((*iter)->path);
+	help = *iter;
+	*iter = (*iter)->next;
+ 	SR_FREE(help);
+
+	return SR_SUCCESS;
+}
+
+SR_BOOL sr_cls_filter_path_is_match(char *path)
+{
+	SR_BOOL is_match = SR_FALSE;
+	struct filter_path *iter;
+	int prefix_len, path_len;
+
+	if (!path)
+		return is_match;
+
+	path_len = strlen(path);
+	for (iter = filter_path_list; iter ; iter = iter->next) {
+		prefix_len = strlen(iter->path);
+		if (path_len >= prefix_len && !memcmp(path, iter->path, prefix_len)) {
+			is_match = SR_TRUE;
+			break;
+		}
+	}
+
+	return is_match;
+}
+
+static void sr_cls_filter_path_deinit(void)
+{
+	struct filter_path *iter, *help;
+
+	for (iter = filter_path_list; iter ;) {
+		help = iter->next;
+		SR_FREE(iter->path);
+		SR_FREE(iter);
+		iter = help;
+	}
+	filter_path_list = NULL;
+}
+
 
 bit_array *sr_cls_file_any(void)
 {
@@ -162,10 +250,10 @@ SR_32 sr_cls_file_filter_path_msg_dispatch(struct sr_cls_filter_path_msg *msg)
 {
 	switch (msg->msg_type) {
 		case SR_CLS_FILTER_PATH_ADD:
-			return sal_filter_path_add(msg->path);
+			return sr_cls_filter_path_add(msg->path);
 			break;
 		case SR_CLS_FILTER_PATH_REMOVE:
-			return sal_filter_path_del(msg->path);
+			return sr_cls_filter_path_del(msg->path);
 			break;
 		default:
 			break;
@@ -240,11 +328,6 @@ int sr_cls_fs_init(void)
 		return SR_ERROR;
 	}
 	memset(&sr_cls_file_any_rules, 0, sizeof(bit_array));
-	if (sal_filter_path_init() != SR_SUCCESS) {
-		sal_kernel_print_alert("Failed sal_filter_path_init\n");
-		return SR_ERROR;
-	}
-
 	sal_kernel_print_alert("Successfully initialized file classifier!\n");
 	return SR_SUCCESS;
 }
@@ -254,7 +337,7 @@ void sr_cls_fs_uninit(void)
 	if (!sr_cls_file_table)
 		return;
 	//sr_hash_free_table(sr_cls_file_table);
-	sal_filter_path_deinit();
+	sr_cls_filter_path_deinit();
 	SR_FREE(sr_cls_file_table->buckets);
 	SR_FREE(sr_cls_file_table);
 	sr_cls_file_table = NULL;

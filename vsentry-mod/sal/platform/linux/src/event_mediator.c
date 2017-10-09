@@ -10,7 +10,6 @@
 #include "sr_types.h"
 #include "sr_classifier.h"
 #include "sr_actions_common.h"
-#include "sal_filter.h"
 
 #include <uapi/linux/can.h>
 #include <linux/can/skb.h>
@@ -150,8 +149,8 @@ SR_32 vsentry_inode_mkdir(struct inode *dir, struct dentry *dentry, umode_t mask
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wdeclaration-after-statement"
 
-	SR_U8 		filename[128];
-	SR_U8 		fullpath[128];
+	SR_U8 		filename[SR_MAX_PATH_SIZE];
+	SR_U8 		fullpath[SR_MAX_PATH_SIZE];
 #pragma GCC diagnostic pop	
 	strncpy(filename, dentry->d_iname,
 		MIN(sizeof(filename), 1+strlen(dentry->d_iname)));
@@ -205,8 +204,8 @@ SR_32 vsentry_inode_unlink(struct inode *dir, struct dentry *dentry)
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wdeclaration-after-statement"
 
-	SR_U8 		filename[128];
-	SR_U8 		fullpath[128];
+	SR_U8 		filename[SR_MAX_PATH_SIZE];
+	SR_U8 		fullpath[SR_MAX_PATH_SIZE];
 #pragma GCC diagnostic pop		
 	strncpy(filename, dentry->d_iname,
 		MIN(sizeof(filename), 1+strlen(dentry->d_iname)));
@@ -285,7 +284,7 @@ int vsentry_inode_rename(struct inode *old_dir, struct dentry *old_dentry, struc
 		if (disp.fileinfo.old_inode)
 			disp_inode_remove(disp.fileinfo.old_inode);
 		get_path(new_dentry, disp.fileinfo.fullpath, sizeof(disp.fileinfo.fullpath));
-		if(!sal_filter_path_is_match(disp.fileinfo.fullpath) && disp_file_created(&disp) != SR_SUCCESS) {
+		if(!sr_cls_filter_path_is_match(disp.fileinfo.fullpath) && disp_file_created(&disp) != SR_SUCCESS) {
 			sal_kernel_print_err("[%s] failed disp_file_created\n", hook_event_names[HOOK_INODE_RENAME].name);
  		}
 	}
@@ -321,8 +320,8 @@ SR_32 vsentry_inode_symlink(struct inode *dir, struct dentry *dentry, const SR_8
 #ifdef DEBUG_EVENT_MEDIATOR
 #pragma GCC diagnostic ignored "-Wdeclaration-after-statement"
 
-	SR_U8 		filename[128];
-	SR_U8 		fullpath[128];
+	SR_U8 		filename[SR_MAX_PATH_SIZE];
+	SR_U8 		fullpath[SR_MAX_PATH_SIZE];
 #pragma GCC diagnostic pop	
 	strncpy(disp.fileinfo.filename, (char *)name,
 		MIN(sizeof(filename), 1+strlen(name)));
@@ -372,8 +371,8 @@ SR_32 vsentry_inode_rmdir(struct inode *dir, struct dentry *dentry)
 
 #ifdef DEBUG_EVENT_MEDIATOR
 #pragma GCC diagnostic ignored "-Wdeclaration-after-statement"
-	SR_U8 		filename[128];
-	SR_U8 		fullpath[128];
+	SR_U8 		filename[SR_MAX_PATH_SIZE];
+	SR_U8 		fullpath[SR_MAX_PATH_SIZE];
 #pragma GCC diagnostic pop	
 	strncpy(filename, dentry->d_iname,
 		MIN(sizeof(filename), 1+strlen(dentry->d_iname)));
@@ -498,7 +497,7 @@ SR_32 vsentry_path_chmod(struct path *path, umode_t mode)
 
 #ifdef DEBUG_EVENT_MEDIATOR
 #pragma GCC diagnostic ignored "-Wdeclaration-after-statement"
-	SR_U8 		fullpath[128];
+	SR_U8 		fullpath[SR_MAX_PATH_SIZE];
 #pragma GCC diagnostic pop	
 	get_path(path->dentry, fullpath, sizeof(fullpath));
 
@@ -543,8 +542,8 @@ SR_32 vsentry_inode_create(struct inode *dir, struct dentry *dentry, umode_t mod
 	
 #ifdef DEBUG_EVENT_MEDIATOR
 #pragma GCC diagnostic ignored "-Wdeclaration-after-statement"
-	SR_U8 		filename[128];
-	SR_U8 		fullpath[128];
+	SR_U8 		filename[SR_MAX_PATH_SIZE];
+	SR_U8 		fullpath[SR_MAX_PATH_SIZE];
 #pragma GCC diagnostic pop
 	strncpy(disp.fileinfo.filename, dentry->d_iname,
 		MIN(sizeof(filename), 1+strlen(dentry->d_iname)));
@@ -562,7 +561,7 @@ SR_32 vsentry_inode_create(struct inode *dir, struct dentry *dentry, umode_t mod
 	rc = disp_inode_create(&disp);
 	if (rc == 0) {
 		get_path(dentry, disp.fileinfo.fullpath, sizeof(disp.fileinfo.fullpath));
-		if(!sal_filter_path_is_match(disp.fileinfo.fullpath) && disp_file_created(&disp) != SR_SUCCESS) {
+		if(!sr_cls_filter_path_is_match(disp.fileinfo.fullpath) && disp_file_created(&disp) != SR_SUCCESS) {
 			sal_kernel_print_err("[%s] failed disp_file_created\n", hook_event_names[HOOK_INODE_CREATE].name);
 		}
 	}
@@ -603,7 +602,7 @@ SR_32 vsentry_file_open(struct file *file, const struct cred *cred)
 
 #ifdef DEBUG_EVENT_MEDIATOR
 #pragma GCC diagnostic ignored "-Wdeclaration-after-statement"
-	SR_U8 		filename[128];
+	SR_U8 		filename[SR_MAX_PATH_SIZE];
 #pragma GCC diagnostic pop
 	get_path(file->f_path.dentry, filename, sizeof(filename));
 	sal_kernel_print_info("[%s:HOOK %s] inode=%u, parent_inode=%u, file=%s, pid=%d, uid=%d\n", 
@@ -653,9 +652,9 @@ SR_32 vsentry_inode_link(struct dentry *old_dentry, struct inode *dir, struct de
 	
 #ifdef DEBUG_EVENT_MEDIATOR
 #pragma GCC diagnostic ignored "-Wdeclaration-after-statement"
-	SR_U8 		filename[128];
-	SR_U8 		fullpath[128];
-	SR_U8 		old_path[128];
+	SR_U8 		filename[SR_MAX_PATH_SIZE];
+	SR_U8 		fullpath[SR_MAX_PATH_SIZE];
+	SR_U8 		old_path[SR_MAX_PATH_SIZE];
 #pragma GCC diagnostic pop
 	strncpy(filename, old_dentry->d_iname,
 		MIN(sizeof(filename), 1+strlen(old_dentry->d_iname)));

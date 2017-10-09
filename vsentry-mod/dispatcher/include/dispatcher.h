@@ -13,8 +13,6 @@
 #define CEF_VERSION 	230
 #define VSENTRY_VERSION 10
 
-#define SR_MAX_PATH_SIZE 512
-
 enum hook_events {
 	HOOK_MKDIR,
 	HOOK_UNLINK,
@@ -54,9 +52,9 @@ typedef union {
 		SR_U32		old_inode;
 		SR_U32		old_parent_inode;
 		SR_8		fileop;
-		SR_U8 		filename[128];
-		SR_U8 		fullpath[128];
-		SR_U8 		old_path[128];
+		SR_U8 		filename[SR_MAX_PATH_SIZE];
+		SR_U8 		fullpath[SR_MAX_PATH_SIZE];
+		SR_U8 		old_path[SR_MAX_PATH_SIZE];
 	}fileinfo;
 
 /* socket related functions */

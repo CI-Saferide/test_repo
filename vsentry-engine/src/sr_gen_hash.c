@@ -1,9 +1,7 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
 #include <sr_sal_common.h>
 #include <sr_gen_hash.h>
-#include <sr_mem.h>
+#include <sal_mem.h>
+#include <string.h>
 
 typedef struct hash_item {
 	struct hash_item *next;

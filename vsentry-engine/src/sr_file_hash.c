@@ -5,8 +5,8 @@
 #include <sr_gen_hash.h>
 #include <sr_file_hash.h>
 #include <sr_sal_common.h>
+#include <sal_mem.h>
 
-#define MAX_SIZE 128
 #define HASH_SIZE 500
 
 static struct sr_gen_hash *file_hash;
@@ -14,14 +14,14 @@ static struct sr_gen_hash *file_hash;
 typedef struct file_rules_data {
 	struct file_rules_data *next;
 	SR_U32 rulenum;
-	char exec[MAX_SIZE];
-	char user[MAX_SIZE];
+	char exec[SR_MAX_PATH_SIZE];
+	char user[SR_MAX_PATH_SIZE];
 	SR_U16 actions;
 	SR_8 file_ops;
 } file_rules_data_t; 
 
 typedef struct file_rules_item {
-   char file_path[MAX_SIZE];
+   char file_path[SR_MAX_PATH_SIZE];
    file_rules_data_t *file_rules_list;
 } file_rules_item_t;
 
@@ -42,7 +42,7 @@ void file_free(void *data_in_hash)
 
 	for (ptr = rules_item->file_rules_list; ptr; ) {
 		help = ptr->next;
-		free(ptr);
+		SR_Free(ptr);
 		ptr = help;
 	}
 }
@@ -52,9 +52,9 @@ void file_print(void *data_in_hash)
 	file_rules_data_t *ptr;
 	file_rules_item_t *rules_item = (file_rules_item_t *)data_in_hash;
 
-	printf("File path:%s \n", rules_item->file_path);
+	sal_printf("File path:%s \n", rules_item->file_path);
 	for (ptr = rules_item->file_rules_list; ptr; ptr = ptr->next) {
-		printf("Rule #%d user:%s exec:%s actions:%x ops:%x \n", ptr->rulenum, ptr->user, ptr->exec, ptr->actions, ptr->file_ops);
+		sal_printf("Rule #%d user:%s exec:%s actions:%x ops:%x \n", ptr->rulenum, ptr->user, ptr->exec, ptr->actions, ptr->file_ops);
 	}
 }
 
@@ -106,14 +106,15 @@ static SR_32 update_rule_item(file_rules_item_t *file_rule_item, char *exec, cha
 	for (iter = &(file_rule_item->file_rules_list); *iter && (*iter)->rulenum != rulenum; iter = &((*iter)->next));
 	/* If rule exists update, otherwise add */
 	if (!*iter)  {
-		if (!(*iter = calloc(sizeof(file_rules_data_t), 1))) {
-			sal_printf("%s: calloc failed\n", __FUNCTION__);
+		SR_Zalloc(*iter, file_rules_data_t *, sizeof(file_rules_data_t));
+		if (!*iter) {
+			sal_printf("%s: SR_Zalloc failed\n", __FUNCTION__);
 			return SR_ERROR;
 		}
 	}
 	(*iter)->rulenum = rulenum;
-	strncpy((*iter)->exec, exec, MAX_SIZE);
-	strncpy((*iter)->user, user, MAX_SIZE);
+	strncpy((*iter)->exec, exec, SR_MAX_PATH_SIZE);
+	strncpy((*iter)->user, user, SR_MAX_PATH_SIZE);
 	(*iter)->actions = actions;
 	(*iter)->file_ops = file_ops;
 
@@ -127,9 +128,10 @@ SR_32 sr_file_hash_update_rule(char *filename, char *exec, char *user, SR_U32 ru
 
 	/* If the file exists add the rule to the file. */
         if (!(file_rule_item = sr_gen_hash_get(file_hash, filename))) {
-		if (!(file_rule_item = calloc(sizeof(file_rules_item_t), 1)))
+		SR_Zalloc(file_rule_item, file_rules_item_t *, sizeof(file_rules_item_t));
+		if (!file_rule_item)
 			return SR_ERROR;
-		strncpy(file_rule_item->file_path, filename, MAX_SIZE); 
+		strncpy(file_rule_item->file_path, filename, SR_MAX_PATH_SIZE); 
 		update_rule_item(file_rule_item, exec, user, rulenum, actions, file_ops);
 		/* Add the rule */
 		if ((rc = sr_gen_hash_insert(file_hash, filename, file_rule_item)) != SR_SUCCESS) {

@@ -202,7 +202,7 @@ static SR_U32 sr_event_process_rule(char *filename, char *exec, char *user, SR_U
 }
 
 // This function should be invoked upon file creation. 
-// It will need to check if file has roules associated with it or 
+// It will need to check if file has rules associated with it or 
 // parent directory has rules associated with it and inherit accordingly
 int sr_cls_file_create(char *filename)
 { 
@@ -220,8 +220,8 @@ int sr_cls_file_create(char *filename)
 		}
 	}
 	if (!is_file_found) {
-		sal_printf("Error %s: lstat failed, file:%s \n", __FUNCTION__, filename);
-		return SR_ERROR;
+		// It is presumed that if a file that was cretaed is not dound it was a temp file that was removed. 
+		return SR_SUCCESS;
 	}
 
 	if ((rc = sr_file_hash_exec_for_file(filename, sr_event_process_rule)) != SR_SUCCESS) {
@@ -309,7 +309,7 @@ int sr_cls_file_add_remove_filter_path(char *path, SR_BOOL is_add)
 	if (msg) {
 		msg->msg_type = SR_MSG_TYPE_CLS_FILTER_PATH;
 		msg->sub_msg.msg_type = is_add ? SR_CLS_FILTER_PATH_ADD: SR_CLS_FILTER_PATH_REMOVE;
-		strncpy(msg->sub_msg.path, path, SR_MAX_FILTER_PATH_LEN);
+		strncpy(msg->sub_msg.path, path, SR_MAX_PATH_SIZE);
 		sr_send_msg(ENG2MOD_BUF, sizeof(msg));
 	}
 

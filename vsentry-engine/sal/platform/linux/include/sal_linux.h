@@ -25,12 +25,12 @@
 
 #define VS_FILE_NAME 	"/dev/vsentry"
 
-#define UBUNTO "Ubuntu"
+#define UBUNTU "Ubuntu"
 
 typedef enum {
 	SAL_OS_UNKNOWN,	
-	SAL_OS_LINUX_UBUNTO,	
-	SAL_OS_MAX = SAL_OS_LINUX_UBUNTO,
+	SAL_OS_LINUX_UBUNTU,	
+	SAL_OS_MAX = SAL_OS_LINUX_UBUNTU,
 	SAL_OS_TOTAL = (SAL_OS_MAX + 1),
 } sal_os_t;
 

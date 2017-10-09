@@ -4,10 +4,10 @@
 #include "sr_types.h"
 #include "sr_sal_common.h"
 
-enum sr_ec_event_type {
-        SR_EC_NEW_CONNECTION,
-        SR_EC_FILE_CREATED,
-        SR_EC_MAX_EVENT
+enum sr_event_type {
+        SR_EVENT_NEW_CONNECTION,
+        SR_EVENT_FILE_CREATED,
+        SR_EVENT_MAX_EVENT
 };
 
 #pragma pack(push, 1)
@@ -31,7 +31,7 @@ struct sr_ec_new_connection_t{
 
 #pragma pack(push, 1)
 struct sr_ec_file_t{
-	unsigned char name[128];  
+	unsigned char name[SR_MAX_PATH_SIZE];  
 };
 #pragma pack(pop)
 

@@ -136,7 +136,7 @@ SR_32 disp_socket_connect(disp_info_t* info)
 	sample_data.ip_proto = info->tuple_info.ip_proto;
 	sample_data.dport = info->tuple_info.dport;
 	sample_data.sport = info->tuple_info.sport;
-	sr_ec_send_event(SR_EC_NEW_CONNECTION, &sample_data);
+	sr_ec_send_event(SR_EVENT_NEW_CONNECTION, &sample_data);
 	return (sr_classifier_network(info));
 }
 
@@ -145,8 +145,8 @@ SR_32 disp_file_created(disp_info_t* info)
 	struct sr_ec_file_t file_data;
 
 	if (*(info->fileinfo.fullpath)) {
-		strncpy(file_data.name, info->fileinfo.fullpath, 128);
-		sr_ec_send_event(SR_EC_FILE_CREATED, &file_data);
+		strncpy(file_data.name, info->fileinfo.fullpath, SR_MAX_PATH_SIZE);
+		sr_ec_send_event(SR_EVENT_FILE_CREATED, &file_data);
 	}
 	return SR_SUCCESS;
 }
@@ -172,7 +172,7 @@ SR_32 disp_incoming_connection(disp_info_t* info)
 	sample_data.ip_proto = info->tuple_info.ip_proto;
 	sample_data.dport = info->tuple_info.sport;
 	sample_data.sport = info->tuple_info.dport;
-	sr_ec_send_event(SR_EC_NEW_CONNECTION, &sample_data);
+	sr_ec_send_event(SR_EVENT_NEW_CONNECTION, &sample_data);
 
 	return sr_classifier_network(info);
 }
