@@ -30,7 +30,6 @@ SRCS 		:=  main.c \
 				sr_ml_conngraph.c \
 				sr_cls_uid_control.c \
 				sr_radix.c \
-				sr_gen_hash.c \
 				sr_file_hash.c \
 				sr_cls_port_control.c \
 				sr_cls_rules_control.c \
@@ -58,7 +57,7 @@ OBJS		:=  $(addprefix $(OBJDIR)/,$(SRCS:.c=.o))
 DEPS		:=  $(OBJS:.o=.d)
 
 # libs to link with
-LIBS		:= -lpthread -lsr_log ../confd/lib/libconfd.a
+LIBS		:= -lpthread -lsr_log -lsr_hash ../confd/lib/libconfd.a
 # and where to search them 
 LIB_PATH 	:= -L$(LIBDIR)
 
@@ -75,7 +74,7 @@ endif
 
 all: $(TARGET)
 
-$(TARGET): $(OBJDIR) $(OBJS) libsr_log
+$(TARGET): $(OBJDIR) $(OBJS) libsr_log libsr_hash
 	@echo "linking $(notdir $@)"
 	$(CC) $(OBJS) -o $(BINDIR)/$(TARGET) $(LIB_PATH) $(LIBS)
 
@@ -86,6 +85,9 @@ $(OBJDIR):
 
 libsr_log:
 	@$(MAKE) -s -C ../tools/sr-log TOP_DIR=$(TOP_DIR)
+
+libsr_hash:
+	@$(MAKE) -s -C ../tools/sr-hash TOP_DIR=$(TOP_DIR)
 
 $(OBJDIR)/%.o: %.c
 	@echo "compiling $(notdir $<)"
