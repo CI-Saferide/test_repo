@@ -132,6 +132,7 @@ SR_32 vsentry_inode_mkdir(struct inode *dir, struct dentry *dentry, umode_t mask
 	disp_info_t disp;
 	struct task_struct *ts = current;
 	const struct cred *rcred= ts->real_cred;
+	SR_32 rc;
 	
 	memset(&disp, 0, sizeof(disp_info_t));
 	
@@ -173,7 +174,18 @@ SR_32 vsentry_inode_mkdir(struct inode *dir, struct dentry *dentry, umode_t mask
 #endif /* DEBUG_EVENT_MEDIATOR */
 	
 	/* call dispatcher */
-	return (disp_mkdir(&disp));
+	rc =  disp_mkdir(&disp);
+	if (rc == 0) {
+		if (get_path(dentry, disp.fileinfo.fullpath, sizeof(disp.fileinfo.fullpath)) != SR_SUCCESS) {
+			CEF_log_event(SR_CEF_CID_FILE, "File operation denied, file path it to long" , SEVERITY_HIGH, "");
+			return -EACCES;
+		}
+		if (!sr_cls_filter_path_is_match(disp.fileinfo.fullpath) && disp_file_created(&disp) != SR_SUCCESS) {
+			sal_kernel_print_err("[%s] failed disp_file_created\n", hook_event_names[HOOK_INODE_CREATE].name);
+		}
+	}
+
+	return rc;
 }
 
 SR_32 vsentry_inode_unlink(struct inode *dir, struct dentry *dentry)
@@ -350,6 +362,7 @@ SR_32 vsentry_inode_symlink(struct inode *dir, struct dentry *dentry, const SR_8
 
 SR_32 vsentry_inode_rmdir(struct inode *dir, struct dentry *dentry)
 {
+	SR_32 rc;
 	disp_info_t disp;
 	
 	struct task_struct *ts = current;
@@ -397,7 +410,13 @@ SR_32 vsentry_inode_rmdir(struct inode *dir, struct dentry *dentry)
 #endif /* DEBUG_EVENT_MEDIATOR */
 	
 	/* call dispatcher */
-	return (disp_rmdir(&disp));
+	rc = disp_rmdir(&disp);
+	if (rc == 0) {
+		if (disp.fileinfo.current_inode)
+			disp_inode_remove(disp.fileinfo.current_inode);
+	}
+
+	return rc;
 }
 
 SR_32 vsentry_socket_connect(struct socket *sock, struct sockaddr *address, SR_32 addrlen)
@@ -572,7 +591,7 @@ SR_32 vsentry_inode_create(struct inode *dir, struct dentry *dentry, umode_t mod
 			CEF_log_event(SR_CEF_CID_FILE, "File operation denied, file path it to long" , SEVERITY_HIGH, "");
 			return -EACCES;
 		}
-		if(!sr_cls_filter_path_is_match(disp.fileinfo.fullpath) && disp_file_created(&disp) != SR_SUCCESS) {
+		if (!sr_cls_filter_path_is_match(disp.fileinfo.fullpath) && disp_file_created(&disp) != SR_SUCCESS) {
 			sal_kernel_print_err("[%s] failed disp_file_created\n", hook_event_names[HOOK_INODE_CREATE].name);
 		}
 	}
