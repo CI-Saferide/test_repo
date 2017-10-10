@@ -76,6 +76,11 @@ static SR_8 get_path(struct dentry *dentry, SR_8 *buffer, SR_32 len)
 	if (IS_ERR(path))
 		return SR_ERROR;
 
+	if (strlen(path_ptr) > SR_MAX_PATH_SIZE) { 
+		sal_printf("ERROR get_path path length:%d exeeds max path len(%d) \n", strlen(path_ptr), SR_MAX_PATH_SIZE);
+		return SR_ERROR;
+	}
+
 	strncpy(buffer, path_ptr, MIN(len, 1+strlen(path_ptr)));
 	return SR_SUCCESS;
 }
@@ -279,11 +284,14 @@ int vsentry_inode_rename(struct inode *old_dir, struct dentry *old_dentry, struc
 	*/
 	rc = disp_inode_rename(&disp);
 	if (rc == 0) {
+		if (get_path(new_dentry, disp.fileinfo.fullpath, sizeof(disp.fileinfo.fullpath)) != SR_SUCCESS) {
+			CEF_log_event(SR_CEF_CID_FILE, "File operation denied, file path it to long" , SEVERITY_HIGH, "");
+			return -EACCES;
+		}
 		if (disp.fileinfo.current_inode)
 			disp_inode_remove(disp.fileinfo.current_inode);
 		if (disp.fileinfo.old_inode)
 			disp_inode_remove(disp.fileinfo.old_inode);
-		get_path(new_dentry, disp.fileinfo.fullpath, sizeof(disp.fileinfo.fullpath));
 		if(!sr_cls_filter_path_is_match(disp.fileinfo.fullpath) && disp_file_created(&disp) != SR_SUCCESS) {
 			sal_kernel_print_err("[%s] failed disp_file_created\n", hook_event_names[HOOK_INODE_RENAME].name);
  		}
@@ -560,7 +568,10 @@ SR_32 vsentry_inode_create(struct inode *dir, struct dentry *dentry, umode_t mod
 	/* call dispatcher */
 	rc = disp_inode_create(&disp);
 	if (rc == 0) {
-		get_path(dentry, disp.fileinfo.fullpath, sizeof(disp.fileinfo.fullpath));
+		if (get_path(dentry, disp.fileinfo.fullpath, sizeof(disp.fileinfo.fullpath)) != SR_SUCCESS) {
+			CEF_log_event(SR_CEF_CID_FILE, "File operation denied, file path it to long" , SEVERITY_HIGH, "");
+			return -EACCES;
+		}
 		if(!sr_cls_filter_path_is_match(disp.fileinfo.fullpath) && disp_file_created(&disp) != SR_SUCCESS) {
 			sal_kernel_print_err("[%s] failed disp_file_created\n", hook_event_names[HOOK_INODE_CREATE].name);
 		}
