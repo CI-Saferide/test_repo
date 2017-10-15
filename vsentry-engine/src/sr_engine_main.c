@@ -17,6 +17,7 @@
 #include "sr_sal_common.h"
 #include "sr_control.h"
 #include "sr_ver.h"
+#include "sr_file_hash.h"
 
 
 SR_32 engine_main_loop(void *data)
@@ -105,6 +106,19 @@ SR_32 sr_engine_start(void)
 		sal_printf("failed to init ENG2MOD msg_buf\n");
 		return SR_ERROR;
 	}
+
+	ret = sr_file_hash_init();
+	if (ret != SR_SUCCESS){
+		sal_printf("failed to init file_hash\n");
+		return SR_ERROR;
+	}
+
+	ret = sr_create_filter_paths();
+	if (ret != SR_SUCCESS){
+		sal_printf("failed to init sr_create_fileter_faths\n");
+		return SR_ERROR;
+	}
+
 	config_ut();
 	/* indicate VPI that we are running */
 	f = fopen("/tmp/sec_state", "w");
@@ -128,6 +142,7 @@ SR_32 sr_engine_start(void)
 	}
 
 	sr_stop_task(SR_ENGINE_TASK);
+	sr_file_hash_deinit();
 	sr_stop_task(SR_LOG_TASK);
 
 	return 0;

@@ -20,6 +20,7 @@
 #include <poll.h>
 #include <netinet/in.h>
 #include <sys/socket.h>
+#include <sr_file_hash.h>
 
 static int send_cleanup_messgae(void)
 {
@@ -323,10 +324,16 @@ static void convert_permissions(char *permissions, SR_U8 *premisions_bitmaps)
 static void extract_system_rules(int rsock, int num_of_rules)
 {
         int i, j, num_of_tuples;
+		SR_U32 rc;
         file_rule file_rule = {};
         char action_name[ACTION_NAME_SIZE] = "";
 		SR_U16 actions_bitmap = 0;
 		SR_U8 permissions = 0;
+
+		/* Clean the file hash */ 
+		if ((rc = sr_file_hash_delete_all()) != SR_SUCCESS) {
+			sal_printf("extract_system_rules sr_file_hash_delete_all failed\n");
+		}
 
         for (i = 0; i < num_of_rules; i++) {
             cdb_cd(rsock, CONFD_CONFIG_PATH_PREFIX "/system/file/rule[%d]", i);
@@ -348,6 +355,10 @@ static void extract_system_rules(int rsock, int num_of_rules)
 			*file_rule.tuple.user ? file_rule.tuple.user : "*", file_rule.rulenum, 1);
                  sr_cls_rule_add(SR_FILE_RULES, file_rule.rulenum, actions_bitmap, permissions, /* file_rule_tuple.max_rate */ 0, /* file_rule.rate_action */ 0 ,
 			 /* file_ruole.action.log_target */ 0 , /* file_rule.tuple.action.email_id */ 0 , /* file_rule.tuple.action.phone_id */ 0 , /* file_rule.action.skip_rulenum */ 0);
+		  if ((rc = sr_file_hash_update_rule(file_rule.tuple.name, *file_rule.tuple.program ? file_rule.tuple.program : "*",
+			*file_rule.tuple.user ? file_rule.tuple.user : "*", file_rule.rulenum, actions_bitmap, permissions)) != SR_SUCCESS) {
+			sal_printf("extract_system_rules sr_file_hash_update_rule failed\n");
+		  }
 	    }
 	}
 }
@@ -590,6 +601,65 @@ SR_BOOL read_config_file (void)
 	return SR_TRUE;
 }
 
+#ifdef UNIT_TEST
+SR_U32 handle_rule_ut(char *filename, char *exec, char *user, SR_U32 rulenum, SR_U16 actions, SR_8 file_ops)
+{
+	printf("**** Arik in handle_rule file:%s rule#%d exec:%s user:%s actions:%x file_ops:%x \n", 
+		filename, rulenum, exec, user, actions, file_ops);
+
+ 	return SR_SUCCESS;
+}
+#endif
+
+SR_U32 sr_create_filter_paths(void)
+{
+	sal_os_t os;
+	
+	if (sal_get_os(&os) != SR_SUCCESS) {
+		sal_printf("%s failed sal_get_os\n");
+		return SR_ERROR;
+	}
+
+	switch (os) { 
+		case SAL_OS_LINUX_UBUNTU:
+			sr_cls_file_add_remove_filter_path("/var/log/psad", SR_TRUE);
+			break;
+		default:
+			break;
+	}
+
+	return SR_SUCCESS;
+}
+
+#ifdef UNIT_TEST
+static void file_hash_ut(void)
+{
+ 	SR_32 rc;
+
+	printf("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXX file hash ut \n");
+	rc =  sr_file_hash_update_rule("/var/log/arik", "*", "*", 1,  1, 2);
+	printf("Insert /var/log/arik rc:%d \n", rc);
+	rc =  sr_file_hash_update_rule("/var/log/kuku", "*", "*", 1,  1, 2);
+	printf("Insert /var/log/arik rc:%d \n", rc);
+	rc =  sr_file_hash_update_rule("/var/log/arik", "*", "*", 2,  1, 2);
+	printf("Insert /var/log/arik rc:%d \n", rc);
+	rc =  sr_file_hash_update_rule("/var/log/arik", "lulu", "pupu", 3,  4, 5);
+	printf("Insert /var/log/arik rc:%d \n", rc);
+	rc =  sr_file_hash_update_rule("/var/gol/ukuk", "*", "*", 1,  1, 2);
+	printf("Insert /var/log/arik rc:%d \n", rc);
+	sr_file_hash_print();
+
+	rc = sr_file_hash_exec_for_file("/var/log/arik", handle_rule_ut);
+	printf("--- after Get /var/log/arik file rc%d ...\n", rc);
+
+	rc = sr_file_hash_delete_all();
+        printf("After delete_all rc:%d \n", rc);
+        sr_file_hash_print();
+	
+	printf("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX END file hash ut \n");
+}
+#endif	
+
 SR_BOOL config_ut(void)
 {
 	struct sr_file_entry		file_rec = {0};
@@ -652,7 +722,6 @@ SR_BOOL config_ut(void)
 	file_rec.filename_size = strlen(file_rec.filename);
 	write_config_record(&file_rec, CONFIG_FILE_RULE);
 
-#if 0
 	file_rec.rulenum=404;	
 	file_rec.action.actions_bitmap=SR_CLS_ACTION_DROP;		
 	file_rec.uid=-1;
@@ -663,6 +732,7 @@ SR_BOOL config_ut(void)
 	file_rec.filename_size = strlen(file_rec.filename);
 	write_config_record(&file_rec, CONFIG_FILE_RULE);
 		
+#if 0
         can_rec.rulenum=40;	
         can_rec.msg_id=0x123;		
         can_rec.action.actions_bitmap=SR_CLS_ACTION_DROP;	
@@ -689,10 +759,12 @@ SR_BOOL config_ut(void)
 */
 
 #endif
+	//file_hash_ut();
 	//read_config_file();
 
 	/* Load DB from confd */
         read_config_db();
+
         /* Handle commit evenets from confd */
 	handle_commit_events();
 

@@ -97,3 +97,28 @@ SR_32 sal_get_uid(char *user_name)
 	return pwd->pw_uid;
 }
 
+
+#define PROC_LEN 200
+SR_U32 sal_get_os(sal_os_t *os)
+{
+	FILE *fin;
+	char line[PROC_LEN];
+
+	*os = SAL_OS_UNKNOWN;
+
+	if (!(fin = fopen("/proc/version", "r"))) {
+		sal_printf("%s failed opening /proc/version\n");
+		return SR_ERROR;
+	}
+	if (!fgets(line, PROC_LEN, fin)) {
+		sal_printf("%s failed reading from /proc/version\n");
+		return SR_ERROR;
+	}
+	if (strstr(line, UBUNTU)) {
+		*os = SAL_OS_LINUX_UBUNTU;
+		return SR_SUCCESS;
+	}
+
+	return SR_SUCCESS;
+}
+

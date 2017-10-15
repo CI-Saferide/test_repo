@@ -101,6 +101,20 @@ SR_32 disp_inode_unlink(disp_info_t* info)
 	}
 }
 
+void disp_inode_remove(SR_U32 inode)
+{
+	return sr_cls_inode_remove(inode);
+}
+
+SR_32 disp_inode_rename(disp_info_t* info)
+{
+	if (unlikely(sr_classifier_file(info) == SR_CLS_ACTION_DROP)) {
+		return -EACCES;
+	} else {
+		return 0;
+	}
+}
+
 SR_32 disp_inode_symlink(disp_info_t* info)
 {	
 	if (unlikely(sr_classifier_file(info) == SR_CLS_ACTION_DROP)) {
@@ -122,11 +136,27 @@ SR_32 disp_socket_connect(disp_info_t* info)
 	sample_data.ip_proto = info->tuple_info.ip_proto;
 	sample_data.dport = info->tuple_info.dport;
 	sample_data.sport = info->tuple_info.sport;
-	sr_ec_send_event(SR_EC_NEW_CONNECTION, &sample_data);
+	sr_ec_send_event(SR_EVENT_NEW_CONNECTION, &sample_data);
 	return (sr_classifier_network(info));
 }
 
+SR_32 disp_file_created(disp_info_t* info)
+{
+	struct sr_ec_file_t file_data;
+
+	if (*(info->fileinfo.fullpath)) {
+		strncpy(file_data.name, info->fileinfo.fullpath, SR_MAX_PATH_SIZE);
+		sr_ec_send_event(SR_EVENT_FILE_CREATED, &file_data);
+	}
+	return SR_SUCCESS;
+}
+
 SR_32 disp_ipv4_sendmsg(disp_info_t* info)
+{
+	return (sr_classifier_network(info));
+}
+
+SR_32 disp_ipv4_recvmsg(disp_info_t* info)
 {
 	return (sr_classifier_network(info));
 }
@@ -142,7 +172,7 @@ SR_32 disp_incoming_connection(disp_info_t* info)
 	sample_data.ip_proto = info->tuple_info.ip_proto;
 	sample_data.dport = info->tuple_info.sport;
 	sample_data.sport = info->tuple_info.dport;
-	sr_ec_send_event(SR_EC_NEW_CONNECTION, &sample_data);
+	sr_ec_send_event(SR_EVENT_NEW_CONNECTION, &sample_data);
 
 	return sr_classifier_network(info);
 }

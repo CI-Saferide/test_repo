@@ -35,9 +35,9 @@ SR_32 sr_module_loop(void *arg)
 				sr_free_msg(ENG2MOD_BUF);
 			}
 
-			/* short sleep (2ms) to allow others to run so they 
+			/* short sleep (>2ms) to allow others to run so they 
 			   could fill the buffer */;
-			sal_schedule_timeout(2*1000);
+			sal_schedule_timeout(5*1000);
 		} else {
 			/* the rx buffer was not alloctaed, goto sleep 
 			   and wait for allocation */
@@ -92,6 +92,9 @@ SR_32 sr_msg_dispatch(char *msg, int size)
 			break;
 		case SR_MSG_TYPE_CLS_CLEANUP_NOLOCK:
 			sr_classifier_empty_tables(SR_FALSE);
+			break;	
+		case SR_MSG_TYPE_CLS_FILTER_PATH:
+			sr_cls_file_filter_path_msg_dispatch((struct sr_cls_filter_path_msg *)hdr->msg_payload);
 			break;	
 		case SR_MSG_TYPE_DEFAULT:
 			sal_printf("wrong msg_type\n");
