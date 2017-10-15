@@ -68,9 +68,6 @@ const static SR_8 *protocol_family[] = {
 	"PF_MAX"
 };
 
-#ifdef DEBUG_EVENT_MEDIATOR
-static SR_8 module_name[] = "em";
-
 static SR_8 get_path(struct dentry *dentry, SR_8 *buffer, SR_32 len)
 {
 	SR_8 path[SR_MAX_PATH_SIZE], *path_ptr;
@@ -79,9 +76,17 @@ static SR_8 get_path(struct dentry *dentry, SR_8 *buffer, SR_32 len)
 	if (IS_ERR(path))
 		return SR_ERROR;
 
+	if (strlen(path_ptr) > SR_MAX_PATH_SIZE) { 
+		sal_printf("ERROR get_path path length:%d exeeds max path len(%d) \n", strlen(path_ptr), SR_MAX_PATH_SIZE);
+		return SR_ERROR;
+	}
+
 	strncpy(buffer, path_ptr, MIN(len, 1+strlen(path_ptr)));
 	return SR_SUCCESS;
 }
+
+#ifdef DEBUG_EVENT_MEDIATOR
+static SR_8 module_name[] = "em";
 #endif /* DEBUG_EVENT_MEDIATOR */
 
 const event_name hook_event_names[MAX_HOOK] = {
@@ -127,6 +132,7 @@ SR_32 vsentry_inode_mkdir(struct inode *dir, struct dentry *dentry, umode_t mask
 	disp_info_t disp;
 	struct task_struct *ts = current;
 	const struct cred *rcred= ts->real_cred;
+	SR_32 rc;
 	
 	memset(&disp, 0, sizeof(disp_info_t));
 	
@@ -149,8 +155,8 @@ SR_32 vsentry_inode_mkdir(struct inode *dir, struct dentry *dentry, umode_t mask
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wdeclaration-after-statement"
 
-	SR_U8 		filename[128];
-	SR_U8 		fullpath[128];
+	SR_U8 		filename[SR_MAX_PATH_SIZE];
+	SR_U8 		fullpath[SR_MAX_PATH_SIZE];
 #pragma GCC diagnostic pop	
 	strncpy(filename, dentry->d_iname,
 		MIN(sizeof(filename), 1+strlen(dentry->d_iname)));
@@ -168,7 +174,18 @@ SR_32 vsentry_inode_mkdir(struct inode *dir, struct dentry *dentry, umode_t mask
 #endif /* DEBUG_EVENT_MEDIATOR */
 	
 	/* call dispatcher */
-	return (disp_mkdir(&disp));
+	rc =  disp_mkdir(&disp);
+	if (rc == 0) {
+		if (get_path(dentry, disp.fileinfo.fullpath, sizeof(disp.fileinfo.fullpath)) != SR_SUCCESS) {
+			CEF_log_event(SR_CEF_CID_FILE, "File operation denied, file path it to long" , SEVERITY_HIGH, "");
+			return -EACCES;
+		}
+		if (!sr_cls_filter_path_is_match(disp.fileinfo.fullpath) && disp_file_created(&disp) != SR_SUCCESS) {
+			sal_kernel_print_err("[%s] failed disp_file_created\n", hook_event_names[HOOK_INODE_CREATE].name);
+		}
+	}
+
+	return rc;
 }
 
 SR_32 vsentry_inode_unlink(struct inode *dir, struct dentry *dentry)
@@ -176,6 +193,7 @@ SR_32 vsentry_inode_unlink(struct inode *dir, struct dentry *dentry)
 	disp_info_t disp;
 	struct task_struct *ts = current;
 	const struct cred *rcred = ts->real_cred;		
+	SR_32 rc;
 	
 	memset(&disp, 0, sizeof(disp_info_t));
 	
@@ -203,8 +221,8 @@ SR_32 vsentry_inode_unlink(struct inode *dir, struct dentry *dentry)
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wdeclaration-after-statement"
 
-	SR_U8 		filename[128];
-	SR_U8 		fullpath[128];
+	SR_U8 		filename[SR_MAX_PATH_SIZE];
+	SR_U8 		fullpath[SR_MAX_PATH_SIZE];
 #pragma GCC diagnostic pop		
 	strncpy(filename, dentry->d_iname,
 		MIN(sizeof(filename), 1+strlen(dentry->d_iname)));
@@ -222,7 +240,13 @@ SR_32 vsentry_inode_unlink(struct inode *dir, struct dentry *dentry)
 #endif /* DEBUG_EVENT_MEDIATOR */
 	
 	/* call dispatcher */
-	return (disp_inode_unlink(&disp));
+	rc = disp_inode_unlink(&disp);
+	if (rc == 0) {
+		if (disp.fileinfo.current_inode)
+			disp_inode_remove(disp.fileinfo.current_inode);
+	}
+
+	return rc;
 }
 
 int vsentry_inode_rename(struct inode *old_dir, struct dentry *old_dentry, struct inode *new_dir,struct dentry *new_dentry)
@@ -230,6 +254,7 @@ int vsentry_inode_rename(struct inode *old_dir, struct dentry *old_dentry, struc
 	disp_info_t disp;
 	struct task_struct *ts = current;
 	const struct cred *rcred = ts->real_cred;		
+	SR_32 rc;
 	
 	memset(&disp, 0, sizeof(disp_info_t));
 	
@@ -264,7 +289,27 @@ int vsentry_inode_rename(struct inode *old_dir, struct dentry *old_dentry, struc
                         disp.fileinfo.id.uid);
 #endif /* DEBUG_EVENT_MEDIATOR */
 
-	return (disp_inode_rename(&disp));
+	/* 
+	mv existing_file1 exsiting_file2 - The inode of file2, which is new dentry id remoed, its rules shuld be removed.
+	The inode of file1 is retained, so as its rules. its rules should be removed as well since 
+	the file has a new name now. For the new name the relevent rules are created.
+	*/
+	rc = disp_inode_rename(&disp);
+	if (rc == 0) {
+		if (get_path(new_dentry, disp.fileinfo.fullpath, sizeof(disp.fileinfo.fullpath)) != SR_SUCCESS) {
+			CEF_log_event(SR_CEF_CID_FILE, "File operation denied, file path it to long" , SEVERITY_HIGH, "");
+			return -EACCES;
+		}
+		if (disp.fileinfo.current_inode)
+			disp_inode_remove(disp.fileinfo.current_inode);
+		if (disp.fileinfo.old_inode)
+			disp_inode_remove(disp.fileinfo.old_inode);
+		if(!sr_cls_filter_path_is_match(disp.fileinfo.fullpath) && disp_file_created(&disp) != SR_SUCCESS) {
+			sal_kernel_print_err("[%s] failed disp_file_created\n", hook_event_names[HOOK_INODE_RENAME].name);
+ 		}
+	}
+
+       return rc;
 }
 
 SR_32 vsentry_inode_symlink(struct inode *dir, struct dentry *dentry, const SR_8 *name)
@@ -295,8 +340,8 @@ SR_32 vsentry_inode_symlink(struct inode *dir, struct dentry *dentry, const SR_8
 #ifdef DEBUG_EVENT_MEDIATOR
 #pragma GCC diagnostic ignored "-Wdeclaration-after-statement"
 
-	SR_U8 		filename[128];
-	SR_U8 		fullpath[128];
+	SR_U8 		filename[SR_MAX_PATH_SIZE];
+	SR_U8 		fullpath[SR_MAX_PATH_SIZE];
 #pragma GCC diagnostic pop	
 	strncpy(disp.fileinfo.filename, (char *)name,
 		MIN(sizeof(filename), 1+strlen(name)));
@@ -317,6 +362,7 @@ SR_32 vsentry_inode_symlink(struct inode *dir, struct dentry *dentry, const SR_8
 
 SR_32 vsentry_inode_rmdir(struct inode *dir, struct dentry *dentry)
 {
+	SR_32 rc;
 	disp_info_t disp;
 	
 	struct task_struct *ts = current;
@@ -346,8 +392,8 @@ SR_32 vsentry_inode_rmdir(struct inode *dir, struct dentry *dentry)
 
 #ifdef DEBUG_EVENT_MEDIATOR
 #pragma GCC diagnostic ignored "-Wdeclaration-after-statement"
-	SR_U8 		filename[128];
-	SR_U8 		fullpath[128];
+	SR_U8 		filename[SR_MAX_PATH_SIZE];
+	SR_U8 		fullpath[SR_MAX_PATH_SIZE];
 #pragma GCC diagnostic pop	
 	strncpy(filename, dentry->d_iname,
 		MIN(sizeof(filename), 1+strlen(dentry->d_iname)));
@@ -364,7 +410,13 @@ SR_32 vsentry_inode_rmdir(struct inode *dir, struct dentry *dentry)
 #endif /* DEBUG_EVENT_MEDIATOR */
 	
 	/* call dispatcher */
-	return (disp_rmdir(&disp));
+	rc = disp_rmdir(&disp);
+	if (rc == 0) {
+		if (disp.fileinfo.current_inode)
+			disp_inode_remove(disp.fileinfo.current_inode);
+	}
+
+	return rc;
 }
 
 SR_32 vsentry_socket_connect(struct socket *sock, struct sockaddr *address, SR_32 addrlen)
@@ -472,7 +524,7 @@ SR_32 vsentry_path_chmod(struct path *path, umode_t mode)
 
 #ifdef DEBUG_EVENT_MEDIATOR
 #pragma GCC diagnostic ignored "-Wdeclaration-after-statement"
-	SR_U8 		fullpath[128];
+	SR_U8 		fullpath[SR_MAX_PATH_SIZE];
 #pragma GCC diagnostic pop	
 	get_path(path->dentry, fullpath, sizeof(fullpath));
 
@@ -495,6 +547,7 @@ SR_32 vsentry_inode_create(struct inode *dir, struct dentry *dentry, umode_t mod
 	disp_info_t disp;
 	struct task_struct *ts = current;
 	const struct cred *rcred= ts->real_cred;		
+	SR_32 rc;
 	
 	memset(&disp, 0, sizeof(disp_info_t));
 	
@@ -516,8 +569,8 @@ SR_32 vsentry_inode_create(struct inode *dir, struct dentry *dentry, umode_t mod
 	
 #ifdef DEBUG_EVENT_MEDIATOR
 #pragma GCC diagnostic ignored "-Wdeclaration-after-statement"
-	SR_U8 		filename[128];
-	SR_U8 		fullpath[128];
+	SR_U8 		filename[SR_MAX_PATH_SIZE];
+	SR_U8 		fullpath[SR_MAX_PATH_SIZE];
 #pragma GCC diagnostic pop
 	strncpy(disp.fileinfo.filename, dentry->d_iname,
 		MIN(sizeof(filename), 1+strlen(dentry->d_iname)));
@@ -532,7 +585,17 @@ SR_32 vsentry_inode_create(struct inode *dir, struct dentry *dentry, umode_t mod
 #endif /* DEBUG_EVENT_MEDIATOR */
 	
 	/* call dispatcher */
-	return disp_inode_create(&disp);
+	rc = disp_inode_create(&disp);
+	if (rc == 0) {
+		if (get_path(dentry, disp.fileinfo.fullpath, sizeof(disp.fileinfo.fullpath)) != SR_SUCCESS) {
+			CEF_log_event(SR_CEF_CID_FILE, "File operation denied, file path it to long" , SEVERITY_HIGH, "");
+			return -EACCES;
+		}
+		if (!sr_cls_filter_path_is_match(disp.fileinfo.fullpath) && disp_file_created(&disp) != SR_SUCCESS) {
+			sal_kernel_print_err("[%s] failed disp_file_created\n", hook_event_names[HOOK_INODE_CREATE].name);
+		}
+	}
+	return rc;
 }
 
 //__attribute__ ((unused))
@@ -569,7 +632,7 @@ SR_32 vsentry_file_open(struct file *file, const struct cred *cred)
 
 #ifdef DEBUG_EVENT_MEDIATOR
 #pragma GCC diagnostic ignored "-Wdeclaration-after-statement"
-	SR_U8 		filename[128];
+	SR_U8 		filename[SR_MAX_PATH_SIZE];
 #pragma GCC diagnostic pop
 	get_path(file->f_path.dentry, filename, sizeof(filename));
 	sal_kernel_print_info("[%s:HOOK %s] inode=%u, parent_inode=%u, file=%s, pid=%d, uid=%d\n", 
@@ -619,9 +682,9 @@ SR_32 vsentry_inode_link(struct dentry *old_dentry, struct inode *dir, struct de
 	
 #ifdef DEBUG_EVENT_MEDIATOR
 #pragma GCC diagnostic ignored "-Wdeclaration-after-statement"
-	SR_U8 		filename[128];
-	SR_U8 		fullpath[128];
-	SR_U8 		old_path[128];
+	SR_U8 		filename[SR_MAX_PATH_SIZE];
+	SR_U8 		fullpath[SR_MAX_PATH_SIZE];
+	SR_U8 		old_path[SR_MAX_PATH_SIZE];
 #pragma GCC diagnostic pop
 	strncpy(filename, old_dentry->d_iname,
 		MIN(sizeof(filename), 1+strlen(old_dentry->d_iname)));
