@@ -16,6 +16,7 @@
 #include "sr_ml_conngraph.h"
 #include "sr_sal_common.h"
 #include "sr_control.h"
+#include "sr_ver.h"
 #include "sr_file_hash.h"
 
 
@@ -78,9 +79,10 @@ SR_32 sr_engine_start(void)
 	SR_U8 run = 1;
 	FILE *f;
 
-	sal_printf("Welcome to sr-engine App!\n");
+	sal_printf("vsentry engine started. engine version is %d.%d (%s)\n",
+		ENGINE_VER_MAJOR, ENGINE_VER_MINOR, ENGINE_VER_BUILD);
 
-	ret = sr_log_init("[VSENTRY]", 0);
+	ret = sr_log_init("[vsentry]", 0);
 	if (ret != SR_SUCCESS){
 		sal_printf("failed to init sr_log\n");
 		return SR_ERROR;

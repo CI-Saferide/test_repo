@@ -15,13 +15,13 @@
 #include "sr_classifier.h"
 #include "sr_cls_process.h"
 #include "sr_event_collector.h"
-
 #include "sr_ring_buf.h"
 #include "sr_shmem.h"
 #include "sr_msg.h"
 #include "sr_tasks.h"
 #include "main_loop.h"
 #include "sr_scanner_det.h"
+#include "sr_ver.h"
 
 #ifdef UNIT_TEST
 #include "sal_bitops_test.h"
@@ -246,7 +246,9 @@ static int __init vsentry_init(void)
 {	
 	int rc = 0;
 	
-	pr_info("[%s]: module started. kernel version is %s\n",MODULE_NAME, utsname()->release);
+	pr_info("[%s]: module started. kernel version is %s, module version is %d.%d (%s)\n",
+			MODULE_NAME, utsname()->release, 
+			KERNEL_MODULE_VER_MAJOR, KERNEL_MODULE_VER_MINOR, KERNEL_MODULE_VER_BUILD);
 
 	rc = alloc_chrdev_region(&vsentry_dev, 0, 1, "vsentry");
 	if (rc < 0) {

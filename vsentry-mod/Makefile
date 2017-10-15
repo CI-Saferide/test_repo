@@ -63,6 +63,7 @@ KERNEL_SRC  ?= /lib/modules/$(shell uname -r)/build
 PWD         := $(shell pwd)
 
 all:
+	@echo "static const char SR_GIT_BUILD[] = \"`git log --pretty=format:'%h' -n 1`\"; " > $(shell pwd)/../common/include/sr_build_ver.h
 	@$(MAKE) -C $(KERNEL_SRC) M=$(PWD) TOP_DIR=$(PWD) modules
 
 endif
