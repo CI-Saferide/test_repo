@@ -248,7 +248,7 @@ static int __init vsentry_init(void)
 	
 	pr_info("[%s]: module started. kernel version is %s, module version is %d.%d (%s)\n",
 			MODULE_NAME, utsname()->release, 
-			KERNEL_MODULE_VER_MAJOR, KERNEL_MODULE_VER_MINOR, KERNEL_MODULE_VER_BUILD);
+			VSENTRY_VER_MAJOR, VSENTRY_VER_MINOR, VSENTRY_VER_BUILD);
 
 	rc = alloc_chrdev_region(&vsentry_dev, 0, 1, "vsentry");
 	if (rc < 0) {

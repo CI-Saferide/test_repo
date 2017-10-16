@@ -79,8 +79,7 @@ SR_32 sr_engine_start(void)
 	SR_U8 run = 1;
 	FILE *f;
 
-	sal_printf("vsentry engine started. engine version is %d.%d (%s)\n",
-		ENGINE_VER_MAJOR, ENGINE_VER_MINOR, ENGINE_VER_BUILD);
+	sal_printf("vsentry engine started\n");
 
 	ret = sr_log_init("[vsentry]", 0);
 	if (ret != SR_SUCCESS){
