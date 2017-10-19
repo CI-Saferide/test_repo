@@ -1,6 +1,6 @@
 #include <sr_sal_common.h>
 #include <sr_gen_hash.h>
-#include <sal_mem.h>
+#include <sal_os.h>
 #include <string.h>
 
 typedef struct hash_item {
