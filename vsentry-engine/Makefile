@@ -11,10 +11,6 @@ BINDIR 		:= $(BUILD_DIR)/bin
 
 TARGET 		:= sr_engine
 
-CONFD_DIR       ?= /var/vsentry/confd
-
-LDFLAGS += $(CONFD_DIR)/lib/libconfd.a
-
 # where to search for sources
 VPATH 		:=  $(TOP_DIR)/sal/platform/linux/src \
 				$(TOP_DIR)/src \
@@ -50,14 +46,12 @@ INCLUDES 	:=  -I../common/include \
 				-Isal/platform/linux/include \
 				-I../tools/sr-log/include \
 				-I../tools/sr-hash/include \
-				-I$(CONFD_DIR)/include \
-				-I../confd/include
 
 OBJS		:=  $(addprefix $(OBJDIR)/,$(SRCS:.c=.o))
 DEPS		:=  $(OBJS:.o=.d)
 
 # libs to link with
-LIBS		:= -lpthread -lsr_log -lsr_hash ../confd/lib/libconfd.a
+LIBS		:= -lpthread -lsr_log -lsr_hash
 # and where to search them 
 LIB_PATH 	:= -L$(LIBDIR)
 
