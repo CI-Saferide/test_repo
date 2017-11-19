@@ -1,5 +1,0 @@
-get the confd DB:
-./bin/netconf-console --user=admin --password=admin --get-config -x '/'
-
-update the confd DB with python program netconf-console, update_system_file.xml is xml example:
-netconf-console --user=admin --password=admin  --rpc update_system_file.xml

@@ -243,7 +243,7 @@ void sr_demo(void)
 
 
 static int __init vsentry_init(void)
-{	
+{
 	int rc = 0;
 	
 	pr_info("[%s]: module started. kernel version is %s, module version is %d.%d (%s)\n",
