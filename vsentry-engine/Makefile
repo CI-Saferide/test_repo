@@ -20,6 +20,7 @@ VPATH 		:=  $(TOP_DIR)/sal/platform/linux/src \
 SRCS 		:=  main.c \
 				sal_shmem_linux.c \
 				sal_linux.c \
+				sal_can_linux.c \
 				sr_cls_file_control.c \
 				sr_cls_network_control.c \
 				sr_cls_canbus_control.c \
@@ -38,12 +39,15 @@ SRCS 		:=  main.c \
 				sr_config.c \
 				sr_cli.c \
 				sr_control.c \
+				sr_can_collector.c \
+				sr_config_parse.c \
 
 # include folders
 INCLUDES 	:=  -I../common/include \
 				-Iinclude \
 				-I$(TOP_DIR)/../tools/radix/include \
 				-Isal/platform/linux/include \
+				-Isal/include \
 				-I../tools/sr-log/include \
 				-I../tools/sr-hash/include \
 

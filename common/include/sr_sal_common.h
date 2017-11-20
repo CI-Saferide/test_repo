@@ -19,3 +19,5 @@ void sal_schedule_timeout(SR_U32 timeout);
 void sal_schedule(void);
 SR_8 *sal_strstr(SR_8 *haystack, SR_8 *needle);
 SR_32 sal_get_uid(char *user_name);
+SR_32 sal_socket(SR_32 domain, SR_32 type, SR_32 protocol);
+SR_64 sal_gets_space(const SR_8* path);

@@ -18,7 +18,12 @@
 #include "sr_control.h"
 #include "sr_ver.h"
 #include "sr_file_hash.h"
+#include "sr_can_collector.h"
+#include "sr_config_parse.h"
+extern struct canTaskParams can_args;
+extern struct config_params_t config_params;
 
+extern SR_8* disk;
 
 SR_32 engine_main_loop(void *data)
 {
@@ -119,6 +124,18 @@ SR_32 sr_engine_start(void)
 	}
 
 	config_ut();
+	read_vsentry_config("sr_config", config_params);
+	can_args.can_interface = config_params.can0_interface;
+	if(config_params.collector_enable){
+		ret = sr_start_task(SR_CAN_COLLECT_TASK, can_collector_init);
+		if (ret != SR_SUCCESS) {
+			sal_printf("Failed to start CAN-Bus Collector\n");
+			return SR_ERROR;	
+		}	
+		sal_printf("CAN-Bus Collector - ENABLED!\n");
+	} else {
+		sal_printf("CAN-Bus Collector - DISABLED!\n");
+	}
 	/* indicate VPI that we are running */
 	f = fopen("/tmp/sec_state", "w");
 	fprintf(f, "on");
@@ -137,9 +154,17 @@ SR_32 sr_engine_start(void)
 			case 't':
 				eng2mod_test();
 				break;
+			case 'p':
+				can_args.can_print = !can_args.can_print;
+				sal_printf("\nCAN-Bus %s prints - Enable|Disable\n", can_args.can_interface);
+				break;			
+			case 'v':
+				sal_printf("\nAvailable Space under %s is: %ld bytes\n",disk,sal_gets_space(disk));
+				break;				
 		}
 	}
-
+	
+	sr_stop_task(SR_CAN_COLLECT_TASK);
 	sr_stop_task(SR_ENGINE_TASK);
 	sr_file_hash_deinit();
 	sr_stop_task(SR_LOG_TASK);

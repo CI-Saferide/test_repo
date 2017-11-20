@@ -1,6 +1,7 @@
 #include "sr_sal_common.h"
 #include "sal_linux.h"
 #include "sr_tasks.h"
+#include "engine_sal.h"
 
 SR_32 sal_task_stop(void *data)
 {
@@ -122,3 +123,28 @@ SR_U32 sal_get_os(sal_os_t *os)
 	return SR_SUCCESS;
 }
 
+SR_32 sal_socket(SR_32 domain, SR_32 type, SR_32 protocol)
+{
+	return socket(domain, type, protocol);
+}
+
+/* 
+	gets path for example: 
+	path = /home/artur/
+*/
+SR_64 sal_gets_space(const SR_8* path) 
+{
+	struct statvfs stat;
+	
+	if (statvfs(path, &stat) != 0){
+		sal_printf("\nFailed statvfs !\n");
+		return -1;
+	}
+	//the size in bytes
+	return stat.f_bsize * stat.f_bavail;
+}
+
+SR_32 sal_rename(const SR_8 *old_filename, const SR_8 *new_filename)
+{
+	return (rename(old_filename, new_filename));
+}
