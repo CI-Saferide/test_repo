@@ -90,20 +90,26 @@ while true; do
 			sudo mount /dev/sdb2 mnt/ext4
 			sleep 1s
 #			cp -R ../vsentry/ mnt/ext4/home/pi/vsentry/
-			cd ../vsentry/vsentry-mod/files/
+			cd ../vsentry/vsentry-mod/
 			echo $PWD
-			make arm
+			make ARCH=arm KERNEL_SRC=~/git/linux-rpi CROSS_COMPILE=/usr/bin/arm-linux-gnueabi-
 			echo $PWD
-			cp vsentry.ko ../../../linux-rpi/mnt/ext4/home/pi/
+			cp vsentry.ko ../../linux-rpi/mnt/ext4/home/pi/
+			cp init_vsentry.sh ../../linux-rpi/mnt/ext4/home/pi/
 			sleep 1s
-			make clean
-			cd ../../vsentry-engine/files/
+			#make clean
+			cd ../vsentry-engine/
 			echo $PWD
-			make arm arch=arm
+			make ARCH=arm KERNEL_SRC=~/git/linux-rpi CROSS_COMPILE=/usr/bin/arm-linux-gnueabi-
 			echo $PWD
-			cp ../build/bin/sr-engine ../../../linux-rpi/mnt/ext4/home/pi/			
+			cd build/bin/
+			echo $PWD
+			cp sr_engine ../../../../linux-rpi/mnt/ext4/home/pi/
+			echo $PWD
+			cd ../../	
+			echo $PWD		
 			make clean
-			cd ../../../linux-rpi/
+			cd ../../linux-rpi/
 			echo $PWD
 			sleep 1s
 			sudo umount mnt/fat32
