@@ -12,7 +12,6 @@ const SR_8* disk = "/";
 long long SAVE_SPACE;
 long MAX_LOG_SIZE;
 
-
 char prefix[MAX_BUFF]; 			/* prefix of the file, including VIN */
 char file_candidate[MAX_BUFF]; 	/* filename of the current written log */ 
 char postfix[] = "_.log";
@@ -37,6 +36,7 @@ void log_it(char* str)
 		memset(current_file, 0, MAX_BUFF);
 		sprintf(current_file,"%s%s%05d%s", prefix, buffer_TS, curr, postfix);
 		log_arr[curr].log_fp = fopen(current_file, "a");
+
 	}
 
     if(log_arr[curr].log_fp)
