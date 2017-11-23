@@ -1,14 +1,11 @@
 #ifndef __SAL_MEM_H_
 #define __SAL_MEM_H_
 
-#ifdef __KERNEL__
-#define SR_Malloc(p, t, n) (p = (t) SR_ALLOC((unsigned long)(n)))
-#define SR_Zalloc(p, t, n) (p = (t) SR_ZALLOC((unsigned long)(n)))
-#define SR_Free(p) SR_FREE((caddr_t)p);
-#else
 #define SR_Malloc(p, t, n) (p = (t) malloc((unsigned long)(n)))
 #define SR_Zalloc(p, t, n) (p = (t) calloc(1, (unsigned long)(n)))
 #define SR_Free(p) free((caddr_t)p);
-#endif
+#define SR_LOCK pthread_mutex
+#define SR_Lock(l) pthread_mutex_lock(l)
+#define SR_Unlock(l) pthread_mutex_unlock(l)
 
 #endif

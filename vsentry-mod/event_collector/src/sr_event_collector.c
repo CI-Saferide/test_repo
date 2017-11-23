@@ -52,12 +52,19 @@ int sr_ec_send_event(SR_U8 event_type, void *data)
 		case SR_EVENT_FILE_CREATED:
 			sr_ec_append_event(event_type, data, sizeof(struct sr_ec_file_t), SR_TRUE);
 			break;
+#ifdef CONFIG_STAT_ANALYSIS
+		case SR_EVENT_STATS_CONNECTION:
+			sr_ec_append_event(event_type, data, sizeof(struct sr_ec_connection_stat_t), SR_FALSE);
+			break;
+		case SR_EVENT_PROCESS_DIED:
+			sr_ec_append_event(event_type, data, sizeof(struct sr_ec_process_died_t), SR_FALSE);
+			break;
+#endif
 		default:
 			break;
 	}
 
 	return SR_SUCCESS;
-	
 }
 
 void sr_ec_append_event(SR_U8 event_type, void *sample_data, SR_U32 data_length, SR_BOOL is_imidiate) 

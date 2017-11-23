@@ -149,3 +149,11 @@ SR_32 sal_rename(const SR_8 *old_filename, const SR_8 *new_filename)
 	return (rename(old_filename, new_filename));
 }
 
+SR_U64 sal_get_time(void)
+{
+	time_t t;
+
+	time(&t);
+
+	return (SR_U64)t;
+}

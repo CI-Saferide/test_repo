@@ -11,6 +11,9 @@
 #include "sr_cls_canid.h"
 #include "sr_cls_port.h"
 #include "sr_control.h"
+#ifdef CONFIG_STAT_ANALYSIS
+#include "sr_stat_analysis.h"
+#endif
 
 #define MAX_RX_MSG_LEN 	512
 
@@ -96,6 +99,11 @@ SR_32 sr_msg_dispatch(char *msg, int size)
 		case SR_MSG_TYPE_CLS_FILTER_PATH:
 			sr_cls_file_filter_path_msg_dispatch((struct sr_cls_filter_path_msg *)hdr->msg_payload);
 			break;	
+#ifdef CONFIG_STAT_ANALYSIS
+		case SR_MSG_TYPE_STAT_ANALYSIS:
+			sr_stat_analysis_handle_message((struct sr_stat_analysis_msg *)hdr->msg_payload);
+			break;
+#endif
 		case SR_MSG_TYPE_DEFAULT:
 			sal_printf("wrong msg_type\n");
 			break;

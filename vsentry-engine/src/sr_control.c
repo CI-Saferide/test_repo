@@ -19,3 +19,17 @@ SR_8 sr_control_set_state(SR_BOOL state)
 
 	return SR_SUCCESS;
 }
+	
+SR_8 sr_control_util(SR_U8 control_type)
+{
+	sr_control_msg_t *msg;
+
+	msg = (sr_control_msg_t*)sr_get_msg(ENG2MOD_BUF, ENG2MOD_MSG_MAX_SIZE);
+	if (msg) {
+		msg->msg_type = SR_MSG_TYPE_CONTROL;			
+		msg->sub_msg.msg_type = control_type;			
+		sr_send_msg(ENG2MOD_BUF, sizeof(msg));
+	}
+
+	return SR_SUCCESS;
+}

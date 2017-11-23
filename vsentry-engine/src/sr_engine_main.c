@@ -20,6 +20,9 @@
 #include "sr_file_hash.h"
 #include "sr_can_collector.h"
 #include "sr_config_parse.h"
+#ifdef CONFIG_STAT_ANALYSIS
+#include "sr_stat_analysis.h"
+#endif
 extern struct canTaskParams can_args;
 extern struct config_params_t config_params;
 
@@ -98,6 +101,14 @@ SR_32 sr_engine_start(void)
 		return SR_ERROR;
 	}
 
+#ifdef CONFIG_STAT_ANALYSIS
+	ret = sr_stat_analysis_init();
+	if (ret != SR_SUCCESS){
+		sal_printf("failed to init sr_stat_analysis_init\n");
+		return SR_ERROR;
+	}
+#endif
+
 	ret = sr_start_task(SR_ENGINE_TASK, engine_main_loop);
 	if (ret != SR_SUCCESS) {
 		sal_printf("failed to start engine_main_loop\n");
@@ -166,6 +177,9 @@ SR_32 sr_engine_start(void)
 	
 	sr_stop_task(SR_CAN_COLLECT_TASK);
 	sr_stop_task(SR_ENGINE_TASK);
+#ifdef CONFIG_STAT_ANALYSIS
+	sr_stat_analysis_uninit();
+#endif
 	sr_file_hash_deinit();
 	sr_stop_task(SR_LOG_TASK);
 
