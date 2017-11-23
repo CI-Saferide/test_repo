@@ -5,7 +5,7 @@
 #include <sr_gen_hash.h>
 #include <sr_file_hash.h>
 #include <sr_sal_common.h>
-#include <sal_os.h>
+#include <sal_mem.h>
 
 #define HASH_SIZE 500
 
