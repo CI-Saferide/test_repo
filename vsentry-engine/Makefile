@@ -96,7 +96,6 @@ libsr_hash:
 	@$(MAKE) -s -C ../tools/sr-hash TOP_DIR=$(TOP_DIR)
 
 $(OBJDIR)/%.o: %.c
-	@echo $(SR_STAT_ANALYSIS_DEBUG)
 	@echo "compiling $(notdir $<)"
 	@$(CC) $(CFLAGS) $(INCLUDES) -c $< -o $@
 
