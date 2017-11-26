@@ -7,8 +7,6 @@
 #include "sr_actions_common.h"
 #include "sr_cls_uid_common.h"
 
-#define UID_ANY -1
-
 int sr_cls_uid_init(void);
 void sr_cls_uid_ut(void);
 void sr_cls_uid_uninit(void);

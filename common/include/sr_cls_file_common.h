@@ -2,6 +2,8 @@
 #define SR_CLS_FILE_COMMON_H
 #include "sr_types.h"
 
+#define INODE_ANY 0
+
 enum {
 	SR_CLS_INODE_INHERIT=0,
 	SR_CLS_INODE_DEL_RULE,

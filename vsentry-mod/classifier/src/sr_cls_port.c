@@ -113,7 +113,7 @@ int sr_cls_port_add_rule(SR_U32 port, SR_U32 rulenum, SR_8 dir, SR_8 proto)
 {
 	struct sr_hash_ent_t *ent;
 	
-	if (port) { // not 0 which represents *
+	if (port != PORT_ANY) { 
 		ent=sr_hash_lookup((dir==SR_DIR_DST)?sr_cls_dport_table[SR_PROTO_SELECTOR(proto)]:sr_cls_sport_table[SR_PROTO_SELECTOR(proto)], port);
 		if (!ent) {		
 			ent = SR_ZALLOC(sizeof(*ent)); // <-A MINE!!!
@@ -134,7 +134,7 @@ int sr_cls_port_add_rule(SR_U32 port, SR_U32 rulenum, SR_8 dir, SR_8 proto)
 }
 int sr_cls_port_del_rule(SR_U32 port, SR_U32 rulenum, SR_8 dir, SR_8 proto)
 {
-	if (port) { // Not "any"
+	if (port != PORT_ANY) {
 		struct sr_hash_ent_t *ent=sr_hash_lookup((dir==SR_DIR_DST)?sr_cls_dport_table[SR_PROTO_SELECTOR(proto)]:sr_cls_sport_table[SR_PROTO_SELECTOR(proto)], port);
 		if (!ent) {
 			sal_printf("Error can't del rule# %u on PORT:%u - rule not found\n",rulenum,port);
