@@ -17,6 +17,7 @@ typedef struct process_connection_data {
 
 typedef struct process_connection_item {
    SR_U32 process_id;
+   SR_U32 counter;
    process_connection_data_t *process_connection_list;
 } process_connection_item_t;
 
@@ -72,7 +73,7 @@ static void process_connection_print(void *data_in_hash)
 
 	cur_time = sal_get_time();
 
-	sal_printf("Process :%d \n", process_connection_item->process_id);
+	sal_printf("Process :%d num_of_connections:%d \n", process_connection_item->process_id,  process_connection_item->counter);
 	for (ptr = process_connection_item->process_connection_list; ptr; ptr = ptr->next) {
 		count++;
 		sal_printf("proto:%d saddr:%x dassdr:%x sport:%d dport:%d rx_msgs:%u rx_bytes:%u tx_mgs:%u tx_bytes:%u time:%lu\n",
@@ -126,6 +127,7 @@ static SR_32 update_connection_item(process_connection_item_t *process_connectio
 			return SR_ERROR;
 		}
 		(*iter)->connection_info = *connection_info;
+		process_connection_item->counter++;
 	} else {
 		(*iter)->connection_info.rx_msgs += connection_info->rx_msgs;
 		(*iter)->connection_info.rx_bytes += connection_info->rx_bytes;
@@ -206,6 +208,7 @@ SR_32 sr_stat_process_connection_delete_socket(SR_U32 process_id, sr_connection_
 	help = *iter;
 	*iter = (*iter)->next;
 	SR_Free(help);
+	process_connection_item->counter--;
 
 	return SR_SUCCESS;
 }
@@ -224,6 +227,7 @@ static SR_32 delete_aged_cb(void *hash_data, void *data)
 			sr_stat_analysis_send_msg(SR_STAT_ANALYSIS_CONNECTION_DIED, &(tmp->connection_info));
 #endif
 			SR_Free(tmp);
+			process_connection_item->counter--;
 		 } else {
 			iter = &((*iter)->next);
 		}
