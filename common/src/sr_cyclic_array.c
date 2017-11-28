@@ -32,7 +32,7 @@ SR_32 sr_cyclic_array_write(sr_cyclic_array_t *ca, void *val)
 		ca->w = 0;
 	new_w = CYCLIC_INC(ca->w, ca->size);
 
-	if (new_w == ca->r)
+	if (new_w == ca->r || (new_w == 0 && ca->r == -1))
 		return SR_ERROR; // No more spacve
 
 	ca->arr[ca->w] = val;
@@ -43,7 +43,11 @@ SR_32 sr_cyclic_array_write(sr_cyclic_array_t *ca, void *val)
 
 SR_BOOL sr_cyclic_array_is_full(sr_cyclic_array_t *ca)
 {
-	if (ca->w == -1 || ca->w != ca->r)
+	SR_U32 new_w = CYCLIC_INC(ca->w, ca->size);
+
+	if (ca->w == -1)
 		return SR_FALSE;
-	return SR_TRUE;
+	if (new_w == ca->r || (new_w == 0 && ca->r == -1))
+		return SR_TRUE;
+	return SR_FALSE;
 }
