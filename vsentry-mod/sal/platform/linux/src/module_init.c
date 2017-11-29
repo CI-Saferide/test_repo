@@ -80,6 +80,10 @@ static int vsentry_drv_mmap(struct file *file, struct vm_area_struct *vma)
 			type = MOD2LOG_BUF;
 			pr_info("vsentry_drv_mmap: initializing MOD2LOG_BUF\n");
 			break;
+		case MOD2STAT_PAGE_OFFSET:
+			type = MOD2STAT_BUF;
+			pr_info("vsentry_drv_mmap: initializing MOD2STAT_BUF\n");
+			break;
 		default:
 			pr_err("wrong offset %lu\n", vma->vm_pgoff);
 			return -EINVAL;

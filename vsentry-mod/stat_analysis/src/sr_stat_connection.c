@@ -4,6 +4,7 @@
 #include "sr_event_collector.h"
 #include "sr_stat_port.h"
 #include "sr_stat_analysis.h"
+#include "sr_shmem.h"
 
 #define LRU_ALLOCATION_SIZE 500
 #define LRU_ALLOCATION_MAX_SIZE 2000
@@ -113,7 +114,7 @@ SR_U32 sr_connection_transmit(void)
 		con.rx_bytes= LRU_transmit->objects[i]->rx_bytes;
 		con.tx_msgs= LRU_transmit->objects[i]->tx_msgs;
 		con.tx_bytes= LRU_transmit->objects[i]->tx_bytes;
-		sr_ec_send_event(SR_EVENT_STATS_CONNECTION, &con);
+		sr_ec_send_event(MOD2STAT_BUF, SR_EVENT_STATS_CONNECTION, &con);
 	}
 	SR_ATOMIC_SET(&(LRU_transmit->ind), -1);
 	if (LRU_allocate_more2) {

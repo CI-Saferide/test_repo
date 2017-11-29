@@ -2,6 +2,7 @@
 #include "sr_ec_common.h"
 #include "sr_event_collector.h"
 #include "sr_stat_analysis_common.h"
+#include "sr_shmem.h"
 
 #define STAT_ANALYSIS_TRANSMIT_SCHEDULE_USECS 1500000
 #define STAT_ANALYSIS_GC_SCHEDULE_USECS       10000000
@@ -52,7 +53,7 @@ static SR_32 sr_stat_analysis_watchdog_task(void *data)
 {
 	while (is_run_watchdog) {
         	sal_schedule_timeout(STAT_ANALYSIS_WATCHDOG_SCHEDULE_USECS);
-		if (sal_elapsed_time_secs(is_stat_analysis_um_running) > SR_AGING_TIME) {
+		if (sal_elapsed_time_secs(is_stat_analysis_um_running) >  3 * SR_AGING_TIME) {
 #ifdef SR_STAT_ANALYSIS_DEBUG
 			sal_printf("STAT ANALYSIS Watchdog shutdown \n");
 #endif
@@ -177,7 +178,7 @@ void sr_stat_analysis_report_porcess_die(SR_U32 pid)
         struct sr_ec_process_died_t pdocess_died = {};
 
         pdocess_died.pid = pid;
-        sr_ec_send_event(SR_EVENT_PROCESS_DIED, &pdocess_died);
+        sr_ec_send_event(MOD2ENG_BUF, SR_EVENT_PROCESS_DIED, &pdocess_died);
 }
 
 SR_32 sr_stat_analysis_handle_message(struct sr_stat_analysis_msg *msg)

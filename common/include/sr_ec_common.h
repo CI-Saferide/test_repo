@@ -7,12 +7,16 @@
 enum sr_event_type {
         SR_EVENT_NEW_CONNECTION,
         SR_EVENT_FILE_CREATED,
-#ifdef CONFIG_STAT_ANALYSIS
-        SR_EVENT_STATS_CONNECTION,
         SR_EVENT_PROCESS_DIED,
-#endif
         SR_EVENT_MAX_EVENT
 };
+
+#ifdef CONFIG_STAT_ANALYSIS
+enum sr_event_stats_type {
+        SR_EVENT_STATS_CONNECTION,
+        SR_EVENT_STATS_MAX_EVENT
+};
+#endif
 
 #pragma pack(push, 1)
 struct sr_ec_new_connection_t{

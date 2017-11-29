@@ -15,7 +15,20 @@ SR_8 *buf_names[TOTAL_BUFS] = {
 	"MOD2ENG",
 	"ENG2LOG",
 	"MOD2LOG",
+	"MOD2STAT",
 };
+
+static SR_32 buf_msg_sizes[TOTAL_BUFS] = {
+	[MOD2ENG_BUF] = MOD2ENG_MSG_MAX_SIZE, 
+	[MOD2STAT_BUF] = MOD2STAT_MSG_MAX_SIZE, 
+};
+
+SR_U32 sr_msg_get_buffer_msg_size(SR_U8 type)
+{
+	if (type >= TOTAL_BUFS)
+		return 0;
+	return buf_msg_sizes[type];
+}
 
 SR_32 sr_msg_alloc_buf(SR_U8 type, SR_32 length)
 {
@@ -48,6 +61,9 @@ SR_32 sr_msg_alloc_buf(SR_U8 type, SR_32 length)
 		case ENG2LOG_BUF:
 		case MOD2LOG_BUF:
 			each_buf_size = LOG_MSG_MAX_SIZE;
+			break;
+		case MOD2STAT_BUF:
+			each_buf_size = MOD2STAT_MSG_MAX_SIZE;
 			break;
 		default:
 			sal_printf("sr_msg_alloc_buf: requested type %d is wrong\n", type);
@@ -116,14 +132,14 @@ SR_32 sr_free_msg(SR_U8 type)
 	sr_ring_buffer *rb;
 
 	if (type > MAX_BUF_TYPE) {
-		sal_printf("sr_send_msg: requested type %d is wrong\n", type);
+		sal_printf("sr_free_msg: requested type %d is wrong\n", type);
 		return SR_ERROR;
 	}
 
 	rb = (sr_ring_buffer*)sr_msg_buf_array[type].buffer;
 	if (!rb || !rb->buf_mem_offset) {
 #ifdef SR_MSG_DEBUG
-		sal_printf("sr_send_msg: error, buffer is NULL\n");
+		sal_printf("sr_free_msg: error, buffer is NULL\n");
 #endif
 		return SR_ERROR;
 	}

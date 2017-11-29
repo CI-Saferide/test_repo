@@ -45,6 +45,9 @@ SR_32 sal_shmem_alloc(sr_shmem *sr_shmem_ptr, SR_32 length, SR_32 type)
 		case MOD2LOG_BUF:
 			offset = MOD2LOG_SIZE_OFFSET;
 			break;
+		case MOD2STAT_BUF:
+			offset = MOD2STAT_SIZE_OFFSET;
+			break;
 		default:
 			sal_printf("sal_shmem_alloc: wrong buf type %d\n", type);
 			return SR_ERROR;
