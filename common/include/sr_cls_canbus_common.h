@@ -2,6 +2,8 @@
 #define SR_CLS_CANBUS_COMMON_H
 #include "sr_types.h"
 
+#define MSGID_ANY -1
+
 enum {
 	SR_CLS_CANID_DEL_RULE = 0,
 	SR_CLS_CANID_ADD_RULE,
