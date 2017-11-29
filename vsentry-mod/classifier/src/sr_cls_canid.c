@@ -75,7 +75,7 @@ int sr_cls_canid_add_rule(SR_32 canid, SR_U32 rulenum)
 {
 	struct sr_hash_ent_t *ent;
 	
-	if(canid>=0) { // 0 is a valid CAN MsgID. any negative would be considered as *
+	if(canid != MSGID_ANY) { 
                /////////////////////////////////////////////////////////////////////////
               /*The 0 msgID is a valid number in the canbus protocol. 
                 * but need to check if its really being used in the Automotive industry
@@ -104,7 +104,7 @@ int sr_cls_canid_add_rule(SR_32 canid, SR_U32 rulenum)
 
 int sr_cls_canid_del_rule(SR_32 canid, SR_U32 rulenum)
 {    
-	if(canid>=0) { // 0 is a valid CAN MsgID. any negative would be considered as *
+	if(canid != MSGID_ANY) { 
 		struct sr_hash_ent_t *ent=sr_hash_lookup(sr_cls_canid_table, canid);         
 		if (!ent) {
 			sal_printf("Error can't del rule# %u on CAN MsgID:%x - rule not found\n",rulenum,canid);
