@@ -267,9 +267,6 @@ SR_32 sr_classifier_canbus(disp_info_t* info)
 	} else { // take only src/any
 		sal_or_self_op_arrays(&ba_res, src_cls_canid_any());
 	}
-	if (array_is_clear(ba_res)) {
-	//return SR_CLS_ACTION_ALLOW;
-	}
 
 	if (info->can_info.id.pid) { 
 	    if ((st = sr_cls_process_add(info->can_info.id.pid)) != SR_SUCCESS) {
