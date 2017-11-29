@@ -37,7 +37,7 @@ bit_array *sr_cls_exec_file_any(enum sr_rule_type type)
 // rulenum: index of rule to be added
 int sr_cls_exec_inode_add_rule(enum sr_rule_type type, SR_U32 exec_inode, SR_U32 rulenum)
 {
-	if (likely(exec_inode)) {
+	if (likely(exec_inode != INODE_ANY)) {
 		struct sr_hash_ent_multy_t *ent=( struct sr_hash_ent_multy_t *)sr_hash_lookup(sr_cls_exec_file_table, exec_inode);
 		if (!ent) {
 			ent = SR_ZALLOC(sizeof(*ent));
@@ -62,7 +62,7 @@ int sr_cls_exec_inode_add_rule(enum sr_rule_type type, SR_U32 exec_inode, SR_U32
 // rulenum: index of rule to be added
 int sr_cls_exec_inode_del_rule(enum sr_rule_type type, SR_U32 exec_inode, SR_U32 rulenum)
 {
-	if (likely(exec_inode)) {
+	if (likely(exec_inode != INODE_ANY)) {
 		struct sr_hash_ent_multy_t *ent= (struct sr_hash_ent_multy_t *)sr_hash_lookup(sr_cls_exec_file_table, exec_inode);
 		if (!ent) {
 			sal_kernel_print_alert("Error: %s inode rule not found\n", __FUNCTION__);

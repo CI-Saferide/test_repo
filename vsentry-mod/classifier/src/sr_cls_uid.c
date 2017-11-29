@@ -80,7 +80,7 @@ int sr_cls_uid_add_rule(enum sr_rule_type type, SR_32 uid, SR_U32 rulenum)
 {
 	struct sr_hash_ent_t *ent;
 	
-	if (uid>=0) { // 0 is a valid uid. any negative would be considered as *
+	if (uid != UID_ANY) {
 		ent=sr_hash_lookup(sr_cls_uid_table[type], uid);
 		if (!ent) {		
 			ent = SR_ZALLOC(sizeof(*ent)); 
@@ -102,7 +102,7 @@ int sr_cls_uid_add_rule(enum sr_rule_type type, SR_32 uid, SR_U32 rulenum)
 
 int sr_cls_uid_del_rule(enum sr_rule_type type, SR_32 uid, SR_U32 rulenum)
 {
-	if (uid>=0) { // 0 is a valid uid. any negative would be considered as *
+	if (uid != UID_ANY) {
 		struct sr_hash_ent_t *ent=sr_hash_lookup(sr_cls_uid_table[type], uid);
 		if (!ent) {
 			sal_printf("Error can't del rule# %u on UID:%u - rule not found\n",rulenum,uid);
