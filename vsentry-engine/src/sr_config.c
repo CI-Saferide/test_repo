@@ -363,7 +363,7 @@ SR_BOOL config_ut(void)
 		
 #endif
 	can_rec.rulenum=40;	
-	can_rec.msg_id=0x123;		
+	can_rec.msg_id=-1;		
 	can_rec.action.actions_bitmap=SR_CLS_ACTION_DROP;	
 	can_rec.uid=20;
 	strncpy(can_rec.process, "/usr/bin/cansend", strlen("/usr/bin/cansend"));

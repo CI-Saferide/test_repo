@@ -10,7 +10,7 @@ enum {
 struct sr_cls_canbus_msg {
 	SR_U8 	msg_type;
 	SR_U32	rulenum;
-	SR_U32  canid;
+	SR_32  canid;
 	SR_U32  exec_inode;
 	SR_32   uid;
 };
