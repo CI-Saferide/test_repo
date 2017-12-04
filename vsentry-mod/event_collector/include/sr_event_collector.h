@@ -11,7 +11,7 @@
 SR_32 sr_event_collector_init(void);
 void sr_event_collector_uninit(void);
 int sr_ec_send_event(SR_U8 buf_type, SR_U8 event_type, void *data);
-void sr_ec_append_event(SR_U8 buf_type, SR_U8 event_type, void *sample_data, SR_U32 data_length, SR_BOOL is_imidiate);
+void sr_ec_append_event(SR_U8 buf_type, SR_U8 event_type, void *sample_data, SR_U32 data_length, SR_BOOL is_lock);
 
 
 #endif

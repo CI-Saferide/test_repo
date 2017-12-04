@@ -28,10 +28,16 @@
 #define TASK_DESC	struct task_struct
 #define SR_RWLOCK	rwlock_t
 #define SR_MUTEX	struct mutex
+#define SR_SLEEPLES_LOCK_T spinlock_t
+#define SR_SLEEPLES_LOCK_FLAGS unsigned long
+#define SR_SLEEPLES_LOCK_DEFINE(lock) DEFINE_SPINLOCK(lock)
 #define SR_MUTEX_INIT(x) mutex_init(x)
 #define SR_MUTEX_LOCK(x) mutex_lock(x)
 #define SR_MUTEX_TRYLOCK(x) mutex_trylock(x)
 #define SR_MUTEX_UNLOCK(x) mutex_unlock(x)
+#define SR_SLEEPLES_LOCK(lock, falgs) spin_lock_irqsave(lock, flags)
+#define SR_SLEEPLES_UNLOCK(lock, falgs) spin_unlock_irqrestore(lock, flags)
+#define SR_SLEEPLES_LOCK_INIT(lock) spin_lock_init(lock)
 #define SR_LOCK(x) //(x++)
 #define SR_UNLOCK(x) //(x++)
 #define SR_ALLOC(x) vmalloc(x)
