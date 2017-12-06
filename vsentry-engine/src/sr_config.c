@@ -18,28 +18,29 @@
 #include <sr_file_hash.h>
 #ifdef CONFIG_STAT_ANALYSIS
 #include "sr_stat_analysis.h"
+#include "sr_stat_learn_rule.h"
 #ifdef SR_STAT_ANALYSIS_DEBUG
 #include <signal.h>
 #endif
 #endif
 
-#ifdef SR_STAT_ANALYSIS_DEBUG
 static void handler(int signal)
 {
 	switch (signal) { 
 		case 10:
-			sr_control_util(SR_CONTROL_PRINT_CONNECTIONS);
+			sr_learn_rule_connection_hash_print();
 			break;
 		case 12:
-			//sr_stat_analysis_dump();
 			sr_stat_analysis_learn_mode_set(SR_STAT_MODE_PROTECT);
+			//sr_stat_analysis_dump();
+			//sr_learn_rule_connection_hash_print();
 			//sr_control_util(SR_CONTROL_GARBAGE_COLLECTION);
+			//sr_control_util(SR_CONTROL_PRINT_CONNECTIONS);
 			break;
 		default:
 			break;
  	}
 }
-#endif
 
 static char filename[] = "sr_engine.cfg";
 
@@ -325,12 +326,12 @@ SR_BOOL config_ut(void)
 	struct sr_log_entry			log_rec = {0};
 #endif
 
-#ifdef SR_STAT_ANALYSIS_DEBUG
 	signal(10, handler);
 	signal(12, handler);
-#endif
 
 #if 0
+	sr_stat_learn_rule_ut();
+
 	net_rec.rulenum = 80;
 	net_rec.src_addr = 0x0a0a0a00;
 	net_rec.src_netmask = 0x0;

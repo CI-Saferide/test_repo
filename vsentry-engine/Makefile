@@ -44,6 +44,7 @@ SRCS 		:=  main.c \
 				sr_can_collector.c \
 				sr_config_parse.c \
 				sr_stat_process_connection.c \
+				sr_stat_learn_rule.c \
 				sr_stat_analysis.c \
 				sr_info_gather.c \
 

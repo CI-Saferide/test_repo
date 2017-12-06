@@ -3,6 +3,7 @@
 #include <sal_linux.h>
 #include <sal_mem.h>
 #include "sr_stat_process_connection.h"
+#include "sr_stat_learn_rule.h"
 #include "sr_stat_analysis_common.h"
 #include "sr_stat_analysis.h"
 
@@ -282,21 +283,6 @@ SR_32 sr_stat_process_connection_delete_aged_connections(void)
 	return SR_SUCCESS;
 }
 
-static SR_32 sr_stat_create_process_rule(SR_32 pid, sr_stat_con_stats_t *stats)
-{
-	char exec[SR_MAX_PATH_SIZE];
-
-	if (sal_get_process_name(pid, exec, SR_MAX_PATH_SIZE) != SR_SUCCESS) {
-                // Process id can not be mapped to exec file, nothing to do....
-                return SR_SUCCESS;
-	}
-
-	sal_printf("UUUUUUUUUUUUUUUU UPDATE RULE -- exec:%s rxp:%d rxb:%d txp:%d txb:%d \n", exec,
-		stats->rx_msgs, stats->rx_bytes, stats->tx_msgs, stats->tx_bytes);
-
-	return SR_SUCCESS;
-}
-
 static SR_32 sr_stat_learn_process_rule(SR_32 pid, sr_stat_con_stats_t *stats)
 {
 	char exec[SR_MAX_PATH_SIZE];
@@ -308,6 +294,9 @@ static SR_32 sr_stat_learn_process_rule(SR_32 pid, sr_stat_con_stats_t *stats)
 
 	sal_printf("LLLLLLLLLLLLLLLL LERAN RULE -- exec:%s rxp:%d rxb:%d txp:%d txb:%d \n", exec,
 		stats->rx_msgs, stats->rx_bytes, stats->tx_msgs, stats->tx_bytes);
+
+	if (sr_stat_learn_rule_hash_update(exec, stats) != SR_SUCCESS)
+		return SR_ERROR;
 
 	return SR_SUCCESS;
 }
@@ -392,10 +381,8 @@ static SR_32 finish_transmit(void *hash_data, void *data)
 		is_process_updated = SR_TRUE;
 	}
 
-	if (sr_stat_analysis_learn_mode_get() == SR_STAT_MODE_LEARN && is_process_updated)
+	if (is_process_updated)
 		sr_stat_learn_process_rule(process_connection_item->process_id, &(process_connection_item->max_con_stats));
-	if (sr_stat_analysis_learn_mode_get() != SR_STAT_MODE_LEARN && is_process_updated)
-		sr_stat_create_process_rule(process_connection_item->process_id, &(process_connection_item->max_con_stats));
 
 	return SR_SUCCESS;
 }
@@ -417,21 +404,15 @@ SR_32 sr_stat_process_connection_hash_finish_transmit(SR_U32 count)
 	if (system_counters.tx_b_count > system_max.tx_b_count)
 		system_max.tx_b_count = system_counters.tx_b_count;
 
-	return SR_SUCCESS;
-}
-
-static SR_32 move_to_protect_mode(void *hash_data, void *data)
-{
-	process_connection_item_t *process_connection_item = (process_connection_item_t *)hash_data;
-
-	sr_stat_create_process_rule(process_connection_item->process_id, &(process_connection_item->max_con_stats));
+	if (sr_stat_analysis_learn_mode_get() != SR_STAT_MODE_LEARN)
+		sr_stat_learn_rule_create_process_rules();
 
 	return SR_SUCCESS;
 }
 
 SR_32 st_stats_process_connection_protect(void)
 {
-	sr_gen_hash_exec_for_each(process_connection_hash, move_to_protect_mode, NULL);
+	sr_stat_learn_rule_create_process_rules();
 	
 	return SR_SUCCESS;
 }

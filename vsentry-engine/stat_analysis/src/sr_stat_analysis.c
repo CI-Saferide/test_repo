@@ -3,6 +3,7 @@
 #include "sr_msg_dispatch.h"
 #include "sr_msg.h"
 #include "sr_stat_analysis_common.h"
+#include "sr_stat_learn_rule.h"
 #include <stdio.h>
 
 static SR_U64 last_aging;
@@ -12,8 +13,14 @@ SR_32 sr_stat_analysis_init(void)
 {
 	SR_U64 t;
 
+	if (sr_stat_learn_rule_hash_init() != SR_SUCCESS) {
+		sal_printf("stat analysis init failed at sr_stat_learn_rule_hash_init\n");
+		return SR_ERROR;
+	}
+
 	if (sr_stat_process_connection_hash_init() != SR_SUCCESS) {
 		sal_printf("stat analysis init failed at sr_stat_process_connection_hash_init\n");
+		sr_stat_learn_rule_hash_uninit();
 		return SR_ERROR;
 	}
 	t = sal_get_time();
@@ -26,6 +33,7 @@ SR_32 sr_stat_analysis_init(void)
 void sr_stat_analysis_uninit(void)
 {
 	sr_stat_process_connection_hash_uninit();
+	sr_stat_learn_rule_hash_uninit();
 }
 
 void sr_stat_analysis_dump(void)
