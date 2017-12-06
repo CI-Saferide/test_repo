@@ -7,6 +7,7 @@
 #include "sr_stat_analysis.h"
 
 #define HASH_SIZE 500
+#define MAX_TOLLERANCE 1.1
 
 static struct sr_gen_hash *process_connection_hash;
 
@@ -16,12 +17,24 @@ typedef struct process_connection_data {
 } process_connection_data_t;
 
 typedef struct process_connection_item {
-   SR_U32 process_id;
-   SR_U32 counter;
-   process_connection_data_t *process_connection_list;
+	SR_U32 process_id;
+	sr_stat_process_sample_t process_sample;
+	sr_stat_con_stats_t max_con_stats;
+	SR_32 counter;
+	process_connection_data_t *process_connection_list;
 } process_connection_item_t;
 
+typedef struct counters {
+	SR_U64 cons_count;
+	SR_U64 rx_p_count;
+	SR_U64 rx_b_count;
+	SR_U64 tx_p_count;
+	SR_U64 tx_b_count;
+} counters_t;
+
 static SR_U64 cur_time;
+counters_t system_max;
+counters_t connection_max;
 
 #if 0
 void static print_connection(sr_connection_id_t *con_id)
@@ -70,18 +83,34 @@ static void process_connection_print(void *data_in_hash)
 	process_connection_item_t *process_connection_item = (process_connection_item_t *)data_in_hash;
 	SR_U32 count = 0;
 	SR_U64 cur_time;
+	char exe[1000];
 
 	cur_time = sal_get_time();
 
-	sal_printf("Process :%d num_of_connections:%d \n", process_connection_item->process_id,  process_connection_item->counter);
+	exe[0] = 0;
+	sal_get_process_name(process_connection_item->process_id, exe, sizeof(exe));
+
+	sal_printf("Process :%d exe:%s num_of_connections:%d max_new_conns:%d max_rx_msgs:%d max_rx_bytes:%d max_tx_msgs:%d max_tx_bytes:%d\n",
+			process_connection_item->process_id,  exe, process_connection_item->counter,
+			process_connection_item->process_sample.max_new_cons,
+			process_connection_item->max_con_stats.rx_msgs,
+			process_connection_item->max_con_stats.rx_bytes,
+			process_connection_item->max_con_stats.tx_msgs,
+			process_connection_item->max_con_stats.tx_bytes);
+
 	for (ptr = process_connection_item->process_connection_list; ptr; ptr = ptr->next) {
 		count++;
 		sal_printf("proto:%d saddr:%x dassdr:%x sport:%d dport:%d rx_msgs:%u rx_bytes:%u tx_mgs:%u tx_bytes:%u time:%lu\n",
 			ptr->connection_info.con_id.ip_proto, 
 			ptr->connection_info.con_id.saddr.v4addr, ptr->connection_info.con_id.daddr.v4addr,
 			ptr->connection_info.con_id.sport, ptr->connection_info.con_id.dport,
-			ptr->connection_info.rx_msgs, ptr->connection_info.rx_bytes, ptr->connection_info.tx_msgs,
-			ptr->connection_info.tx_bytes, cur_time - ptr->connection_info.time);
+			ptr->connection_info.con_stats.rx_msgs, ptr->connection_info.con_stats.rx_bytes, ptr->connection_info.con_stats.tx_msgs,
+			ptr->connection_info.con_stats.tx_bytes, cur_time - ptr->connection_info.time);
+		sal_printf("          max rx p:%d max rx b:%d max tx p:%d max tx b:%d \n",
+			ptr->connection_info.max_con_stats.rx_msgs,
+			ptr->connection_info.max_con_stats.rx_bytes,
+			ptr->connection_info.max_con_stats.tx_msgs,
+			ptr->connection_info.max_con_stats.tx_bytes);
 	}
 	sal_printf("%d connections in process:%d \n", count, process_connection_item->process_id);
 }
@@ -117,6 +146,7 @@ static SR_32 update_connection_item(process_connection_item_t *process_connectio
 {
 	process_connection_data_t **iter;
 
+	process_connection_item->process_sample.is_updated = SR_TRUE;
 	for (iter = &(process_connection_item->process_connection_list);
 		 *iter && comp_con_id(&((*iter)->connection_info.con_id), &(connection_info->con_id)) != 0; iter = &((*iter)->next));
 	/* If socket exists increment, otherwise add */
@@ -128,11 +158,14 @@ static SR_32 update_connection_item(process_connection_item_t *process_connectio
 		}
 		(*iter)->connection_info = *connection_info;
 		process_connection_item->counter++;
+		process_connection_item->process_sample.new_cons_last_period++;
+		(*iter)->connection_info.is_updated = SR_TRUE;
 	} else {
-		(*iter)->connection_info.rx_msgs += connection_info->rx_msgs;
-		(*iter)->connection_info.rx_bytes += connection_info->rx_bytes;
-		(*iter)->connection_info.tx_msgs += connection_info->tx_msgs;
-		(*iter)->connection_info.tx_bytes += connection_info->tx_bytes;
+		(*iter)->connection_info.con_stats.rx_msgs = connection_info->con_stats.rx_msgs;
+		(*iter)->connection_info.con_stats.rx_bytes = connection_info->con_stats.rx_bytes;
+		(*iter)->connection_info.con_stats.tx_msgs = connection_info->con_stats.tx_msgs;
+		(*iter)->connection_info.con_stats.tx_bytes = connection_info->con_stats.tx_bytes;
+		(*iter)->connection_info.is_updated = SR_TRUE;
 	}
 	(*iter)->connection_info.time = sal_get_time();
 
@@ -249,6 +282,160 @@ SR_32 sr_stat_process_connection_delete_aged_connections(void)
 	return SR_SUCCESS;
 }
 
+static SR_32 sr_stat_create_process_rule(SR_32 pid, sr_stat_con_stats_t *stats)
+{
+	char exec[SR_MAX_PATH_SIZE];
+
+	if (sal_get_process_name(pid, exec, SR_MAX_PATH_SIZE) != SR_SUCCESS) {
+                // Process id can not be mapped to exec file, nothing to do....
+                return SR_SUCCESS;
+	}
+
+	sal_printf("UUUUUUUUUUUUUUUU UPDATE RULE -- exec:%s rxp:%d rxb:%d txp:%d txb:%d \n", exec,
+		stats->rx_msgs, stats->rx_bytes, stats->tx_msgs, stats->tx_bytes);
+
+	return SR_SUCCESS;
+}
+
+static SR_32 sr_stat_learn_process_rule(SR_32 pid, sr_stat_con_stats_t *stats)
+{
+	char exec[SR_MAX_PATH_SIZE];
+
+	if (sal_get_process_name(pid, exec, SR_MAX_PATH_SIZE) != SR_SUCCESS) {
+                // Process id can not be mapped to exec file, nothing to do....
+                return SR_SUCCESS;
+	}
+
+	sal_printf("LLLLLLLLLLLLLLLL LERAN RULE -- exec:%s rxp:%d rxb:%d txp:%d txb:%d \n", exec,
+		stats->rx_msgs, stats->rx_bytes, stats->tx_msgs, stats->tx_bytes);
+
+	return SR_SUCCESS;
+}
+
+static SR_32 finish_transmit(void *hash_data, void *data)
+{
+	process_connection_item_t *process_connection_item = (process_connection_item_t *)hash_data;
+	process_connection_data_t *iter;
+	SR_U32 diff_rx_p, diff_rx_b, diff_tx_p, diff_tx_b;
+	counters_t *system_counters = (counters_t *)data;
+	sr_stat_con_stats_t con_stats = {};
+	SR_BOOL is_process_updated = SR_FALSE;
+
+	if (!process_connection_item->process_sample.is_updated)
+		return SR_SUCCESS;
+	if (process_connection_item->process_sample.new_cons_last_period > process_connection_item->process_sample.max_new_cons)
+		process_connection_item->process_sample.max_new_cons = process_connection_item->process_sample.new_cons_last_period;
+	system_counters->cons_count += process_connection_item->process_sample.new_cons_last_period;
+
+	process_connection_item->process_sample.is_updated = SR_FALSE;
+	process_connection_item->process_sample.new_cons_last_period = 0;
+
+	for (iter = process_connection_item->process_connection_list; iter; iter = iter->next) {
+		if (!iter->connection_info.is_updated)
+			continue;
+		diff_rx_p = iter->connection_info.con_stats.rx_msgs - iter->connection_info.prev_con_stats.rx_msgs;
+		diff_rx_b = iter->connection_info.con_stats.rx_bytes - iter->connection_info.prev_con_stats.rx_bytes;
+		diff_tx_p = iter->connection_info.con_stats.tx_msgs - iter->connection_info.prev_con_stats.tx_msgs;
+		diff_tx_b = iter->connection_info.con_stats.tx_bytes - iter->connection_info.prev_con_stats.tx_bytes;
+
+#ifdef SR_STAT_ANALYSIS_DEBUG
+		if (iter->connection_info.con_id.sport == 8888 || iter->connection_info.con_id.dport == 8888) { 
+			sal_printf("PPPPPPPPPPPPPP %s sport:%d dport:%d RX diffs:%d orig:%d prev:%d TX diffs:%d orig:%d prev:%d \n",
+				sr_stat_analysis_learn_mode_get() == SR_STAT_MODE_LEARN ? "Learn" : "Protect",
+				iter->connection_info.con_id.sport, iter->connection_info.con_id.dport,
+             			diff_rx_b, iter->connection_info.con_stats.rx_bytes, iter->connection_info.prev_con_stats.rx_bytes,
+             			diff_tx_b, iter->connection_info.con_stats.tx_bytes, iter->connection_info.prev_con_stats.tx_bytes);
+		}
+#endif
+		con_stats.rx_msgs += diff_rx_p;
+		con_stats.rx_bytes += diff_rx_b;
+		con_stats.tx_msgs += diff_tx_p;
+		con_stats.tx_bytes += diff_tx_b;
+		system_counters->rx_p_count += diff_rx_p;
+		system_counters->rx_b_count += diff_rx_b;
+		system_counters->tx_p_count += diff_tx_p;
+		system_counters->tx_b_count += diff_tx_b;
+		if (diff_rx_p > iter->connection_info.max_con_stats.rx_msgs)
+			iter->connection_info.max_con_stats.rx_msgs = diff_rx_p;
+		if (diff_rx_b > iter->connection_info.max_con_stats.rx_bytes)
+			iter->connection_info.max_con_stats.rx_bytes = diff_rx_b;
+		if (diff_tx_p > iter->connection_info.max_con_stats.tx_msgs)
+			iter->connection_info.max_con_stats.tx_msgs = diff_tx_p;
+		if (diff_tx_b > iter->connection_info.max_con_stats.tx_bytes)
+			iter->connection_info.max_con_stats.tx_bytes = diff_tx_b;
+		iter->connection_info.prev_con_stats = iter->connection_info.con_stats;
+		iter->connection_info.is_updated = SR_FALSE;
+	}
+
+	/* when in protect mode only consider diff with tolerance */
+	if (sr_stat_analysis_learn_mode_get() != SR_STAT_MODE_LEARN && 
+		((process_connection_item->max_con_stats.rx_msgs && con_stats.rx_msgs > process_connection_item->max_con_stats.rx_msgs * MAX_TOLLERANCE) ||
+			(process_connection_item->max_con_stats.rx_bytes && con_stats.rx_bytes > process_connection_item->max_con_stats.rx_bytes * MAX_TOLLERANCE) ||
+			(process_connection_item->max_con_stats.tx_msgs && con_stats.tx_msgs > process_connection_item->max_con_stats.tx_msgs * MAX_TOLLERANCE) ||
+			(process_connection_item->max_con_stats.tx_bytes && con_stats.tx_bytes > process_connection_item->max_con_stats.tx_bytes * MAX_TOLLERANCE))) {
+		return SR_SUCCESS;
+	}
+	if (con_stats.rx_msgs > process_connection_item->max_con_stats.rx_msgs) {
+		process_connection_item->max_con_stats.rx_msgs = con_stats.rx_msgs;
+		is_process_updated = SR_TRUE;
+	}
+	if (con_stats.rx_bytes > process_connection_item->max_con_stats.rx_bytes) {
+		process_connection_item->max_con_stats.rx_bytes = con_stats.rx_bytes;
+		is_process_updated = SR_TRUE;
+	}
+	if (con_stats.tx_msgs > process_connection_item->max_con_stats.tx_msgs) {
+		process_connection_item->max_con_stats.tx_msgs = con_stats.tx_msgs;
+		is_process_updated = SR_TRUE;
+	}
+	if (con_stats.tx_bytes > process_connection_item->max_con_stats.tx_bytes) {
+		process_connection_item->max_con_stats.tx_bytes = con_stats.tx_bytes;
+		is_process_updated = SR_TRUE;
+	}
+
+	if (sr_stat_analysis_learn_mode_get() == SR_STAT_MODE_LEARN && is_process_updated)
+		sr_stat_learn_process_rule(process_connection_item->process_id, &(process_connection_item->max_con_stats));
+	if (sr_stat_analysis_learn_mode_get() != SR_STAT_MODE_LEARN && is_process_updated)
+		sr_stat_create_process_rule(process_connection_item->process_id, &(process_connection_item->max_con_stats));
+
+	return SR_SUCCESS;
+}
+
+SR_32 sr_stat_process_connection_hash_finish_transmit(SR_U32 count)
+{
+	counters_t system_counters = {};
+
+	sr_gen_hash_exec_for_each(process_connection_hash, finish_transmit, (void *)&system_counters);
+
+	if (system_counters.cons_count > system_max.cons_count)
+		system_max.cons_count = system_counters.cons_count;
+	if (system_counters.rx_p_count > system_max.rx_p_count)
+		system_max.rx_p_count = system_counters.rx_p_count;
+	if (system_counters.rx_b_count > system_max.rx_b_count)
+		system_max.rx_b_count = system_counters.rx_b_count;
+	if (system_counters.tx_p_count > system_max.tx_p_count)
+		system_max.tx_p_count = system_counters.rx_p_count;
+	if (system_counters.tx_b_count > system_max.tx_b_count)
+		system_max.tx_b_count = system_counters.tx_b_count;
+
+	return SR_SUCCESS;
+}
+
+static SR_32 move_to_protect_mode(void *hash_data, void *data)
+{
+	process_connection_item_t *process_connection_item = (process_connection_item_t *)hash_data;
+
+	sr_stat_create_process_rule(process_connection_item->process_id, &(process_connection_item->max_con_stats));
+
+	return SR_SUCCESS;
+}
+
+SR_32 st_stats_process_connection_protect(void)
+{
+	sr_gen_hash_exec_for_each(process_connection_hash, move_to_protect_mode, NULL);
+	
+	return SR_SUCCESS;
+}
+
 static SR_BOOL is_process_empty(void *hash_data)
 {
 	process_connection_item_t *process_connection_item = (process_connection_item_t *)hash_data;
@@ -273,7 +460,7 @@ void sr_stat_process_connection_hash_print(void)
 SR_32 ut_cb(SR_U32 process_id, sr_stat_connection_info_t *connection_info)
 {
 	sal_printf("EEEEEEexec cb process:%d rx_bytes:%d rx_msgs:%d tx_bytes:%d tx_msg:%d \n", 
-		process_id, connection_info->rx_bytes, connection_info->rx_msgs, connection_info->tx_bytes, connection_info->tx_msgs); 
+		process_id, connection_info->con_stats.rx_bytes, connection_info->con_stats.rx_msgs, connection_info->con_stats.tx_bytes, connection_info->con_stats.tx_msgs); 
 
 	return SR_SUCCESS;
 }
@@ -291,10 +478,10 @@ void sr_stat_process_connection_ut(void)
 	connection_info.con_id.ip_proto = 6;
 	connection_info.con_id.sport = 4000;
 	connection_info.con_id.dport = 5000;
-	connection_info.rx_bytes = 500;
-	connection_info.rx_msgs = 5;
-	connection_info.tx_bytes = 600;
-	connection_info.tx_msgs = 6;
+	connection_info.con_stats.rx_bytes = 500;
+	connection_info.con_stats.rx_msgs = 5;
+	connection_info.con_stats.tx_bytes = 600;
+	connection_info.con_stats.tx_msgs = 6;
 
 	if ((rc = sr_stat_process_connection_hash_update(4455, &connection_info)) != SR_SUCCESS) {
 		sal_printf("sr_stat_process_connection_hash_update_process FAILED !!!\n");
@@ -307,10 +494,10 @@ void sr_stat_process_connection_ut(void)
 	connection_info.con_id.ip_proto = 6;
 	connection_info.con_id.sport = 4000;
 	connection_info.con_id.dport = 5000;
-	connection_info.rx_bytes = 100;
-	connection_info.rx_msgs = 10;
-	connection_info.tx_bytes = 200;
-	connection_info.tx_msgs = 20;
+	connection_info.con_stats.rx_bytes = 100;
+	connection_info.con_stats.rx_msgs = 10;
+	connection_info.con_stats.tx_bytes = 200;
+	connection_info.con_stats.tx_msgs = 20;
 
 	if ((rc = sr_stat_process_connection_hash_update(4455, &connection_info)) != SR_SUCCESS) {
 		sal_printf("sr_stat_process_connection_hash_update_process FAILED !!!\n");
@@ -327,10 +514,10 @@ void sr_stat_process_connection_ut(void)
 	connection_info.con_id.ip_proto = 6;
 	connection_info.con_id.sport = 4001;
 	connection_info.con_id.dport = 5001;
-	connection_info.rx_bytes = 100;
-	connection_info.rx_msgs = 10;
-	connection_info.tx_bytes = 200;
-	connection_info.tx_msgs = 20;
+	connection_info.con_stats.rx_bytes = 100;
+	connection_info.con_stats.rx_msgs = 10;
+	connection_info.con_stats.tx_bytes = 200;
+	connection_info.con_stats.tx_msgs = 20;
 
 	if ((rc = sr_stat_process_connection_hash_update(4455, &connection_info)) != SR_SUCCESS) {
 		sal_printf("sr_stat_process_connection_hash_update_process FAILED !!!\n");
@@ -348,10 +535,10 @@ void sr_stat_process_connection_ut(void)
 	connection_info.con_id.ip_proto = 6;
 	connection_info.con_id.sport = 4002;
 	connection_info.con_id.dport = 5002;
-	connection_info.rx_bytes = 400;
-	connection_info.rx_msgs = 40;
-	connection_info.tx_bytes = 500;
-	connection_info.tx_msgs = 50;
+	connection_info.con_stats.rx_bytes = 400;
+	connection_info.con_stats.rx_msgs = 40;
+	connection_info.con_stats.tx_bytes = 500;
+	connection_info.con_stats.tx_msgs = 50;
 
 	if ((rc = sr_stat_process_connection_hash_update(4456, &connection_info)) != SR_SUCCESS) {
 		sal_printf("sr_stat_process_connection_hash_update_process FAILED !!!\n");
@@ -370,10 +557,10 @@ void sr_stat_process_connection_ut(void)
 	connection_info.con_id.ip_proto = 6;
 	connection_info.con_id.sport = 4003;
 	connection_info.con_id.dport = 5003;
-	connection_info.rx_bytes = 70;
-	connection_info.rx_msgs = 7;
-	connection_info.tx_bytes = 50;
-	connection_info.tx_msgs = 5;
+	connection_info.con_stats.rx_bytes = 70;
+	connection_info.con_stats.rx_msgs = 7;
+	connection_info.con_stats.tx_bytes = 50;
+	connection_info.con_stats.tx_msgs = 5;
 
 	if ((rc = sr_stat_process_connection_hash_update(4456, &connection_info)) != SR_SUCCESS) {
 		sal_printf("sr_stat_process_connection_hash_update_process FAILED !!!\n");
@@ -393,10 +580,10 @@ void sr_stat_process_connection_ut(void)
 	connection_info.con_id.ip_proto = 6;
 	connection_info.con_id.sport = 4003;
 	connection_info.con_id.dport = 5003;
-	connection_info.rx_bytes = 10;
-	connection_info.rx_msgs = 1;
-	connection_info.tx_bytes = 10;
-	connection_info.tx_msgs = 1;
+	connection_info.con_stats.rx_bytes = 10;
+	connection_info.con_stats.rx_msgs = 1;
+	connection_info.con_stats.tx_bytes = 10;
+	connection_info.con_stats.tx_msgs = 1;
 
 	if ((rc = sr_stat_process_connection_hash_update(4456, &connection_info)) != SR_SUCCESS) {
 		sal_printf("sr_stat_process_connection_hash_update_process FAILED !!!\n");
@@ -416,10 +603,10 @@ void sr_stat_process_connection_ut(void)
 	connection_info.con_id.ip_proto = 6;
 	connection_info.con_id.sport = 4004;
 	connection_info.con_id.dport = 5004;
-	connection_info.rx_bytes = 10;
-	connection_info.rx_msgs = 1;
-	connection_info.tx_bytes = 10;
-	connection_info.tx_msgs = 1;
+	connection_info.con_stats.rx_bytes = 10;
+	connection_info.con_stats.rx_msgs = 1;
+	connection_info.con_stats.tx_bytes = 10;
+	connection_info.con_stats.tx_msgs = 1;
 
 	if ((rc = sr_stat_process_connection_hash_update(4460, &connection_info)) != SR_SUCCESS) {
 		sal_printf("sr_stat_process_connection_hash_update_process FAILED !!!\n");
@@ -431,10 +618,10 @@ void sr_stat_process_connection_ut(void)
 	connection_info.con_id.ip_proto = 6;
 	connection_info.con_id.sport = 4005;
 	connection_info.con_id.dport = 5005;
-	connection_info.rx_bytes = 10;
-	connection_info.rx_msgs = 1;
-	connection_info.tx_bytes = 10;
-	connection_info.tx_msgs = 1;
+	connection_info.con_stats.rx_bytes = 10;
+	connection_info.con_stats.rx_msgs = 1;
+	connection_info.con_stats.tx_bytes = 10;
+	connection_info.con_stats.tx_msgs = 1;
 
 	if ((rc = sr_stat_process_connection_hash_update(4461, &connection_info)) != SR_SUCCESS) {
 		sal_printf("sr_stat_process_connection_hash_update_process FAILED !!!\n");
@@ -447,10 +634,10 @@ void sr_stat_process_connection_ut(void)
 	connection_info.con_id.ip_proto = 6;
 	connection_info.con_id.sport = 4006;
 	connection_info.con_id.dport = 5006;
-	connection_info.rx_bytes = 19;
-	connection_info.rx_msgs = 5;
-	connection_info.tx_bytes = 20;
-	connection_info.tx_msgs = 7;
+	connection_info.con_stats.rx_bytes = 19;
+	connection_info.con_stats.rx_msgs = 5;
+	connection_info.con_stats.tx_bytes = 20;
+	connection_info.con_stats.tx_msgs = 7;
 
 	if ((rc = sr_stat_process_connection_hash_update(5455, &connection_info)) != SR_SUCCESS) {
 		sal_printf("sr_stat_process_connection_hash_update_process FAILED !!!\n");
@@ -503,10 +690,10 @@ void sr_stat_process_connection_ut(void)
 	connection_info.con_id.ip_proto = 6;
 	connection_info.con_id.sport = 4007;
 	connection_info.con_id.dport = 5007;
-	connection_info.rx_bytes = 19;
-	connection_info.rx_msgs = 5;
-	connection_info.tx_bytes = 20;
-	connection_info.tx_msgs = 7;
+	connection_info.con_stats.rx_bytes = 19;
+	connection_info.con_stats.rx_msgs = 5;
+	connection_info.con_stats.tx_bytes = 20;
+	connection_info.con_stats.tx_msgs = 7;
 
 	if ((rc = sr_stat_process_connection_hash_update(5455, &connection_info)) != SR_SUCCESS) {
 		sal_printf("sr_stat_process_connection_hash_update_process FAILED !!!\n");
@@ -517,10 +704,10 @@ void sr_stat_process_connection_ut(void)
 	connection_info.con_id.ip_proto = 6;
 	connection_info.con_id.sport = 4008;
 	connection_info.con_id.dport = 5008;
-	connection_info.rx_bytes = 19;
-	connection_info.rx_msgs = 5;
-	connection_info.tx_bytes = 20;
-	connection_info.tx_msgs = 7;
+	connection_info.con_stats.rx_bytes = 19;
+	connection_info.con_stats.rx_msgs = 5;
+	connection_info.con_stats.tx_bytes = 20;
+	connection_info.con_stats.tx_msgs = 7;
 
 	if ((rc = sr_stat_process_connection_hash_update(5455, &connection_info)) != SR_SUCCESS) {
 		sal_printf("sr_stat_process_connection_hash_update_process FAILED !!!\n");
@@ -531,10 +718,10 @@ void sr_stat_process_connection_ut(void)
 	connection_info.con_id.ip_proto = 6;
 	connection_info.con_id.sport = 4009;
 	connection_info.con_id.dport = 5009;
-	connection_info.rx_bytes = 19;
-	connection_info.rx_msgs = 5;
-	connection_info.tx_bytes = 20;
-	connection_info.tx_msgs = 7;
+	connection_info.con_stats.rx_bytes = 19;
+	connection_info.con_stats.rx_msgs = 5;
+	connection_info.con_stats.tx_bytes = 20;
+	connection_info.con_stats.tx_msgs = 7;
 
 	if ((rc = sr_stat_process_connection_hash_update(5455, &connection_info)) != SR_SUCCESS) {
 		sal_printf("sr_stat_process_connection_hash_update_process FAILED !!!\n");
@@ -545,10 +732,10 @@ void sr_stat_process_connection_ut(void)
 	connection_info.con_id.ip_proto = 6;
 	connection_info.con_id.sport = 4010;
 	connection_info.con_id.dport = 5010;
-	connection_info.rx_bytes = 19;
-	connection_info.rx_msgs = 5;
-	connection_info.tx_bytes = 20;
-	connection_info.tx_msgs = 7;
+	connection_info.con_stats.rx_bytes = 19;
+	connection_info.con_stats.rx_msgs = 5;
+	connection_info.con_stats.tx_bytes = 20;
+	connection_info.con_stats.tx_msgs = 7;
 
 	if ((rc = sr_stat_process_connection_hash_update(5455, &connection_info)) != SR_SUCCESS) {
 		sal_printf("sr_stat_process_connection_hash_update_process FAILED !!!\n");
@@ -610,10 +797,10 @@ void sr_stat_process_connection_ut(void)
 	connection_info.con_id.ip_proto = 6;
 	connection_info.con_id.sport = 7000;
 	connection_info.con_id.dport = 8000;
-	connection_info.rx_bytes = 19;
-	connection_info.rx_msgs = 5;
-	connection_info.tx_bytes = 20;
-	connection_info.tx_msgs = 7;
+	connection_info.con_stats.rx_bytes = 19;
+	connection_info.con_stats.rx_msgs = 5;
+	connection_info.con_stats.tx_bytes = 20;
+	connection_info.con_stats.tx_msgs = 7;
 	if ((rc = sr_stat_process_connection_hash_update(7788, &connection_info)) != SR_SUCCESS) {
 		sal_printf("sr_stat_process_connection_hash_update_process FAILED !!!\n");
 		return;

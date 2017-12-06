@@ -31,7 +31,8 @@ static void handler(int signal)
 			sr_control_util(SR_CONTROL_PRINT_CONNECTIONS);
 			break;
 		case 12:
-			sr_stat_analysis_dump();
+			//sr_stat_analysis_dump();
+			sr_stat_analysis_learn_mode_set(SR_STAT_MODE_PROTECT);
 			//sr_control_util(SR_CONTROL_GARBAGE_COLLECTION);
 			break;
 		default:

@@ -54,5 +54,6 @@ SR_U32 sal_get_os(sal_os_t *os);
 #define DEFAULT_CAN4_INTERFACE "vcan4"	/* default virtual can interface, in case no config file detected */
 
 SR_U64 sal_get_time(void);
+SR_32 sal_get_process_name(SR_U32 pid, char *exe, SR_U32 size);
 
 #endif /* SAL_LINUX_ENGINE_H*/

@@ -11,6 +11,7 @@ void sr_event_stats_receiver(SR_8 *msg_buff, SR_U32 msg_len)
 {
 	SR_U32 offset = 0, rc;
 	struct sr_ec_connection_stat_t *pConStats;
+	struct sr_ec_connection_transmit_t *pConTran;
 	sr_stat_connection_info_t connection_info = {};
 
 	while (offset < msg_len) {
@@ -23,10 +24,10 @@ void sr_event_stats_receiver(SR_8 *msg_buff, SR_U32 msg_len)
 				connection_info.con_id.ip_proto = pConStats->con_id.ip_proto;
 				connection_info.con_id.sport = pConStats->con_id.sport;
 				connection_info.con_id.dport = pConStats->con_id.dport;
-				connection_info.tx_msgs = pConStats->tx_msgs;
-				connection_info.tx_bytes = pConStats->tx_bytes;
-				connection_info.rx_msgs = pConStats->rx_msgs;
-				connection_info.rx_bytes = pConStats->rx_bytes;
+				connection_info.con_stats.tx_msgs = pConStats->tx_msgs;
+				connection_info.con_stats.tx_bytes = pConStats->tx_bytes;
+				connection_info.con_stats.rx_msgs = pConStats->rx_msgs;
+				connection_info.con_stats.rx_bytes = pConStats->rx_bytes;
 #ifdef SR_STAT_ANALYSIS_DEBUG
 				if (pConStats->con_id.sport == 7777 || pConStats->con_id.dport == 7777 ||
 				    pConStats->con_id.sport == 22 || pConStats->con_id.dport == 22) { 
@@ -45,6 +46,14 @@ void sr_event_stats_receiver(SR_8 *msg_buff, SR_U32 msg_len)
 #endif
 				if ((rc = sr_stat_process_connection_hash_update(pConStats->pid, &connection_info)) != SR_SUCCESS) {
                 			sal_printf("sr_stat_process_connection_hash_update_process FAILED !!!\n");
+					break;	
+				}
+				break;
+			case SR_EVENT_STATS_CONNECTION_TRANSMIT:
+				pConTran = (struct sr_ec_connection_transmit_t *) &msg_buff[offset];
+				offset += sizeof(struct sr_ec_connection_transmit_t);
+				if ((rc = sr_stat_process_connection_hash_finish_transmit(pConTran->count)) != SR_SUCCESS) {
+                			sal_printf("sr_stat_process_connection_hash_exec_for_process FAILED !!!\n");
 					break;	
 				}
 				break;

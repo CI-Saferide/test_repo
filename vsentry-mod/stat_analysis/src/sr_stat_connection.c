@@ -83,8 +83,9 @@ static SR_U32 sr_connection_increase_LRU_arr(LRU_container_t *LRU_container, SR_
 SR_U32 sr_connection_transmit(void)
 {
 	LRU_container_t *LRU_tmp;
-   	SR_U32 i, ind;
+   	SR_U32 i, ind, count = 0;
 	struct sr_ec_connection_stat_t con = {};
+	struct sr_ec_connection_transmit_t con_tran;
 
 	LRU_tmp = LRU_update;
 	LRU_update = LRU_transmit;
@@ -114,8 +115,11 @@ SR_U32 sr_connection_transmit(void)
 		con.rx_bytes= LRU_transmit->objects[i]->rx_bytes;
 		con.tx_msgs= LRU_transmit->objects[i]->tx_msgs;
 		con.tx_bytes= LRU_transmit->objects[i]->tx_bytes;
+		count++;
 		sr_ec_send_event(MOD2STAT_BUF, SR_EVENT_STATS_CONNECTION, &con);
 	}
+	con_tran.count = count;
+	sr_ec_send_event(MOD2STAT_BUF, SR_EVENT_STATS_CONNECTION_TRANSMIT, &con_tran);
 	SR_ATOMIC_SET(&(LRU_transmit->ind), -1);
 	if (LRU_allocate_more2) {
 #ifdef SR_STAT_ANALYSIS_DEBUG

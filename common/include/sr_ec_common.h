@@ -14,6 +14,7 @@ enum sr_event_type {
 #ifdef CONFIG_STAT_ANALYSIS
 enum sr_event_stats_type {
         SR_EVENT_STATS_CONNECTION,
+        SR_EVENT_STATS_CONNECTION_TRANSMIT,
         SR_EVENT_STATS_MAX_EVENT
 };
 #endif
@@ -58,6 +59,12 @@ struct sr_ec_connection_stat_t{
 #pragma pack(push, 1)
 struct sr_ec_process_died_t{
 	SR_U32 pid;
+};
+#pragma pack(pop)
+
+#pragma pack(push, 1)
+struct sr_ec_connection_transmit_t{
+	SR_U32 count;
 };
 #pragma pack(pop)
 #endif 

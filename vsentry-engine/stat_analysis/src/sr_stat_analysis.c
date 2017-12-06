@@ -6,6 +6,7 @@
 #include <stdio.h>
 
 static SR_U64 last_aging;
+static sr_stat_mode_t stat_mode;
 
 SR_32 sr_stat_analysis_init(void)
 {
@@ -17,6 +18,7 @@ SR_32 sr_stat_analysis_init(void)
 	}
 	t = sal_get_time();
 	last_aging = t;
+	stat_mode = SR_STAT_MODE_LEARN;
 
 	return SR_SUCCESS;
 }
@@ -93,3 +95,15 @@ SR_32 sr_stat_analysis_process_died(SR_U32 pid)
 
 	return SR_SUCCESS;
 }
+
+sr_stat_mode_t sr_stat_analysis_learn_mode_get(void)
+{
+	return stat_mode;
+} 
+
+void sr_stat_analysis_learn_mode_set(sr_stat_mode_t new_stat_mode)
+{
+	if (new_stat_mode == SR_STAT_MODE_PROTECT && stat_mode == SR_STAT_MODE_LEARN)
+		st_stats_process_connection_protect();
+	stat_mode = new_stat_mode;
+} 

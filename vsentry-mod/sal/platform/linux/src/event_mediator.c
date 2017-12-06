@@ -884,25 +884,25 @@ SR_32 vsentry_socket_sendmsg(struct socket *sock,struct msghdr *msg,SR_32 size)
 				return 0;
 #ifdef CONFIG_STAT_ANALYSIS
 			con.con_id.saddr.v4addr = ntohl(sock->sk->sk_rcv_saddr);
-        	con.con_id.daddr.v4addr = ntohl(sock->sk->sk_daddr);
-        	con.con_id.ip_proto = sock->sk->sk_protocol;
+			con.con_id.daddr.v4addr = ntohl(sock->sk->sk_daddr);
+			con.con_id.ip_proto = sock->sk->sk_protocol;
 			/* Strange : sk_num is host order, sk_dport is network oredr WTF? */
-        	con.con_id.sport = sock->sk->sk_num;
-        	con.con_id.dport = ntohs(sock->sk->sk_dport);
-        	con.pid = current->pid;
+			con.con_id.sport = sock->sk->sk_num;
+			con.con_id.dport = ntohs(sock->sk->sk_dport);
+			con.pid = current->tgid;
 
 			if ((conp = sr_stat_connection_lookup(&con.con_id))) {
-				if ((rc = sr_stat_connection_update_counters(conp, current->pid, 0, 0, size, 1)) != SR_SUCCESS) {
+				if ((rc = sr_stat_connection_update_counters(conp, current->tgid, 0, 0, size, 1)) != SR_SUCCESS) {
                 			sal_printf("ERROR failed sr_stat_connection_update_counters\n");
                 			return 0;
 				}
 			} else {
 				con.tx_bytes = size;
 				con.tx_msgs = 1;
-        		if ((rc = sr_stat_connection_insert(&con, 0)) != SR_SUCCESS) {
-                		sal_printf("ERROR failed sr_stat_connection_insert\n");
-                		return 0;
-        		}
+        			if ((rc = sr_stat_connection_insert(&con, 0)) != SR_SUCCESS) {
+                			sal_printf("ERROR failed sr_stat_connection_insert\n");
+                			return 0;
+        			}
 			}
 #endif
 
@@ -971,11 +971,11 @@ int vsentry_socket_recvmsg(struct socket *sock,struct msghdr *msg,int size,int f
 				/* Strange : sk_num is host order, sk_dport is network oredr WTF? */
         			con.con_id.sport = sock->sk->sk_num;
         			con.con_id.dport = ntohs(sock->sk->sk_dport);
-				con.pid = current->pid;
+				con.pid = current->tgid;
 
 				if ((conp = sr_stat_connection_lookup(&con.con_id))) {
 					/* update pid */
-					conp->pid = current->pid;
+					conp->pid = current->tgid;
 				} else {
 					/* Create a connection */
 					if (sr_stat_connection_insert(&con, 0) != SR_SUCCESS) {
@@ -997,7 +997,7 @@ int vsentry_socket_recvmsg(struct socket *sock,struct msghdr *msg,int size,int f
        			disp.tuple_info.ip_proto = sock->sk->sk_protocol;
 
 #ifdef CONFIG_STAT_ANALYSIS
-			sr_stat_port_update(disp.tuple_info.dport, current->pid);
+			sr_stat_port_update(disp.tuple_info.dport, current->tgid);
 #endif
 				
 #ifdef DEBUG_EVENT_MEDIATOR
@@ -1063,7 +1063,8 @@ void vsentry_task_free(struct task_struct *task)
 	if (!task)
 		return;
 	sr_cls_process_del(task->pid);
-#ifdef CONFIG_STAT_ANALYSIS
+// It is a problem to send process die message since its intefiere with rate tracking.
+#if 0  
 	sr_stat_analysis_report_porcess_die(task->pid);
 #endif
 }
