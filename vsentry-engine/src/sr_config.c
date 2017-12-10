@@ -24,6 +24,7 @@
 #endif
 #endif
 
+#ifdef SR_STAT_ANALYSIS_DEBUG
 static void handler(int signal)
 {
 	switch (signal) { 
@@ -41,6 +42,7 @@ static void handler(int signal)
 			break;
  	}
 }
+#endif
 
 static char filename[] = "sr_engine.cfg";
 
@@ -342,8 +344,10 @@ SR_BOOL config_ut(void)
 	struct sr_log_entry			log_rec = {0};
 #endif
 
+#ifdef SR_STAT_ANALYSIS_DEBUG
 	signal(10, handler);
 	signal(12, handler);
+#endif
 
 #if 0
 	sr_stat_learn_rule_ut();
