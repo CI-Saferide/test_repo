@@ -4,6 +4,7 @@
 
 #define SR_DIR_SRC 0
 #define SR_DIR_DST 1
+#define PORT_ANY 0
 
 enum {
 	SR_CLS_IPV4_DEL_RULE = 0,

@@ -3,6 +3,8 @@
 #include "sr_types.h"
 #include "sr_actions_common.h" 
 
+#define UID_ANY -1
+
 enum {
 	SR_CLS_UID_DEL_RULE = 0,
 	SR_CLS_UID_ADD_RULE,

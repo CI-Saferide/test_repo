@@ -172,25 +172,25 @@ SR_32 sr_classifier_file(disp_info_t* info)
 	memset(&ba_res, 0, sizeof(bit_array));
 
 	sal_or_self_op_arrays(&ba_res, sr_cls_file_any());
-	if (info->fileinfo.current_inode) {
+	if (info->fileinfo.current_inode != INODE_ANY) {
 		ptr = sr_cls_file_find(info->fileinfo.current_inode);
 		if (ptr) {
 			sal_or_self_op_arrays(&ba_res, ptr);
 		}
         }
-	if (info->fileinfo.parent_inode) {
+	if (info->fileinfo.parent_inode != INODE_ANY) {
 		ptr = sr_cls_file_find(info->fileinfo.parent_inode);
 		if (ptr) {
 			sal_or_self_op_arrays(&ba_res, ptr);
 		}
 	}
-	if (info->fileinfo.old_inode) {
+	if (info->fileinfo.old_inode != INODE_ANY) {
 		ptr = sr_cls_file_find(info->fileinfo.old_inode);
 		if (ptr) {
 			sal_or_self_op_arrays(&ba_res, ptr);
 		}
 	}
-	if (info->fileinfo.old_parent_inode) {
+	if (info->fileinfo.old_parent_inode != INODE_ANY) {
 		ptr = sr_cls_file_find(info->fileinfo.old_parent_inode);
 		if (ptr) {
 			sal_or_self_op_arrays(&ba_res, ptr);
@@ -257,14 +257,16 @@ SR_32 sr_classifier_canbus(disp_info_t* info)
 	SR_16 rule;
 	SR_U16 action;
 	int st;
+	
+	memset(&ba_res, 0, sizeof(bit_array));
 
 	ptr = sr_cls_match_canid(info->can_info.msg_id);
 
-	if (!ptr) {
-		//sal_kernel_print_alert("sr_classifier_canID: No matching rule!\n");
-		return SR_CLS_ACTION_ALLOW;
+	if (ptr) {
+		sal_or_op_arrays(ptr, src_cls_canid_any(), &ba_res);
+	} else { // take only src/any
+		sal_or_self_op_arrays(&ba_res, src_cls_canid_any());
 	}
-	memcpy(&ba_res, ptr, sizeof(bit_array)); // Perform arbitration
 
 	if (info->can_info.id.pid) { 
 	    if ((st = sr_cls_process_add(info->can_info.id.pid)) != SR_SUCCESS) {

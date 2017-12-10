@@ -9,9 +9,12 @@
 
 #define HT_canid_SIZE 32
 struct sr_hash_table_t *sr_cls_canid_table;
+bit_array sr_cls_canid_any_rules;
 
 int sr_cls_canid_init(void)
 {
+	
+	memset(&sr_cls_canid_any_rules, 0, sizeof(bit_array));
 	sr_cls_canid_table = sr_hash_new_table(HT_canid_SIZE);
 	if (!sr_cls_canid_table) {
 		sal_printf("[%s]: Failed to allocate CAN MsgID table!\n", MODULE_NAME);
@@ -39,7 +42,7 @@ void sr_cls_canid_uninit(void)
 				sal_printf("hash_index[%d] - DELETEING\n",i);
 				curr = sr_cls_canid_table->buckets[i].head;				
 				while (curr != NULL){
-					sal_printf("\t\tCAN MsgID: %u\n",curr->key);
+					sal_printf("\t\tCAN MsgID: %x\n",curr->key);
 					sr_cls_print_canid_rules(curr->key);
 					next = curr->next;
 					SR_FREE(curr);
@@ -57,44 +60,64 @@ void sr_cls_canid_uninit(void)
 	}
 }
 
-void sr_cls_canid_remove(SR_U32 canid)
+bit_array *src_cls_canid_any(void)
+{
+	return &sr_cls_canid_any_rules;
+}
+
+
+void sr_cls_canid_remove(SR_32 canid)
 { 
 	sr_hash_delete(sr_cls_canid_table, canid);
 }
 
-int sr_cls_canid_add_rule(SR_U32 canid, SR_U32 rulenum)
+int sr_cls_canid_add_rule(SR_32 canid, SR_U32 rulenum)
 {
 	struct sr_hash_ent_t *ent;
 	
-	ent=sr_hash_lookup(sr_cls_canid_table, canid);
-	if (!ent) {		
-		ent = SR_ZALLOC(sizeof(*ent)); // <-A MINE!!!
-		if (!ent) {
-			sal_printf("Error: Failed to allocate memory\n");
-			return SR_ERROR;
-		} else {
-			ent->ent_type = CAN_MID;
-			ent->key = (SR_U32)canid;
-			sr_hash_insert(sr_cls_canid_table,ent);
-		}	
-	}	
-	sal_set_bit_array(rulenum, &ent->rules);
-	sal_printf("\t\trule# %u assigned to CAN MsgID: %u\n",rulenum,canid);	
+	if(canid != MSGID_ANY) { 
+               /////////////////////////////////////////////////////////////////////////
+              /*The 0 msgID is a valid number in the canbus protocol. 
+                * but need to check if its really being used in the Automotive industry
+                * or we gonna need to change our * = 0 = ANY convention here...*/ 
+                ////////////////////////////////////////////////////////////////////////
+		ent=sr_hash_lookup(sr_cls_canid_table, canid);
+		if (!ent) {             
+			ent = SR_ZALLOC(sizeof(*ent)); // <-A MINE!!!
+			if (!ent) {
+				sal_printf("Error: Failed to allocate memory\n");
+				return SR_ERROR;
+			} else {
+				ent->ent_type = CAN_MID;
+				ent->key = (SR_U32)canid;
+				sr_hash_insert(sr_cls_canid_table,ent);
+			}       
+		}       
+
+		sal_set_bit_array(rulenum, &ent->rules);
+	}else{
+		sal_set_bit_array(rulenum, &sr_cls_canid_any_rules);
+	}
+	sal_printf("\t\trule# %u assigned to CAN MsgID: %x\n",rulenum,canid);	
 	return SR_SUCCESS;
 }
-int sr_cls_canid_del_rule(SR_U32 canid, SR_U32 rulenum)
-{
-	struct sr_hash_ent_t *ent=sr_hash_lookup(sr_cls_canid_table, canid);
-	if (!ent) {
-		sal_printf("Error can't del rule# %u on CAN MsgID:%u - rule not found\n",rulenum,canid);
-		return SR_ERROR;
-	}
-	sal_clear_bit_array(rulenum, &ent->rules);
 
-	if (!ent->rules.summary) {
-		sr_cls_canid_remove(canid);
+int sr_cls_canid_del_rule(SR_32 canid, SR_U32 rulenum)
+{    
+	if(canid != MSGID_ANY) { 
+		struct sr_hash_ent_t *ent=sr_hash_lookup(sr_cls_canid_table, canid);         
+		if (!ent) {
+			sal_printf("Error can't del rule# %u on CAN MsgID:%x - rule not found\n",rulenum,canid);
+			return SR_ERROR;
+		}
+		sal_clear_bit_array(rulenum, &ent->rules);
+		if (!ent->rules.summary) {
+			sr_cls_canid_remove(canid);
+		}
+	}else{
+		sal_clear_bit_array(rulenum, &sr_cls_canid_any_rules);
 	}
-	sal_printf("\t\trule# %u removed from CAN MsgID: %u\n",rulenum,canid);
+	sal_printf("\t\trule# %u removed from CAN MsgID: %x\n",rulenum,canid);
 	return SR_SUCCESS;
 }
 
@@ -110,7 +133,7 @@ void print_table_canid(struct sr_hash_table_t *table)
 				sal_printf("hash_index[%d]\n",i);
 				curr = sr_cls_canid_table->buckets[i].head;				
 				while (curr != NULL){
-					sal_printf("\t\tCAN MsgID: %u\n",curr->key);
+					sal_printf("\t\tCAN MsgID: %x\n",curr->key);
 					sr_cls_print_canid_rules(curr->key);
 					next = curr->next;
 					curr= next;
@@ -125,17 +148,17 @@ void print_table_canid(struct sr_hash_table_t *table)
 }
 
 
-struct sr_hash_ent_t *sr_cls_canid_find(SR_U32 canid)
+struct sr_hash_ent_t *sr_cls_canid_find(SR_32 canid)
 {
 	struct sr_hash_ent_t *ent=sr_hash_lookup(sr_cls_canid_table, canid);
 	if (!ent) {
-		sal_printf("Error:%u CAN MsgID not found\n",canid);
+		sal_printf("Error:%x CAN MsgID not found\n",canid);
 		return NULL;
 	}
 	return ent;
 }
 
-void sr_cls_print_canid_rules(SR_U32 canid)
+void sr_cls_print_canid_rules(SR_32 canid)
 {
 	struct sr_hash_ent_t *ent=sr_hash_lookup(sr_cls_canid_table, canid);
 	bit_array rules;
@@ -144,7 +167,7 @@ void sr_cls_print_canid_rules(SR_U32 canid)
 	sal_memset(&rules, 0, sizeof(rules));
 
 	if (!ent) {
-		sal_printf("Error:%u CAN MsgID rule not found\n",canid);
+		sal_printf("Error:%x CAN MsgID rule not found\n",canid);
 		return;
 	}
 	sal_or_self_op_arrays(&rules, &ent->rules);
@@ -154,7 +177,7 @@ void sr_cls_print_canid_rules(SR_U32 canid)
 	
 }
 
-bit_array *sr_cls_match_canid(SR_U32 canid)
+bit_array *sr_cls_match_canid(SR_32 canid)
 {
 	struct sr_hash_ent_t *ent=sr_hash_lookup(sr_cls_canid_table, canid);
 
@@ -170,14 +193,14 @@ SR_8 sr_cls_canid_msg_dispatch(struct sr_cls_canbus_msg *msg)
 
 	switch (msg->msg_type) {
 		case SR_CLS_CANID_DEL_RULE:
-			sal_kernel_print_alert("Delete rule %d from %d\n", msg->rulenum, msg->canid);
+			sal_kernel_print_alert("Delete rule %d from %x\n", msg->rulenum, msg->canid);
 			if ((st =  sr_cls_canid_del_rule(msg->canid, msg->rulenum)) != SR_SUCCESS)
 			   return st;
 			if ((st = sr_cls_exec_inode_del_rule(SR_CAN_RULES, msg->exec_inode, msg->rulenum)) != SR_SUCCESS)
 			   return st;
 			return sr_cls_uid_del_rule(SR_CAN_RULES, msg->uid, msg->rulenum);
 		case SR_CLS_CANID_ADD_RULE:
-			sal_kernel_print_alert("Add rule %d uid:%d  to %d \n", msg->rulenum, msg->uid, msg->canid);
+			sal_kernel_print_alert("Add rule %d uid:%d  to %x \n", msg->rulenum, msg->uid, msg->canid);
 			if ((st = sr_cls_canid_add_rule(msg->canid, msg->rulenum)) != SR_SUCCESS)
 			   return st;
 			if ((st =  sr_cls_exec_inode_add_rule(SR_CAN_RULES, msg->exec_inode, msg->rulenum)) != SR_SUCCESS)

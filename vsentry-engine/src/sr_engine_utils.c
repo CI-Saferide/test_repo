@@ -1,6 +1,8 @@
 #include "sr_engine_utils.h"
 #include "sr_types.h"
 #include "sr_sal_common.h"
+#include "sr_cls_uid_common.h"
+#include "sr_cls_file_common.h"
 
 SR_U8 sr_get_inode(char *file_name, int is_dir, SR_U32 *inode)
 {
@@ -17,7 +19,7 @@ SR_U8 sr_get_inode(char *file_name, int is_dir, SR_U32 *inode)
 	    }
 	    *inode = buf.st_ino;
 	} else {
-	    *inode = 0;
+	    *inode = INODE_ANY;
  	}
 
 	return SR_SUCCESS;
@@ -27,6 +29,6 @@ SR_U8 sr_get_inode(char *file_name, int is_dir, SR_U32 *inode)
 SR_32 sr_get_uid(char *user) 
 {
 	if (!user || *user == '*')
-		return -1;
+		return UID_ANY;
 	return sal_get_uid(user);
 }

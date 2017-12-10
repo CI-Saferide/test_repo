@@ -105,7 +105,7 @@ bit_array *sr_cls_file_any(void)
 }
 int sr_cls_inode_add_rule(SR_U32 inode, SR_U32 rulenum)
 {
-	if (likely(inode)) {
+	if (likely(inode != INODE_ANY)) {
 		struct sr_hash_ent_t *ent=sr_hash_lookup(sr_cls_file_table, inode);
 		if (!ent) {
 			ent = SR_ZALLOC(sizeof(*ent));
@@ -129,7 +129,7 @@ int sr_cls_inode_add_rule(SR_U32 inode, SR_U32 rulenum)
 // treetop: 1 for the first call, 0 for recursive calls further down.
 int sr_cls_inode_del_rule(SR_U32 inode, SR_U32 rulenum)
 {
-	if (likely(inode)) {
+	if (likely(inode != INODE_ANY)) {
 		struct sr_hash_ent_t *ent=sr_hash_lookup(sr_cls_file_table, inode);
 		if (!ent) {
 			sal_kernel_print_alert("Error: inode rule not found\n");
