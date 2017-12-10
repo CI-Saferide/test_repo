@@ -34,12 +34,12 @@ SR_32 engine_main_loop(void *data)
 	SR_32 ret;
 	SR_8 *msg;
 
-	sal_printf("engine_main_loop started\n");
+	printf("engine_main_loop started\n");
 
 	/* init the module2engine buffer*/
 	ret = sr_msg_alloc_buf(MOD2ENG_BUF, MAX_BUFFER_SIZE);
 	if (ret != SR_SUCCESS){
-		sal_printf("failed to init MOD2ENG msg_buf\n");
+		printf("failed to init MOD2ENG msg_buf\n");
 		return SR_ERROR;
 	}
 
@@ -57,7 +57,7 @@ SR_32 engine_main_loop(void *data)
 	/* free allocated buffer */
 	sr_msg_free_buf(MOD2ENG_BUF);
 
-	sal_printf("engine_main_loop end\n");
+	printf("engine_main_loop end\n");
 
 	return SR_SUCCESS;
 }
@@ -88,11 +88,11 @@ SR_32 sr_engine_start(void)
 	SR_U8 run = 1;
 	FILE *f;
 
-	sal_printf("vsentry engine started\n");
+	printf("vsentry engine started\n");
 
 	ret = sr_log_init("[vsentry]", 0);
 	if (ret != SR_SUCCESS){
-		sal_printf("failed to init sr_log\n");
+		printf("failed to init sr_log\n");
 		return SR_ERROR;
 	}
 
@@ -112,7 +112,7 @@ SR_32 sr_engine_start(void)
 
 	ret = sr_ml_conngraph_init();
 	if (ret != SR_SUCCESS){
-		sal_printf("failed to init sr_ml_conngraph\n");
+		printf("failed to init sr_ml_conngraph\n");
 		return SR_ERROR;
 	}
 
@@ -120,24 +120,25 @@ SR_32 sr_engine_start(void)
 	if (ret != SR_SUCCESS) {
 		sal_printf("failed to start engine_main_loop\n");
 		sr_stop_task(SR_INFO_GATHER_TASK);
+
 		return SR_ERROR;
 	}
 
 	ret = sr_msg_alloc_buf(ENG2MOD_BUF, MAX_BUFFER_SIZE);
 	if (ret != SR_SUCCESS){
-		sal_printf("failed to init ENG2MOD msg_buf\n");
+		printf("failed to init ENG2MOD msg_buf\n");
 		return SR_ERROR;
 	}
 
 	ret = sr_file_hash_init();
 	if (ret != SR_SUCCESS){
-		sal_printf("failed to init file_hash\n");
+		printf("failed to init file_hash\n");
 		return SR_ERROR;
 	}
 
 	ret = sr_create_filter_paths();
 	if (ret != SR_SUCCESS){
-		sal_printf("failed to init sr_create_fileter_faths\n");
+		printf("failed to init sr_create_fileter_faths\n");
 		return SR_ERROR;
 	}
 
@@ -147,12 +148,12 @@ SR_32 sr_engine_start(void)
 	if(config_params.collector_enable){
 		ret = sr_start_task(SR_CAN_COLLECT_TASK, can_collector_init);
 		if (ret != SR_SUCCESS) {
-			sal_printf("Failed to start CAN-Bus Collector\n");
+			printf("Failed to start CAN-Bus Collector\n");
 			return SR_ERROR;	
 		}	
-		sal_printf("CAN-Bus Collector - ENABLED!\n");
+		printf("CAN-Bus Collector - ENABLED!\n");
 	} else {
-		sal_printf("CAN-Bus Collector - DISABLED!\n");
+		printf("CAN-Bus Collector - DISABLED!\n");
 	}
 	/* indicate VPI that we are running */
 	f = fopen("/tmp/sec_state", "w");
@@ -174,10 +175,10 @@ SR_32 sr_engine_start(void)
 				break;
 			case 'p':
 				can_args.can_print = !can_args.can_print;
-				sal_printf("\nCAN-Bus %s prints - Enable|Disable\n", can_args.can_interface);
+				printf("\nCAN-Bus %s prints - Enable|Disable\n", can_args.can_interface);
 				break;			
 			case 'v':
-				sal_printf("\nAvailable Space under %s is: %ld bytes\n",disk,sal_gets_space(disk));
+				printf("\nAvailable Space under %s is: %lld bytes\n",disk,sal_gets_space(disk));
 				break;				
 		}
 	}

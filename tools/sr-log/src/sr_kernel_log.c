@@ -25,7 +25,6 @@ char severity_strings[SEVERITY_MAX][10] = { "Unknown", "Low", "Medium", "High", 
 void CEF_log_event(SR_U32 cid, char *event_name, SR_U8 severity, char *extension)
 {
 	//printk("CEF:0|SafeRide|vSentry Mobile|1.0|%d|%s|%s|%s\n", cid, event_name, severity_strings[severity], extension);
-
 	struct CEF_payload *payload = (struct CEF_payload*)sr_get_msg(MOD2LOG_BUF, sizeof(struct CEF_payload));
 	
 	if (payload) {	

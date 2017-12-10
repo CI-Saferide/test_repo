@@ -392,8 +392,8 @@ SR_BOOL config_ut(void)
 	file_rec.process_size = strlen(file_rec.process);
 	file_rec.filename_size = strlen(file_rec.filename);
 	write_config_record(&file_rec, CONFIG_FILE_RULE);
-		
-#endif
+#endif		
+
 	can_rec.rulenum=40;	
 	can_rec.msg_id=-1;		
 	can_rec.action.actions_bitmap=SR_CLS_ACTION_DROP;	
@@ -402,7 +402,7 @@ SR_BOOL config_ut(void)
 	//strncpy(can_rec.process, "*", strlen("*"));
 	can_rec.process_size = strlen(can_rec.process);
 	write_config_record(&can_rec, CONFIG_CAN_RULE);
-
+//#endif
 /*
 	//phone_rec.phone_id=17;
 	//strncpy(phone_rec.phone_number, "054-7653982", strlen("054-7653982"));

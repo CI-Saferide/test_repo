@@ -91,6 +91,11 @@ void log_print_cef_msg(CEF_payload *cef)
 		sal_strcpy(cef_class,"class N/A, ");	
 		break;
 	}
+	sprintf(cef_buffer,"%s CEF: %d| vendor %s|product %s|ver %d|%s|%s|%s\n",
+			buffer,cef->cef_version, cef->dev_vendor, cef->dev_product, cef->dev_version,cef_class,cef->name, cef->extension);
+		
+	log_cef_msg(cef_buffer);
+
 
 	sprintf(cef_buffer,"%s CEF: %d| vendor %s|product %s|ver %d|%s|%s|%s\n",
 			buffer,cef->cef_version, cef->dev_vendor, cef->dev_product, cef->dev_version,cef_class,cef->name, cef->extension);
@@ -102,8 +107,7 @@ SR_32 sr_log_init (const SR_8* app_name, SR_32 flags)
 {
 	sal_strcpy(g_app_name, (SR_8*)app_name);
 
-	sal_printf("Starting LOG module!\n");
-	
+	printf("Starting LOG module!\n");
 	return SR_SUCCESS;
 }
 
