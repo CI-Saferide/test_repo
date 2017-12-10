@@ -39,6 +39,17 @@ SR_32 sal_task_start(void **data, SR_32 (*task_func)(void *data))
 	return SR_SUCCESS;
 }
 
+
+SR_32 sal_wake_up_process(void *data)
+{
+	struct task_struct *thread = (struct task_struct *)data;
+	
+	wake_up_process(thread);
+
+	return SR_SUCCESS;
+}
+
+
 void sal_schedule_timeout(SR_U32 timeout)
 {
 	schedule_timeout_interruptible(usecs_to_jiffies(timeout));
@@ -185,3 +196,12 @@ SR_U32 sal_get_exec_inode(SR_32 pid)
 	return exe_file->f_path.dentry->d_inode->i_ino;
 }
 
+void sal_update_time_counter(SR_TIME_COUNT *time_count)
+{
+	*time_count = jiffies;
+}
+
+SR_32 sal_elapsed_time_secs(SR_TIME_COUNT time_count)
+{
+	return (jiffies - time_count) / HZ;
+}

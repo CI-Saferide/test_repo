@@ -12,6 +12,8 @@ EXTRA_CFLAGS += -I$(TOP_DIR)/main/include
 EXTRA_CFLAGS += -I$(TOP_DIR)/../tools/sr-log/include
 EXTRA_CFLAGS += -I$(TOP_DIR)/dispatcher/include
 EXTRA_CFLAGS += -I$(TOP_DIR)/scanner_det/include
+EXTRA_CFLAGS += -I$(TOP_DIR)/stat_analysis/include
+EXTRA_CFLAGS += -I$(TOP_DIR)/../common/stat_analysis/include
 
 #EXTRA_CFLAGS += -DUNIT_TEST
 #EXTRA_CFLAGS += -D_KERNEL
@@ -21,6 +23,9 @@ EXTRA_CFLAGS += -I$(TOP_DIR)/scanner_det/include
 #EXTRA_CFLAGS += -DSR_MSG_DEBUG
 #EXTRA_CFLAGS += -DSR_RB_DEBUG
 #EXTRA_CFLAGS += -DDEBUG_NETWORK
+
+EXTRA_CFLAGS += -DCONFIG_STAT_ANALYSIS
+EXTRA_CFLAGS += $(if $(SR_STAT_ANALYSIS_DEBUG),-DSR_STAT_ANALYSIS_DEBUG)
 
 ifneq ($(KERNELRELEASE),)
 
@@ -43,6 +48,10 @@ $(TARGET)-objs := sal/platform/linux/src/module_init.o \
 				  classifier/src/sr_cls_port.o \
 				  classifier/src/sr_cls_uid.o \
 				  classifier/src/sr_cls_canid.o \
+				  stat_analysis/src/sr_special_hash.o \
+				  stat_analysis/src/sr_stat_connection.o \
+				  stat_analysis/src/sr_stat_analysis.o \
+				  stat_analysis/src/sr_stat_port.o \
 				  ../tools/radix/src/sr_radix.o \
 				  ../tools/sr-hash/src/sr_hash.o \
 				  ../tools/sr-log/src/sr_kernel_log.o \
@@ -52,6 +61,7 @@ $(TARGET)-objs := sal/platform/linux/src/module_init.o \
 				  sal/test/sal_bitops_test.o \
 				  main/src/main_loop.o \
 				  ../common/src/sr_ring_buf.o \
+				  ../common/src/sr_cyclic_array.o \
 				  sal/platform/linux/src/sal_shmem_linux.o \
 				  ../common/src/sr_msg.o \
 				  ../common/src/sr_tasks.o \

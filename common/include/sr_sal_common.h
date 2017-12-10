@@ -15,6 +15,7 @@ SR_32 sal_sprintf(SR_8 *str, SR_8 *fmt, ...);
 void sal_printf(SR_8 *fmt, ...);
 SR_32 sal_task_stop(void *data);
 SR_32 sal_task_start(void **data, SR_32 (*task_func)(void *data));
+SR_32 sal_wake_up_process(void *data);
 void sal_schedule_timeout(SR_U32 timeout);
 void sal_schedule(void);
 SR_8 *sal_strstr(SR_8 *haystack, SR_8 *needle);

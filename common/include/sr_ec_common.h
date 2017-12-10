@@ -7,8 +7,17 @@
 enum sr_event_type {
         SR_EVENT_NEW_CONNECTION,
         SR_EVENT_FILE_CREATED,
+        SR_EVENT_PROCESS_DIED,
         SR_EVENT_MAX_EVENT
 };
+
+#ifdef CONFIG_STAT_ANALYSIS
+enum sr_event_stats_type {
+        SR_EVENT_STATS_CONNECTION,
+        SR_EVENT_STATS_CONNECTION_TRANSMIT,
+        SR_EVENT_STATS_MAX_EVENT
+};
+#endif
 
 #pragma pack(push, 1)
 struct sr_ec_new_connection_t{
@@ -35,7 +44,29 @@ struct sr_ec_file_t{
 };
 #pragma pack(pop)
 
+#ifdef CONFIG_STAT_ANALYSIS
+#pragma pack(push, 1)
+struct sr_ec_connection_stat_t{
+	struct sr_ec_new_connection_t con_id;
+	SR_U32 pid;
+	SR_U32 rx_msgs;
+	SR_U32 rx_bytes;
+	SR_U32 tx_msgs;
+	SR_U32 tx_bytes;
+};
+#pragma pack(pop)
 
+#pragma pack(push, 1)
+struct sr_ec_process_died_t{
+	SR_U32 pid;
+};
+#pragma pack(pop)
 
+#pragma pack(push, 1)
+struct sr_ec_connection_transmit_t{
+	SR_U32 count;
+};
+#pragma pack(pop)
+#endif 
 
 #endif /* SR_EC_COMMON_H */

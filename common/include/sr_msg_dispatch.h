@@ -11,6 +11,9 @@
 #include "sr_cls_port_common.h"
 #include "sr_control_common.h"
 #include "sr_actions_common.h"
+#ifdef CONFIG_STAT_ANALYSIS
+#include "sr_stat_analysis_common.h"
+#endif
 
 typedef enum {
 	SR_MSG_TYPE_DEFAULT=0,
@@ -23,6 +26,9 @@ typedef enum {
 	SR_MSG_TYPE_CONTROL,
 	SR_MSG_TYPE_CLS_CLEANUP_NOLOCK,	
 	SR_MSG_TYPE_CLS_FILTER_PATH,
+#ifdef CONFIG_STAT_ANALYSIS
+	SR_MSG_TYPE_STAT_ANALYSIS,
+#endif
 } sr_msg_dispatch_type;
 
 #pragma pack(push, 1)
@@ -71,6 +77,13 @@ typedef struct {
 	SR_8 msg_type;
 	struct sr_control_msg sub_msg;
 } sr_control_msg_t;
+
+#ifdef CONFIG_STAT_ANALYSIS
+typedef struct {
+	SR_8 msg_type;
+	struct sr_stat_analysis_msg sub_msg;
+} sr_stat_analysis_msg_t;
+#endif
 
 #pragma pack(pop)
 

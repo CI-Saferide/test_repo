@@ -11,11 +11,12 @@ KERNEL_SRC  ?= /lib/modules/$(shell uname -r)/build
 #		ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu-
 #		example for arm64 & new kernel source location:
 #		make ARCH=arm64 KERNEL_SRC=~/git/raspberrypi/linux CROSS_COMPILE=aarch64-linux-gnu- 
+#  SR_STAT_ANALYSIS_DEBUG=y - set stat analysis debug flag
 
 all:
-	@$(MAKE) -s -C vsentry-engine
 	@$(MAKE) -C vsentry-mod KERNEL_SRC=${KERNEL_SRC}
+	@$(MAKE) -s -C vsentry-engine
 
 clean:
-	@$(MAKE) -s -C vsentry-engine clean
 	@$(MAKE) -C vsentry-mod clean
+	@$(MAKE) -s -C vsentry-engine clean

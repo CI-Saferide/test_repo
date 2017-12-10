@@ -5,7 +5,7 @@
 #include <sr_gen_hash.h>
 #include <sr_file_hash.h>
 #include <sr_sal_common.h>
-#include <sal_os.h>
+#include <sal_mem.h>
 
 #define HASH_SIZE 500
 
@@ -25,7 +25,7 @@ typedef struct file_rules_item {
    file_rules_data_t *file_rules_list;
 } file_rules_item_t;
 
-int file_comp(void *data_in_hash, void *comp_val)
+SR_32 file_comp(void *data_in_hash, void *comp_val)
 {
 	file_rules_item_t *rules_item = (file_rules_item_t *)data_in_hash;
 
@@ -58,7 +58,7 @@ void file_print(void *data_in_hash)
 	}
 }
 
-static int create_key(void *data)
+static SR_32 create_key(void *data)
 {
 	int i, len, sum = 0;
 	char *name = (char *)data;

@@ -30,4 +30,19 @@ struct sr_cls_network_msg {
 	SR_32  uid;
 };
 
+typedef struct sr_connection_id {
+        union {
+                SR_U32 v4addr;
+                // FUTURE struct in6_addr v6addr;
+        } saddr;
+        union {
+                SR_U32 v4addr;
+                // FUTURE struct in6_addr v6addr;
+        } daddr;
+        SR_U16 dport;
+        SR_U16 sport;
+        SR_U8 ip_proto;
+} sr_connection_id_t;
+
+
 #endif /* SR_CLS_NETWORK_COMMON_H */

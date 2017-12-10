@@ -11,6 +11,7 @@
 #include <linux/string.h>
 #include <net/tcp.h>
 #include <linux/time.h>
+#include <linux/mutex.h>
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wdeclaration-after-statement"
@@ -19,17 +20,34 @@
 // Atomic counters
 #define SR_ATOMIC	atomic_t
 #define SR_ATOMIC_SET 	atomic_set
+#define SR_ATOMIC_READ 	atomic_read
 #define SR_ATOMIC_INC_RETURN atomic_inc_return
+#define SR_ATOMIC_INC atomic_inc
+#define SR_ATOMIC_DEC atomic_dec
 
+#define TASK_DESC	struct task_struct
 #define SR_RWLOCK	rwlock_t
+#define SR_MUTEX	struct mutex
+#define SR_SLEEPLES_LOCK_T spinlock_t
+#define SR_SLEEPLES_LOCK_FLAGS unsigned long
+#define SR_SLEEPLES_LOCK_DEFINE(lock) DEFINE_SPINLOCK(lock)
+#define SR_MUTEX_INIT(x) mutex_init(x)
+#define SR_MUTEX_LOCK(x) mutex_lock(x)
+#define SR_MUTEX_TRYLOCK(x) mutex_trylock(x)
+#define SR_MUTEX_UNLOCK(x) mutex_unlock(x)
+#define SR_SLEEPLES_LOCK(lock, falgs) spin_lock_irqsave(lock, flags)
+#define SR_SLEEPLES_UNLOCK(lock, falgs) spin_unlock_irqrestore(lock, flags)
+#define SR_SLEEPLES_LOCK_INIT(lock) spin_lock_init(lock)
 #define SR_LOCK(x) //(x++)
 #define SR_UNLOCK(x) //(x++)
-//#define SR_ALLOC(x) kmalloc(x, GFP_KERNEL|GFP_ATOMIC)
 #define SR_ALLOC(x) vmalloc(x)
-//#define SR_ZALLOC(x) kcalloc(1, x, GFP_KERNEL|GFP_ATOMIC)
+#define SR_KZALLOC(x) kcalloc(1, x, GFP_KERNEL)
+#define SR_KZALLOC_ATOMIC(x) kcalloc(1, x, GFP_ATOMIC)
 #define SR_ZALLOC(x) vzalloc(x)
-//#define SR_FREE kfree
+#define SR_KZALLOC_ATOMIC_SUPPORT(is_atomic, type) is_atomic ? SR_KZALLOC_ATOMIC(sizeof(type)) : SR_KZALLOC(sizeof(type))
+#define SR_KFREE kfree
 #define SR_FREE vfree
+#define SR_TIME_COUNT unsigned long
 
 /* kernel print definitions */
 #define pr_fmt(fmt) fmt
@@ -74,6 +92,8 @@ SR_U32 sal_packet_dest_addr(void *skb);
 // Time functions
 SR_U32 sal_get_curr_time(void);
 SR_U32 sal_get_curr_time_nsec(void);
+void sal_update_time_counter(SR_TIME_COUNT *time_count);
+SR_32 sal_elapsed_time_secs(SR_TIME_COUNT time_count);
 
 // Process functions
 SR_U32 sal_get_exec_inode(SR_32 pid);

@@ -1,6 +1,6 @@
 #include <sr_sal_common.h>
 #include <sr_gen_hash.h>
-#include <sal_os.h>
+#include <sal_mem.h>
 #include <string.h>
 
 typedef struct hash_item {
@@ -75,8 +75,7 @@ SR_32 sr_gen_hash_delete(struct sr_gen_hash *hash, void *key)
 	}
 
 	if (!*iter) {
-		sal_printf("has_delete error, key does not exist\n");
-		return SR_ERROR;
+		return SR_NOT_FOUND;
 	}
 	if (hash->hash_ops.free)
 		hash->hash_ops.free((*iter)->data);
@@ -113,7 +112,7 @@ SR_32 sr_gen_hash_delete_all(struct sr_gen_hash *hash)
 
 void sr_gen_hash_print(struct sr_gen_hash *hash)
 {
-	int i;
+	SR_U32 i, count = 0;
 	hash_item_t *iter;
 
 	if (!hash)
@@ -123,13 +122,15 @@ void sr_gen_hash_print(struct sr_gen_hash *hash)
 		for (iter = hash->table[i]; iter; iter = iter->next) {
 			if (hash->hash_ops.print)
 				hash->hash_ops.print(iter->data);
+			count++;
 		}
 	}
+	sal_printf("GEN HASH table print count:%d \n", count);
 }
 
 void *sr_gen_hash_get(struct sr_gen_hash *hash, void *key)
 {
-	int ind;
+	SR_U32 ind;
 	hash_item_t *iter;
 
 	GET_HASH_IND(hash, ind, key, NULL);
@@ -150,5 +151,37 @@ void sr_gen_hash_destroy(struct sr_gen_hash *hash)
 	sr_gen_hash_delete_all(hash);
 	SR_Free(hash->table);
 	SR_Free(hash);
+}
+
+SR_32 sr_gen_hash_exec_for_each(struct sr_gen_hash *hash, SR_32 (*cb)(void *hash_data, void *data), void *data)
+{
+	hash_item_t *iter;
+	SR_U32 i;
+
+	for (i = 0 ; i < hash->size; i++) {
+		for (iter = hash->table[i]; iter; iter = iter->next)
+			cb(iter->data, data);
+	}
+
+	return SR_SUCCESS;
+}
+
+SR_32 sr_gen_hash_delete_all_cb(struct sr_gen_hash *hash, SR_BOOL (*cb)(void *hash_data))
+{
+	hash_item_t **iter, *help;
+	SR_U32 i;
+
+	for (i = 0 ; i < hash->size; i++) {
+		for (iter = &(hash->table[i]); *iter; ) {
+			if (cb && cb((*iter)->data)) {
+				help = *iter;
+				*iter = (*iter)->next;
+				SR_Free(help);
+			} else 
+				iter = &((*iter)->next);
+		}
+	}
+
+	return SR_SUCCESS;
 }
 

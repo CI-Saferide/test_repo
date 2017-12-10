@@ -14,7 +14,8 @@ TARGET 		:= sr_engine
 # where to search for sources
 VPATH 		:=  $(TOP_DIR)/sal/platform/linux/src \
 				$(TOP_DIR)/src \
-				$(TOP_DIR)/../common/src \	
+				$(TOP_DIR)/../common/src \
+				$(TOP_DIR)/stat_analysis/src
 
 # sources to compile
 SRCS 		:=  main.c \
@@ -35,12 +36,17 @@ SRCS 		:=  main.c \
 				sr_tasks.c \
 				sr_engine_utils.c \
 				sr_event_receiver.c \
+				sr_event_stats_receiver.c \
 				sr_engine_main.c \
 				sr_config.c \
 				sr_cli.c \
 				sr_control.c \
 				sr_can_collector.c \
 				sr_config_parse.c \
+				sr_stat_process_connection.c \
+				sr_stat_learn_rule.c \
+				sr_stat_analysis.c \
+				sr_info_gather.c \
 
 # include folders
 INCLUDES 	:=  -I../common/include \
@@ -50,6 +56,8 @@ INCLUDES 	:=  -I../common/include \
 				-Isal/include \
 				-I../tools/sr-log/include \
 				-I../tools/sr-hash/include \
+				-I../common/stat_analysis/include \
+				-Istat_analysis/include \
 
 OBJS		:=  $(addprefix $(OBJDIR)/,$(SRCS:.c=.o))
 DEPS		:=  $(OBJS:.o=.d)
@@ -60,6 +68,8 @@ LIBS		:= -lpthread -lsr_log -lsr_hash
 LIB_PATH 	:= -L$(LIBDIR)
 
 CFLAGS 		+= -MMD -Wall
+CFLAGS += -DCONFIG_STAT_ANALYSIS
+CFLAGS += $(if $(SR_STAT_ANALYSIS_DEBUG),-DSR_STAT_ANALYSIS_DEBUG)
 
 #CFLAGS 		+= -DSR_RB_DEBUG -DSR_MSG_DEBUG
 CFLAGS 		+= -D__linux

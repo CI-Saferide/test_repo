@@ -97,5 +97,6 @@ int __sr_print (enum SR_LOG_PRIORITY priority, int line, const char *file, const
 #endif
 
 void CEF_log_event(SR_U32 cid, char *event_name, SR_U8 severity, char *extension);
+void log_print_cef_msg(CEF_payload *cef);
 
 #endif /* SR_LOG_H */

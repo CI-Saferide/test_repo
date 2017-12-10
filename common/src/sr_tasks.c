@@ -12,7 +12,7 @@ SR_8 *task_names[SR_TOTAL_TASKS] = {
 	"SR_ENGINE",
 	"SR_MODULE",
 	"SR_CAN_COLLECT",
-	"SR_LOG",
+	"SR_INFO_GATHER",
 };
 
 SR_32 sr_stop_task(sr_task_type task_id)

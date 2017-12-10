@@ -15,6 +15,9 @@
 #include <linux/can/skb.h>
 #include <linux/binfmts.h>
 #include "sr_control.h"
+#ifdef CONFIG_STAT_ANALYSIS
+#include "sr_stat_analysis.h"
+#endif
 
 //#define DEBUG_EVENT_MEDIATOR
 /* Protocol families, same as address families */
@@ -750,6 +753,51 @@ SR_32 vsentry_socket_create(SR_32 family, SR_32 type, SR_32 protocol, SR_32 kern
 	return 0; //return (disp_socket_create(&disp));
 }
 
+#ifdef CONFIG_STAT_ANALYSIS
+/*
+ * @inet_conn_established
+   relevant only for trhe server.
+ */
+void vsentry_inet_conn_established(struct sock *sk, struct sk_buff *skb)
+{
+	sr_connection_data_t con = {};
+	SR_U32 rc;
+
+	con.con_id.saddr.v4addr = ntohl(sk->sk_rcv_saddr);
+ 	con.con_id.daddr.v4addr = ntohl(sk->sk_daddr);
+	con.con_id.ip_proto = 6;
+ 	con.con_id.sport = ntohs(sk->sk_num);
+    con.con_id.dport = ntohs(sk->sk_dport);
+
+	if ((rc = sr_stat_connection_insert(&con, SR_CONNECTION_NONBLOCKING | SR_CONNECTION_ATOMIC)) != SR_SUCCESS) {
+                sal_printf("ERROR failed sr_stat_connection_insert\n");
+                return;
+	}
+}
+
+int vsentry_inet_conn_request(struct sock *sk, struct sk_buff *skb, struct request_sock *req)
+{
+	sr_connection_data_t con = {};
+	struct tcphdr *tcphdr = (struct tcphdr *) skb_transport_header(skb);
+	SR_U32 rc;
+
+	if (skb) {
+		struct iphdr *ipp = (struct iphdr *)skb_network_header(skb);
+		con.con_id.saddr.v4addr = ntohl(ipp->daddr);
+		con.con_id.daddr.v4addr = ntohl(ipp->saddr);
+        con.con_id.ip_proto = 6;
+        con.con_id.sport = ntohs(tcphdr->dest);
+        con.con_id.dport = ntohs(tcphdr->source);
+		if ((rc = sr_stat_connection_insert(&con, SR_CONNECTION_NONBLOCKING | SR_CONNECTION_ATOMIC)) != SR_SUCCESS) {
+               		sal_printf("ERROR failed sr_stat_connection_insert\n");
+			return 0;
+        }
+	}
+
+	return 0;
+}
+#endif
+
 /* @socket_sendmsg:
  *	Check permission before transmitting a message to another socket.
  *	@sock contains the socket structure.
@@ -767,7 +815,10 @@ SR_32 vsentry_socket_sendmsg(struct socket *sock,struct msghdr *msg,SR_32 size)
 	struct socket copy_sock = *sock;
 	struct msghdr copy_msg = *msg;
 	struct sockaddr_in *addr;
-	
+#ifdef CONFIG_STAT_ANALYSIS
+	sr_connection_data_t con = {}, *conp;
+	SR_U32 rc;
+#endif
 	disp_info_t disp;
 	struct task_struct *ts = current;
 	const struct cred *rcred= ts->real_cred;		
@@ -831,20 +882,44 @@ SR_32 vsentry_socket_sendmsg(struct socket *sock,struct msghdr *msg,SR_32 size)
 		case AF_INET:
 			if (!sock->sk)
 				return 0;
+#ifdef CONFIG_STAT_ANALYSIS
+			con.con_id.saddr.v4addr = ntohl(sock->sk->sk_rcv_saddr);
+			con.con_id.daddr.v4addr = ntohl(sock->sk->sk_daddr);
+			con.con_id.ip_proto = sock->sk->sk_protocol;
+			/* Strange : sk_num is host order, sk_dport is network oredr WTF? */
+			con.con_id.sport = sock->sk->sk_num;
+			con.con_id.dport = ntohs(sock->sk->sk_dport);
+			con.pid = current->tgid;
+
+			if ((conp = sr_stat_connection_lookup(&con.con_id))) {
+				if ((rc = sr_stat_connection_update_counters(conp, current->tgid, 0, 0, size, 1)) != SR_SUCCESS) {
+                			sal_printf("ERROR failed sr_stat_connection_update_counters\n");
+                			return 0;
+				}
+			} else {
+				con.tx_bytes = size;
+				con.tx_msgs = 1;
+        			if ((rc = sr_stat_connection_insert(&con, 0)) != SR_SUCCESS) {
+                			sal_printf("ERROR failed sr_stat_connection_insert\n");
+                			return 0;
+        			}
+			}
+#endif
+
 			/* Hook is relevant only for UDP */
-			if (sock->sk->sk_protocol != 0x11)
+			if (sock->sk->sk_protocol != IPPROTO_UDP)
 				return 0;
-            if (!msg || !msg->msg_name)
+			if (!msg || !msg->msg_name)
 				return 0;
 			/* gather metadata */
 			disp.tuple_info.id.uid = (int)rcred->uid.val;
 			disp.tuple_info.id.pid = current->pid;
 			addr = (struct sockaddr_in *)msg->msg_name;
-       		disp.tuple_info.saddr.v4addr.s_addr = 0; /* No information for saddr */
-       		disp.tuple_info.daddr.v4addr.s_addr = ntohl(addr->sin_addr.s_addr);
-       		disp.tuple_info.dport = ntohs(addr->sin_port);
-       		disp.tuple_info.sport = 0; /* No information for sport */
-       		disp.tuple_info.ip_proto = sock->sk->sk_protocol;
+			disp.tuple_info.saddr.v4addr.s_addr = 0; /* No information for saddr */
+			disp.tuple_info.daddr.v4addr.s_addr = ntohl(addr->sin_addr.s_addr);
+   			disp.tuple_info.dport = ntohs(addr->sin_port);
+			disp.tuple_info.sport = 0; /* No information for sport */
+			disp.tuple_info.ip_proto = sock->sk->sk_protocol;
 #ifdef DEBUG_EVENT_MEDIATOR
         		sal_kernel_print_info("vsentry_socket_connect=%lx[%d] -> %lx[%d]\n",
                         		(unsigned long)disp.tuple_info.saddr.v4addr.s_addr,
@@ -879,22 +954,52 @@ SR_32 vsentry_socket_sendmsg(struct socket *sock,struct msghdr *msg,SR_32 size)
 int vsentry_socket_recvmsg(struct socket *sock,struct msghdr *msg,int size,int flags)
 {
 	const u8 family = sock->sk->sk_family;
+#ifdef CONFIG_STAT_ANALYSIS
+	sr_connection_data_t *conp, con = {};
+#endif
 	disp_info_t disp;
 	struct task_struct *ts = current;
 	const struct cred *rcred= ts->real_cred;		
 
 	switch (family) {
 		case AF_INET:
-			if (sock->sk->sk_protocol != 0x11)
+#ifdef CONFIG_STAT_ANALYSIS
+			if (sock->sk->sk_protocol == IPPROTO_TCP && sock->sk->sk_rcv_saddr && sock->sk->sk_daddr) {
+				con.con_id.ip_proto = sock->sk->sk_protocol;
+        			con.con_id.saddr.v4addr = ntohl(sock->sk->sk_rcv_saddr);
+        			con.con_id.daddr.v4addr = ntohl(sock->sk->sk_daddr);
+				/* Strange : sk_num is host order, sk_dport is network oredr WTF? */
+        			con.con_id.sport = sock->sk->sk_num;
+        			con.con_id.dport = ntohs(sock->sk->sk_dport);
+				con.pid = current->tgid;
+
+				if ((conp = sr_stat_connection_lookup(&con.con_id))) {
+					/* update pid */
+					conp->pid = current->tgid;
+				} else {
+					/* Create a connection */
+					if (sr_stat_connection_insert(&con, 0) != SR_SUCCESS) {
+						sal_printf("ERROR failed sr_stat_connection_insert\n");
+						return 0;
+        			}
+				}
 				return 0;
+			}
+#endif
 
 			disp.tuple_info.id.uid = (int)rcred->uid.val;
 			disp.tuple_info.id.pid = current->pid;
        			disp.tuple_info.daddr.v4addr.s_addr = ntohl(sock->sk->sk_rcv_saddr); // This is the local address
 			disp.tuple_info.saddr.v4addr.s_addr = ntohl(sock->sk->sk_daddr); // This is the forighen address
-       			disp.tuple_info.sport = sock->sk->sk_dport;
+ 			/* sk_dport is network orderm sk_num is host order, WTF??? */
+       			disp.tuple_info.sport = ntohs(sock->sk->sk_dport);
        			disp.tuple_info.dport = sock->sk->sk_num;
        			disp.tuple_info.ip_proto = sock->sk->sk_protocol;
+
+#ifdef CONFIG_STAT_ANALYSIS
+			sr_stat_port_update(disp.tuple_info.dport, current->tgid);
+#endif
+				
 #ifdef DEBUG_EVENT_MEDIATOR
         		sal_kernel_print_info("vsentry_socket_connect=%lx[%d] -> %lx[%d]\n",
                         		(unsigned long)disp.tuple_info.saddr.v4addr.s_addr,
@@ -955,9 +1060,12 @@ SR_32 vsentry_bprm_check_security(struct linux_binprm *bprm)
 
 void vsentry_task_free(struct task_struct *task)
 {
-	if (task) {
-	    sr_cls_process_del(task->pid);
-	}
+	if (!task)
+		return;
+	sr_cls_process_del(task->pid);
+// It is a problem to send process die message since its intefiere with rate tracking.
+#if 0  
+	sr_stat_analysis_report_porcess_die(task->pid);
+#endif
 }
-
 

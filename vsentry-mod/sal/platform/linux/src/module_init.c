@@ -13,6 +13,10 @@
 #include "sal_linux.h"
 #include "dispatcher.h"
 #include "sr_classifier.h"
+#ifdef CONFIG_STAT_ANALYSIS
+#include "sr_stat_analysis.h"
+#include "sr_stat_connection.h"
+#endif
 #include "sr_cls_process.h"
 #include "sr_event_collector.h"
 #include "sr_ring_buf.h"
@@ -75,6 +79,10 @@ static int vsentry_drv_mmap(struct file *file, struct vm_area_struct *vma)
 		case MOD2LOG_PAGE_OFFSET:
 			type = MOD2LOG_BUF;
 			pr_info("vsentry_drv_mmap: initializing MOD2LOG_BUF\n");
+			break;
+		case MOD2STAT_PAGE_OFFSET:
+			type = MOD2STAT_BUF;
+			pr_info("vsentry_drv_mmap: initializing MOD2STAT_BUF\n");
 			break;
 		default:
 			pr_err("wrong offset %lu\n", vma->vm_pgoff);
@@ -273,6 +281,17 @@ static int __init vsentry_init(void)
 
 	sr_event_collector_init();
 
+#ifdef CONFIG_STAT_ANALYSIS
+	rc = sr_stat_analysis_init();
+	if (rc != SR_SUCCESS) {
+		pr_info("[%s]: init stat_analysis failed!\n", MODULE_NAME);
+		cdev_del(cdev_p);
+		return rc;
+	}
+#endif
+
+	sr_classifier_init();
+
 	rc = register_lsm_hooks();
 	if (rc)	{
 		pr_info("[%s]: registration to lsm failed!\n", MODULE_NAME);
@@ -282,7 +301,6 @@ static int __init vsentry_init(void)
 	pr_info("[%s]: registration to lsm succeedded\n", MODULE_NAME);	
 
 	sr_netfilter_init();
-	sr_classifier_init();
 	
 	//sr_cls_add_ipv4(htonl(0x0a0a0a00), htonl(0xFFFFFF00), 60, SR_DIR_SRC);
 	//sr_cls_add_ipv4(htonl(0x0a0a0a00), htonl(0xFFFFFF00), 60, SR_DIR_DST);
@@ -292,6 +310,10 @@ static int __init vsentry_init(void)
 	//sr_cls_rule_add(SR_NET_RULES, 60, SR_CLS_ACTION_DROP, 0, 0, SR_CLS_ACTION_DROP, 0, 0, 0, 0);
 	
 #ifdef UNIT_TEST
+#ifdef CONFIG_STAT_ANALYSIS
+	sr_stat_port_ut();
+	sr_stat_connection_ut();
+#endif
 	sal_bitops_test (0);
 	sr_cls_port_ut();
 	sr_cls_uid_ut();
@@ -321,6 +343,9 @@ static void __exit vsentry_cleanup(void)
 	unregister_lsm_hooks();
 	sr_netfilter_uninit();
 	sr_classifier_uninit();
+#ifdef CONFIG_STAT_ANALYSIS
+	sr_stat_analysis_uninit();
+#endif
 
 	cdev_del(cdev_p);
 	unregister_chrdev_region(vsentry_dev, 1);

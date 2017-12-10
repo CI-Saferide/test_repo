@@ -149,3 +149,27 @@ SR_32 sal_rename(const SR_8 *old_filename, const SR_8 *new_filename)
 	return (rename(old_filename, new_filename));
 }
 
+SR_U64 sal_get_time(void)
+{
+	time_t t;
+
+	time(&t);
+
+	return (SR_U64)t;
+}
+
+SR_32 sal_get_process_name(SR_U32 pid, char *exe, SR_U32 size)
+{
+	char buf[256];
+	SR_U32 rc;
+
+	sprintf(buf, "/proc/%d/exe", pid);
+	rc = readlink(buf, exe, size);
+	if (rc == -1)
+		return SR_ERROR;
+	if (rc > size)
+		return SR_ERROR;
+	exe[rc] = 0;
+
+	return SR_SUCCESS;
+}

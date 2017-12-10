@@ -71,4 +71,6 @@ SR_32 vsentry_socket_sendmsg(struct socket *sock,struct msghdr *msg, SR_32 size)
 int vsentry_socket_recvmsg(struct socket *sock,struct msghdr *msg,int size,int flags);
 SR_32 vsentry_bprm_check_security(struct linux_binprm *bprm);
 void vsentry_task_free(struct task_struct *task);
+void vsentry_inet_conn_established(struct sock *sk, struct sk_buff *skb);
+int vsentry_inet_conn_request(struct sock *sk, struct sk_buff *skb, struct request_sock *req);
 #endif /* _EVENT_MEDIATOR_H */

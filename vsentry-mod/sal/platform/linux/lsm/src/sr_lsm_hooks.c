@@ -405,6 +405,10 @@ static vs_hook_t vsentry_hooks[] = {
 	{ VS_HOOK_UNIX_STREAM_CONNECT, (void*)vsentry_unix_stream_connect },
 	{ VS_HOOK_UNIX_MAY_SEND, (void*)vsentry_unix_may_send },
 	{ VS_HOOK_SOCKET_CREATE, (void*)vsentry_socket_create },
+#ifdef CONFIG_STAT_ANALYSIS
+	{ VS_HOOK_INET_CONN_ESTABLISHED, (void*)vsentry_inet_conn_established },
+	{ VS_HOOK_INET_CONN_REQUEST, (void*)vsentry_inet_conn_request },
+#endif
 	{ VS_HOOK_SOCKET_BIND, (void*)vsentry_socket_bind },
 	{ VS_HOOK_SOCKET_CONNECT, (void*)vsentry_socket_connect },
 	{ VS_HOOK_SOCKET_LISTEN, (void*)vsentry_socket_listen },
@@ -582,6 +586,16 @@ void init_vsentry_hooks(int type, void* func_ptr)
 		vsentry_security_hooks[type].hook.socket_create = func_ptr;
 		vsentry_security_hooks[type].head = &lsm_hook_head_ptr->socket_create;
 		break;
+#ifdef CONFIG_STAT_ANALYSIS
+	case VS_HOOK_INET_CONN_ESTABLISHED:
+		vsentry_security_hooks[type].hook.inet_conn_established = func_ptr;
+		vsentry_security_hooks[type].head = &lsm_hook_head_ptr->inet_conn_established;
+		break;
+	case VS_HOOK_INET_CONN_REQUEST:
+		vsentry_security_hooks[type].hook.inet_conn_request = func_ptr;
+		vsentry_security_hooks[type].head = &lsm_hook_head_ptr->inet_conn_request;
+		break;
+#endif
 	case VS_HOOK_SOCKET_BIND:
 		vsentry_security_hooks[type].hook.socket_bind = func_ptr;
 		vsentry_security_hooks[type].head = &lsm_hook_head_ptr->socket_bind;
@@ -671,6 +685,10 @@ void init_vsentry_hooks(struct security_operations *ops)
 	ops->unix_stream_connect = 	vsentry_unix_stream_connect;
 	ops->unix_may_send = 		vsentry_unix_may_send;
 	ops->socket_create = 		vsentry_socket_create;
+#ifdef CONFIG_STAT_ANALYSIS
+	ops->inet_conn_established = vsentry_inet_conn_established;
+	ops->inet_conn_request = vsentry_inet_conn_request;
+#endif
 	ops->socket_bind = 			vsentry_socket_bind;
 	ops->socket_listen = 		vsentry_socket_listen;
 	//ops->socket_accept = 		vsentry_socket_accept;

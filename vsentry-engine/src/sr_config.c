@@ -16,6 +16,31 @@
 #include <netinet/in.h>
 #include <sys/socket.h>
 #include <sr_file_hash.h>
+#ifdef CONFIG_STAT_ANALYSIS
+#include "sr_stat_analysis.h"
+#include "sr_stat_learn_rule.h"
+#ifdef SR_STAT_ANALYSIS_DEBUG
+#include <signal.h>
+#endif
+#endif
+
+static void handler(int signal)
+{
+	switch (signal) { 
+		case 10:
+			sr_learn_rule_connection_hash_print();
+			break;
+		case 12:
+			sr_stat_analysis_learn_mode_set(SR_STAT_MODE_PROTECT);
+			//sr_stat_analysis_dump();
+			//sr_learn_rule_connection_hash_print();
+			//sr_control_util(SR_CONTROL_GARBAGE_COLLECTION);
+			//sr_control_util(SR_CONTROL_PRINT_CONNECTIONS);
+			break;
+		default:
+			break;
+ 	}
+}
 
 static char filename[] = "sr_engine.cfg";
 
@@ -234,7 +259,7 @@ SR_BOOL read_config_file (void)
 #ifdef UNIT_TEST
 SR_U32 handle_rule_ut(char *filename, char *exec, char *user, SR_U32 rulenum, SR_U16 actions, SR_8 file_ops)
 {
-	printf("**** Arik in handle_rule file:%s rule#%d exec:%s user:%s actions:%x file_ops:%x \n", 
+	printf("**** handle_rule file:%s rule#%d exec:%s user:%s actions:%x file_ops:%x \n", 
 		filename, rulenum, exec, user, actions, file_ops);
 
  	return SR_SUCCESS;
@@ -301,7 +326,12 @@ SR_BOOL config_ut(void)
 	struct sr_log_entry			log_rec = {0};
 #endif
 
+	signal(10, handler);
+	signal(12, handler);
+
 #if 0
+	sr_stat_learn_rule_ut();
+
 	net_rec.rulenum = 80;
 	net_rec.src_addr = 0x0a0a0a00;
 	net_rec.src_netmask = 0x0;
@@ -322,6 +352,8 @@ SR_BOOL config_ut(void)
 	//strncpy(net_rec.process, "*", strlen("*"));
 	net_rec.process_size = strlen(net_rec.process);
 	write_config_record(&net_rec, CONFIG_NET_RULE);
+
+	//sr_stat_analysis_ut();
 
 	net_rec.rulenum = 85;
 	net_rec.src_addr = 0xc0a8020d;
