@@ -7,7 +7,7 @@
 #define SR_CONNECTION_NONBLOCKING (1 << 0)
 #define SR_CONNECTION_ATOMIC (1 << 1)
 
-#define SR_CONNECTIOLN_AGED_THRESHHOLD 300
+#define SR_CONNECTIOLN_AGED_THRESHHOLD 300 /* In seconds */
 
 typedef struct sr_connection_data {
 	sr_connection_id_t con_id;

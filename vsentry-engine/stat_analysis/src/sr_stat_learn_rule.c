@@ -28,6 +28,7 @@ static SR_32 learn_rule_comp(void *data_in_hash, void *comp_val)
 	return strncmp(learn_rule_item->exec, comp_exe, SR_MAX_PATH_SIZE);
 }
 
+#ifdef SR_STAT_ANALYSIS_DEBUG
 static void learn_rule_print(void *data_in_hash)
 {
 	learn_rule_item_t *learn_rule_item = (learn_rule_item_t *)data_in_hash;
@@ -36,6 +37,7 @@ static void learn_rule_print(void *data_in_hash)
 		learn_rule_item->is_updated, learn_rule_item->exec, learn_rule_item->counters.rx_msgs, learn_rule_item->counters.rx_bytes,
 		learn_rule_item->counters.tx_msgs, learn_rule_item->counters.tx_bytes);
 }
+#endif
 
 static SR_32 learn_rule_create_key(void *data)
 {
@@ -56,7 +58,9 @@ SR_32 sr_stat_learn_rule_hash_init(void)
 
         hash_ops.create_key = learn_rule_create_key;
         hash_ops.comp = learn_rule_comp;
+#ifdef SR_STAT_ANALYSIS_DEBUG
         hash_ops.print = learn_rule_print;
+#endif
         if (!(learn_rule_hash = sr_gen_hash_new(HASH_SIZE, hash_ops))) {
                 sal_printf("file_hash_init: sr_gen_hash_new failed\n");
                 return SR_ERROR;

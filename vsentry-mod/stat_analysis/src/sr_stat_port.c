@@ -72,10 +72,14 @@ void sr_stat_port_uninit(void)
 
 	for(i = 0; i < STST_PORT_HASH_TABLE_SIZE; i++) {
 		if (sr_stat_port_table->buckets[i].head != NULL){
+#ifdef SR_STAT_ANALYSIS_DEBUG
 			sal_printf("hash_index[%d] - DELETEING\n",i);
+#endif
 			curr = sr_stat_port_table->buckets[i].head;				
 			while (curr != NULL){
+#ifdef SR_STAT_ANALYSIS_DEBUG
 				sal_printf("\t\tDelete port : %u\n",curr->key);
+#endif
 				next = curr->next;
 				SR_FREE(curr);
 				curr= next;

@@ -1,7 +1,7 @@
 #include "sr_special_hash.h"
 #include "sr_cyclic_array.h"
 
-static inline int IsPowerOfTwo(SR_U32 num)
+static inline int is_power_of_two(SR_U32 num)
 {
 	return !(num & (num - 1));
 }
@@ -11,7 +11,7 @@ sr_special_hash_table_t *sr_special_hash_new_table(int count, sr_special_hash_op
 	SR_U32 i;
         sr_special_hash_table_t *table;
 
-        if (!IsPowerOfTwo(count)) {
+        if (!is_power_of_two(count)) {
                 sal_kernel_print_alert("Error: Please initialize hash table to a power of two size\n");
                 return NULL;
         }

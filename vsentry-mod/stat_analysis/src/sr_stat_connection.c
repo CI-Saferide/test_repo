@@ -22,6 +22,7 @@ typedef struct LRU_container {
 static LRU_container_t *LRU_update, *LRU_transmit;
 static SR_BOOL LRU_allocate_more, LRU_allocate_more2;
 
+#ifdef SR_STAT_ANALYSIS_DEBUG
 void con_debug_print(sr_connection_id_t *con)
 {
 	if ((con->dport > 7700 && con->dport < 7800) ||
@@ -48,6 +49,7 @@ void old_print(sr_connection_data_t *con)
 			(jiffies - con->time_count) /  HZ);
 	}
 }
+#endif
 
 static SR_U32 sr_connection_create_key(void *key)
 {
@@ -94,7 +96,7 @@ SR_U32 sr_connection_transmit(void)
 	// wait for ref count 0
 	while (SR_ATOMIC_READ(&(LRU_transmit->ref_count))) {
 #ifdef SR_STAT_ANALYSIS_DEBUG
-		printk("STAT DEBUG connection transmit WAIT ref count\n");
+		sal_printf("STAT DEBUG connection transmit WAIT ref count\n");
 #endif
 		sal_schedule_timeout(100000);
 	}
@@ -147,6 +149,7 @@ SR_U32 sr_connection_transmit(void)
 	return SR_SUCCESS;
 }
 
+#ifdef UNIT_TEST
 static void sr_connection_print_LRU(void)
 {
 	SR_U32 i,ind = SR_ATOMIC_READ(&(LRU_update->ind));
@@ -163,6 +166,7 @@ static void sr_connection_print_LRU(void)
 		LRU_update->objects[i]->tx_bytes, LRU_update->objects[i]->tx_msgs);
 	}
 }
+#endif
 
 static SR_U32 sr_connection_comp(void *data, void *key)
 {
@@ -182,10 +186,12 @@ static SR_U32 sr_connection_comp(void *data, void *key)
 
 static void sr_connection_print(void *data)
 {
+#ifdef SR_STAT_ANALYSIS_DEBUG
 	sr_connection_data_t *con = (sr_connection_data_t *)data;
 
         //con_debug_print(&(con->con_id));
         old_print(con);
+#endif
 /*
 	sal_printf("Connection: proto:%d saddr:%x dassdr:%x sport:%d dport:%d pid:%d rx_msgs:%u rx_bytes:%u tx_mgs:%u tx_bytes:%u \n",
                 con->con_id.ip_proto,
@@ -366,6 +372,7 @@ void sr_stat_connection_garbage_collection(void)
 	sr_special_hash_garbage_collection(connection_table);
 }
 
+#ifdef UNIT_TEST
 void sr_stat_connection_print(SR_BOOL is_print_LRU)
 {
 	SR_U32 count;
@@ -378,6 +385,7 @@ void sr_stat_connection_print(SR_BOOL is_print_LRU)
 	}
 	sal_printf("Connection HASH count:%d\n", count);
 }
+#endif
 
 static SR_BOOL delete_old_connection(void *data)
 {
@@ -396,6 +404,7 @@ void sr_stat_connection_aging_cleanup(void)
 }
 
 
+#ifdef UNIT_TEST
 void sr_stat_connection_ut(void)
 {
 	sr_connection_data_t con, *conp;
@@ -680,3 +689,4 @@ void sr_stat_connection_ut(void)
 	printk("XXXXXXXXXXXXXXXXX print LRU with 5\n");
 	sr_connection_print_LRU();
 }
+#endif
