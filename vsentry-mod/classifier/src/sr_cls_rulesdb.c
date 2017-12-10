@@ -37,7 +37,8 @@ void sr_cls_rule_del(SR_32 rule_type, SR_U16 rulenum)
 	sr_cls_rl_init(&sr_rules_db[rule_type][rulenum].rate);
 	sr_rules_db[rule_type][rulenum].actions = SR_CLS_ACTION_ALLOW;
 }
-void sr_cls_rule_add(SR_32 rule_type, SR_U16 rulenum, SR_U16 actions, SR_8 file_ops, SR_U32 rl_max_rate, SR_U16 rl_exceed_action, SR_U16 log_target, SR_U16 email_id, SR_U16 phone_id, SR_U16 skip_rulenum)
+void sr_cls_rule_add(SR_32 rule_type, SR_U16 rulenum, SR_U16 actions, SR_8 file_ops, sr_rate_type_t rate_type, SR_U32 rl_max_rate, SR_U16 rl_exceed_action,
+		SR_U16 log_target, SR_U16 email_id, SR_U16 phone_id, SR_U16 skip_rulenum)
 {
 	if (unlikely(rulenum>=SR_MAX_RULES)){
 		sal_kernel_print_alert("sr_cls_rule_add: Invalid rule ID %u\n", rulenum);
@@ -55,6 +56,7 @@ void sr_cls_rule_add(SR_32 rule_type, SR_U16 rulenum, SR_U16 actions, SR_8 file_
 		sr_cls_rl_init(&sr_rules_db[rule_type][rulenum].rate);
 		sr_rules_db[rule_type][rulenum].rate.max_rate = rl_max_rate;
 		sr_rules_db[rule_type][rulenum].rate.exceed_action = rl_exceed_action;
+		sr_rules_db[rule_type][rulenum].rate.rate_type = rate_type;
 	}
 	if (actions & SR_CLS_ACTION_LOG) {
 		sr_rules_db[rule_type][rulenum].log_target = log_target;
@@ -70,8 +72,10 @@ void sr_cls_rule_add(SR_32 rule_type, SR_U16 rulenum, SR_U16 actions, SR_8 file_
 	}
 	sr_cls_rl_init(&sr_rules_db[rule_type][rulenum].log_rate);
 	sr_rules_db[rule_type][rulenum].log_rate.max_rate = 2;
+	sr_rules_db[rule_type][rulenum].log_rate.rate_type = SR_RATE_TYPE_EVENT;
 }
-enum cls_actions sr_cls_rl_check(struct sr_rl_t *rl, SR_U32 timestamp)
+
+enum cls_actions sr_cls_rl_check(struct sr_rl_t *rl, SR_U32 timestamp, SR_U32 size)
 {
 	if (!rl) {
 		return SR_CLS_ACTION_ALLOW;
@@ -81,25 +85,29 @@ enum cls_actions sr_cls_rl_check(struct sr_rl_t *rl, SR_U32 timestamp)
 		rl->timestamp = timestamp;
 		return SR_CLS_ACTION_ALLOW;
 	}
-	if (SR_ATOMIC_INC_RETURN(&rl->count) > rl->max_rate) {
+	if (rl->rate_type == SR_RATE_TYPE_EVENT && SR_ATOMIC_INC_RETURN(&rl->count) > rl->max_rate) {
+		//sal_kernel_print_alert("sr_cls_rl_check: Rate exceeds configured rate\n");
+		return rl->exceed_action;
+	}
+	if (rl->rate_type == SR_RATE_TYPE_BYTES && rl->max_rate && rl->max_rate && SR_ATOMIC_ADD_RETURN(size, &rl->count) > rl->max_rate) {
 		//sal_kernel_print_alert("sr_cls_rl_check: Rate exceeds configured rate\n");
 		return rl->exceed_action;
 	}
 	return SR_CLS_ACTION_ALLOW;
 }
 
-enum cls_actions sr_cls_network_rule_match(SR_U16 rulenum)
+enum cls_actions sr_cls_network_rule_match(SR_U16 rulenum, SR_U32 size)
 {
 	SR_U16 action, should_log;
 
 	if (sr_rules_db[SR_NET_RULES][rulenum].actions & SR_CLS_ACTION_RATE) { 
-		action = sr_cls_rl_check(&sr_rules_db[SR_NET_RULES][rulenum].rate, jiffies);
+		action = sr_cls_rl_check(&sr_rules_db[SR_NET_RULES][rulenum].rate, jiffies / HZ, size);
 	} else {
 		action = sr_rules_db[SR_NET_RULES][rulenum].actions;
 	}
 	// if action is drop - set log implicitly
 	if (action&(SR_CLS_ACTION_LOG|SR_CLS_ACTION_DROP)) {
-		should_log = (SR_CLS_ACTION_ALLOW == sr_cls_rl_check(&sr_rules_db[SR_NET_RULES][rulenum].log_rate, jiffies/HZ));
+		should_log = (SR_CLS_ACTION_ALLOW == sr_cls_rl_check(&sr_rules_db[SR_NET_RULES][rulenum].log_rate, jiffies/HZ, 1));
 		if (should_log) { // set or clear the log bit accordingly
 			action |= SR_CLS_ACTION_LOG;
 		} else {
@@ -122,13 +130,13 @@ enum cls_actions sr_cls_file_rule_match(SR_8 fileop, SR_U16 rulenum)
 		return SR_CLS_ACTION_NOOP;
 	}
 	if (sr_rules_db[SR_FILE_RULES][rulenum].actions & SR_CLS_ACTION_RATE) { 
-		action = sr_cls_rl_check(&sr_rules_db[SR_FILE_RULES][rulenum].rate, jiffies);
+		action = sr_cls_rl_check(&sr_rules_db[SR_FILE_RULES][rulenum].rate, jiffies, 1);
 	} else {
 		action = sr_rules_db[SR_FILE_RULES][rulenum].actions;
 	}
 	// if action is drop - set log implicitly
 	if (action&(SR_CLS_ACTION_LOG|SR_CLS_ACTION_DROP)) {
-		should_log = (SR_CLS_ACTION_ALLOW == sr_cls_rl_check(&sr_rules_db[SR_NET_RULES][rulenum].log_rate, jiffies/HZ));
+		should_log = (SR_CLS_ACTION_ALLOW == sr_cls_rl_check(&sr_rules_db[SR_NET_RULES][rulenum].log_rate, jiffies/HZ, 1));
 		if (should_log) { // set or clear the log bit accordingly
 			action |= SR_CLS_ACTION_LOG;
 		} else {
@@ -144,13 +152,13 @@ enum cls_actions sr_cls_can_rule_match(SR_U16 rulenum)
 	SR_U16 action, should_log;
 
 	if (sr_rules_db[SR_CAN_RULES][rulenum].actions & SR_CLS_ACTION_RATE) { 
-		action = sr_cls_rl_check(&sr_rules_db[SR_CAN_RULES][rulenum].rate, jiffies);
+		action = sr_cls_rl_check(&sr_rules_db[SR_CAN_RULES][rulenum].rate, jiffies, 1);
 	} else {
 		action = sr_rules_db[SR_CAN_RULES][rulenum].actions;
 	}
 	// if action is drop - set log implicitly
 	if (action&(SR_CLS_ACTION_LOG|SR_CLS_ACTION_DROP)) {
-		should_log = (SR_CLS_ACTION_ALLOW == sr_cls_rl_check(&sr_rules_db[SR_NET_RULES][rulenum].log_rate, jiffies/HZ));
+		should_log = (SR_CLS_ACTION_ALLOW == sr_cls_rl_check(&sr_rules_db[SR_NET_RULES][rulenum].log_rate, jiffies/HZ, 1));
 		if (should_log) { // set or clear the log bit accordingly
 			action |= SR_CLS_ACTION_LOG;
 		} else {
@@ -170,11 +178,12 @@ SR_8 sr_cls_rules_msg_dispatch(struct sr_cls_rules_msg *msg)
 			sr_cls_rule_del(msg->rule_type, msg->rulenum);
 			break;
 		case SR_CLS_RULES_ADD:
-			sal_kernel_print_alert("SR_CLS_RULES_ADD\n");
+			sal_kernel_print_alert("SR_CLS_RULES_ADD rate_type:%d \n", msg->rate_type);
 			sr_cls_rule_add(msg->rule_type,
 			msg->rulenum,
 			msg->actions,
 			msg->file_ops,
+			msg->rate_type,
 			msg->rl_max_rate,
 			msg->rl_exceed_action,
 			msg->log_target,

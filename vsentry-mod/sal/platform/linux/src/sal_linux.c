@@ -162,7 +162,7 @@ SR_U32 sal_get_curr_time(void)
 {
 	struct timespec ts;
 
-    getnstimeofday(&ts);
+	getnstimeofday(&ts);
 
 	return (ts.tv_sec);
 }
@@ -170,7 +170,7 @@ SR_U32 sal_get_curr_time_nsec(void)
 {
 	struct timespec ts;
 
-    getnstimeofday(&ts);
+	getnstimeofday(&ts);
 
 	return (ts.tv_nsec);
 }

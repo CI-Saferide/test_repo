@@ -55,5 +55,6 @@ SR_U32 sal_get_os(sal_os_t *os);
 
 SR_U64 sal_get_time(void);
 SR_32 sal_get_process_name(SR_U32 pid, char *exe, SR_U32 size);
+SR_U32 sal_get_ip_for_interface(char *interface);
 
 #endif /* SAL_LINUX_ENGINE_H*/

@@ -71,6 +71,7 @@ typedef union {
 		SR_U16 	sport;
 		SR_U16 	dport;
 		SR_U8   ip_proto;
+		SR_U32  size;
 	}tuple_info;
 	
 	struct _socket_info {

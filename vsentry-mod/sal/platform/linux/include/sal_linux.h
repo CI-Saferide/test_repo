@@ -24,6 +24,7 @@
 #define SR_ATOMIC_INC_RETURN atomic_inc_return
 #define SR_ATOMIC_INC atomic_inc
 #define SR_ATOMIC_DEC atomic_dec
+#define SR_ATOMIC_ADD_RETURN atomic_add_return
 
 #define TASK_DESC	struct task_struct
 #define SR_RWLOCK	rwlock_t
