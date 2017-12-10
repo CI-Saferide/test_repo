@@ -28,9 +28,11 @@ SR_8 sr_control_msg_dispatch(struct sr_control_msg *msg)
 				sal_kernel_print_warn("vsentry state changed to %s\n", (vsentry_state == SR_TRUE)? "enabled" : "disabled");
 			}
 			break;
-#if CONFIG_STAT_ANALYSIS
+#ifdef CONFIG_STAT_ANALYSIS
 		case SR_CONTROL_PRINT_CONNECTIONS:
+#ifdef SR_STATS_ANALYSIS_DEBUG
 			sr_stat_analisys_print_connections(SR_FALSE);
+#endif
 			break;
 		case SR_CONTROL_TRANSMIT_CONNECTIONS:
 			if (sr_stat_analysis_start_transmit() != SR_SUCCESS) {
