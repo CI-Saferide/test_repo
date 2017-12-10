@@ -149,7 +149,7 @@ SR_U32 sr_connection_transmit(void)
 	return SR_SUCCESS;
 }
 
-#ifdef UNIT_TEST
+#ifdef SR_STAT_ANALYSIS_DEBUG
 static void sr_connection_print_LRU(void)
 {
 	SR_U32 i,ind = SR_ATOMIC_READ(&(LRU_update->ind));
@@ -372,7 +372,7 @@ void sr_stat_connection_garbage_collection(void)
 	sr_special_hash_garbage_collection(connection_table);
 }
 
-#ifdef UNIT_TEST
+#ifdef SR_STAT_ANALYSIS_DEBUG
 void sr_stat_connection_print(SR_BOOL is_print_LRU)
 {
 	SR_U32 count;
@@ -457,7 +457,7 @@ void sr_stat_connection_ut(void)
  		sal_printf("ERROR failed sr_stat_connection_insert\n");
 		return;
 	}
-	sr_stat_connection_print(SR_FALSE);
+	//sr_stat_connection_print(SR_FALSE);
 	
         con_id.saddr.v4addr = 0xAAAAAAAA;
         con_id.daddr.v4addr = 0xBBBBBBBB;
@@ -490,7 +490,7 @@ void sr_stat_connection_ut(void)
 
 	sr_stat_connection_soft_delete(&con_id);
 	sal_printf("----- Soft Delete con 0xAAAAAAAA 0xBBBBBBBB 6 6666 7777\n"); 
-	sr_stat_connection_print(SR_FALSE);
+	//sr_stat_connection_print(SR_FALSE);
 
         con_id.saddr.v4addr = 0xAAAAAAA1;
         con_id.daddr.v4addr = 0xBBBBBBB1;

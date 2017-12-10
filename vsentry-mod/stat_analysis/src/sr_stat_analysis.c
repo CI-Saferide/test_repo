@@ -162,11 +162,13 @@ void sr_stat_analysis_uninit(void)
 	sr_stat_connection_uninit();
 }
 
+#ifdef SR_STS_ANALYSIS_DEBUG
 void sr_stat_analisys_print_connections(SR_BOOL is_print_LRU)
 {
 	sal_printf("The connection table:\n");
 	sr_stat_connection_print(is_print_LRU);
 }
+#endif
 
 SR_32 sr_stat_analysis_start_transmit(void)
 {
