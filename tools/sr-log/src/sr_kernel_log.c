@@ -24,6 +24,18 @@ char severity_strings[SEVERITY_MAX][10] = { "Unknown", "Low", "Medium", "High", 
 
 void CEF_log_event(SR_U32 cid, char *event_name, SR_U8 severity, char *extension)
 {
-	sal_printf("CEF:0|SafeRide|vSentry Mobile|1.0|%d|%s|%s|%s\n", cid, event_name, severity_strings[severity], extension);
+	//printk("CEF:0|SafeRide|vSentry Mobile|1.0|%d|%s|%s|%s\n", cid, event_name, severity_strings[severity], extension);
+
+	struct CEF_payload *payload = (struct CEF_payload*)sr_get_msg(MOD2LOG_BUF, sizeof(struct CEF_payload));
+	
+	if (payload) {	
+		payload->class = cid;		
+		sal_strcpy(payload->name,event_name);
+		payload->sev = severity;	
+		sal_strcpy(payload->extension,extension);			
+		sr_send_msg(MOD2LOG_BUF, sizeof(payload));
+	}else
+		pr_err ("Failed to CEF log... %s\n", __func__);
+	
 }
 

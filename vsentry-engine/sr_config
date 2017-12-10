@@ -1,0 +1,13 @@
+#vehicle ID (VIN)
+VIN supercar
+
+#CAN params
+NUM_OF_CAN_IF 1
+CAN0_IF can0
+
+# collector params
+COLLECT_ENABLE 1
+COLLECT_FILE_SIZE_MB 1
+DISK_SPACE_TRESHOLD_PERCENT 5
+LOG_PATH /candata/
+LOG_PATH_TEMP /tmp/
