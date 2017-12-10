@@ -292,8 +292,10 @@ static SR_32 sr_stat_learn_process_rule(SR_32 pid, sr_stat_con_stats_t *stats)
                 return SR_SUCCESS;
 	}
 
+#ifdef SR_STAT_ANALYSIS_DEBUG
 	sal_printf("LLLLLLLLLLLLLLLL LERAN RULE -- exec:%s rxp:%d rxb:%d txp:%d txb:%d \n", exec,
 		stats->rx_msgs, stats->rx_bytes, stats->tx_msgs, stats->tx_bytes);
+#endif
 
 	if (sr_stat_learn_rule_hash_update(exec, stats) != SR_SUCCESS)
 		return SR_ERROR;
