@@ -166,3 +166,21 @@ SR_32 sal_get_process_name(SR_U32 pid, char *exe, SR_U32 size)
 
 	return SR_SUCCESS;
 }
+
+/* The address is return in network order */
+SR_U32 sal_get_ip_for_interface(char *interface)
+{
+	int fd;
+	struct ifreq ifr;
+
+	fd = socket(AF_INET, SOCK_DGRAM, 0);
+
+ 	ifr.ifr_addr.sa_family = AF_INET;
+ 	strncpy(ifr.ifr_name, interface, IFNAMSIZ-1);
+
+	ioctl(fd, SIOCGIFADDR, &ifr);
+
+	close(fd);
+
+	return ((struct sockaddr_in *)&ifr.ifr_addr)->sin_addr.s_addr;
+}

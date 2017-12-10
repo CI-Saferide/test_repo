@@ -937,6 +937,7 @@ SR_32 vsentry_socket_sendmsg(struct socket *sock,struct msghdr *msg,SR_32 size)
    			disp.tuple_info.dport = ntohs(addr->sin_port);
 			disp.tuple_info.sport = 0; /* No information for sport */
 			disp.tuple_info.ip_proto = sock->sk->sk_protocol;
+			disp.tuple_info.size = size;
 #ifdef DEBUG_EVENT_MEDIATOR
         		CEF_log_event(SR_CEF_CID_SYSTEM, "Info" , SEVERITY_LOW,
 								"vsentry_socket_connect=%lx[%d] -> %lx[%d]\n",
@@ -1014,6 +1015,7 @@ int vsentry_socket_recvmsg(struct socket *sock,struct msghdr *msg,int size,int f
        			disp.tuple_info.sport = ntohs(sock->sk->sk_dport);
        			disp.tuple_info.dport = sock->sk->sk_num;
        			disp.tuple_info.ip_proto = sock->sk->sk_protocol;
+				disp.tuple_info.size = size;
 
 #ifdef CONFIG_STAT_ANALYSIS
 			sr_stat_port_update(disp.tuple_info.dport, current->tgid);

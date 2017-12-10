@@ -9,6 +9,8 @@
 #include "sal_linux.h"
 #endif
 
+#define SR_MAIN_INTERFACE "eth0"
+
 void *sal_memcpy(void *dest, void *src, SR_32 len);
 void *sal_memset(void *dest, SR_8 ch, SR_32 len);
 SR_8 *sal_strcpy(SR_8 *dest, SR_8 *src);

@@ -210,13 +210,7 @@ SR_32 sr_stat_process_connection_hash_update(SR_U32 process_id, sr_stat_connecti
 
 SR_32 sr_stat_process_connection_hash_delete(SR_U32 process_id)
 {
-	SR_32 rc;
-	
-	if ((rc = sr_gen_hash_delete(process_connection_hash, (void *)(long int)process_id) != SR_SUCCESS)) {
-		return rc;
-	}
-
-	return rc;
+	return sr_gen_hash_delete(process_connection_hash, (void *)(long int)process_id);
 }
 
 SR_32 sr_stat_process_connection_hash_exec_for_process(SR_U32 process_id, SR_32 (*cb)(SR_U32 process_id, sr_stat_connection_info_t *connection_info))
