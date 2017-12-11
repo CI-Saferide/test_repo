@@ -56,6 +56,7 @@ INCLUDES 	:=  -I../common/include \
 				-Isal/include \
 				-I../tools/sr-log/include \
 				-I../tools/sr-hash/include \
+				-I../tools/json \
 				-I../common/stat_analysis/include \
 				-Istat_analysis/include \
 
@@ -63,7 +64,7 @@ OBJS		:=  $(addprefix $(OBJDIR)/,$(SRCS:.c=.o))
 DEPS		:=  $(OBJS:.o=.d)
 
 # libs to link with
-LIBS		:= -lpthread -lsr_log -lsr_hash
+LIBS		:= -lpthread -lsr_log -lsr_hash -ljsmn
 # and where to search them 
 LIB_PATH 	:= -L$(LIBDIR)
 
@@ -82,7 +83,7 @@ endif
 
 all: $(TARGET)
 
-$(TARGET): $(OBJDIR) $(OBJS) libsr_log libsr_hash
+$(TARGET): $(OBJDIR) $(OBJS) libsr_log libsr_hash libjsmn
 	@echo "static const char SR_GIT_BUILD[] = \"`git log --pretty=format:'%h' -n 1`\"; " > $(TOP_DIR)/../common/include/sr_build_ver.h
 	@echo "linking $(notdir $@)"
 	$(CC) $(OBJS) -o $(BINDIR)/$(TARGET) $(LIB_PATH) $(LIBS)
@@ -97,6 +98,9 @@ libsr_log:
 
 libsr_hash:
 	@$(MAKE) -s -C ../tools/sr-hash TOP_DIR=$(TOP_DIR)
+
+libjsmn:
+	@$(MAKE) -s -C ../tools/json TOP_DIR=$(TOP_DIR)
 
 $(OBJDIR)/%.o: %.c
 	@echo "compiling $(notdir $<)"
