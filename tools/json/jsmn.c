@@ -1,4 +1,5 @@
 #include "jsmn.h"
+#include "string.h"
 
 static char *jsmn_types[] = {
  [JSMN_OBJECT] = "OBJECT",
