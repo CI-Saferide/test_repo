@@ -107,9 +107,28 @@ SR_32 sr_stat_learn_rule_hash_update(char *exec, sr_stat_con_stats_t *con_stats)
 			return SR_ERROR;
 		}	
 	} else {
-		learn_rule_item->counters = *con_stats;
-		learn_rule_item->is_updated = SR_TRUE;
+		/* Update only bigger counters */
+		if (con_stats->rx_msgs > learn_rule_item->counters.rx_msgs) {
+			learn_rule_item->counters.rx_msgs = con_stats->rx_msgs;
+			learn_rule_item->is_updated = SR_TRUE;
+		}
+		if (con_stats->rx_bytes > learn_rule_item->counters.rx_bytes) {
+			learn_rule_item->counters.rx_bytes = con_stats->rx_bytes;
+			learn_rule_item->is_updated = SR_TRUE;
+		}
+		if (con_stats->tx_msgs > learn_rule_item->counters.tx_msgs) {
+			learn_rule_item->counters.tx_msgs = con_stats->tx_msgs;
+			learn_rule_item->is_updated = SR_TRUE;
+		}
+		if (con_stats->tx_bytes > learn_rule_item->counters.tx_bytes) {
+			learn_rule_item->counters.tx_bytes = con_stats->tx_bytes;
+			learn_rule_item->is_updated = SR_TRUE;
+		}
 	}
+#ifdef SR_STAT_ANALYSIS_DEBUG
+	if (learn_rule_item->is_updated)
+		sal_printf("UUUUUUU learn rule is updated !!\n");
+#endif
 
 	return SR_SUCCESS;
 }
@@ -151,7 +170,7 @@ static SR_32 sr_stat_learn_rule_update_rule(char *exec, SR_U16 rule_num, sr_stat
 
 	CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,"UPDATE rule#%d %s TX p:%d b:%d", 
 		rule_num + 1, exec, counters->rt_msgs, counters->tx_bytes);
-	sr_cls_add_ipv4(address, exec, "*", 0xffffffff, rule_num, SR_DIR_SRC);
+	sr_cls_add_ipv4(address, exec, "*", 0xffffffff, rule_num + 1, SR_DIR_SRC);
 	sr_cls_add_ipv4(0, exec, "*", 0, rule_num + 1, SR_DIR_DST);
 	sr_cls_port_add_rule(0, exec, "*", rule_num + 1, SR_DIR_SRC, 17); 
 	sr_cls_port_add_rule(0, exec, "*", rule_num + 1, SR_DIR_DST, 17); 
