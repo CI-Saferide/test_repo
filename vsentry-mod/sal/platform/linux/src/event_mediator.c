@@ -814,7 +814,6 @@ SR_32 vsentry_socket_sendmsg(struct socket *sock,struct msghdr *msg,SR_32 size)
 	const u8 family = sock->sk->sk_family;
 	struct socket copy_sock = *sock;
 	struct msghdr copy_msg = *msg;
-	struct sockaddr_in *addr;
 #ifdef CONFIG_STAT_ANALYSIS
 	sr_connection_data_t con = {}, *conp;
 	SR_U32 rc;
@@ -909,16 +908,13 @@ SR_32 vsentry_socket_sendmsg(struct socket *sock,struct msghdr *msg,SR_32 size)
 			/* Hook is relevant only for UDP */
 			if (sock->sk->sk_protocol != IPPROTO_UDP)
 				return 0;
-			if (!msg || !msg->msg_name)
-				return 0;
 			/* gather metadata */
 			disp.tuple_info.id.uid = (int)rcred->uid.val;
 			disp.tuple_info.id.pid = current->pid;
-			addr = (struct sockaddr_in *)msg->msg_name;
-			disp.tuple_info.saddr.v4addr.s_addr = 0; /* No information for saddr */
-			disp.tuple_info.daddr.v4addr.s_addr = ntohl(addr->sin_addr.s_addr);
-   			disp.tuple_info.dport = ntohs(addr->sin_port);
-			disp.tuple_info.sport = 0; /* No information for sport */
+			disp.tuple_info.saddr.v4addr.s_addr = ntohl(sock->sk->sk_rcv_saddr);
+			disp.tuple_info.daddr.v4addr.s_addr = ntohl(sock->sk->sk_daddr);
+   			disp.tuple_info.dport = sock->sk->sk_num;
+			disp.tuple_info.sport = ntohs(sock->sk->sk_dport);
 			disp.tuple_info.ip_proto = sock->sk->sk_protocol;
 			disp.tuple_info.size = size;
 #ifdef DEBUG_EVENT_MEDIATOR
@@ -999,7 +995,7 @@ int vsentry_socket_recvmsg(struct socket *sock,struct msghdr *msg,int size,int f
 				disp.tuple_info.size = size;
 
 #ifdef CONFIG_STAT_ANALYSIS
-			sr_stat_port_update(disp.tuple_info.dport, current->tgid);
+			sr_stat_port_update(disp.tuple_info.sport, current->tgid);
 #endif
 				
 #ifdef DEBUG_EVENT_MEDIATOR

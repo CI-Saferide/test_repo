@@ -325,7 +325,7 @@ static SR_32 finish_transmit(void *hash_data, void *data)
 
 #ifdef SR_STAT_ANALYSIS_DEBUG
 		if (iter->connection_info.con_id.sport == 8888 || iter->connection_info.con_id.dport == 8888) { 
-			sal_printf("PPPPPPPPPPPPPP %s sport:%d dport:%d RX diffs:%d orig:%d prev:%d TX diffs:%d orig:%d prev:%d \n",
+			sal_printf("PPPPPPPPPPPPPPPPPPPPPPPPPPP %s sport:%d dport:%d RX diffs:%d orig:%d prev:%d TX diffs:%d orig:%d prev:%d \n",
 				sr_stat_analysis_learn_mode_get() == SR_STAT_MODE_LEARN ? "Learn" : "Protect",
 				iter->connection_info.con_id.sport, iter->connection_info.con_id.dport,
              			diff_rx_b, iter->connection_info.con_stats.rx_bytes, iter->connection_info.prev_con_stats.rx_bytes,
