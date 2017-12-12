@@ -323,7 +323,7 @@ static int vsentry_socket_listen(struct socket *sock,int backlog)
 
 static int vsentry_socket_accept(struct socket *sock,struct socket *newsock)
 {
-	printk("vsentry_socket_accept: Entry, %lx->%lx\n", sock, newsock);
+	sal_kernel_print_info("vsentry_socket_accept: Entry, %lx->%lx\n", sock, newsock);
 	return -EACCES;
 	if(hook_filter())
 		return 0;

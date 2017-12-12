@@ -94,7 +94,7 @@ typedef struct _event_name {
 	SR_U8				name[32];
 }event_name;
 
-CEF_payload *cef_init(char* event_name,enum severity sev,enum dev_event_class_ID	class);
+CEF_payload *cef_init(char* event_name,enum severity sev,enum SR_CEF_CLASS_ID	class);
 
 SR_32 disp_mkdir(disp_info_t* info);
 SR_32 disp_rmdir(disp_info_t* info);

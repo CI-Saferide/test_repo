@@ -23,7 +23,7 @@ static void sr_cls_filter_path_print(void)
 	struct filter_path *iter;
 
 	for (iter = filter_path_list; iter; iter = iter->next) {
-		sal_printf("**** path :%s \n", iter->path);
+		sal_kernel_print_info("**** path :%s \n", iter->path);
         }
 }
 #endif
@@ -52,7 +52,7 @@ static SR_32 sr_cls_filter_path_del(SR_U8 *path)
 
 	for (iter = &filter_path_list; *iter && strcmp((*iter)->path, path); iter = &((*iter)->next));
 	if (!*iter) {
-		sal_printf("sal_filter_path_del path:%s not found\n", path);
+		sal_kernel_print_err("sal_filter_path_del path:%s not found\n", path);
 		return SR_ERROR;
 	}
 
@@ -110,7 +110,7 @@ int sr_cls_inode_add_rule(SR_U32 inode, SR_U32 rulenum)
 		if (!ent) {
 			ent = SR_ZALLOC(sizeof(*ent));
 			if (!ent) {
-				sal_kernel_print_alert("Error: Failed to allocate memory\n");
+				sal_kernel_print_err("Error: Failed to allocate memory\n");
 				return SR_ERROR;
 			} else {
 				ent->key = inode;
@@ -132,7 +132,7 @@ int sr_cls_inode_del_rule(SR_U32 inode, SR_U32 rulenum)
 	if (likely(inode != INODE_ANY)) {
 		struct sr_hash_ent_t *ent=sr_hash_lookup(sr_cls_file_table, inode);
 		if (!ent) {
-			sal_kernel_print_alert("Error: inode rule not found\n");
+			sal_kernel_print_err("Error: inode rule not found\n");
 			return SR_ERROR;
 		}
 		sal_clear_bit_array(rulenum, &ent->rules);
@@ -159,14 +159,14 @@ int sr_cls_inode_inherit(SR_U32 from, SR_U32 to)
 		if (!fileent) {
 			fileent = SR_ZALLOC(sizeof(*fileent));
 			if (!fileent) {
-				sal_kernel_print_alert("Error: Failed to allocate memory\n");
+				sal_kernel_print_err("Error: Failed to allocate memory\n");
 				return SR_ERROR;
 			} else {
 				fileent->key = to;
 			}
 			if ((rc = sr_hash_insert(sr_cls_file_table, fileent)) != SR_SUCCESS) {
 				SR_FREE(fileent);
-				sal_kernel_print_alert("Error: insert entry to file sr_cls_file_table\n");
+				sal_kernel_print_err("Error: insert entry to file sr_cls_file_table\n");
 				return rc;
 			}
 		}
@@ -189,14 +189,14 @@ void sr_cls_print_rules(SR_U32 inode)
 	SR_16 rule;
 
 	memset(&rules, 0, sizeof(rules));
-	sal_kernel_print_alert("sr_cls_print_rules called for inode %d\n", (int)inode);
+	sal_kernel_print_info("sr_cls_print_rules called for inode %d\n", (int)inode);
 	if (!ent) {
-		sal_kernel_print_alert("Error: inode rule not found\n");
+		sal_kernel_print_err("Error: inode rule not found\n");
 		return;
 	}
 	sal_or_self_op_arrays(&rules, &ent->rules);
 	while ((rule = sal_ffs_and_clear_array (&rules)) != -1) {
-		sal_kernel_print_alert("Rule #%d\n", rule);
+		sal_kernel_print_info("Rule #%d\n", rule);
 	}
 	
 }
@@ -221,7 +221,7 @@ SR_8 sr_cls_file_msg_dispatch(struct sr_cls_file_msg *msg)
 			return sr_cls_inode_inherit(msg->inode1, msg->inode2);
 			break;
 		case SR_CLS_INODE_DEL_RULE:
-			sal_kernel_print_alert("delete rule %d from %x\n", msg->rulenum, msg->inode1);
+			sal_kernel_print_info("delete rule %d from %x\n", msg->rulenum, msg->inode1);
 			if ((st = sr_cls_inode_del_rule(msg->inode1, msg->rulenum)) != SR_SUCCESS)
 			    return st;
 			if ((st = sr_cls_exec_inode_del_rule(SR_FILE_RULES, msg->exec_inode, msg->rulenum)) != SR_SUCCESS)
@@ -229,7 +229,7 @@ SR_8 sr_cls_file_msg_dispatch(struct sr_cls_file_msg *msg)
 			return sr_cls_uid_del_rule(SR_FILE_RULES, msg->uid, msg->rulenum);
 			break;
 		case SR_CLS_INODE_ADD_RULE:
-			sal_kernel_print_alert("add rule %d to %x\n", msg->rulenum, msg->inode1);
+			sal_kernel_print_info("add rule %d to %x\n", msg->rulenum, msg->inode1);
 			if ((st = sr_cls_inode_add_rule(msg->inode1, msg->rulenum)) != SR_SUCCESS)
 			    return st;
 			if ((st = sr_cls_exec_inode_add_rule(SR_FILE_RULES, msg->exec_inode, msg->rulenum)) != SR_SUCCESS)
@@ -283,7 +283,7 @@ void sr_cls_ut(void)
 	//sr_cls_print_rules(2000);
 	sr_cls_inode_del_rule(9192, 7);
 	sr_hash_print_table(sr_cls_file_table);
-	sal_kernel_print_alert("testing bucket collision\n");
+	sal_kernel_print_info("testing bucket collision\n");
 	sr_cls_inode_add_rule(10, 7);
 	sr_cls_inode_add_rule(8202, 17);
 	sr_cls_inode_add_rule(16394, 27);
@@ -324,11 +324,11 @@ int sr_cls_fs_init(void)
 {
 	sr_cls_file_table = sr_hash_new_table(8192);
 	if (!sr_cls_file_table) {
-		sal_kernel_print_alert("Failed to allocate hash table!\n");
+		sal_kernel_print_err("Failed to allocate hash table!\n");
 		return SR_ERROR;
 	}
 	memset(&sr_cls_file_any_rules, 0, sizeof(bit_array));
-	sal_kernel_print_alert("Successfully initialized file classifier!\n");
+	sal_kernel_print_info("Successfully initialized file classifier!\n");
 	return SR_SUCCESS;
 }
 

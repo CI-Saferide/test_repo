@@ -33,7 +33,7 @@ static void learn_rule_print(void *data_in_hash)
 {
 	learn_rule_item_t *learn_rule_item = (learn_rule_item_t *)data_in_hash;
 
-	sal_printf("Learn rule : updated:%d  %s RX p:%d b:%d TX p:%d b:%d \n", 
+	CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,"Learn rule : updated:%d  %s RX p:%d b:%d TX p:%d b:%d \n", 
 		learn_rule_item->is_updated, learn_rule_item->exec, learn_rule_item->counters.rx_msgs, learn_rule_item->counters.rx_bytes,
 		learn_rule_item->counters.tx_msgs, learn_rule_item->counters.tx_bytes);
 }
@@ -62,7 +62,7 @@ SR_32 sr_stat_learn_rule_hash_init(void)
         hash_ops.print = learn_rule_print;
 #endif
         if (!(learn_rule_hash = sr_gen_hash_new(HASH_SIZE, hash_ops))) {
-                sal_printf("file_hash_init: sr_gen_hash_new failed\n");
+                CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,"file_hash_init: sr_gen_hash_new failed\n");
                 return SR_ERROR;
         }
 
@@ -83,7 +83,7 @@ SR_32 sr_stat_learn_rule_hash_update(char *exec, sr_stat_con_stats_t *con_stats)
         if (!(learn_rule_item = sr_gen_hash_get(learn_rule_hash, exec))) {
 		SR_Zalloc(learn_rule_item, learn_rule_item_t *, sizeof(learn_rule_item_t));
 		if (!learn_rule_item) {
-			sal_printf("%s: memory allocation failed\n", __FUNCTION__);
+			CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,"%s: memory allocation failed\n", __FUNCTION__);
 			return SR_ERROR;
 		}
 		strncpy(learn_rule_item->exec, exec, SR_MAX_PATH_SIZE);
@@ -91,7 +91,7 @@ SR_32 sr_stat_learn_rule_hash_update(char *exec, sr_stat_con_stats_t *con_stats)
 		learn_rule_item->is_updated = SR_TRUE;
 		/* Add the process */
 		if ((rc = sr_gen_hash_insert(learn_rule_hash, (void *)exec, learn_rule_item)) != SR_SUCCESS) {
-			sal_printf("%s: sr_gen_hash_insert failed\n", __FUNCTION__);
+			CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,"%s: sr_gen_hash_insert failed\n", __FUNCTION__);
 			return SR_ERROR;
 		}
 		
@@ -126,7 +126,7 @@ void sr_learn_rule_connection_hash_print(void)
 
 static SR_32 sr_stat_learn_rule_update_rule(char *exec, sr_stat_con_stats_t *counters)
 {
-	sal_printf("UPDATE rule ---- %s RX p:%d b:%d TX p:%d b:%d \n", 
+	CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,"UPDATE rule ---- %s RX p:%d b:%d TX p:%d b:%d \n", 
 		exec, counters->rx_msgs, counters->rx_bytes, counters->tx_msgs, counters->tx_bytes);
 
 	return SR_SUCCESS;
@@ -154,7 +154,7 @@ static SR_32 ut_cb(void *hash_data, void *data)
 {
 	learn_rule_item_t *learn_rule_item = (learn_rule_item_t *)hash_data;
 
-	sal_printf("Leran rule ---- %s RX p:%d b:%d TX p:%d b:%d \n", 
+	CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,"Leran rule ---- %s RX p:%d b:%d TX p:%d b:%d \n", 
 		learn_rule_item->exec, learn_rule_item->counters.rx_msgs, learn_rule_item->counters.rx_bytes, 
 		learn_rule_item->counters.tx_msgs, learn_rule_item->counters.tx_bytes);
 	
@@ -173,7 +173,7 @@ void sr_stat_learn_rule_ut(void)
 	con_stats.tx_bytes = 600;
 	con_stats.tx_msgs = 6;
 	if ((rc = sr_stat_learn_rule_hash_update("/home/arik/arik/client_tcp_inf", &con_stats)) != SR_SUCCESS) {
-		sal_printf("sr_stat_process_connection_hash_update_process FAILED !!!\n");
+		CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,"sr_stat_process_connection_hash_update_process FAILED !!!\n");
 		return;
 	}
 	sr_stat_learn_rule_hash_exec_for_all(ut_cb);
@@ -184,10 +184,10 @@ void sr_stat_learn_rule_ut(void)
 	con_stats.tx_bytes = 601;
 	con_stats.tx_msgs = 7;
 	if ((rc = sr_stat_learn_rule_hash_update("/home/arik/arik/client_tcp_inf", &con_stats)) != SR_SUCCESS) {
-		sal_printf("sr_stat_process_connection_hash_update_process FAILED !!!\n");
+		CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,"sr_stat_process_connection_hash_update_process FAILED !!!\n");
 		return;
 	}
-	sal_printf("--------------------------- Next :\n");
+	CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,"--------------------------- Next :\n");
 	sr_stat_learn_rule_hash_exec_for_all(ut_cb);
 
 	/* Add anorther process "*/
@@ -196,14 +196,14 @@ void sr_stat_learn_rule_ut(void)
 	con_stats.tx_bytes = 800;
 	con_stats.tx_msgs = 8;
 	if ((rc = sr_stat_learn_rule_hash_update("/usr/bin/iperf", &con_stats)) != SR_SUCCESS) {
-		sal_printf("sr_stat_process_connection_hash_update_process FAILED !!!\n");
+		CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,"sr_stat_process_connection_hash_update_process FAILED !!!\n");
 		return;
 	}
-	sal_printf("--------------------------- Next :\n");
+	CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,"--------------------------- Next :\n");
 	sr_stat_learn_rule_hash_exec_for_all(ut_cb);
 
 	sr_stat_learn_rule_hash_delete("/usr/bin/iperf");
-	sal_printf("--------------------------- After delete of iperf :\n");
+	CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,"--------------------------- After delete of iperf :\n");
 	sr_stat_learn_rule_hash_exec_for_all(ut_cb);
 }
 #ifdef UNIT_TEST

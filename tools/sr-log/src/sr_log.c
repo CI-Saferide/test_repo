@@ -18,6 +18,10 @@ const static SR_8	*log_level_str[8] = {
 };
 #endif
 
+// FORMAT: Jan 18 11:07:53 host CEF:Version|Device Vendor|Device Product|Device Version|Device Event Class ID|Name|Severity|[Extension]
+// Severity is a string or integer and reflectsthe importance of the event. The valid string values are Unknown, Low, Medium, High, and Very-High. The valid integer values are 0-3=Low, 4-6=Medium, 7- 8=High, and 9-10=Very-High.
+char severity_strings[SEVERITY_MAX][10] = { "Unknown", "Low", "Medium", "High", "Very-High" };
+
 static SR_8 g_app_name[20];
 
 typedef const char* cef_str;
@@ -59,8 +63,8 @@ void log_cef_msg(cef_str str)
 }
 
 void log_print_cef_msg(CEF_payload *cef)
-{
-	char cef_buffer[128];
+{	
+	char cef_buffer[1024];
 	char cef_class[32];
 	time_t timer;
     char buffer[26];
@@ -70,37 +74,59 @@ void log_print_cef_msg(CEF_payload *cef)
     tm_info = localtime(&timer);
     strftime(buffer, 26, "%Y-%m-%d %H:%M:%S", tm_info);
 
+
 	//CEF:0|SafeRide|vSentry Mobile|1.0|%d|%s|%s|%s
 	//printf("%s CEF: cef_version %d, vendor %s, product %s, ver %d, ",buffer,cef->cef_version, cef->dev_vendor, cef->dev_product, cef->dev_version);
 		
 	switch (cef->class) {
-	case NETWORK:
-		//sal_printf("class network, ");
-		sal_strcpy(cef_class,"class network, ");
+	case SR_CEF_CID_FILE:
+		sal_strcpy(cef_class,"File");
 		break;
-    case FS:
-		//sal_printf("class fs, ");
-		sal_strcpy(cef_class,"class fs, ");
+    case SR_CEF_CID_NETWORK:
+		sal_strcpy(cef_class,"Network");
 		break;
-    case PROC:
-		//sal_printf("class proc, ");
-		sal_strcpy(cef_class,"class proc, ");
+    case SR_CEF_CID_CAN:
+		sal_strcpy(cef_class,"CAN");
+		break;
+	case SR_CEF_CID_SYSTEM:
+		sal_strcpy(cef_class,"System");
 		break;
 	default:
-		//sal_printf("class N/A, ");
-		sal_strcpy(cef_class,"class N/A, ");	
+		sal_strcpy(cef_class,"Class N/A, ");	
 		break;
 	}
+	
 	sprintf(cef_buffer,"%s CEF: %d| vendor %s|product %s|ver %d|%s|%s|%s\n",
 			buffer,cef->cef_version, cef->dev_vendor, cef->dev_product, cef->dev_version,cef_class,cef->name, cef->extension);
 		
 	log_cef_msg(cef_buffer);
+}
 
 
-	sprintf(cef_buffer,"%s CEF: %d| vendor %s|product %s|ver %d|%s|%s|%s\n",
-			buffer,cef->cef_version, cef->dev_vendor, cef->dev_product, cef->dev_version,cef_class,cef->name, cef->extension);
+void CEF_log_event(const SR_U32 class, const char *event_name, const SR_U8 severity, const char *fmt, ...)
+{
+	int i = 0;
+	va_list args;
+	SR_8 msg[SR_MAX_LOG];
+	//printk("CEF:0|SafeRide|vSentry Mobile|1.0|%d|%s|%s|%s\n", cid, event_name, severity_strings[severity], extension);
+	struct CEF_payload *payload = malloc (sizeof (struct CEF_payload));
+	
+	if (payload) {	
+		payload->class = class;		
+		sal_strcpy(payload->name,(char*)event_name);
+		payload->sev = severity;	
+		va_start(args, fmt);
+		i = vsnprintf(msg, SR_MAX_LOG-1, fmt, args);
+		va_end(args);
+		msg[SR_MAX_LOG - 1] = 0;
+		sal_strcpy(payload->extension,msg);
 		
-	log_cef_msg(cef_buffer);
+		log_print_cef_msg(payload);
+	}else
+		printf("Failed to CEF log...%x\n",i);
+		
+	
+	free (payload);	
 }
 
 SR_32 sr_log_init (const SR_8* app_name, SR_32 flags)

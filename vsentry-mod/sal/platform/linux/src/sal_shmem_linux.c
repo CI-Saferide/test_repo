@@ -7,7 +7,7 @@ SR_32 sal_shmem_free(sr_shmem *sr_shmem_ptr)
 	int i;
 
 	if (!sr_shmem_ptr || !sr_shmem_ptr->buffer) {
-		sal_printf("wrong params: 0x%p, %p\n", sr_shmem_ptr, sr_shmem_ptr->buffer);
+		sal_kernel_print_err("wrong params: 0x%p, %p\n", sr_shmem_ptr, sr_shmem_ptr->buffer);
 		return -1;
 	}
 
@@ -17,7 +17,7 @@ SR_32 sal_shmem_free(sr_shmem *sr_shmem_ptr)
 
 	free_pages((unsigned long)sr_shmem_ptr->buffer, get_order(sr_shmem_ptr->buffer_size));
 
-	sal_printf("0x%p size 0x%08x is free\n", sr_shmem_ptr->buffer, sr_shmem_ptr->buffer_size);
+	sal_kernel_print_info("0x%p size 0x%08x is free\n", sr_shmem_ptr->buffer, sr_shmem_ptr->buffer_size);
 
 	sr_shmem_ptr->buffer = NULL;
 	sr_shmem_ptr->buffer_size = 0;
@@ -31,13 +31,13 @@ SR_32 sal_shmem_alloc(sr_shmem *sr_shmem_ptr, SR_32 length, SR_32 type)
 	void *buf;
 
 	if (!sr_shmem_ptr || (length <= 0) || (length > MAX_BUFFER_SIZE)) {
-		pr_err("wrong params: 0x%p, %d\n", sr_shmem_ptr, length);
+		sal_kernel_print_err("wrong params: 0x%p, %d\n", sr_shmem_ptr, length);
 		return -EIO;
 	}
 
 	buf = (void *)__get_free_pages(GFP_KERNEL, get_order(length));
 	if (!buf) {
-		pr_err("failed to alloc pages\n");
+		sal_kernel_print_err("failed to alloc pages\n");
 		return -ENOMEM;
 	}
 	memset(buf, 0, length);
@@ -49,7 +49,7 @@ SR_32 sal_shmem_alloc(sr_shmem *sr_shmem_ptr, SR_32 length, SR_32 type)
 		SetPageReserved(virt_to_page(sr_shmem_ptr->buffer + i));
 	}
 
-	sal_printf("sal_shmem_alloc allocated 0x%p size 0x%08x\n",
+	sal_kernel_print_info("sal_shmem_alloc allocated 0x%p size 0x%08x\n",
 		sr_shmem_ptr->buffer, sr_shmem_ptr->buffer_size);
 
 	return 0;

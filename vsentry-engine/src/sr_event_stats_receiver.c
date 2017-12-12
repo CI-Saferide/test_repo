@@ -31,7 +31,8 @@ void sr_event_stats_receiver(SR_8 *msg_buff, SR_U32 msg_len)
 #ifdef SR_STAT_ANALYSIS_DEBUG
 				if (pConStats->con_id.sport == 7777 || pConStats->con_id.dport == 7777 ||
 				    pConStats->con_id.sport == 22 || pConStats->con_id.dport == 22) { 
-				sal_printf("CONN DEBUG proto:%d saddr:%x daddr:%x sport:%d dport:%d pid:%d rx_msgs:%d rx_bytes:%d tx_msgs:%d tx_bytes:%d \n",
+				CEF_log_debug(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,
+					"CONN DEBUG proto:%d saddr:%x daddr:%x sport:%d dport:%d pid:%d rx_msgs:%d rx_bytes:%d tx_msgs:%d tx_bytes:%d \n",
 					pConStats->con_id.ip_proto, 
 					pConStats->con_id.source_addr.v4addr,
 					pConStats->con_id.remote_addr.v4addr,
@@ -45,7 +46,8 @@ void sr_event_stats_receiver(SR_8 *msg_buff, SR_U32 msg_len)
 				}
 #endif
 				if ((rc = sr_stat_process_connection_hash_update(pConStats->pid, &connection_info)) != SR_SUCCESS) {
-                			sal_printf("sr_stat_process_connection_hash_update_process FAILED !!!\n");
+                			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_LOW,
+								"sr_stat_process_connection_hash_update_process FAILED !!!\n");
 					break;	
 				}
 				break;
@@ -53,7 +55,8 @@ void sr_event_stats_receiver(SR_8 *msg_buff, SR_U32 msg_len)
 				pConTran = (struct sr_ec_connection_transmit_t *) &msg_buff[offset];
 				offset += sizeof(struct sr_ec_connection_transmit_t);
 				if ((rc = sr_stat_process_connection_hash_finish_transmit(pConTran->count)) != SR_SUCCESS) {
-                			sal_printf("sr_stat_process_connection_hash_exec_for_process FAILED !!!\n");
+                			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_LOW,
+								"sr_stat_process_connection_hash_exec_for_process FAILED !!!\n");
 					break;	
 				}
 				break;

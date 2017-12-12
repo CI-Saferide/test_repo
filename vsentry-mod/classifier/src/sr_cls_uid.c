@@ -18,12 +18,12 @@ int sr_cls_uid_init(void)
 
 		sr_cls_uid_table[i] = sr_hash_new_table(UID_HASH_TABLE_SIZE);
 		if (!sr_cls_uid_table[i]) {
-			sal_printf("[%s]: Failed to allocate UID table!\n", MODULE_NAME);
+			sal_kernel_print_err("[%s]: Failed to allocate UID table!\n", MODULE_NAME);
 			sr_cls_uid_uninit();
 			return SR_ERROR;
 		}
 	}
-	sal_printf("[%s]: Successfully initialized UID classifier!\n", MODULE_NAME);
+	sal_kernel_print_info("[%s]: Successfully initialized UID classifier!\n", MODULE_NAME);
 
 	return SR_SUCCESS;
 }
@@ -53,7 +53,7 @@ void sr_cls_uid_uninit(void)
 			sr_cls_uid_table[j] = NULL;
 		}
 	}
-	sal_printf("[%s]: Successfully removed UID classifier!\n", MODULE_NAME);
+	sal_kernel_print_info("[%s]: Successfully removed UID classifier!\n", MODULE_NAME);
 }
 
 void sr_cls_uid_empty_table(SR_BOOL is_lock)
@@ -85,7 +85,7 @@ int sr_cls_uid_add_rule(enum sr_rule_type type, SR_32 uid, SR_U32 rulenum)
 		if (!ent) {		
 			ent = SR_ZALLOC(sizeof(*ent)); 
 			if (!ent) {
-				sal_printf("Error: Failed to allocate memory\n");
+				sal_kernel_print_err("Error: Failed to allocate memory\n");
 				return SR_ERROR;
 			} else {
 				ent->ent_type = UID;
@@ -105,7 +105,7 @@ int sr_cls_uid_del_rule(enum sr_rule_type type, SR_32 uid, SR_U32 rulenum)
 	if (uid != UID_ANY) {
 		struct sr_hash_ent_t *ent=sr_hash_lookup(sr_cls_uid_table[type], uid);
 		if (!ent) {
-			sal_printf("Error can't del rule# %u on UID:%u - rule not found\n",rulenum,uid);
+			sal_kernel_print_err("Error can't del rule# %u on UID:%u - rule not found\n",rulenum,uid);
 			return SR_ERROR;
 		}
 		sal_clear_bit_array(rulenum, &ent->rules);
@@ -142,11 +142,11 @@ SR_8 sr_cls_uid_msg_dispatch(struct sr_cls_uid_msg *msg)
 {
         switch (msg->msg_type) {
                 case SR_CLS_UID_DEL_RULE:
-                        sal_kernel_print_alert("Delete rule %d from %d\n", msg->rulenum, msg->uid);
+                        sal_kernel_print_info("Delete rule %d from %d\n", msg->rulenum, msg->uid);
                         return sr_cls_uid_del_rule(msg->rule_type, msg->uid, msg->rulenum);
                         break;
                 case SR_CLS_UID_ADD_RULE:
-                        sal_kernel_print_alert("Add rule %d to %d\n", msg->rulenum, msg->uid);
+                        sal_kernel_print_info("Add rule %d to %d\n", msg->rulenum, msg->uid);
                         return sr_cls_uid_add_rule(msg->rule_type, msg->uid, msg->rulenum);
                         break;
                 default:
@@ -163,31 +163,31 @@ void sr_cls_uid_ut(void)
 	sr_cls_uid_add_rule(SR_NET_RULES, 69, 7);
 	ent = sr_cls_uid_find(SR_NET_RULES, 69);
 	if (!ent || (ent->key != 69)) {
-		sal_printf("sr_cls_uid_ut: failed to match UID\n");
+		sal_kernel_print_info("sr_cls_uid_ut: failed to match UID\n");
 	}
 	sr_cls_uid_add_rule(SR_NET_RULES, 37, 8);
 	ent = sr_cls_uid_find(SR_NET_RULES, 69);
 	if (!ent || (ent->key != 69)) {
-		sal_printf("sr_cls_uid_ut: failed to match UID\n");
+		sal_kernel_print_info("sr_cls_uid_ut: failed to match UID\n");
 	}
 	ent = sr_cls_uid_find(SR_NET_RULES, 37);
 	if (!ent || (ent->key != 37)) {
-		sal_printf("sr_cls_uid_ut: failed to match UID\n");
+		sal_kernel_print_info("sr_cls_uid_ut: failed to match UID\n");
 	}
 	sr_cls_uid_del_rule(SR_NET_RULES, 69, 7);
 	ent = sr_cls_uid_find(SR_NET_RULES, 37);
 	if (!ent || (ent->key != 37)) {
-		sal_printf("sr_cls_uid_ut: failed to match UID\n");
+		sal_kernel_print_info("sr_cls_uid_ut: failed to match UID\n");
 	}
 	ent = sr_cls_uid_find(SR_NET_RULES, 69);
 	if (ent) {
-		sal_printf("sr_cls_uid_ut: failed to match nonexistent UID\n");
+		sal_kernel_print_info("sr_cls_uid_ut: failed to match nonexistent UID\n");
 	}
 	sr_cls_uid_del_rule(SR_NET_RULES, 37, 8);
 	ent = sr_cls_uid_find(SR_NET_RULES, 37);
 	if (ent) {
-		sal_printf("sr_cls_uid_ut: failed to match nonexistent UID\n");
+		sal_kernel_print_info("sr_cls_uid_ut: failed to match nonexistent UID\n");
 	}
-	sal_printf("sr_cls_uid_ut: SUCCESS!\n");
+	sal_kernel_print_info("sr_cls_uid_ut: SUCCESS!\n");
 
 }

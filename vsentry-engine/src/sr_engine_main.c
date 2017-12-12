@@ -35,11 +35,13 @@ SR_32 engine_main_loop(void *data)
 	SR_8 *msg;
 
 	printf("engine_main_loop started\n");
+	CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,"engine_main_loop started\n");
 
 	/* init the module2engine buffer*/
 	ret = sr_msg_alloc_buf(MOD2ENG_BUF, MAX_BUFFER_SIZE);
 	if (ret != SR_SUCCESS){
-		printf("failed to init MOD2ENG msg_buf\n");
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_LOW,
+			"failed to init MOD2ENG msg_buf\n");
 		return SR_ERROR;
 	}
 
@@ -57,7 +59,8 @@ SR_32 engine_main_loop(void *data)
 	/* free allocated buffer */
 	sr_msg_free_buf(MOD2ENG_BUF);
 
-	printf("engine_main_loop end\n");
+	CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,
+		"engine_main_loop end\n");
 
 	return SR_SUCCESS;
 }
@@ -89,36 +92,44 @@ SR_32 sr_engine_start(void)
 	FILE *f;
 
 	printf("vsentry engine started\n");
+	
+	CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,
+		"vsentry engine started\n");
 
 	ret = sr_log_init("[vsentry]", 0);
 	if (ret != SR_SUCCESS){
-		printf("failed to init sr_log\n");
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_LOW,
+			"failed to init sr_log\n");
 		return SR_ERROR;
 	}
 
 #ifdef CONFIG_STAT_ANALYSIS
 	ret = sr_stat_analysis_init();
 	if (ret != SR_SUCCESS){
-		sal_printf("failed to init sr_stat_analysis_init\n");
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_LOW,
+			"failed to init sr_stat_analysis_init\n");
 		return SR_ERROR;
 	}
 #endif
 
 	ret = sr_info_gather_init();
 	if (ret != SR_SUCCESS){
-		sal_printf("failed to init sr_stat_analysis_init\n");
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_LOW,
+			"failed to init sr_stat_analysis_init\n");
 		return SR_ERROR;
 	}
 
 	ret = sr_ml_conngraph_init();
 	if (ret != SR_SUCCESS){
-		printf("failed to init sr_ml_conngraph\n");
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_LOW,
+			"failed to init sr_ml_conngraph\n");
 		return SR_ERROR;
 	}
 
 	ret = sr_start_task(SR_ENGINE_TASK, engine_main_loop);
 	if (ret != SR_SUCCESS) {
-		sal_printf("failed to start engine_main_loop\n");
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_LOW,
+			"failed to start engine_main_loop\n");
 		sr_stop_task(SR_INFO_GATHER_TASK);
 
 		return SR_ERROR;
@@ -126,19 +137,22 @@ SR_32 sr_engine_start(void)
 
 	ret = sr_msg_alloc_buf(ENG2MOD_BUF, MAX_BUFFER_SIZE);
 	if (ret != SR_SUCCESS){
-		printf("failed to init ENG2MOD msg_buf\n");
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_LOW,
+			"failed to init ENG2MOD msg_buf\n");
 		return SR_ERROR;
 	}
 
 	ret = sr_file_hash_init();
 	if (ret != SR_SUCCESS){
-		printf("failed to init file_hash\n");
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_LOW,
+			"failed to init file_hash\n");
 		return SR_ERROR;
 	}
 
 	ret = sr_create_filter_paths();
 	if (ret != SR_SUCCESS){
-		printf("failed to init sr_create_fileter_faths\n");
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_LOW,
+		"failed to init sr_create_fileter_faths\n");
 		return SR_ERROR;
 	}
 
@@ -148,12 +162,15 @@ SR_32 sr_engine_start(void)
 	if(config_params.collector_enable){
 		ret = sr_start_task(SR_CAN_COLLECT_TASK, can_collector_init);
 		if (ret != SR_SUCCESS) {
-			printf("Failed to start CAN-Bus Collector\n");
+			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_LOW,
+				"Failed to start CAN-Bus Collector\n");
 			return SR_ERROR;	
 		}	
-		printf("CAN-Bus Collector - ENABLED!\n");
+		CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,
+			"CAN-Bus Collector - ENABLED!\n");
 	} else {
-		printf("CAN-Bus Collector - DISABLED!\n");
+		CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,
+			"CAN-Bus Collector - DISABLED!\n");
 	}
 	/* indicate VPI that we are running */
 	f = fopen("/tmp/sec_state", "w");
@@ -175,10 +192,12 @@ SR_32 sr_engine_start(void)
 				break;
 			case 'p':
 				can_args.can_print = !can_args.can_print;
-				printf("\nCAN-Bus %s prints - Enable|Disable\n", can_args.can_interface);
+				CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,
+					"\nCAN-Bus %s prints - Enable|Disable\n", can_args.can_interface);
 				break;			
 			case 'v':
-				printf("\nAvailable Space under %s is: %lld bytes\n",disk,sal_gets_space(disk));
+				CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,
+					"\nAvailable Space under %s is: %lld bytes\n",disk,sal_gets_space(disk));
 				break;				
 		}
 	}

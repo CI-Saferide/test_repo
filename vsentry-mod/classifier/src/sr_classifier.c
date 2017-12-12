@@ -124,7 +124,8 @@ SR_32 sr_classifier_network(disp_info_t* info)
 		}
 		//PID
 		if ((st = sr_cls_process_add(info->tuple_info.id.pid)) != SR_SUCCESS) {
-			sal_printf("*** Error add process \n");
+			CEF_log_event(SR_CEF_CID_SYSTEM, "Error", SEVERITY_LOW,
+				"Error adding process \n");
 	    	}
 		ptr = sr_cls_process_match(SR_NET_RULES, info->tuple_info.id.pid);
 		if (ptr) {
@@ -217,7 +218,8 @@ SR_32 sr_classifier_file(disp_info_t* info)
 
 	// PID
 	if ((st = sr_cls_process_add(info->fileinfo.id.pid)) != SR_SUCCESS) {
-	    sal_printf("*** Error add process \n");
+	    CEF_log_event(SR_CEF_CID_SYSTEM, "Error", SEVERITY_LOW,
+				"Error adding process \n");
 	}
 	ptr = sr_cls_process_match(SR_FILE_RULES, info->fileinfo.id.pid);
 	if (ptr) {
@@ -270,7 +272,8 @@ SR_32 sr_classifier_canbus(disp_info_t* info)
 
 	if (info->can_info.id.pid) { 
 	    if ((st = sr_cls_process_add(info->can_info.id.pid)) != SR_SUCCESS) {
-	        sal_printf("*** Error add process \n");
+	        CEF_log_event(SR_CEF_CID_SYSTEM, "Error", SEVERITY_LOW,
+				"Error adding process \n");
 	    }
 	    ptr = sr_cls_process_match(SR_CAN_RULES, info->can_info.id.pid);
 	    if (ptr) {
@@ -298,7 +301,7 @@ SR_32 sr_classifier_canbus(disp_info_t* info)
 	while ((rule = sal_ffs_and_clear_array (&ba_res)) != -1) {
 		action = sr_cls_can_rule_match(rule);
 		if (action & SR_CLS_ACTION_LOG) {
-			char ext[64], actionstring[16], msg[64];
+			char actionstring[16], msg[64];
 			SR_U8 severity;
 			if (action & SR_CLS_ACTION_DROP) {
 				sprintf(actionstring, "Drop");
@@ -314,8 +317,8 @@ SR_32 sr_classifier_canbus(disp_info_t* info)
 				severity = SEVERITY_UNKNOWN;
 			}
 
-			sprintf(ext, "RuleNumber=%d Action=%s CanID=%x", rule, actionstring, info->can_info.msg_id);
-			CEF_log_event(SR_CEF_CID_CAN, msg , severity, ext);
+			CEF_log_event(SR_CEF_CID_CAN, msg , severity, 
+							"RuleNumber=%d Action=%s CanID=%x", rule, actionstring, info->can_info.msg_id);
 		}
 		if (action & SR_CLS_ACTION_DROP)
 			return SR_CLS_ACTION_DROP;

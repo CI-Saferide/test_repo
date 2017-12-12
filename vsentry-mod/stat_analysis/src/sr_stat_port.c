@@ -73,12 +73,12 @@ void sr_stat_port_uninit(void)
 	for(i = 0; i < STST_PORT_HASH_TABLE_SIZE; i++) {
 		if (sr_stat_port_table->buckets[i].head != NULL){
 #ifdef SR_STAT_ANALYSIS_DEBUG
-			sal_printf("hash_index[%d] - DELETEING\n",i);
+			sal_kernel_print_info("hash_index[%d] - DELETEING\n",i);
 #endif
 			curr = sr_stat_port_table->buckets[i].head;				
 			while (curr != NULL){
 #ifdef SR_STAT_ANALYSIS_DEBUG
-				sal_printf("\t\tDelete port : %u\n",curr->key);
+				sal_kernel_print_info("\t\tDelete port : %u\n",curr->key);
 #endif
 				next = curr->next;
 				SR_FREE(curr);
@@ -92,7 +92,7 @@ void sr_stat_port_uninit(void)
 	}
 	SR_FREE(sr_stat_port_table);
 	sr_stat_port_table = NULL;
-	sal_printf("[%s]: Successfully removed stat portr hash!\n", MODULE_NAME);
+	sal_kernel_print_info("[%s]: Successfully removed stat portr hash!\n", MODULE_NAME);
 }
 
 #ifdef UNIT_TEST
@@ -101,19 +101,19 @@ void sr_stat_port_ut(void)
 	int st;
 
 	if ((st = sr_stat_port_update(7777, 1234)) != SR_SUCCESS) {
- 	    printk("*** Error update port!!\n");
+ 	    sal_kernel_print_err("*** Error update port!!\n");
 	    return;
 	}
-        printk("The pid of the port expect:1234 :%d \n", sr_stat_port_find_pid(7777));
+        sal_kernel_print_info("The pid of the port expect:1234 :%d \n", sr_stat_port_find_pid(7777));
 	if ((st = sr_stat_port_update(7788, 4567)) != SR_SUCCESS) {
- 	    printk("*** Error update port!!\n");
+ 	    sal_kernel_print_err("*** Error update port!!\n");
 	    return;
 	}
-        printk("The pid expect:4567 :%d \n", sr_stat_port_find_pid(7788));
+        sal_kernel_print_info("The pid expect:4567 :%d \n", sr_stat_port_find_pid(7788));
 	if ((st = sr_stat_port_update(7777, 2424)) != SR_SUCCESS) {
- 	    printk("*** Error update port!!\n");
+ 	    sal_kernel_print_err("*** Error update port!!\n");
 	    return;
 	}
-        printk("The pid of the port expect:2424 :%d \n", sr_stat_port_find_pid(7777));
+        sal_kernel_print_info("The pid of the port expect:2424 :%d \n", sr_stat_port_find_pid(7777));
 }
 #endif /* UNIT_TEST */

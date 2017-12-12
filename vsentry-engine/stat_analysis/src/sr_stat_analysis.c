@@ -14,12 +14,14 @@ SR_32 sr_stat_analysis_init(void)
 	SR_U64 t;
 
 	if (sr_stat_learn_rule_hash_init() != SR_SUCCESS) {
-		sal_printf("stat analysis init failed at sr_stat_learn_rule_hash_init\n");
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_LOW,
+			"stat analysis init failed at sr_stat_learn_rule_hash_init\n");
 		return SR_ERROR;
 	}
 
 	if (sr_stat_process_connection_hash_init() != SR_SUCCESS) {
-		sal_printf("stat analysis init failed at sr_stat_process_connection_hash_init\n");
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_LOW,
+			"stat analysis init failed at sr_stat_process_connection_hash_init\n");
 		sr_stat_learn_rule_hash_uninit();
 		return SR_ERROR;
 	}
@@ -81,18 +83,21 @@ SR_32 sr_stat_analysis_process_died(SR_U32 pid)
 	t = sal_get_time();
 
 	if ((rc = sr_stat_process_connection_hash_exec_for_process(pid, process_died_cb)) != SR_SUCCESS) {
-		sal_printf("sr_stat_process_connection_hash_exec_for_process FAILED !!!\n");
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_LOW,
+			"sr_stat_process_connection_hash_exec_for_process FAILED !!!\n");
 		return SR_ERROR;
         }
 	if ((rc = sr_stat_process_connection_hash_delete(pid)) == SR_ERROR) {
-		sal_printf("sr_stat_process_connection_hash_exec_for_process FAILED !!!\n");
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_LOW,
+			"sr_stat_process_connection_hash_exec_for_process FAILED !!!\n");
 		return SR_ERROR;
         }
 
 	if (t - last_aging > SR_AGING_CHECK_TIME) {
 		sr_stat_connection_info_t con = {};
 #ifdef SR_STAT_ANALYSIS_DEBUG
-		sal_printf("STAT ANALYSIS AGING \n");
+		CEF_log_debug(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,
+			"STAT ANALYSIS AGING \n");
 #endif 
 		// Its time to check for aging
 		sr_stat_process_connection_delete_aged_connections();

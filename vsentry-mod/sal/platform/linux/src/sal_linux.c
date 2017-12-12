@@ -11,7 +11,7 @@ SR_32 sal_task_stop(void *data)
 	struct task_struct *thread = (struct task_struct *)data;
 
 	if (!thread) {
-		sal_printf("sal_task_stop: invalid argument %p\n", data);
+		sal_kernel_print_err("sal_task_stop: invalid argument %p\n", data);
 		return SR_ERROR;
 	}
 
@@ -28,13 +28,13 @@ SR_32 sal_task_start(void **data, SR_32 (*task_func)(void *data))
 
 	thread = kthread_create(task_func, NULL, "vsentry kernel thread");
 	if (IS_ERR(thread)) {
-		sal_printf("sal_task_start: failed to create new thread\n");
+		sal_kernel_print_err("sal_task_start: failed to create new thread\n");
 		return SR_ERROR;
 	}
 
 	*data = thread;
 
-	sal_printf("sal_task_start: new task was created 0x%p 0x%p\n", thread, data);
+	sal_kernel_print_info("sal_task_start: new task was created 0x%p 0x%p\n", thread, data);
 
 	return SR_SUCCESS;
 }

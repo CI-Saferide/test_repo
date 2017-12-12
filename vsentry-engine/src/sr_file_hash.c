@@ -52,9 +52,11 @@ void file_print(void *data_in_hash)
 	file_rules_data_t *ptr;
 	file_rules_item_t *rules_item = (file_rules_item_t *)data_in_hash;
 
-	sal_printf("File path:%s \n", rules_item->file_path);
+	CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,
+		"File path:%s \n", rules_item->file_path);
 	for (ptr = rules_item->file_rules_list; ptr; ptr = ptr->next) {
-		sal_printf("Rule #%d user:%s exec:%s actions:%x ops:%x \n", ptr->rulenum, ptr->user, ptr->exec, ptr->actions, ptr->file_ops);
+		CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,
+			"Rule #%d user:%s exec:%s actions:%x ops:%x \n", ptr->rulenum, ptr->user, ptr->exec, ptr->actions, ptr->file_ops);
 	}
 }
 
@@ -82,7 +84,8 @@ SR_32 sr_file_hash_init(void)
 	hash_ops.free = file_free;
 	hash_ops.print = file_print;
 	if (!(file_hash = sr_gen_hash_new(HASH_SIZE, hash_ops))) {
-		sal_printf("file_hash_init: sr_gen_hash_new failed\n");
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_LOW,
+			"file_hash_init: sr_gen_hash_new failed\n");
 		return SR_ERROR;
 	}
 
@@ -108,7 +111,8 @@ static SR_32 update_rule_item(file_rules_item_t *file_rule_item, char *exec, cha
 	if (!*iter)  {
 		SR_Zalloc(*iter, file_rules_data_t *, sizeof(file_rules_data_t));
 		if (!*iter) {
-			sal_printf("%s: SR_Zalloc failed\n", __FUNCTION__);
+			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_LOW,
+				"%s: SR_Zalloc failed\n", __FUNCTION__);
 			return SR_ERROR;
 		}
 	}
@@ -135,7 +139,8 @@ SR_32 sr_file_hash_update_rule(char *filename, char *exec, char *user, SR_U32 ru
 		update_rule_item(file_rule_item, exec, user, rulenum, actions, file_ops);
 		/* Add the rule */
 		if ((rc = sr_gen_hash_insert(file_hash, filename, file_rule_item)) != SR_SUCCESS) {
-			sal_printf("%s: sr_gen_hash_insert failed\n", __FUNCTION__);
+			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_LOW,
+				"%s: sr_gen_hash_insert failed\n", __FUNCTION__);
 			return SR_ERROR;
 		}
 		
@@ -155,7 +160,8 @@ SR_32 sr_file_hash_exec_for_file(char *filename, SR_U32 (*cb)(char *filename, ch
 		return SR_SUCCESS;
 	for (iter = file_rule_item->file_rules_list; iter; iter = iter->next) {
 		if ((rc = cb(file_rule_item->file_path, iter->exec, iter->user, iter->rulenum, iter->actions, iter->file_ops)) != SR_SUCCESS) {
-			sal_printf("%s: exec cb failed\n", __FUNCTION__);
+			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_LOW,
+				"%s: exec cb failed\n", __FUNCTION__);
 			return SR_ERROR;
 		}
 	}

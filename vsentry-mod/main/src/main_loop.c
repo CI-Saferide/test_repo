@@ -23,7 +23,7 @@ SR_32 sr_module_loop(void *arg)
 	SR_32 ret;
 	char *msg;
 
-	sal_printf("module_loop: started ...\n");
+	sal_kernel_print_info("module_loop: started ...\n");
 
 	while (!sr_task_should_stop(SR_MODULE_TASK)) {
 		/* get the rx buffer ptr */
@@ -48,17 +48,17 @@ SR_32 sr_module_loop(void *arg)
 		}
 	}
 
-	sal_printf("module_loop: ended !!\n");
+	sal_kernel_print_info("module_loop: ended !!\n");
 
 	return SR_SUCCESS;
 }
 
 SR_32 sr_module_start(void)
 {
-	sal_printf("Starting SR module!\n");
+	sal_kernel_print_info("Starting SR module!\n");
 
 	if (sr_start_task(SR_MODULE_TASK, sr_module_loop) != SR_SUCCESS) {
-		sal_printf("failed to start sr_module_loop\n");
+		sal_kernel_print_err("failed to start sr_module_loop\n");
 		return SR_ERROR;
 	}
 
@@ -105,7 +105,7 @@ SR_32 sr_msg_dispatch(char *msg, int size)
 			break;
 #endif
 		case SR_MSG_TYPE_DEFAULT:
-			sal_printf("wrong msg_type\n");
+			sal_kernel_print_info("wrong msg_type\n");
 			break;
 	}
 

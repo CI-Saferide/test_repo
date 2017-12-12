@@ -30,7 +30,7 @@ static SR_32 sr_stat_analysis_transmit_task(void *data)
 	while (is_run_transmit) {
         	sal_schedule_timeout(STAT_ANALYSIS_TRANSMIT_SCHEDULE_USECS);
 #ifdef SR_STAT_ANALYSIS_DEBUG
-		sal_printf("STAT ANALYSIS TRANSMIT is_stat_analysis_um_running:%d\n", is_stat_analysis_um_running);
+		sal_kernel_print_info("STAT ANALYSIS TRANSMIT is_stat_analysis_um_running:%d\n", is_stat_analysis_um_running);
 #endif
 		if (is_stat_analysis_um_running)
  	       		sr_stat_analysis_start_transmit();
@@ -55,7 +55,7 @@ static SR_32 sr_stat_analysis_watchdog_task(void *data)
         	sal_schedule_timeout(STAT_ANALYSIS_WATCHDOG_SCHEDULE_USECS);
 		if (sal_elapsed_time_secs(is_stat_analysis_um_running) >  3 * SR_AGING_TIME) {
 #ifdef SR_STAT_ANALYSIS_DEBUG
-			sal_printf("STAT ANALYSIS Watchdog shutdown \n");
+			sal_kernel_print_info("STAT ANALYSIS Watchdog shutdown \n");
 #endif
 			is_stat_analysis_um_running = SR_FALSE;
 		}
@@ -81,48 +81,48 @@ SR_32 sr_stat_analysis_init(void)
 	sal_update_time_counter(&last_time_message_recived);
 
 	if ((rc = sr_stat_port_init()) != SR_SUCCESS) {
-		sal_printf("sr_stat_analysis_init sr_stat_port_init FAILED\n");
+		sal_kernel_print_err("sr_stat_analysis_init sr_stat_port_init FAILED\n");
 		return rc;
 	}
 	if ((rc = sr_stat_connection_init()) != SR_SUCCESS) {
-		sal_printf("sr_stat_analysis_init sr_stat_connection_init FAILED\n");
+		sal_kernel_print_err("sr_stat_analysis_init sr_stat_connection_init FAILED\n");
 		goto error_connection;
 	}
 	if ((rc = sal_task_start((void **)&transmit_task, sr_stat_analysis_transmit_task)) != SR_SUCCESS) {
-		sal_printf("sr_stat_analysis_init sal_task_start for sr_stat_analysis_transmit_task FAILED\n");
+		sal_kernel_print_err("sr_stat_analysis_init sal_task_start for sr_stat_analysis_transmit_task FAILED\n");
 		goto error_transmit;
 	}
 	is_run_transmit = SR_TRUE;
 	if ((rc = sal_wake_up_process(transmit_task)) != SR_SUCCESS) {
-		sal_printf("sr_stat_analysis_init sal_task_start for sr_stat_analysis_transmit_task FAILED\n");
+		sal_kernel_print_err("sr_stat_analysis_init sal_task_start for sr_stat_analysis_transmit_task FAILED\n");
 		goto error_transmit_wakeup;
 	}
 	if ((rc = sal_task_start((void **)&garbage_collector_task, sr_stat_analysis_garbage_collector_task)) != SR_SUCCESS) {
-		sal_printf("sr_stat_analysis_init sal_task_start for sr_stat_analysis_garbage_collector_task FAILED\n");
+		sal_kernel_print_err("sr_stat_analysis_init sal_task_start for sr_stat_analysis_garbage_collector_task FAILED\n");
 		goto error_transmit_wakeup;
 	}
 	is_run_garbage_collector = SR_TRUE;
 	if ((rc = sal_wake_up_process(garbage_collector_task)) != SR_SUCCESS) {
-		sal_printf("sr_stat_analysis_init sal_task_start for sr_stat_analysis_garbage_collector_task FAILED\n");
+		sal_kernel_print_err("sr_stat_analysis_init sal_task_start for sr_stat_analysis_garbage_collector_task FAILED\n");
 		goto error_gc_wakeup;
 	}
 	is_stat_analysis_um_running = SR_TRUE;
 	is_run_watchdog = SR_TRUE;
 	if ((rc = sal_task_start((void **)&watchdog_task, sr_stat_analysis_watchdog_task)) != SR_SUCCESS) {
-		sal_printf("sr_stat_analysis_init sal_task_start for sr_stat_analysis_watchdog_task FAILED\n");
+		sal_kernel_print_err("sr_stat_analysis_init sal_task_start for sr_stat_analysis_watchdog_task FAILED\n");
 		goto error_gc_wakeup;
 	}
 	if ((rc = sal_wake_up_process(watchdog_task)) != SR_SUCCESS) {
-		sal_printf("sr_stat_analysis_init sal_task_start for sr_stat_analysis_watchdog_task FAILED\n");
+		sal_kernel_print_err("sr_stat_analysis_init sal_task_start for sr_stat_analysis_watchdog_task FAILED\n");
 		goto error_watchdog_wakeup;
 	}
 	is_run_aged_cleanup = SR_TRUE;
 	if ((rc = sal_task_start((void **)&aged_cleanup_task, sr_stat_analysis_aged_cleanup_task)) != SR_SUCCESS) {
-		sal_printf("sr_stat_analysis_init sal_task_start for sr_stat_analysis_aged_cleanup_task FAILED\n");
+		sal_kernel_print_err("sr_stat_analysis_init sal_task_start for sr_stat_analysis_aged_cleanup_task FAILED\n");
 		goto error_watchdog_wakeup;
 	}
 	if ((rc = sal_wake_up_process(aged_cleanup_task)) != SR_SUCCESS) {
-		sal_printf("sr_stat_analysis_init sal_task_start for sr_stat_analysis_aged_cleanup_task FAILED\n");
+		sal_kernel_print_err("sr_stat_analysis_init sal_task_start for sr_stat_analysis_aged_cleanup_task FAILED\n");
 		goto error_aged_wakeup;
 	}
 
@@ -165,7 +165,7 @@ void sr_stat_analysis_uninit(void)
 #ifdef SR_STS_ANALYSIS_DEBUG
 void sr_stat_analisys_print_connections(SR_BOOL is_print_LRU)
 {
-	sal_printf("The connection table:\n");
+	sal_kernel_print_info("The connection table:\n");
 	sr_stat_connection_print(is_print_LRU);
 }
 #endif
@@ -193,7 +193,7 @@ SR_32 sr_stat_analysis_handle_message(struct sr_stat_analysis_msg *msg)
 			break;
 		case SR_STAT_ANALYSIS_KEEP_ALIVE:
 #ifdef SR_STAT_ANALYSIS_DEBUG
-			sal_printf("STAT ANALYSIS got keepalive \n");
+			sal_kernel_print_info("STAT ANALYSIS got keepalive \n");
 #endif
 			break;
 		default:

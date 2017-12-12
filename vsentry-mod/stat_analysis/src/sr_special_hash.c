@@ -52,7 +52,7 @@ SR_32 sr_special_hash_insert(sr_special_hash_table_t *table, void *key, void *da
 	
 	ent = SR_KZALLOC_ATOMIC_SUPPORT(is_atomic, sr_special_hash_ent_t);
         if (!ent) {
-            sal_kernel_print_alert("Error: Failed to allocate memory\n");
+            sal_kernel_print_err("Error: Failed to allocate memory\n");
             return SR_ERROR;
 	}
 
@@ -137,7 +137,7 @@ void sr_special_hash_free_table(sr_special_hash_table_t *table)
 {
 	sr_special_hash_empty_table(table, SR_FALSE);
 
-	sal_kernel_print_alert("Cleaned entire connection table\n");
+	sal_kernel_print_info("Cleaned entire connection table\n");
 	SR_FREE(table->buckets);
 	SR_FREE(table);
 }
@@ -147,20 +147,20 @@ SR_32 sr_special_hash_print_table(sr_special_hash_table_t *table)
 	SR_U32 i, count = 0;
 	sr_special_hash_ent_t *ptr;
 	
-	sal_kernel_print_alert("sr_special_hash_print_table: Entry, size is %u\n", table->size);
+	sal_kernel_print_info("sr_special_hash_print_table: Entry, size is %u\n", table->size);
 
 	for (i = 0; i < table->size ; i++) {
 		if (table->buckets[i].head && table->buckets[i].should_delete)
-			sal_printf("bucket shoulde DELETE:\n");
+			sal_kernel_print_info("bucket shoulde DELETE:\n");
 		for (ptr = table->buckets[i].head; ptr; ptr = ptr->next) {
 			if (ptr->should_delete)
-				sal_printf("DELETED: ");
+				sal_kernel_print_info("DELETED: ");
 			if (table->ops.print)
 				table->ops.print(ptr->data);
 			count++;
 		}
 	}
-	sal_kernel_print_alert("sr_special_hash_print_table count:%d Exit\n", count);
+	sal_kernel_print_info("sr_special_hash_print_table count:%d Exit\n", count);
 
 	return count;
 }

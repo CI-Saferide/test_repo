@@ -20,7 +20,7 @@ extern const event_name hook_event_names[MAX_HOOK];
  * where posibble) and create the CEF message only in user space??
  */ 
 
-CEF_payload* cef_init(SR_8* event_name,enum severity sev,enum dev_event_class_ID	class)
+CEF_payload* cef_init(SR_8* event_name,enum severity sev,enum SR_CEF_CLASS_ID	class)
 {
 	struct CEF_payload *payload = (struct CEF_payload*)sr_get_msg(MOD2LOG_BUF, sizeof(struct CEF_payload));
 
@@ -180,7 +180,8 @@ SR_32 disp_incoming_connection(disp_info_t* info)
 // TODO: might not have full 5-tuple at this stage !?!?!?
 SR_32 disp_socket_create(disp_info_t* info)
 {
-	sal_printf("Called function %s [DISABLED]\n", __FUNCTION__);
+	CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,
+			"Called function %s [DISABLED]\n", __FUNCTION__);
 	//sr_classifier_network(info);
 	return SR_CLS_ACTION_ALLOW;
 }
@@ -197,7 +198,8 @@ SR_32 disp_socket_sendmsg(disp_info_t* info)
 	/* create event message */
 
 #ifdef DEBUG_DISPATCHER
-	sal_kernel_print_info("[%s:HOOK %s] family=af_can, msd_id=%x, payload_len=%d, payload= %02x %02x %02x %02x %02x %02x %02x %02x, pid=%d, gid=%d, tid=%d\n", 
+	CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,
+			"[%s:HOOK %s] family=af_can, msd_id=%x, payload_len=%d, payload= %02x %02x %02x %02x %02x %02x %02x %02x, pid=%d, gid=%d, tid=%d\n", 
 			module_name, 
 			hook_event_names[info->can_info.id.event].name,
 			info->can_info.msg_id,
