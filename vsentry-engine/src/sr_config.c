@@ -24,6 +24,8 @@
 #endif
 #endif
 #include "sentry.h"
+#include "action.h"
+#include "sr_db.h"
 
 #ifdef SR_STAT_ANALYSIS_DEBUG
 static void handler(int signal)
@@ -47,27 +49,46 @@ static void handler(int signal)
 
 static char filename[] = "sr_engine.cfg";
 
-static void handle_engine_start_stop(char *engine)
+static SR_32 handle_engine_start_stop(char *engine)
 {
         FILE *f;
 
-        if (!strncmp(engine, ENGINE_START, ENGINE_NAME_SIZE)) {
+        if (!strncmp(engine, SR_DB_ENGINE_START, SR_DB_ENGINE_NAME_SIZE)) {
                 sr_control_set_state(SR_TRUE);
                 f = fopen("/tmp/sec_state", "w");
                 fprintf(f, "on");
                 fclose(f);
-        } else if (!strncmp(engine, ENGINE_STOP, ENGINE_NAME_SIZE)) {
+        } else if (!strncmp(engine, SR_DB_ENGINE_STOP, SR_DB_ENGINE_NAME_SIZE)) {
                 sr_control_set_state(SR_FALSE);
                 f = fopen("/tmp/sec_state", "w");
                 fprintf(f, "off");
                 fclose(f);
         }
+
+	return SR_SUCCESS;
+}
+
+static SR_32 handle_action(action_t *action)
+{
+	action_t *db_action;
+
+	db_action = sr_db_get_action(action->action_name);
+	if (!action)
+		return SR_ERROR;
+	db_action->action = action->action;
+	db_action->log_facility = action->log_facility;
+	db_action->log_severity = action->log_severity;
+	db_action->black_list = action->black_list;
+	db_action->terminate = action->terminate;
+
+	return SR_SUCCESS;
 }
 
 void sr_config_vsentry_db_cb(int type, int op, void *entry)
 {
 	switch (type) {
 		case SENTRY_ENTRY_ACTION:
+			handle_action((action_t *)entry);
 			break;
 		case SENTRY_ENTRY_IP:
         		break;
