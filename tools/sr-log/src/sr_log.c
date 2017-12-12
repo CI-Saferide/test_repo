@@ -5,6 +5,7 @@
 #include "sr_tasks.h"
 #include "sr_sal_common.h"
 
+
 #if 0
 const static SR_8	*log_level_str[8] = {
 	"EMERGENCY", /* LOG_EMERG   = system is unusable		       */
@@ -67,17 +68,13 @@ void log_print_cef_msg(CEF_payload *cef)
 	char cef_buffer[1024];
 	char cef_class[32];
 	time_t timer;
-    char buffer[26];
+    char buffer[26]; //for time
     struct tm* tm_info;
     
     time(&timer);
     tm_info = localtime(&timer);
     strftime(buffer, 26, "%Y-%m-%d %H:%M:%S", tm_info);
-
-
-	//CEF:0|SafeRide|vSentry Mobile|1.0|%d|%s|%s|%s
-	//printf("%s CEF: cef_version %d, vendor %s, product %s, ver %d, ",buffer,cef->cef_version, cef->dev_vendor, cef->dev_product, cef->dev_version);
-		
+	
 	switch (cef->class) {
 	case SR_CEF_CID_FILE:
 		sal_strcpy(cef_class,"File");
@@ -92,13 +89,18 @@ void log_print_cef_msg(CEF_payload *cef)
 		sal_strcpy(cef_class,"System");
 		break;
 	default:
-		sal_strcpy(cef_class,"Class N/A, ");	
+		sal_strcpy(cef_class,"Class N/A");	
 		break;
 	}
 	
-	sprintf(cef_buffer,"%s CEF: %d| vendor %s|product %s|ver %d|%s|%s|%s\n",
-			buffer,cef->cef_version, cef->dev_vendor, cef->dev_product, cef->dev_version,cef_class,cef->name, cef->extension);
 		
+	sprintf(cef_buffer,"%s CEF:%d.%d|%s|%s|%d.%d|%s|%s|%s\n",
+			buffer,
+			CEF_VER_MAJOR,CEF_VER_MINOR,
+			VENDOR_NAME,PRODUCT_NAME,
+			VSENTRY_VER_MAJOR,VSENTRY_VER_MINOR,
+			cef_class,cef->name, cef->extension);
+			
 	log_cef_msg(cef_buffer);
 }
 

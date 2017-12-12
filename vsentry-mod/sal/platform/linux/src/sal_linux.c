@@ -88,20 +88,6 @@ SR_32 sal_sprintf(SR_8 *str, SR_8 *fmt, ...)
 	return i;
 }
 
-void sal_printf(SR_8 *fmt, ...)
-{
-	int i;
-	va_list args;
-	SR_8 msg[SR_MAX_LOG];
-
-	va_start(args, fmt);
-	i = vsnprintf(msg, SR_MAX_LOG-1, fmt, args);
-	va_end(args);
-
-	msg[SR_MAX_LOG - 1] = 0;
-	printk("%s", msg);
-}
-
 // NETWORK functions
 SR_U16 sal_packet_dest_port(void *skb)
 {

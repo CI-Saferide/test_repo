@@ -27,12 +27,8 @@ CEF_payload* cef_init(SR_8* event_name,enum severity sev,enum SR_CEF_CLASS_ID	cl
 	if (!payload) {
 		return NULL;
 	}
-	payload->cef_version = CEF_VERSION;
-	payload->dev_version = VSENTRY_VERSION;
 	payload->class = class;		
 	payload->sev = sev;		
-	sal_strcpy(payload->dev_vendor,PRODUCT_VENDOR);
-	sal_strcpy(payload->dev_product,MODULE_NAME);
 	sal_strcpy(payload->name,event_name);
 	
 	return payload;

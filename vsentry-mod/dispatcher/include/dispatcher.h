@@ -8,10 +8,10 @@
 #define MAIN_SOCKET_INDEX		0
 #define LOG_SOCKET_INDEX		1
 
-#define PRODUCT_VENDOR	"saferide"
+//#define PRODUCT_VENDOR	"saferide"
 #define MODULE_NAME		"vsentry"
-#define CEF_VERSION 	230
-#define VSENTRY_VERSION 10
+//#define CEF_VERSION 	230
+//#define VSENTRY_VERSION 10
 
 enum hook_events {
 	HOOK_MKDIR,

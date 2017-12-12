@@ -1,6 +1,12 @@
 #ifndef SR_LOG_H
 #define SR_LOG_H
 #include "sr_sal_common.h"
+#include "sr_ver.h"
+
+#define CEF_VER_MAJOR	0
+#define CEF_VER_MINOR	0
+#define VENDOR_NAME		"SafeRide"
+#define PRODUCT_NAME	"vSentry"
 
 #ifdef __cplusplus
 extern "C" {
@@ -77,11 +83,7 @@ enum severity {
 };
 										
 typedef struct CEF_payload
-{   
-    int							cef_version;
-    char						dev_vendor[32];
-    char						dev_product[32];
-    int							dev_version;			
+{   			
 	enum SR_CEF_CLASS_ID		class;
 	char						name[32];
     enum severity				sev;

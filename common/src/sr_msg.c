@@ -76,8 +76,8 @@ SR_32 sr_msg_alloc_buf(SR_U8 type, SR_32 length)
 
 	num_of_buffers = sr_ring_buf_calc_buffers(length, each_buf_size);
 
-	CEF_log_event(SR_CEF_CID_SYSTEM, "allocation error", SEVERITY_LOW,
-		"sr_msg_alloc_buf: allocating %d buffers of size %d for %s\n",
+	CEF_log_event(SR_CEF_CID_SYSTEM, "allocation info", SEVERITY_LOW,
+		"sr_msg_alloc_buf: allocating %d buffers of size %d for %s",
 		num_of_buffers, length, buf_names[type]);
 
 	if (sr_init_ring_buf((sr_ring_buffer*)shmem.buffer, length, num_of_buffers, each_buf_size) == 0) {
@@ -90,8 +90,8 @@ SR_32 sr_msg_alloc_buf(SR_U8 type, SR_32 length)
 	sr_msg_buf_array[type].buffer = shmem.buffer;
 	
 #ifdef SR_MSG_DEBUG
-	CEF_log_debug(SR_CEF_CID_SYSTEM, "allocation error", SEVERITY_LOW,
-		"sr_msg_alloc_buf: buf %s initilized %p\n", buf_names[type], sr_msg_buf_array[type].buffer);
+	CEF_log_debug(SR_CEF_CID_SYSTEM, "allocation info", SEVERITY_LOW,
+		"sr_msg_alloc_buf: buf %s initilized %p", buf_names[type], sr_msg_buf_array[type].buffer);
 #endif
 
 	return SR_SUCCESS;
@@ -101,18 +101,18 @@ SR_32 sr_msg_free_buf(SR_U8 type)
 {
 	if (type > MAX_BUF_TYPE) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "allocation freeing", SEVERITY_LOW,
-			"sr_msg_free_buf: requested type %d is wrong\n", type);
+			"sr_msg_free_buf: requested type %d is wrong", type);
 		return SR_ERROR;
 	}
 
 	if (sal_shmem_free(&sr_msg_buf_array[type]) != SR_SUCCESS) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "allocation freeing", SEVERITY_LOW,
-			"sr_msg_alloc_buf: failed to free buf %s\n", buf_names[type]);
+			"sr_msg_alloc_buf: failed to free buf %s", buf_names[type]);
 		return SR_ERROR;
 	}
 #ifdef SR_MSG_DEBUG
 	CEF_log_debug(SR_CEF_CID_SYSTEM, "allocation freeing", SEVERITY_LOW,
-		"sr_msg_free_buf: buf %s is free\n", buf_names[type]);
+		"sr_msg_free_buf: buf %s is free", buf_names[type]);
 #endif
 
 	return SR_SUCCESS;
@@ -125,14 +125,14 @@ SR_8 *sr_read_msg(SR_U8 type, SR_32 *length)
 
 	if (type > MAX_BUF_TYPE) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "sr_read_msg", SEVERITY_LOW,
-			"sr_read_msg: requested type %d is wrong\n", type);
+			"sr_read_msg: requested type %d is wrong", type);
 		return NULL;
 	}
 
 	rb = (sr_ring_buffer*)sr_msg_buf_array[type].buffer;
 	if (!rb || !rb->buf_mem_offset) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "sr_read_msg", SEVERITY_LOW,
-			"sr_read_msg: error, %s buffer is NULL\n", buf_names[type]);
+			"sr_read_msg: error, %s buffer is NULL", buf_names[type]);
 		return NULL;
 	}
 
@@ -145,7 +145,7 @@ SR_32 sr_free_msg(SR_U8 type)
 
 	if (type > MAX_BUF_TYPE) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "sr_free_msg", SEVERITY_LOW,
-			"sr_free_msg: requested type %d is wrong\n", type);
+			"sr_free_msg: requested type %d is wrong", type);
 		return SR_ERROR;
 	}
 
@@ -153,7 +153,7 @@ SR_32 sr_free_msg(SR_U8 type)
 	if (!rb || !rb->buf_mem_offset) {
 #ifdef SR_MSG_DEBUG
 		CEF_log_debug(SR_CEF_CID_SYSTEM, "sr_free_msg", SEVERITY_LOW,
-			"sr_free_msg: error, buffer is NULL\n");
+			"sr_free_msg: error, buffer is NULL");
 #endif
 		return SR_ERROR;
 	}
@@ -169,7 +169,7 @@ SR_8 *sr_get_msg(SR_U8 type, SR_32 size)
 
 	if (type > MAX_BUF_TYPE) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "sr_get_msg", SEVERITY_LOW,
-			"sr_get_msg: requested type %d is wrong\n", type);
+			"sr_get_msg: requested type %d is wrong", type);
 		return NULL;
 	}
 
@@ -177,7 +177,7 @@ SR_8 *sr_get_msg(SR_U8 type, SR_32 size)
 	if (!rb || !rb->buf_mem_offset) {
 #ifdef SR_MSG_DEBUG
 		CEF_log_debug(SR_CEF_CID_SYSTEM, "sr_get_msg", SEVERITY_LOW,
-			"sr_get_msg: error, buffer is NULL\n");
+			"sr_get_msg: error, buffer is NULL");
 #endif
 		return NULL;
 	}
@@ -191,7 +191,7 @@ SR_32 sr_send_msg(SR_U8 type, SR_32 length)
 
 	if (type > MAX_BUF_TYPE) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "sr_send_msg", SEVERITY_LOW,
-			"sr_send_msg: requested type %d is wrong\n", type);
+			"sr_send_msg: requested type %d is wrong", type);
 		return SR_ERROR;
 	}
 
@@ -199,7 +199,7 @@ SR_32 sr_send_msg(SR_U8 type, SR_32 length)
 	if (!rb || !rb->buf_mem_offset) {
 #ifdef SR_MSG_DEBUG
 		CEF_log_debug(SR_CEF_CID_SYSTEM, "sr_send_msg", SEVERITY_LOW,
-			"sr_send_msg: error, buffer is NULL\n");
+			"sr_send_msg: error, buffer is NULL");
 #endif
 		return SR_ERROR;
 	}
@@ -211,7 +211,7 @@ sr_shmem* sr_msg_get_buf(SR_U8 type)
 {
 	if (type > MAX_BUF_TYPE) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "sr_msg_get_buf", SEVERITY_LOW,
-			"sr_msg_free_buf: requested type %d is wrong\n", type);
+			"sr_msg_free_buf: requested type %d is wrong", type);
 		return 0;
 	}
 
@@ -228,7 +228,7 @@ void sr_msg_print_stat(void)
 		if (!rb || !rb->buf_mem_offset)
 			continue;
 				CEF_log_event(SR_CEF_CID_SYSTEM, "printing stats", SEVERITY_LOW,
-					"%s statistics:\n", buf_names[type]);
+					"%s statistics:", buf_names[type]);
 		sr_print_rb_info(rb);
 	}
 }

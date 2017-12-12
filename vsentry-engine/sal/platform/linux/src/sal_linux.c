@@ -71,19 +71,6 @@ SR_32 sal_sprintf(SR_8 *str, SR_8 *fmt, ...)
 	return i;
 }
 
-void sal_printf(SR_8 *fmt, ...)
-{
-	va_list args;
-	SR_8 msg[SR_MAX_LOG];
-
-	va_start(args, fmt);
-	vsnprintf(msg, SR_MAX_LOG-1, fmt, args);
-	va_end(args);
-
-	msg[SR_MAX_LOG - 1] = 0;
-	printf("%s", msg);
-}
-
 void sal_schedule_timeout(SR_U32 timeout)
 {
 	usleep(timeout);
@@ -111,7 +98,8 @@ SR_U32 sal_get_os(sal_os_t *os)
 	*os = SAL_OS_UNKNOWN;
 
 	if (!(fin = fopen("/proc/version", "r"))) {
-		sal_printf("%s failed opening /proc/version\n");
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_LOW,
+			"%s failed opening /proc/version\n");
 		return SR_ERROR;
 	}
 	if (!fgets(line, PROC_LEN, fin)) {
