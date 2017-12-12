@@ -4,7 +4,9 @@
 #include "sr_ring_buf.h"
 #include "sr_tasks.h"
 #include "sr_sal_common.h"
+#include "sr_config_parse.h"
 
+extern struct config_params_t config_params;
 
 #if 0
 const static SR_8	*log_level_str[8] = {
@@ -27,8 +29,7 @@ static SR_8 g_app_name[20];
 
 typedef const char* cef_str;
 FILE* log_fp = 0;
-const int max_log_size = 1024*1024*2;
-const int max_no = 4;
+int MB = 1024*1024;
 cef_str cef_prefix = "cef_";
 cef_str cef_postfix = ".log";
 
@@ -39,22 +40,22 @@ void log_cef_msg(cef_str str)
 
     if(!log_fp){
 		
-		sprintf(file1,"%s%d%s", cef_prefix, 0, cef_postfix);
+		sprintf(file1,"%s%s%d%s",config_params.CEF_log_path,cef_prefix, 0, cef_postfix);
 		log_fp = fopen(file1,"a");
     }
 
     if(log_fp){
-		if( ftell(log_fp) > max_log_size){
+		if( ftell(log_fp) > MB){
 			fclose(log_fp);
             log_fp = 0;
 
-            for(i = (max_no-1);i >= 0;i--){
-				sprintf(file1,"%s%d%s",cef_prefix, i,cef_postfix );
-				sprintf(file2,"%s%d%s",cef_prefix, i+1,cef_postfix );
+            for(i = (config_params.cef_file_cycling-1);i >= 0;i--){
+				sprintf(file1,"%s%s%d%s",config_params.CEF_log_path,cef_prefix, i,cef_postfix );
+				sprintf(file2,"%s%s%d%s",config_params.CEF_log_path,cef_prefix, i+1,cef_postfix );
 				rename(file1, file2);
 			}
 
-            sprintf(file1,"%s%d%s",cef_prefix,0,cef_postfix);
+            sprintf(file1,"%s%s%d%s",config_params.CEF_log_path,cef_prefix,0,cef_postfix);
             log_fp = fopen(file1, "a");
         }
 
@@ -110,7 +111,6 @@ void CEF_log_event(const SR_U32 class, const char *event_name, const SR_U8 sever
 	int i = 0;
 	va_list args;
 	SR_8 msg[SR_MAX_LOG];
-	//printk("CEF:0|SafeRide|vSentry Mobile|1.0|%d|%s|%s|%s\n", cid, event_name, severity_strings[severity], extension);
 	struct CEF_payload *payload = malloc (sizeof (struct CEF_payload));
 	
 	if (payload) {	
@@ -135,6 +135,7 @@ SR_32 sr_log_init (const SR_8* app_name, SR_32 flags)
 {
 	sal_strcpy(g_app_name, (SR_8*)app_name);
 
+	MB *=config_params.cef_file_size;
 	printf("Starting LOG module!\n");
 	return SR_SUCCESS;
 }

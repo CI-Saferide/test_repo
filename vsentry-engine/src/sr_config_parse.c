@@ -19,6 +19,10 @@ void config_defaults(void)
 	config_params.disk_space_treshold = 5; /* 5% */
 	strcpy(config_params.log_path, "/candata/");
 	strcpy(config_params.temp_log_path, "/tmp/");
+	
+	config_params.cef_file_size = 1; /* in MB */
+	config_params.cef_file_cycling = 4; /*amount of cef files*/
+	strcpy(config_params.CEF_log_path, "/tmp/");
 }
 
 #define CONFIG_LINE_BUFFER_SIZE 100
@@ -95,6 +99,20 @@ SR_8 read_vsentry_config(char* config_filename, struct config_params_t config)
         if (position) {	
             strcpy(config_params.temp_log_path, position + (strlen("LOG_PATH_TEMP ")));
             config_params.temp_log_path[strlen(config_params.temp_log_path)-1]='\0';
+        }
+        
+       position = strstr(buf, "CEF_CYCLING ");
+        if (position) {	
+            config_params.cef_file_cycling =  atoi(position + (strlen("CEF_CYCLING ")));
+        }
+        position = strstr(buf, "CEF_FILE_LOG_SIZE_MB ");
+        if (position) {	
+            config_params.cef_file_size =  atoi(position + (strlen("CEF_FILE_LOG_SIZE_MB ")));
+        }
+		position = strstr(buf, "CEF_PATH_TEMP ");
+        if (position) {	
+            strcpy(config_params.CEF_log_path, position + (strlen("CEF_PATH_TEMP ")));
+            config_params.CEF_log_path[strlen(config_params.CEF_log_path)-1]='\0';
         }
     }
     fclose(fp);

@@ -21,6 +21,11 @@ struct config_params_t {
 	SR_U16	disk_space_treshold;		/* reserved disk space in MB, before stop recording */
 	SR_8	log_path[100];				/* path to completed log files, ready to upload */
 	SR_8	temp_log_path[100];			/* temp folder to create intemidiate log files */
+	
+	SR_U16	cef_file_size;				/* size of each cef log file, in megabytes */
+	SR_U16	cef_file_cycling;			/* amount of files that cycle */
+	SR_8	CEF_log_path[100];			/* folder to create cef files */	
+	
 };
 
 SR_8 read_vsentry_config(char* config_filename, struct config_params_t config);
