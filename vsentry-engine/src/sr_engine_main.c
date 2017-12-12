@@ -24,6 +24,9 @@
 #ifdef CONFIG_STAT_ANALYSIS
 #include "sr_stat_analysis.h"
 #endif
+#include "sentry.h"
+#include "internal_api.h"
+
 extern struct canTaskParams can_args;
 extern struct config_params_t config_params;
 
@@ -83,6 +86,10 @@ static void eng2mod_test(void)
 	}
 }
 
+static void vsentry_db_cb(int type, int op, void *entry)
+{
+	printf("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX vsentry_db_cb type:%d \n", type);
+}
 
 SR_32 sr_engine_start(void)
 {
@@ -155,6 +162,8 @@ SR_32 sr_engine_start(void)
 		return SR_ERROR;
 	}
 
+	sentry_init(vsentry_db_cb);
+
 	config_ut();
 
 	can_args.can_interface = config_params.can0_interface;
@@ -203,6 +212,7 @@ SR_32 sr_engine_start(void)
 
 	sr_stop_task(SR_CAN_COLLECT_TASK);
 	sr_stop_task(SR_ENGINE_TASK);
+	sentry_stop();
 #ifdef CONFIG_STAT_ANALYSIS
 	sr_stat_analysis_uninit();
 #endif

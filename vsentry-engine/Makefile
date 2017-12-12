@@ -57,6 +57,7 @@ INCLUDES 	:=  -I../common/include \
 				-I../tools/sr-log/include \
 				-I../tools/sr-hash/include \
 				-I../tools/json \
+				-I../vsentry-lib/include \
 				-I../common/stat_analysis/include \
 				-Istat_analysis/include \
 
@@ -64,9 +65,9 @@ OBJS		:=  $(addprefix $(OBJDIR)/,$(SRCS:.c=.o))
 DEPS		:=  $(OBJS:.o=.d)
 
 # libs to link with
-LIBS		:= -lpthread -lsr_log -lsr_hash -ljsmn
+LIBS		:= -lpthread -lsr_log -lsr_hash -ljsmn -lsentry -lsysrepo
 # and where to search them 
-LIB_PATH 	:= -L$(LIBDIR)
+LIB_PATH 	:= -L$(LIBDIR) -L../vsentry-lib/lib
 
 CFLAGS 		+= -MMD -Wall
 CFLAGS += -DCONFIG_STAT_ANALYSIS
