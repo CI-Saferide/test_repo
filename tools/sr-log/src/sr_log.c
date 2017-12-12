@@ -130,11 +130,11 @@ void CEF_log_event(const SR_U32 class, const char *event_name, const SR_U8 sever
 		sal_strcpy(payload->extension,msg);
 		
 		log_print_cef_msg(payload);
-	}else
+	}else{
 		printf("Failed to CEF log...%x\n",i);
+	}
 		
-	
-	free (payload);	
+	SR_Free(payload);	
 }
 
 SR_32 sr_log_init (const SR_8* app_name, SR_32 flags)
