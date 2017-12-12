@@ -17,6 +17,7 @@
 #include "sr_sal_common.h"
 #include "sr_control.h"
 #include "sr_ver.h"
+#include "sr_config.h"
 #include "sr_file_hash.h"
 #include "sr_can_collector.h"
 #include "sr_config_parse.h"
@@ -24,7 +25,6 @@
 #ifdef CONFIG_STAT_ANALYSIS
 #include "sr_stat_analysis.h"
 #endif
-#include "sentry.h"
 #include "internal_api.h"
 
 extern struct canTaskParams can_args;
@@ -84,11 +84,6 @@ static void eng2mod_test(void)
 		}
 		count++;
 	}
-}
-
-static void vsentry_db_cb(int type, int op, void *entry)
-{
-	printf("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX vsentry_db_cb type:%d \n", type);
 }
 
 SR_32 sr_engine_start(void)
@@ -162,7 +157,7 @@ SR_32 sr_engine_start(void)
 		return SR_ERROR;
 	}
 
-	sentry_init(vsentry_db_cb);
+	sentry_init(sr_config_vsentry_db_cb);
 
 	config_ut();
 

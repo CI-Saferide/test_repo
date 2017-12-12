@@ -23,6 +23,7 @@
 #include <signal.h>
 #endif
 #endif
+#include "sentry.h"
 
 #ifdef SR_STAT_ANALYSIS_DEBUG
 static void handler(int signal)
@@ -45,6 +46,43 @@ static void handler(int signal)
 #endif
 
 static char filename[] = "sr_engine.cfg";
+
+static void handle_engine_start_stop(char *engine)
+{
+        FILE *f;
+
+        if (!strncmp(engine, ENGINE_START, ENGINE_NAME_SIZE)) {
+                sr_control_set_state(SR_TRUE);
+                f = fopen("/tmp/sec_state", "w");
+                fprintf(f, "on");
+                fclose(f);
+        } else if (!strncmp(engine, ENGINE_STOP, ENGINE_NAME_SIZE)) {
+                sr_control_set_state(SR_FALSE);
+                f = fopen("/tmp/sec_state", "w");
+                fprintf(f, "off");
+                fclose(f);
+        }
+}
+
+void sr_config_vsentry_db_cb(int type, int op, void *entry)
+{
+	switch (type) {
+		case SENTRY_ENTRY_ACTION:
+			break;
+		case SENTRY_ENTRY_IP:
+        		break;
+		case SENTRY_ENTRY_CAN:
+			break;
+		case SENTRY_ENTRY_FILE:
+			break;
+		case SENTRY_ENTRY_ENG:
+			handle_engine_start_stop((char *)entry);
+			break;
+		default:
+			break;
+	}
+}
+
 
 SR_BOOL write_config_record (void* ptr, enum sr_header_type rec_type)
 {

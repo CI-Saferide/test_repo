@@ -134,11 +134,16 @@ struct sr_log_entry{
 	SR_8						log_target[256];				/* log daemon target */
 };
 
+#define ENGINE_NAME_SIZE 32
+#define ENGINE_START "start"
+#define ENGINE_STOP "stop"
+
 SR_BOOL config_ut(void);
 SR_BOOL write_config_record (void* ptr, enum sr_header_type rec_type);
 SR_BOOL read_config_file (void);
 SR_BOOL read_config_db (void);
 void start_cli(void);
 SR_U32 sr_create_filter_paths(void);
+void sr_config_vsentry_db_cb(int type, int op, void *entry);
 
 #endif /* SR_CONFIG_H */
