@@ -1,0 +1,15 @@
+LIB_DIR = $(CURDIR)/lib
+TARGET_LIB = /usr/lib
+LIB_VSENTRY = $(LIB_DIR)/libsentry.so
+TARGET_LIB_VSENTRY = $(LIB_VSENTRY:$(LIB_DIR)%=$(TARGET_LIB)%)
+
+install: $(TARGET_LIB_VSENTRY)
+
+$(TARGET_LIB_VSENTRY): $(LIB_VSENTRY)
+	echo $(TARGET_LIB_VSENTRY)
+	sudo cp $(@:$(TARGET_LIB)%=$(LIB_DIR)%) $(@).0
+	sudo ln -s $(TARGET_LIB_VSENTRY).0 $(TARGET_LIB_VSENTRY)
+	
+clean:
+	sudo rm -f $(TARGET_LIB_VSENTRY)
+	sudo rm -f $(TARGET_LIB_VSENTRY).0
