@@ -5,8 +5,11 @@
 #include "sr_tasks.h"
 #include "sr_sal_common.h"
 #include "sr_config_parse.h"
+#include "engine_sal.h"
 
 extern struct config_params_t config_params;
+
+#define SR_Malloc(p, t, n) (p = (t) malloc((unsigned long)(n)))
 
 #if 0
 const static SR_8	*log_level_str[8] = {
@@ -52,7 +55,7 @@ void log_cef_msg(cef_str str)
             for(i = (config_params.cef_file_cycling-1);i >= 0;i--){
 				sprintf(file1,"%s%s%d%s",config_params.CEF_log_path,cef_prefix, i,cef_postfix );
 				sprintf(file2,"%s%s%d%s",config_params.CEF_log_path,cef_prefix, i+1,cef_postfix );
-				rename(file1, file2);
+				sal_rename(file1, file2);
 			}
 
             sprintf(file1,"%s%s%d%s",config_params.CEF_log_path,cef_prefix,0,cef_postfix);
@@ -111,7 +114,10 @@ void CEF_log_event(const SR_U32 class, const char *event_name, const SR_U8 sever
 	int i = 0;
 	va_list args;
 	SR_8 msg[SR_MAX_LOG];
-	struct CEF_payload *payload = malloc (sizeof (struct CEF_payload));
+	struct CEF_payload *payload;
+	//payload = malloc (sizeof (struct CEF_payload));
+	
+	SR_Malloc(payload,struct CEF_payload *,sizeof (struct CEF_payload));
 	
 	if (payload) {	
 		payload->class = class;		
