@@ -40,6 +40,7 @@ SRCS 		:=  main.c \
 				sr_engine_main.c \
 				sr_config.c \
 				sr_cli.c \
+				sr_db.c \
 				sr_control.c \
 				sr_can_collector.c \
 				sr_config_parse.c \

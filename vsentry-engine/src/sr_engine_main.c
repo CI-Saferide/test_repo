@@ -26,6 +26,7 @@
 #include "sr_stat_analysis.h"
 #endif
 #include "internal_api.h"
+#include "sr_db.h"
 
 extern struct canTaskParams can_args;
 extern struct config_params_t config_params;
@@ -143,6 +144,7 @@ SR_32 sr_engine_start(void)
 		return SR_ERROR;
 	}
 
+	sr_db_init();
 	sentry_init(sr_config_vsentry_db_cb);
 
 	config_ut();
