@@ -30,16 +30,16 @@ char severity_strings[SEVERITY_MAX][10] = { "Unknown", "Low", "Medium", "High", 
 
 static SR_8 g_app_name[20];
 
-typedef const char* cef_str;
+typedef const SR_8* cef_str;
 FILE* log_fp = 0;
-int MB = 1024*1024;
+SR_U32 MB = 1024*1024;
 cef_str cef_prefix = "cef_";
 cef_str cef_postfix = ".log";
 
 void log_cef_msg(cef_str str)
 {
-    char file1[64], file2[64];
-	int i;
+    SR_8 file1[64], file2[64];
+	SR_U32 i;
 
     if(!log_fp){
 		
@@ -69,10 +69,10 @@ void log_cef_msg(cef_str str)
 
 void log_print_cef_msg(CEF_payload *cef)
 {	
-	char cef_buffer[1024];
-	char cef_class[32];
+	SR_8 cef_buffer[1024];
+	SR_8 cef_class[32];
 	time_t timer;
-    char buffer[26]; //for time
+    SR_8 buffer[26]; //for time
     struct tm* tm_info;
     
     time(&timer);
@@ -111,7 +111,7 @@ void log_print_cef_msg(CEF_payload *cef)
 
 void CEF_log_event(const SR_U32 class, const char *event_name, const SR_U8 severity, const char *fmt, ...)
 {
-	int i = 0;
+	SR_U32 i = 0;
 	va_list args;
 	SR_8 msg[SR_MAX_LOG];
 	struct CEF_payload *payload;
