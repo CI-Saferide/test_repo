@@ -35,7 +35,7 @@ int sr_cls_add_ipv4(SR_U32 addr, char *exec, char *user, SR_U32 netmask, int rul
 	return SR_SUCCESS;
 }
 
-int sr_cls_del_ipv4(SR_U32 addr, char *exec, char *user, SR_U32 netmask, SR_U16 rulenum)
+int sr_cls_del_ipv4(SR_U32 addr, char *exec, char *user, SR_U32 netmask, SR_U16 rulenum, SR_8 dir)
 {
 	sr_network_msg_cls_t *msg;
 	SR_U32 inode;
@@ -55,6 +55,7 @@ int sr_cls_del_ipv4(SR_U32 addr, char *exec, char *user, SR_U32 netmask, SR_U16 
 			msg->sub_msg.rulenum = rulenum;
 			msg->sub_msg.addr = addr;
 			msg->sub_msg.netmask = netmask;						
+			msg->sub_msg.dir = dir;
 			msg->sub_msg.exec_inode = inode;
 			msg->sub_msg.uid = uid;
 			sr_send_msg(ENG2MOD_BUF, sizeof(msg));

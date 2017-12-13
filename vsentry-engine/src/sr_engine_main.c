@@ -196,6 +196,7 @@ SR_32 sr_engine_start(void)
 #endif
 	sr_info_gather_uninit();
 	sr_file_hash_deinit();
+	sr_db_deinit();
 
 	return 0;
 }
