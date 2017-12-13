@@ -25,6 +25,7 @@
 #endif
 #include "sentry.h"
 #include "action.h"
+#include "ip_rule.h"
 #include "sr_db.h"
 
 #ifdef SR_STAT_ANALYSIS_DEBUG
@@ -35,11 +36,12 @@ static void handler(int signal)
 			sr_learn_rule_connection_hash_print();
 			break;
 		case 12:
-			sr_stat_analysis_learn_mode_set(SR_STAT_MODE_PROTECT);
+			//sr_stat_analysis_learn_mode_set(SR_STAT_MODE_PROTECT);
 			//sr_stat_analysis_dump();
 			//sr_learn_rule_connection_hash_print();
 			//sr_control_util(SR_CONTROL_GARBAGE_COLLECTION);
 			//sr_control_util(SR_CONTROL_PRINT_CONNECTIONS);
+			sr_db_ip_rule_print();
 			break;
 		default:
 			break;
@@ -72,9 +74,11 @@ static SR_32 handle_action(action_t *action)
 {
 	action_t *db_action;
 
-	db_action = sr_db_get_action(action->action_name);
-	if (!action)
+	db_action = sr_db_action_get_action(action->action_name);
+	if (!db_action) {
+		sal_printf("%s action:%s not found\n", __FUNCTION__, action->action_name);
 		return SR_ERROR;
+	}
 	db_action->action = action->action;
 	db_action->log_facility = action->log_facility;
 	db_action->log_severity = action->log_severity;
@@ -84,6 +88,111 @@ static SR_32 handle_action(action_t *action)
 	return SR_SUCCESS;
 }
 
+static SR_32 convert_action(ip_rule_t *rule, SR_U16 *actions_bitmap)
+{
+	action_t *db_action;
+	
+	db_action = sr_db_action_get_action(rule->action_name);
+	if (!db_action) {
+		sal_printf("%s action:%s not found\n", __FUNCTION__, rule->action_name);
+		return SR_ERROR;
+	}
+	switch (db_action->action) {
+                case ACTION_DROP:
+                        *actions_bitmap = SR_CLS_ACTION_DROP;
+                        break;
+                case ACTION_ALLOW:
+                        *actions_bitmap = SR_CLS_ACTION_ALLOW;
+                        break;
+                default:
+                        break;
+        }
+        if (db_action->log_facility != LOG_NONE)
+                *actions_bitmap |= SR_CLS_ACTION_LOG;
+
+	return SR_SUCCESS;
+}
+
+static SR_32 add_ip_rule(ip_rule_t *rule)
+{
+	SR_U16 actions_bitmap = 0;
+
+	if (sr_db_ip_rule_add(rule) != SR_SUCCESS) {
+		sal_printf("%s sr_db_ip_rule_add: FAILED\n", __FUNCTION__);
+		return SR_ERROR;
+	}
+
+	if (convert_action(rule, &actions_bitmap) != SR_SUCCESS) {
+		sal_printf("%s convert action: FAILED\n", __FUNCTION__);
+		return SR_ERROR;
+	}
+
+	sr_cls_port_add_rule(rule->tuple.srcport, rule->tuple.program, rule->tuple.user, rule->rulenum, SR_DIR_SRC, rule->tuple.proto);
+	sr_cls_port_add_rule(rule->tuple.dstport, rule->tuple.program, rule->tuple.user, rule->rulenum, SR_DIR_DST, rule->tuple.proto);
+	sr_cls_add_ipv4(rule->tuple.srcaddr.s_addr, rule->tuple.program, rule->tuple.user, rule->tuple.srcnetmask.s_addr, rule->rulenum, SR_DIR_SRC);
+	sr_cls_add_ipv4(rule->tuple.dstaddr.s_addr, rule->tuple.program, rule->tuple.user, rule->tuple.dstnetmask.s_addr, rule->rulenum, SR_DIR_DST);
+	sr_cls_rule_add(SR_NET_RULES, rule->rulenum, actions_bitmap, SR_FILEOPS_READ, SR_RATE_TYPE_BYTES, rule->tuple.max_rate, /* net_rule.rate_action */ 0 ,
+                         /* net_ruole.action.log_target */ 0 , /* net_rule.tuple.action.email_id */ 0 , /* net_rule.tuple.action.phone_id */ 0 , /* net_rule.action.skip_rulenum */ 0);
+
+	return SR_SUCCESS;
+}
+
+static SR_32 update_ip_rule(ip_rule_t *rule)
+{
+	ip_rule_t *old_rule;
+
+	if (!(old_rule = sr_db_ip_rule_get(rule)))
+		return SR_ERROR;
+
+	if (old_rule->tuple.srcport != rule->tuple.srcport) {
+		sr_cls_port_del_rule(old_rule->tuple.srcport, old_rule->tuple.program, old_rule->tuple.user, old_rule->rulenum, SR_DIR_SRC, old_rule->tuple.proto);
+		sr_cls_port_add_rule(rule->tuple.srcport, rule->tuple.program, rule->tuple.user, rule->rulenum, SR_DIR_SRC, rule->tuple.proto);
+		old_rule->tuple.srcport = rule->tuple.srcport;
+	}	
+	if (old_rule->tuple.dstport != rule->tuple.dstport) {
+		sr_cls_port_del_rule(old_rule->tuple.dstport, old_rule->tuple.program, old_rule->tuple.user, old_rule->rulenum, SR_DIR_DST, old_rule->tuple.proto);
+		sr_cls_port_add_rule(rule->tuple.dstport, rule->tuple.program, rule->tuple.user, rule->rulenum, SR_DIR_DST, rule->tuple.proto);
+		old_rule->tuple.dstport = rule->tuple.dstport;
+	}	
+	if (old_rule->tuple.srcaddr.s_addr != rule->tuple.srcaddr.s_addr ||
+	    old_rule->tuple.srcnetmask.s_addr != old_rule->tuple.srcnetmask.s_addr) {
+		sr_cls_del_ipv4(old_rule->tuple.srcaddr.s_addr, old_rule->tuple.program, old_rule->tuple.user, old_rule->tuple.srcnetmask.s_addr, old_rule->rulenum, SR_DIR_SRC);
+		sr_cls_add_ipv4(rule->tuple.srcaddr.s_addr, rule->tuple.program, rule->tuple.user, rule->tuple.srcnetmask.s_addr, rule->rulenum, SR_DIR_SRC);
+		old_rule->tuple.srcaddr.s_addr = rule->tuple.srcaddr.s_addr;
+	}	
+	if (old_rule->tuple.dstaddr.s_addr != rule->tuple.dstaddr.s_addr ||
+	    old_rule->tuple.dstnetmask.s_addr != old_rule->tuple.dstnetmask.s_addr) {
+		sr_cls_del_ipv4(old_rule->tuple.dstaddr.s_addr, old_rule->tuple.program, old_rule->tuple.user, old_rule->tuple.dstnetmask.s_addr, old_rule->rulenum, SR_DIR_DST);
+		sr_cls_add_ipv4(rule->tuple.dstaddr.s_addr, rule->tuple.program, rule->tuple.user, rule->tuple.dstnetmask.s_addr, rule->rulenum, SR_DIR_DST);
+		old_rule->tuple.dstaddr.s_addr = rule->tuple.dstaddr.s_addr;
+	}	
+	if (strncmp(old_rule->tuple.program, rule->tuple.program, PROG_NAME_SIZE) != 0) {
+		sr_cls_port_del_rule(old_rule->tuple.srcport, old_rule->tuple.program, old_rule->tuple.user, old_rule->rulenum, SR_DIR_SRC, old_rule->tuple.proto);
+		sr_cls_port_add_rule(rule->tuple.srcport, rule->tuple.program, rule->tuple.user, rule->rulenum, SR_DIR_SRC, rule->tuple.proto);
+		strncpy(old_rule->tuple.program, rule->tuple.program, PROG_NAME_SIZE);
+	}	
+	if (strncmp(old_rule->tuple.user, rule->tuple.user, PROG_NAME_SIZE) != 0) {
+		sr_cls_port_del_rule(old_rule->tuple.srcport, old_rule->tuple.program, old_rule->tuple.user, old_rule->rulenum, SR_DIR_SRC, old_rule->tuple.proto);
+		sr_cls_port_add_rule(rule->tuple.srcport, rule->tuple.program, rule->tuple.user, rule->rulenum, SR_DIR_SRC, rule->tuple.proto);
+		strncpy(old_rule->tuple.user, rule->tuple.user, USER_NAME_SIZE);
+	}	
+
+	return SR_SUCCESS;
+}
+
+static SR_32 delete_ip_rule(ip_rule_t *rule)
+{
+	
+	sr_cls_port_del_rule(rule->tuple.srcport, rule->tuple.program, rule->tuple.user, rule->rulenum, SR_DIR_SRC, rule->tuple.proto);
+	sr_cls_port_del_rule(rule->tuple.dstport, rule->tuple.program, rule->tuple.user, rule->rulenum, SR_DIR_DST, rule->tuple.proto);
+	sr_cls_del_ipv4(rule->tuple.srcaddr.s_addr, rule->tuple.program, rule->tuple.user, rule->tuple.srcnetmask.s_addr, rule->rulenum, SR_DIR_SRC);
+	sr_cls_del_ipv4(rule->tuple.dstaddr.s_addr, rule->tuple.program, rule->tuple.user, rule->tuple.dstnetmask.s_addr, rule->rulenum, SR_DIR_DST);
+	sr_db_ip_rule_delete(rule);
+
+	return SR_SUCCESS;
+}
+
+
 void sr_config_vsentry_db_cb(int type, int op, void *entry)
 {
 	switch (type) {
@@ -91,6 +200,19 @@ void sr_config_vsentry_db_cb(int type, int op, void *entry)
 			handle_action((action_t *)entry);
 			break;
 		case SENTRY_ENTRY_IP:
+			switch (op) {
+				case SENTRY_OP_CREATE:
+					add_ip_rule((ip_rule_t *)entry);
+					break;
+				case SENTRY_OP_MODIFY:
+					update_ip_rule((ip_rule_t *)entry);
+        				break;
+				case SENTRY_OP_DELETE:
+					delete_ip_rule((ip_rule_t *)entry);
+        				break;
+				default:
+					break;
+			}
         		break;
 		case SENTRY_ENTRY_CAN:
 			break;
