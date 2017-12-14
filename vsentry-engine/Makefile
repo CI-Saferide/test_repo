@@ -15,7 +15,8 @@ TARGET 		:= sr_engine
 VPATH 		:=  $(TOP_DIR)/sal/platform/linux/src \
 				$(TOP_DIR)/src \
 				$(TOP_DIR)/../common/src \
-				$(TOP_DIR)/stat_analysis/src
+				$(TOP_DIR)/stat_analysis/src \
+				$(TOP_DIR)/db/src
 
 # sources to compile
 SRCS 		:=  main.c \
@@ -48,6 +49,7 @@ SRCS 		:=  main.c \
 				sr_stat_learn_rule.c \
 				sr_stat_analysis.c \
 				sr_info_gather.c \
+				sr_db_ip.c \
 
 # include folders
 INCLUDES 	:=  -I../common/include \
@@ -61,6 +63,7 @@ INCLUDES 	:=  -I../common/include \
 				-I../vsentry-lib/include \
 				-I../common/stat_analysis/include \
 				-Istat_analysis/include \
+				-Idb/include \
 
 OBJS		:=  $(addprefix $(OBJDIR)/,$(SRCS:.c=.o))
 DEPS		:=  $(OBJS:.o=.d)
