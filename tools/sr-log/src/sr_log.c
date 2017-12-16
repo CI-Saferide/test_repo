@@ -7,6 +7,8 @@
 #include "sr_config_parse.h"
 #include "engine_sal.h"
 
+SR_LOCK cef_lock = SR_MUTEX_INIT; //for locking the cef wirte to file function
+
 extern struct config_params_t config_params;
 
 // FORMAT: Jan 18 11:07:53 host CEF:Version|Device Vendor|Device Product|Device Version|Device Event Class ID|Name|Severity|[Extension]
@@ -90,7 +92,9 @@ void log_print_cef_msg(CEF_payload *cef)
 			VSENTRY_VER_MAJOR,VSENTRY_VER_MINOR,
 			cef_class,cef->name, cef->extension);
 			
+	SR_Lock(&cef_lock);
 	log_cef_msg(cef_buffer);
+	SR_Unlock(&cef_lock);
 }
 
 
@@ -100,7 +104,6 @@ void CEF_log_event(const SR_U32 class, const char *event_name, enum SR_CEF_SEVER
 	va_list args;
 	SR_8 msg[SR_MAX_LOG];
 	struct CEF_payload *payload;
-	//payload = malloc (sizeof (struct CEF_payload));
 	
 	SR_Malloc(payload,struct CEF_payload *,sizeof (struct CEF_payload));
 	
