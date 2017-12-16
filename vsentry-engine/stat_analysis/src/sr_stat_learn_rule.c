@@ -62,7 +62,7 @@ SR_32 sr_stat_learn_rule_hash_init(void)
         hash_ops.print = learn_rule_print;
 #endif
         if (!(learn_rule_hash = sr_gen_hash_new(HASH_SIZE, hash_ops))) {
-                CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,"file_hash_init: sr_gen_hash_new failed\n");
+                CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,"file_hash_init: sr_gen_hash_new failed\n");
                 return SR_ERROR;
         }
 
@@ -83,7 +83,7 @@ SR_32 sr_stat_learn_rule_hash_update(char *exec, sr_stat_con_stats_t *con_stats)
         if (!(learn_rule_item = sr_gen_hash_get(learn_rule_hash, exec))) {
 		SR_Zalloc(learn_rule_item, learn_rule_item_t *, sizeof(learn_rule_item_t));
 		if (!learn_rule_item) {
-			CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,"%s: memory allocation failed\n", __FUNCTION__);
+			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,"%s: memory allocation failed\n", __FUNCTION__);
 			return SR_ERROR;
 		}
 		strncpy(learn_rule_item->exec, exec, SR_MAX_PATH_SIZE);
@@ -91,7 +91,7 @@ SR_32 sr_stat_learn_rule_hash_update(char *exec, sr_stat_con_stats_t *con_stats)
 		learn_rule_item->is_updated = SR_TRUE;
 		/* Add the process */
 		if ((rc = sr_gen_hash_insert(learn_rule_hash, (void *)exec, learn_rule_item)) != SR_SUCCESS) {
-			CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,"%s: sr_gen_hash_insert failed\n", __FUNCTION__);
+			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,"%s: sr_gen_hash_insert failed\n", __FUNCTION__);
 			return SR_ERROR;
 		}
 		

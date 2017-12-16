@@ -114,8 +114,10 @@ SR_32 can_collector_task(void *data)
             }            
             strcat(buffer,"\n");                 
             log_it(buffer);
+#ifdef SR_CAN_DEBUG_PRINT
             if(can_args.can_print)
 				printf("%s",buffer);
+#endif
 		}	
 	}
     close(can_args.can_fd);

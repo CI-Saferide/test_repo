@@ -40,7 +40,7 @@ SR_32 engine_main_loop(void *data)
 	/* init the module2engine buffer*/
 	ret = sr_msg_alloc_buf(MOD2ENG_BUF, MAX_BUFFER_SIZE);
 	if (ret != SR_SUCCESS){
-		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_LOW,
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 			"failed to init MOD2ENG msg_buf\n");
 		return SR_ERROR;
 	}
@@ -100,7 +100,7 @@ SR_32 sr_engine_start(void)
 
 	ret = sr_log_init("[vsentry]", 0);
 	if (ret != SR_SUCCESS){
-		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_LOW,
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 			"failed to init sr_log\n");
 		return SR_ERROR;
 	}
@@ -108,7 +108,7 @@ SR_32 sr_engine_start(void)
 #ifdef CONFIG_STAT_ANALYSIS
 	ret = sr_stat_analysis_init();
 	if (ret != SR_SUCCESS){
-		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_LOW,
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 			"failed to init sr_stat_analysis_init\n");
 		return SR_ERROR;
 	}
@@ -116,21 +116,21 @@ SR_32 sr_engine_start(void)
 
 	ret = sr_info_gather_init();
 	if (ret != SR_SUCCESS){
-		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_LOW,
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 			"failed to init sr_stat_analysis_init\n");
 		return SR_ERROR;
 	}
 
 	ret = sr_ml_conngraph_init();
 	if (ret != SR_SUCCESS){
-		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_LOW,
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 			"failed to init sr_ml_conngraph\n");
 		return SR_ERROR;
 	}
 
 	ret = sr_start_task(SR_ENGINE_TASK, engine_main_loop);
 	if (ret != SR_SUCCESS) {
-		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_LOW,
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 			"failed to start engine_main_loop\n");
 		sr_stop_task(SR_INFO_GATHER_TASK);
 
@@ -139,21 +139,21 @@ SR_32 sr_engine_start(void)
 
 	ret = sr_msg_alloc_buf(ENG2MOD_BUF, MAX_BUFFER_SIZE);
 	if (ret != SR_SUCCESS){
-		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_LOW,
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 			"failed to init ENG2MOD msg_buf\n");
 		return SR_ERROR;
 	}
 
 	ret = sr_file_hash_init();
 	if (ret != SR_SUCCESS){
-		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_LOW,
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 			"failed to init file_hash\n");
 		return SR_ERROR;
 	}
 
 	ret = sr_create_filter_paths();
 	if (ret != SR_SUCCESS){
-		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_LOW,
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 		"failed to init sr_create_fileter_faths\n");
 		return SR_ERROR;
 	}
@@ -164,7 +164,7 @@ SR_32 sr_engine_start(void)
 	if(config_params.collector_enable){
 		ret = sr_start_task(SR_CAN_COLLECT_TASK, can_collector_init);
 		if (ret != SR_SUCCESS) {
-			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_LOW,
+			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 				"Failed to start CAN-Bus Collector\n");
 			return SR_ERROR;	
 		}	
@@ -192,18 +192,18 @@ SR_32 sr_engine_start(void)
 			case 't':
 				eng2mod_test();
 				break;
+#ifdef SR_CAN_DEBUG_PRINT			
 			case 'p':
 				can_args.can_print = !can_args.can_print;
-				CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,
-					"\nCAN-Bus %s prints - Enable|Disable\n", can_args.can_interface);
-				break;			
+					printf("\nCAN-Bus %s prints - Enable|Disable\n", can_args.can_interface);
+				break;	
+#endif						
 			case 'v':
-				CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,
-					"\nAvailable Space under %s is: %lld bytes\n",disk,sal_gets_space(disk));
+					printf("\nAvailable Space under %s is: %lld bytes\n",disk,sal_gets_space(disk));
 				break;				
 		}
 	}
-	
+
 	sr_stop_task(SR_CAN_COLLECT_TASK);
 	sr_stop_task(SR_ENGINE_TASK);
 #ifdef CONFIG_STAT_ANALYSIS

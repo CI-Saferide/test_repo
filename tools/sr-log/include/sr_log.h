@@ -13,7 +13,7 @@ extern "C" {
 #endif
 
 enum SR_CEF_SEVERITY {
-	SEVERITY_UNKNOWN =0,
+	SEVERITY_UNKNOWN = 0,
 	SEVERITY_LOW,
 	SEVERITY_MEDIUM,
 	SEVERITY_HIGH,
@@ -34,26 +34,6 @@ enum SR_CEF_CLASS_ID {
 
 #define MAX_PAYLOAD 2024 /* maximum payload size*/
 
-#define SR_LOG_EMERG			1
-#define SR_LOG_ALERT			1
-#define SR_LOG_CRIT				1
-#define SR_LOG_ERR				1
-#define SR_LOG_WARN				1
-#define SR_LOG_NOTICE			1
-#define SR_LOG_INFO				1
-#define SR_LOG_DEBUG			1
-
-enum SR_LOG_PRIORITY {
-    LOG_EMERG,
-    LOG_ALERT,
-    LOG_CRIT,
-    LOG_ERR,
-    LOG_WARN,
-    LOG_NOTICE,
-    LOG_INFO,
-    LOG_DEBUG
-};
-
 /*
 cef example:
 
@@ -64,51 +44,35 @@ CEF:1.2|SafeRide|vSentry|1.0|100|Malware stopped|10|src=10.0.0.1 dst=2.1.2.2 spt
 CEF:1.0|SafeRide|vSentry|1.0|0|None|None| 
 */
 
-/*
-enum dev_event_class_ID {
-	NETWORK, 
-	FS, 
-	PROC
-};*/
-
-enum severity {
-	EMERGENCY,
-	ALERT,
-	CRITICAL,
-	ERROR,
-	WARNING,
-	NOTICE,
-	INFO,
-	LOG_DEBUG1 //need to change, redifinition!!!
-};
 										
 typedef struct CEF_payload
 {   			
 	enum SR_CEF_CLASS_ID		class;
 	char						name[32];
-    enum severity				sev;
+    enum SR_CEF_SEVERITY		sev;
     char 						extension[512]; 
 } CEF_payload;
 
+
 int sr_log_init (const char* app_name, int flags);
 #if 0
-int __sr_print (enum SR_LOG_PRIORITY priority, int line, const char *file, const char *fmt, ...);
-#define sr_print(priority, ...) __sr_print(priority, __LINE__, __FILE__, __VA_ARGS__)
+int __sr_print (enum SR_CEF_SEVERITY severity, int line, const char *file, const char *fmt, ...);
+#define sr_print(severity, ...) __sr_print(severity, __LINE__, __FILE__, __VA_ARGS__)
 #endif
 
 #ifdef __cplusplus
 }
 #endif
 
-void CEF_log_event(const SR_U32 class, const char *event_name, const SR_U8 severity, const char *fmt, ...);
+void CEF_log_event(const SR_U32 class, const char *event_name, enum SR_CEF_SEVERITY severity, const char *fmt, ...);
 void log_print_cef_msg(CEF_payload *cef);
 
 #ifdef DEBUG
 #define pr_fmt(fmt) fmt
-#define CEF_log_debug(class, event_name, severity, fmt, ...) \
-	CEF_log_event(class, event_name, severity, pr_fmt(fmt), ##__VA_ARGS__)
+#define CEF_log_debug(class, event_name, SR_CEF_SEVERITY, fmt, ...) \
+	CEF_log_event(class, event_name, SR_CEF_SEVERITY, pr_fmt(fmt), ##__VA_ARGS__)
 #else
-#define CEF_log_debug(class, event_name, severity, fmt, ...)
+#define CEF_log_debug(class, event_name, SR_CEF_SEVERITY, fmt, ...)
 #endif
 
 #endif /* SR_LOG_H */

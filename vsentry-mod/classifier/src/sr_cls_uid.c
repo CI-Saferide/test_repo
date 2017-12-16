@@ -85,7 +85,8 @@ int sr_cls_uid_add_rule(enum sr_rule_type type, SR_32 uid, SR_U32 rulenum)
 		if (!ent) {		
 			ent = SR_ZALLOC(sizeof(*ent)); 
 			if (!ent) {
-				sal_kernel_print_err("Error: Failed to allocate memory\n");
+				CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+					"Error: Failed to allocate memory\n");
 				return SR_ERROR;
 			} else {
 				ent->ent_type = UID;
@@ -105,7 +106,8 @@ int sr_cls_uid_del_rule(enum sr_rule_type type, SR_32 uid, SR_U32 rulenum)
 	if (uid != UID_ANY) {
 		struct sr_hash_ent_t *ent=sr_hash_lookup(sr_cls_uid_table[type], uid);
 		if (!ent) {
-			sal_kernel_print_err("Error can't del rule# %u on UID:%u - rule not found\n",rulenum,uid);
+			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+				"Error can't del rule# %u on UID:%u - rule not found\n",rulenum,uid);
 			return SR_ERROR;
 		}
 		sal_clear_bit_array(rulenum, &ent->rules);
@@ -142,11 +144,13 @@ SR_8 sr_cls_uid_msg_dispatch(struct sr_cls_uid_msg *msg)
 {
         switch (msg->msg_type) {
                 case SR_CLS_UID_DEL_RULE:
-                        sal_kernel_print_info("Delete rule %d from %d\n", msg->rulenum, msg->uid);
+                        CEF_log_event(SR_CEF_CID_SYSTEM, "info", SEVERITY_LOW,
+							"Delete rule %d from %d\n", msg->rulenum, msg->uid);
                         return sr_cls_uid_del_rule(msg->rule_type, msg->uid, msg->rulenum);
                         break;
                 case SR_CLS_UID_ADD_RULE:
-                        sal_kernel_print_info("Add rule %d to %d\n", msg->rulenum, msg->uid);
+                        CEF_log_event(SR_CEF_CID_SYSTEM, "info", SEVERITY_LOW,
+							"Add rule %d to %d\n", msg->rulenum, msg->uid);
                         return sr_cls_uid_add_rule(msg->rule_type, msg->uid, msg->rulenum);
                         break;
                 default:

@@ -64,7 +64,7 @@ SR_8 *sr_get_buf(sr_ring_buffer *rb, SR_32 size)
 
 	if (size > rb->each_buf_size) {
 #ifdef SR_RB_DEBUG
-	CEF_log_debug(SR_CEF_CID_SYSTEM, "debug", SEVERITY_LOW,
+	CEF_log_debug(SR_CEF_CID_SYSTEM, "debug", SEVERITY_HIGH,
 		"sr_get_buf: requested size [%d] bigger than buffer size [%d]\n",
 			size, rb->each_buf_size);
 #endif
@@ -73,7 +73,7 @@ SR_8 *sr_get_buf(sr_ring_buffer *rb, SR_32 size)
 
 	if ( ((rb->free_ptr + 1) % rb->num_of_bufs) == read_ptr) {
 #ifdef SR_RB_DEBUG
-	CEF_log_debug(SR_CEF_CID_SYSTEM, "debug", SEVERITY_LOW,
+	CEF_log_debug(SR_CEF_CID_SYSTEM, "debug", SEVERITY_HIGH,
 		"sr_get_buf: no free buffers free_ptr %d read_ptr %d\n", rb->free_ptr, read_ptr);
 #endif
 		return ptr;
@@ -97,7 +97,7 @@ SR_32 sr_write_buf(sr_ring_buffer *rb, SR_32 size)
 
 	if (size > rb->each_buf_size) {
 #ifdef SR_RB_DEBUG
-	CEF_log_debug(SR_CEF_CID_SYSTEM, "debug", SEVERITY_LOW,
+	CEF_log_debug(SR_CEF_CID_SYSTEM, "debug", SEVERITY_HIGH,
 		"sr_wite_buf: requested size [%d] bigger than buffer size [%d]\n",
 			size, rb->each_buf_size);
 #endif
@@ -106,7 +106,7 @@ SR_32 sr_write_buf(sr_ring_buffer *rb, SR_32 size)
 
 	if (free_ptr == rb->write_ptr) {
 #ifdef SR_RB_DEBUG
-	CEF_log_debug(SR_CEF_CID_SYSTEM, "debug", SEVERITY_LOW,
+	CEF_log_debug(SR_CEF_CID_SYSTEM, "debug", SEVERITY_HIGH,
 		"sr_write_buf: no buffer was allocated, free_ptr %d write_ptr %d\n", free_ptr, rb->write_ptr);
 #endif
 		return 0;
@@ -137,7 +137,7 @@ SR_8 *sr_read_buf(sr_ring_buffer *rb, SR_32 *size)
 
 	if (rb->read_ptr == write_ptr) {
 #ifdef SR_RB_DEBUG
-	CEF_log_debug(SR_CEF_CID_SYSTEM, "debug", SEVERITY_LOW,
+	CEF_log_debug(SR_CEF_CID_SYSTEM, "debug", SEVERITY_HIGH,
 		"sr_read_buf: no readable buffers. read_ptr %d write_ptr %d\n", rb->read_ptr, write_ptr);
 #endif
 		*size = 0;

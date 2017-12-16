@@ -67,13 +67,15 @@ static SR_U32 sr_connection_increase_LRU_arr(LRU_container_t *LRU_container, SR_
 	sr_connection_data_t **tmp;
 
 	if (LRU_container->size >= LRU_ALLOCATION_MAX_SIZE) {
-		sal_kernel_print_warning("LRU reached it maximum size\n");
+		CEF_log_event(SR_CEF_CID_NETWORK, "warning", SEVERITY_MEDIUM,
+			"LRU reached it maximum size\n");
 		return SR_ERROR;
 	}
 
 	tmp = LRU_container->objects;
 	if (!(LRU_container->objects = SR_ZALLOC(sizeof(sr_connection_data_t *) * LRU_container->size))) {
-		sal_kernel_print_err("Error: Failed to resize memory\n");
+		CEF_log_event(SR_CEF_CID_NETWORK, "error", SEVERITY_HIGH,
+			"Error: Failed to resize memory\n");
 		return SR_ERROR;
 	}
 	LRU_container->size += size;
@@ -128,17 +130,20 @@ SR_U32 sr_connection_transmit(void)
 	sal_kernel_print_info("LRU DEBUG LRU_allocate_more2\n");
 #endif
 		if (sr_connection_increase_LRU_arr(LRU_transmit, LRU_ADD_SIZE) != SR_SUCCESS) {
-			sal_kernel_print_err("sr_connection_increase_LRU_arr failed to resize LRU array\n");
+			CEF_log_event(SR_CEF_CID_NETWORK, "error", SEVERITY_HIGH,
+				"sr_connection_increase_LRU_arr failed to resize LRU array\n");
 			return SR_ERROR;
 		}
 		LRU_allocate_more = SR_FALSE;
 		LRU_allocate_more2 = SR_FALSE;
 	} else if (LRU_allocate_more) {
 #ifdef SR_STAT_ANALYSIS_DEBUG
-	sal_printf("LRU DEBUG LRU_allocate_more\n");
+	CEF_log_event(SR_CEF_CID_NETWORK, "info", SEVERITY_LOW,
+		"LRU DEBUG LRU_allocate_more\n");
 #endif
 		if (sr_connection_increase_LRU_arr(LRU_transmit, LRU_ADD_SIZE) != SR_SUCCESS) {
-			sal_kernel_print_err("sr_connection_increase_LRU_arr failed to resize LRU array\n");
+			CEF_log_event(SR_CEF_CID_NETWORK, "error", SEVERITY_HIGH,
+				"sr_connection_increase_LRU_arr failed to resize LRU array\n");
 			return SR_ERROR;
 		}
 		LRU_allocate_more2 = SR_TRUE;
@@ -213,14 +218,16 @@ static LRU_container_t *create_LRU(void)
 	LRU_container_t *LRU_container;
 
 	if (!(LRU_container = SR_ZALLOC(sizeof(LRU_container_t)))) {
-            sal_kernel_print_err("Error: Failed to allocate memory\n");
+            CEF_log_event(SR_CEF_CID_NETWORK, "error", SEVERITY_HIGH,
+				"Error: Failed to allocate memory\n");
             return NULL;
 	}
 	LRU_container->size = LRU_ALLOCATION_SIZE;
 	SR_ATOMIC_SET(&(LRU_container->ind), -1);
 	SR_ATOMIC_SET(&(LRU_container->ref_count), 0);
 	if (!(LRU_container->objects = SR_ZALLOC(sizeof(sr_connection_data_t *) * LRU_ALLOCATION_SIZE))) {
-            sal_kernel_print_err("Error: Failed to allocate memory\n");
+            CEF_log_event(SR_CEF_CID_NETWORK, "error", SEVERITY_HIGH,
+				"Error: Failed to allocate memory\n");
             return NULL;
 	}
 
@@ -314,7 +321,8 @@ SR_U32 sr_stat_connection_insert(sr_connection_data_t *con_data, SR_U16 flags)
 
 	hash_con_data = SR_KZALLOC_ATOMIC_SUPPORT(is_atomic, sr_connection_data_t);
 	if (!hash_con_data) {
-            sal_kernel_print_err("Error: Failed to allocate memory\n");
+            CEF_log_event(SR_CEF_CID_NETWORK, "error", SEVERITY_HIGH,
+				"Error: Failed to allocate memory\n");
             return SR_ERROR;
         }
 	memcpy(hash_con_data, con_data, sizeof(sr_connection_data_t));
@@ -332,7 +340,8 @@ SR_U32 sr_stat_connection_insert(sr_connection_data_t *con_data, SR_U16 flags)
 	}
 #endif
 	if (sr_special_hash_insert(connection_table, &(hash_con_data->con_id), hash_con_data, is_blocking, is_atomic) != SR_SUCCESS) {
-            sal_kernel_print_alert("Error: Failed sr_special_hash_insert\n");
+            CEF_log_event(SR_CEF_CID_NETWORK, "error", SEVERITY_HIGH,
+				"Error: Failed sr_special_hash_insert\n");
             return SR_ERROR;
         }
 	sal_update_time_counter(&(hash_con_data->time_count));

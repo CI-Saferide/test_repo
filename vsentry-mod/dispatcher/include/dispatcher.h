@@ -8,10 +8,8 @@
 #define MAIN_SOCKET_INDEX		0
 #define LOG_SOCKET_INDEX		1
 
-//#define PRODUCT_VENDOR	"saferide"
 #define MODULE_NAME		"vsentry"
-//#define CEF_VERSION 	230
-//#define VSENTRY_VERSION 10
+
 
 enum hook_events {
 	HOOK_MKDIR,
@@ -94,7 +92,7 @@ typedef struct _event_name {
 	SR_U8				name[32];
 }event_name;
 
-CEF_payload *cef_init(char* event_name,enum severity sev,enum SR_CEF_CLASS_ID	class);
+CEF_payload *cef_init(char* event_name,enum SR_CEF_SEVERITY sev,enum SR_CEF_CLASS_ID	class);
 
 SR_32 disp_mkdir(disp_info_t* info);
 SR_32 disp_rmdir(disp_info_t* info);

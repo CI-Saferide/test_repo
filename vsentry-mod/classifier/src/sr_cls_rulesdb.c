@@ -40,13 +40,15 @@ void sr_cls_rule_del(SR_32 rule_type, SR_U16 rulenum)
 void sr_cls_rule_add(SR_32 rule_type, SR_U16 rulenum, SR_U16 actions, SR_8 file_ops, SR_U32 rl_max_rate, SR_U16 rl_exceed_action, SR_U16 log_target, SR_U16 email_id, SR_U16 phone_id, SR_U16 skip_rulenum)
 {
 	if (unlikely(rulenum>=SR_MAX_RULES)){
-		sal_kernel_print_err("sr_cls_rule_add: Invalid rule ID %u\n", rulenum);
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+			"sr_cls_rule_add: Invalid rule ID %u\n", rulenum);
 		return;
 	}
 	sr_rules_db[rule_type][rulenum].actions = actions;
 	if (rule_type == SR_FILE_RULES) {
 		if (file_ops > 7) {
-			sal_kernel_print_err("sr_cls_rule_add: Invalid fileops for rule ID %u\n", rulenum);
+			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+				"sr_cls_rule_add: Invalid fileops for rule ID %u\n", rulenum);
 			return;
 		}
 		sr_rules_db[rule_type][rulenum].file_ops = file_ops;
@@ -115,7 +117,8 @@ enum cls_actions sr_cls_file_rule_match(SR_8 fileop, SR_U16 rulenum)
 	SR_U16 action, should_log;
 
 	if (!(fileop & (SR_FILEOPS_READ | SR_FILEOPS_WRITE | SR_FILEOPS_EXEC))) {
-		sal_kernel_print_err("sr_cls_file_rule_match: Invalid file op\n");
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+			"sr_cls_file_rule_match: Invalid file op\n");
 		return SR_CLS_ACTION_NOOP;
 	}
 	if (!(sr_rules_db[SR_FILE_RULES][rulenum].file_ops & fileop)) { // not really a match
@@ -166,11 +169,13 @@ SR_8 sr_cls_rules_msg_dispatch(struct sr_cls_rules_msg *msg)
 
 	switch (msg->msg_type) {
 		case SR_CLS_RULES_DEL:
-			sal_kernel_print_info("SR_CLS_RULES_DEL\n");
+			CEF_log_event(SR_CEF_CID_SYSTEM, "info", SEVERITY_LOW,
+				"SR_CLS_RULES_DEL\n");
 			sr_cls_rule_del(msg->rule_type, msg->rulenum);
 			break;
 		case SR_CLS_RULES_ADD:
-			sal_kernel_print_info("SR_CLS_RULES_ADD\n");
+			CEF_log_event(SR_CEF_CID_SYSTEM, "info", SEVERITY_LOW,
+				"SR_CLS_RULES_ADD\n");
 			sr_cls_rule_add(msg->rule_type,
 			msg->rulenum,
 			msg->actions,

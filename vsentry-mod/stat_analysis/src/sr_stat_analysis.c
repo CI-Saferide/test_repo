@@ -193,7 +193,8 @@ SR_32 sr_stat_analysis_handle_message(struct sr_stat_analysis_msg *msg)
 			break;
 		case SR_STAT_ANALYSIS_KEEP_ALIVE:
 #ifdef SR_STAT_ANALYSIS_DEBUG
-			sal_kernel_print_info("STAT ANALYSIS got keepalive \n");
+			CEF_log_event(SR_CEF_CID_SYSTEM, "info", SEVERITY_LOW,
+				"STAT ANALYSIS got keepalive \n");
 #endif
 			break;
 		default:

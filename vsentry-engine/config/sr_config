@@ -1,5 +1,5 @@
 #vehicle ID (VIN)
-VIN toyota
+VIN supercar
 
 #CAN params
 NUM_OF_CAN_IF 1
@@ -7,7 +7,12 @@ CAN0_IF can0
 
 # collector params
 COLLECT_ENABLE 1
-COLLECT_FILE_SIZE_MB 30
+COLLECT_FILE_SIZE_MB 1
 DISK_SPACE_TRESHOLD_PERCENT 5
 LOG_PATH /candata/
 LOG_PATH_TEMP /tmp/
+
+#CEF cyclic logging params
+CEF_CYCLING 4
+CEF_FILE_LOG_SIZE_MB 1
+CEF_PATH_TEMP /tmp/

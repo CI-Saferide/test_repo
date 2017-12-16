@@ -9,31 +9,16 @@
 
 extern struct config_params_t config_params;
 
-#define SR_Malloc(p, t, n) (p = (t) malloc((unsigned long)(n)))
-
-#if 0
-const static SR_8	*log_level_str[8] = {
-	"EMERGENCY", /* LOG_EMERG   = system is unusable		       */
-	"ALERT",	 /* LOG_ALERT   = action must be taken immediately */
-	"CRITICAL",  /* LOG_CRIT	= critical conditions	          */
-	"ERROR",	 /* LOG_ERR	 = error conditions                 */
-	"WARNING",   /* LOG_WARNING = warning conditions		       */
-	"NOTICE",	/* LOG_NOTICE  = normal but significant condition */
-	"INFO",	  /* LOG_INFO	= informational                    */
-	"DEBUG",	 /* LOG_DEBUG   = debug-level messages	         */
-};
-#endif
-
 // FORMAT: Jan 18 11:07:53 host CEF:Version|Device Vendor|Device Product|Device Version|Device Event Class ID|Name|Severity|[Extension]
 // Severity is a string or integer and reflectsthe importance of the event. The valid string values are Unknown, Low, Medium, High, and Very-High. The valid integer values are 0-3=Low, 4-6=Medium, 7- 8=High, and 9-10=Very-High.
-char severity_strings[SEVERITY_MAX][10] = { "Unknown", "Low", "Medium", "High", "Very-High" };
+char severity_strings[SEVERITY_MAX][10] = { "Unknown", "Low", "Medium", "High", "Very-High"};
 
 static SR_8 g_app_name[20];
 
 typedef const SR_8* cef_str;
 FILE* log_fp = 0;
-SR_U32 MB = 1024*1024;
-cef_str cef_prefix = "cef_";
+SR_U32 MB = 1024*1024; // 1MB
+cef_str cef_prefix = "vsentry";
 cef_str cef_postfix = ".log";
 
 void log_cef_msg(cef_str str)
@@ -43,7 +28,7 @@ void log_cef_msg(cef_str str)
 
     if(!log_fp){
 		
-		sprintf(file1,"%s%s%d%s",config_params.CEF_log_path,cef_prefix, 0, cef_postfix);
+		sprintf(file1,"%s%s%d%s",config_params.CEF_log_path,cef_prefix,0,cef_postfix);
 		log_fp = fopen(file1,"a");
     }
 
@@ -53,7 +38,7 @@ void log_cef_msg(cef_str str)
             log_fp = 0;
 
             for(i = (config_params.cef_file_cycling-1);i >= 0;i--){
-				sprintf(file1,"%s%s%d%s",config_params.CEF_log_path,cef_prefix, i,cef_postfix );
+				sprintf(file1,"%s%s%d%s",config_params.CEF_log_path,cef_prefix,i,cef_postfix );
 				sprintf(file2,"%s%s%d%s",config_params.CEF_log_path,cef_prefix, i+1,cef_postfix );
 				sal_rename(file1, file2);
 			}
@@ -109,7 +94,7 @@ void log_print_cef_msg(CEF_payload *cef)
 }
 
 
-void CEF_log_event(const SR_U32 class, const char *event_name, const SR_U8 severity, const char *fmt, ...)
+void CEF_log_event(const SR_U32 class, const char *event_name, enum SR_CEF_SEVERITY severity, const char *fmt, ...)
 {
 	SR_U32 i = 0;
 	va_list args;

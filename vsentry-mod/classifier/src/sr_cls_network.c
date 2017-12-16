@@ -145,7 +145,8 @@ int sr_cls_del_ipv4(SR_U32 addr, SR_U32 netmask, int rulenum, SR_8 dir)
 
 	node = rn_lookup((void*)ip, (void*)mask, tree_head);
 	if (!node) { // failed to insert - free memory
-		sal_kernel_print_err("sr_cls_del_ipv4: Did not find node!\n");
+		CEF_log_event(SR_CEF_CID_NETWORK, "error", SEVERITY_HIGH,
+			"sr_cls_del_ipv4: Did not find node!\n");
 		SR_FREE(ip);
 		SR_FREE(mask);
 		return SR_ERROR;
@@ -156,7 +157,8 @@ int sr_cls_del_ipv4(SR_U32 addr, SR_U32 netmask, int rulenum, SR_8 dir)
 		//sal_kernel_print_alert("Cleared last rule from entry, removing entry\n");
 		node = rn_delete((void*)ip, (void*)mask, tree_head);
 		if (!node) { // failed to insert - free memory
-			sal_kernel_print_err("sr_cls_del_ipv4: Did not find node!\n");
+			CEF_log_event(SR_CEF_CID_NETWORK, "error", SEVERITY_HIGH,
+				"sr_cls_del_ipv4: Did not find node!\n");
 			SR_FREE(ip);
 			SR_FREE(mask);
 			return SR_ERROR;
@@ -271,7 +273,8 @@ SR_8 sr_cls_network_msg_dispatch(struct sr_cls_network_msg *msg)
 
 	switch (msg->msg_type) {
 		case SR_CLS_IPV4_DEL_RULE:
-			sal_debug_network("[del_ipv4] addr=0x%x, netmask=0x%x, rulenum=%d\n",
+			CEF_log_event(SR_CEF_CID_NETWORK, "info", SEVERITY_LOW,
+				"[del_ipv4] addr=0x%x, netmask=0x%x, rulenum=%d\n",
 							msg->addr, msg->netmask, msg->rulenum);	
 			if ((st = sr_cls_del_ipv4(msg->addr, msg->netmask, msg->rulenum, msg->dir)) != SR_SUCCESS)
 			    return st;
@@ -280,7 +283,8 @@ SR_8 sr_cls_network_msg_dispatch(struct sr_cls_network_msg *msg)
 			return sr_cls_uid_del_rule(SR_NET_RULES, msg->uid, msg->rulenum);
 			break;
 		case SR_CLS_IPV4_ADD_RULE:
-			sal_kernel_print_info("[add_ipv4] addr=%x, netmask=%x, rulenum=%d\n",
+			CEF_log_event(SR_CEF_CID_NETWORK, "info", SEVERITY_LOW,
+				"[add_ipv4] addr=%x, netmask=%x, rulenum=%d\n",
 							msg->addr, msg->netmask, msg->rulenum);
 			if ((st = sr_cls_add_ipv4(msg->addr, msg->netmask, msg->rulenum, msg->dir)) != SR_SUCCESS)
 			    return st;

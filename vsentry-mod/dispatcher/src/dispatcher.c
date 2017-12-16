@@ -20,7 +20,7 @@ extern const event_name hook_event_names[MAX_HOOK];
  * where posibble) and create the CEF message only in user space??
  */ 
 
-CEF_payload* cef_init(SR_8* event_name,enum severity sev,enum SR_CEF_CLASS_ID	class)
+CEF_payload* cef_init(SR_8* event_name,enum SR_CEF_SEVERITY sev,enum SR_CEF_CLASS_ID	class)
 {
 	struct CEF_payload *payload = (struct CEF_payload*)sr_get_msg(MOD2LOG_BUF, sizeof(struct CEF_payload));
 
