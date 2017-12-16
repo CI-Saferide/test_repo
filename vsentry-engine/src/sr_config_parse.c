@@ -22,7 +22,7 @@ void config_defaults(void)
 	
 	config_params.cef_file_size = 1; /* in MB */
 	config_params.cef_file_cycling = 4; /*amount of cef files*/
-	strcpy(config_params.CEF_log_path, "/tmp/");
+	strcpy(config_params.CEF_log_path, "/var/log/");
 }
 
 #define CONFIG_LINE_BUFFER_SIZE 100
