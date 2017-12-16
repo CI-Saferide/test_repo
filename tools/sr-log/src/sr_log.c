@@ -54,7 +54,7 @@ void log_cef_msg(cef_str str)
 
 void log_print_cef_msg(CEF_payload *cef)
 {	
-	SR_8 cef_buffer[1024];
+	SR_8 cef_buffer[MAX_PAYLOAD];
 	SR_8 cef_class[32];
 	time_t timer;
     SR_8 buffer[26]; //for time
