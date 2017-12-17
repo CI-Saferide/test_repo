@@ -100,26 +100,27 @@ void log_print_cef_msg(CEF_payload *cef)
 
 void CEF_log_event(const SR_U32 class, const char *event_name, enum SR_CEF_SEVERITY severity, const char *fmt, ...)
 {
-	SR_U32 i = 0;
+	SR_U32 i;
 	va_list args;
 	SR_8 msg[SR_MAX_LOG];
 	struct CEF_payload *payload;
 	
 	SR_Malloc(payload,struct CEF_payload *,sizeof (struct CEF_payload));
 	
+	va_start(args, fmt);
+	i = vsnprintf(msg, SR_MAX_LOG-1, fmt, args);
+	va_end(args);
+	msg[SR_MAX_LOG - 1] = 0;
+	
 	if (payload) {	
 		payload->class = class;		
 		sal_strcpy(payload->name,(char*)event_name);
-		payload->sev = severity;	
-		va_start(args, fmt);
-		i = vsnprintf(msg, SR_MAX_LOG-1, fmt, args);
-		va_end(args);
-		msg[SR_MAX_LOG - 1] = 0;
+		payload->sev = severity;
 		sal_strcpy(payload->extension,msg);
 		
 		log_print_cef_msg(payload);
 	}else{
-		printf("Failed to CEF log...%x\n",i);
+		printf("Failed to CEF log: %s|%s|%s %x\n",(char*)event_name,severity_strings[severity],msg,i);
 	}
 		
 	SR_Free(payload);	
