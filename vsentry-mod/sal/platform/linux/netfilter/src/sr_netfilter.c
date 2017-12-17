@@ -32,10 +32,10 @@ unsigned int sr_netfilter_hook_fn(void *priv,
 	if (SR_FALSE == vsentry_get_state()) 
 		return NF_ACCEPT;
 
-	if ( ((ip_header->protocol == IPPROTO_TCP) && ((struct tcphdr *)skb_transport_header(skb))->syn) || (ip_header->protocol == IPPROTO_UDP)) {
+	/*if ( ((ip_header->protocol == IPPROTO_TCP) && ((struct tcphdr *)skb_transport_header(skb))->syn) || (ip_header->protocol == IPPROTO_UDP)) {
 		if(sr_scanner_det_rcv(skb)==SR_CLS_ACTION_DROP)
 			return NF_DROP;
-	}
+	}*/
 	if ((ip_header->protocol == IPPROTO_TCP) && (((struct tcphdr *)skb_transport_header(skb))->syn)&&!(((struct tcphdr *)skb_transport_header(skb))->ack)) {
 		if (vsentry_incoming_connection(skb) == SR_CLS_ACTION_DROP) {
 			return NF_DROP;

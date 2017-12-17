@@ -84,10 +84,12 @@ endif
 
 all: $(TARGET)
 
-$(TARGET): $(OBJDIR) $(OBJS) libsr_log libsr_hash
+build_ver:
 	@echo "static const char SR_GIT_BUILD[] = \"`git log --pretty=format:'%h' -n 1`\"; " > $(TOP_DIR)/../common/include/sr_build_ver.h
+
+$(TARGET): build_ver $(OBJDIR) $(OBJS) libsr_log libsr_hash
 	@echo "linking $(notdir $@)"
-	$(CC) $(OBJS) -o $(BINDIR)/$(TARGET) $(LIB_PATH) $(LIBS)
+	$(CC) $(LDFLAGS) $(OBJS) -o $(BINDIR)/$(TARGET) $(LIB_PATH) $(LIBS)
 
 $(OBJDIR):
 	@mkdir -p $(OBJDIR)
