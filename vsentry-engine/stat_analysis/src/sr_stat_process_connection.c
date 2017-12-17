@@ -42,8 +42,9 @@ void static print_connection(sr_connection_id_t *con_id)
 {
 	if (!con_id) return;
 
-	printf("CCCDDD2:%d,%x,%x,%d,%d\n", 
-		con_id->ip_proto, con_id->saddr.v4addr, con_id->daddr.v4addr, con_id->sport, con_id->dport);
+	CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,
+					"CCCDDD2:%d,%x,%x,%d,%d", 
+					con_id->ip_proto, con_id->saddr.v4addr, con_id->daddr.v4addr, con_id->sport, con_id->dport);
 }
 #endif
 
@@ -91,7 +92,8 @@ static void process_connection_print(void *data_in_hash)
 	exe[0] = 0;
 	sal_get_process_name(process_connection_item->process_id, exe, sizeof(exe));
 
-	sal_printf("Process :%d exe:%s num_of_connections:%d max_new_conns:%d max_rx_msgs:%d max_rx_bytes:%d max_tx_msgs:%d max_tx_bytes:%d\n",
+	CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,
+		"Process :%d exe:%s num_of_connections:%d max_new_conns:%d max_rx_msgs:%d max_rx_bytes:%d max_tx_msgs:%d max_tx_bytes:%d",
 			process_connection_item->process_id,  exe, process_connection_item->counter,
 			process_connection_item->process_sample.max_new_cons,
 			process_connection_item->max_con_stats.rx_msgs,
@@ -101,19 +103,22 @@ static void process_connection_print(void *data_in_hash)
 
 	for (ptr = process_connection_item->process_connection_list; ptr; ptr = ptr->next) {
 		count++;
-		sal_printf("proto:%d saddr:%x dassdr:%x sport:%d dport:%d rx_msgs:%u rx_bytes:%u tx_mgs:%u tx_bytes:%u time:%lu\n",
+		CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,
+		"proto:%d saddr:%x dassdr:%x sport:%d dport:%d rx_msgs:%u rx_bytes:%u tx_mgs:%u tx_bytes:%u time:%lu",
 			ptr->connection_info.con_id.ip_proto, 
 			ptr->connection_info.con_id.saddr.v4addr, ptr->connection_info.con_id.daddr.v4addr,
 			ptr->connection_info.con_id.sport, ptr->connection_info.con_id.dport,
 			ptr->connection_info.con_stats.rx_msgs, ptr->connection_info.con_stats.rx_bytes, ptr->connection_info.con_stats.tx_msgs,
 			ptr->connection_info.con_stats.tx_bytes, cur_time - ptr->connection_info.time);
-		sal_printf("          max rx p:%d max rx b:%d max tx p:%d max tx b:%d \n",
+		CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,
+		"          max rx p:%d max rx b:%d max tx p:%d max tx b:%d",
 			ptr->connection_info.max_con_stats.rx_msgs,
 			ptr->connection_info.max_con_stats.rx_bytes,
 			ptr->connection_info.max_con_stats.tx_msgs,
 			ptr->connection_info.max_con_stats.tx_bytes);
 	}
-	sal_printf("%d connections in process:%d \n", count, process_connection_item->process_id);
+	CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,
+		"%d connections in process:%d", count, process_connection_item->process_id);
 }
 
 static SR_32 process_connection_create_key(void *data)
@@ -131,7 +136,8 @@ SR_32 sr_stat_process_connection_hash_init(void)
         hash_ops.free = process_connection_free;
         hash_ops.print = process_connection_print;
         if (!(process_connection_hash = sr_gen_hash_new(HASH_SIZE, hash_ops))) {
-                sal_printf("file_hash_init: sr_gen_hash_new failed\n");
+                CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+                "file_hash_init: sr_gen_hash_new failed");
                 return SR_ERROR;
         }
 
@@ -154,7 +160,8 @@ static SR_32 update_connection_item(process_connection_item_t *process_connectio
 	if (!*iter)  {
 		SR_Zalloc(*iter, process_connection_data_t *, sizeof(process_connection_data_t));
 		if (!*iter) {
-			sal_printf("%s: SR_Zalloc failed\n", __FUNCTION__);
+			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_LOW,
+			"stat update conn item SR_Zalloc failed");
 			return SR_ERROR;
 		}
 		(*iter)->connection_info = *connection_info;
@@ -182,14 +189,16 @@ SR_32 sr_stat_process_connection_hash_update(SR_U32 process_id, sr_stat_connecti
         if (!(process_connection_item = sr_gen_hash_get(process_connection_hash, (void *)(long int)process_id))) {
 		SR_Zalloc(process_connection_item, process_connection_item_t *, sizeof(process_connection_item_t));
 		if (!process_connection_item) {
-			sal_printf("%s: memory allocation failed\n", __FUNCTION__);
+			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+							"stat conn update memory allocation failed");
 			return SR_ERROR;
 		}
 		process_connection_item->process_id = process_id;
 		update_connection_item(process_connection_item, connection_info);
 		/* Add the process */
 		if ((rc = sr_gen_hash_insert(process_connection_hash, (void *)(long int)process_id, process_connection_item)) != SR_SUCCESS) {
-			sal_printf("%s: sr_gen_hash_insert failed\n", __FUNCTION__);
+			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+							"stat conn update sr_gen_hash_insert failed");
 			return SR_ERROR;
 		}
 		
@@ -220,7 +229,8 @@ SR_32 sr_stat_process_connection_hash_exec_for_process(SR_U32 process_id, SR_32 
 		return SR_SUCCESS;
 	for (iter = process_connection_item->process_connection_list; iter; iter = iter->next) {
 		if ((rc = cb(process_id, &(iter->connection_info))) != SR_SUCCESS) {
-			sal_printf("%s: exec cb failed\n", __FUNCTION__);
+			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+							"process conn exec: cb failed");
 			return SR_ERROR;
 		}
 	}
@@ -293,7 +303,8 @@ static SR_32 sr_stat_learn_process_rule(SR_32 pid, sr_stat_con_stats_t *stats)
 	}
 
 #ifdef SR_STAT_ANALYSIS_DEBUG
-	sal_printf("LLLLLLLLLLLLLLLL LERAN RULE -- exec:%s rxp:%d rxb:%d txp:%d txb:%d \n", exec,
+	CEF_log_debug(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,
+		"LLLLLLLLLLLLLLLL LERAN RULE -- exec:%s rxp:%d rxb:%d txp:%d txb:%d", exec,
 		stats->rx_msgs, stats->rx_bytes, stats->tx_msgs, stats->tx_bytes);
 #endif
 
@@ -331,7 +342,8 @@ static SR_32 finish_transmit(void *hash_data, void *data)
 
 #ifdef SR_STAT_ANALYSIS_DEBUG
 		if (iter->connection_info.con_id.sport == 8888 || iter->connection_info.con_id.dport == 8888) { 
-			sal_printf("PPPPPPPPPPPPPP %s sport:%d dport:%d RX diffs:%d orig:%d prev:%d TX diffs:%d orig:%d prev:%d \n",
+			CEF_log_debug(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,
+			"PPPPPPPPPPPPPP %s sport:%d dport:%d RX diffs:%d orig:%d prev:%d TX diffs:%d orig:%d prev:%d",
 				sr_stat_analysis_learn_mode_get() == SR_STAT_MODE_LEARN ? "Learn" : "Protect",
 				iter->connection_info.con_id.sport, iter->connection_info.con_id.dport,
              			diff_rx_b, iter->connection_info.con_stats.rx_bytes, iter->connection_info.prev_con_stats.rx_bytes,
@@ -442,19 +454,22 @@ void sr_stat_process_connection_hash_print(void)
 
 SR_32 ut_cb(SR_U32 process_id, sr_stat_connection_info_t *connection_info)
 {
-	sal_printf("EEEEEEexec cb process:%d rx_bytes:%d rx_msgs:%d tx_bytes:%d tx_msg:%d \n", 
+	CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,
+		"EEEEEEexec cb process:%d rx_bytes:%d rx_msgs:%d tx_bytes:%d tx_msg:%d \n", 
 		process_id, connection_info->con_stats.rx_bytes, connection_info->con_stats.rx_msgs, connection_info->con_stats.tx_bytes, connection_info->con_stats.tx_msgs); 
 
 	return SR_SUCCESS;
 }
 
+#ifdef UNIT_TEST
 void sr_stat_process_connection_ut(void)
 {
 	SR_32 rc;
 	sr_stat_connection_info_t connection_info = {};
 	sr_connection_id_t con_id;
 	
-	printf("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX sr_stat_process_connection_ut started\n");
+	CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,
+	"XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX sr_stat_process_connection_ut started");
 
 	connection_info.con_id.saddr.v4addr = 0xAABBCC01;
 	connection_info.con_id.daddr.v4addr = 0xAABBCC02;
@@ -467,7 +482,8 @@ void sr_stat_process_connection_ut(void)
 	connection_info.con_stats.tx_msgs = 6;
 
 	if ((rc = sr_stat_process_connection_hash_update(4455, &connection_info)) != SR_SUCCESS) {
-		sal_printf("sr_stat_process_connection_hash_update_process FAILED !!!\n");
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+		"sr_stat_process_connection_hash_update_process FAILED !!!");
 		return;
 	}
 
@@ -483,13 +499,15 @@ void sr_stat_process_connection_ut(void)
 	connection_info.con_stats.tx_msgs = 20;
 
 	if ((rc = sr_stat_process_connection_hash_update(4455, &connection_info)) != SR_SUCCESS) {
-		sal_printf("sr_stat_process_connection_hash_update_process FAILED !!!\n");
+		CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,"sr_stat_process_connection_hash_update_process FAILED !!!");
 		return;
 	}
 
-	sal_printf("Expect connection 4000,5000 rx_msg:15 rx_bytes:600 tx_msgs:26 tx_bytes:800\n");
+	CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,
+	"Expect connection 4000,5000 rx_msg:15 rx_bytes:600 tx_msgs:26 tx_bytes:800");
 	sr_stat_process_connection_hash_print();
-	printf("===================================================================================\n");
+	CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,
+	"===================================================================================");
 
 	// Add another socket to the same process
 	connection_info.con_id.saddr.v4addr = 0xAABBCC03;
@@ -503,14 +521,18 @@ void sr_stat_process_connection_ut(void)
 	connection_info.con_stats.tx_msgs = 20;
 
 	if ((rc = sr_stat_process_connection_hash_update(4455, &connection_info)) != SR_SUCCESS) {
-		sal_printf("sr_stat_process_connection_hash_update_process FAILED !!!\n");
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+		"sr_stat_process_connection_hash_update_process FAILED !!!");
 		return;
 	}
 
-	sal_printf("v1 Expect connection 4000,5000 rx_msg:15 rx_bytes:600 tx_msgs:26 tx_bytes:800\n");
-	sal_printf("v1 Expect connection 4001,5001 rx_msg:10 rx_bytes:100 tx_msgs:20 tx_bytes:200\n");
+	CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,
+	"v1 Expect connection 4000,5000 rx_msg:15 rx_bytes:600 tx_msgs:26 tx_bytes:800");
+	CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,
+	"v1 Expect connection 4001,5001 rx_msg:10 rx_bytes:100 tx_msgs:20 tx_bytes:200");
 	sr_stat_process_connection_hash_print();
-	printf("===================================================================================\n");
+	CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,
+	"===================================================================================");
 
 	//Add another process
 	connection_info.con_id.saddr.v4addr = 0xAABBCC05;
@@ -524,15 +546,20 @@ void sr_stat_process_connection_ut(void)
 	connection_info.con_stats.tx_msgs = 50;
 
 	if ((rc = sr_stat_process_connection_hash_update(4456, &connection_info)) != SR_SUCCESS) {
-		sal_printf("sr_stat_process_connection_hash_update_process FAILED !!!\n");
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+		"sr_stat_process_connection_hash_update_process FAILED !!!");
 		return;
 	}
 
-	sal_printf("4455 Expect connection 4000,5000 rx_msg:15 rx_bytes:600 tx_msgs:26 tx_bytes:800\n");
-	sal_printf("4455 Expect connection 4001,5001 rx_msg:10 rx_bytes:100 tx_msgs:20 tx_bytes:200\n");
-	sal_printf("4456 Expect connection 4002,5002 rx_msg:40 rx_bytes:400 tx_msgs:50 tx_bytes:500\n");
+	CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,
+	"4455 Expect connection 4000,5000 rx_msg:15 rx_bytes:600 tx_msgs:26 tx_bytes:800");
+	CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,
+	"4455 Expect connection 4001,5001 rx_msg:10 rx_bytes:100 tx_msgs:20 tx_bytes:200");
+	CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,
+	"4456 Expect connection 4002,5002 rx_msg:40 rx_bytes:400 tx_msgs:50 tx_bytes:500");
 	sr_stat_process_connection_hash_print();
-	printf("===================================================================================\n");
+	CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,
+	"===================================================================================");
 
         // Add connnection to 4556 
 	connection_info.con_id.saddr.v4addr = 0xAABBCC05;
@@ -546,16 +573,22 @@ void sr_stat_process_connection_ut(void)
 	connection_info.con_stats.tx_msgs = 5;
 
 	if ((rc = sr_stat_process_connection_hash_update(4456, &connection_info)) != SR_SUCCESS) {
-		sal_printf("sr_stat_process_connection_hash_update_process FAILED !!!\n");
+		CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,
+		"sr_stat_process_connection_hash_update_process FAILED !!!");
 		return;
 	}
 
-	sal_printf("4455 Expect connection 4000,5000 rx_msg:15 rx_bytes:600 tx_msgs:26 tx_bytes:800\n");
-	sal_printf("4455 Expect connection 4001,5001 rx_msg:10 rx_bytes:100 tx_msgs:20 tx_bytes:200\n");
-	sal_printf("4456 Expect connection 4002,5002 rx_msg:40 rx_bytes:400 tx_msgs:50 tx_bytes:500\n");
-	sal_printf("4456 Expect connection 4003,5003 rx_msg:7  rx_bytes:70  tx_msgs:5 tx_bytes:50\n");
+	CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,
+	"4455 Expect connection 4000,5000 rx_msg:15 rx_bytes:600 tx_msgs:26 tx_bytes:800");
+	CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,
+	"4455 Expect connection 4001,5001 rx_msg:10 rx_bytes:100 tx_msgs:20 tx_bytes:200");
+	CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,
+	"4456 Expect connection 4002,5002 rx_msg:40 rx_bytes:400 tx_msgs:50 tx_bytes:500");
+	CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,
+	"4456 Expect connection 4003,5003 rx_msg:7  rx_bytes:70  tx_msgs:5 tx_bytes:50");
 	sr_stat_process_connection_hash_print();
-	printf("===================================================================================\n");
+	CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,
+	"===================================================================================");
 
 	// Add counters to connection 4003,5003
 	connection_info.con_id.saddr.v4addr = 0xAABBCC05;
@@ -569,16 +602,16 @@ void sr_stat_process_connection_ut(void)
 	connection_info.con_stats.tx_msgs = 1;
 
 	if ((rc = sr_stat_process_connection_hash_update(4456, &connection_info)) != SR_SUCCESS) {
-		sal_printf("sr_stat_process_connection_hash_update_process FAILED !!!\n");
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,"sr_stat_process_connection_hash_update_process FAILED !!!");
 		return;
 	}
 
-	sal_printf("4455 Expect connection 4000,5000 rx_msg:15 rx_bytes:600 tx_msgs:26 tx_bytes:800\n");
-	sal_printf("4455 Expect connection 4001,5001 rx_msg:10 rx_bytes:100 tx_msgs:20 tx_bytes:200\n");
-	sal_printf("4456 Expect connection 4002,5002 rx_msg:40 rx_bytes:400 tx_msgs:50 tx_bytes:500\n");
-	sal_printf("4456 Expect connection 4003,5003 rx_msg:8  rx_bytes:80  tx_msgs:6 tx_bytes:60\n");
+	CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,"4455 Expect connection 4000,5000 rx_msg:15 rx_bytes:600 tx_msgs:26 tx_bytes:800");
+	CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,"4455 Expect connection 4001,5001 rx_msg:10 rx_bytes:100 tx_msgs:20 tx_bytes:200");
+	CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,"4456 Expect connection 4002,5002 rx_msg:40 rx_bytes:400 tx_msgs:50 tx_bytes:500");
+	CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,"4456 Expect connection 4003,5003 rx_msg:8  rx_bytes:80  tx_msgs:6 tx_bytes:60");
 	sr_stat_process_connection_hash_print();
-	printf("===================================================================================\n");
+	CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,"===================================================================================");
 
 	// Add another 2 processes
 	connection_info.con_id.saddr.v4addr = 0xAABBCC07;
@@ -592,7 +625,7 @@ void sr_stat_process_connection_ut(void)
 	connection_info.con_stats.tx_msgs = 1;
 
 	if ((rc = sr_stat_process_connection_hash_update(4460, &connection_info)) != SR_SUCCESS) {
-		sal_printf("sr_stat_process_connection_hash_update_process FAILED !!!\n");
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,"sr_stat_process_connection_hash_update_process FAILED !!!");
 		return;
 	}
 
@@ -607,7 +640,7 @@ void sr_stat_process_connection_ut(void)
 	connection_info.con_stats.tx_msgs = 1;
 
 	if ((rc = sr_stat_process_connection_hash_update(4461, &connection_info)) != SR_SUCCESS) {
-		sal_printf("sr_stat_process_connection_hash_update_process FAILED !!!\n");
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,"sr_stat_process_connection_hash_update_process FAILED !!!");
 		return;
 	}
 	
@@ -623,47 +656,47 @@ void sr_stat_process_connection_ut(void)
 	connection_info.con_stats.tx_msgs = 7;
 
 	if ((rc = sr_stat_process_connection_hash_update(5455, &connection_info)) != SR_SUCCESS) {
-		sal_printf("sr_stat_process_connection_hash_update_process FAILED !!!\n");
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,"sr_stat_process_connection_hash_update_process FAILED !!!");
 		return;
 	}
-	sal_printf("===============================================================================\n");
+	CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,"===============================================================================");
 	sr_stat_process_connection_hash_print();
-	sal_printf("===================================================================================\n");
+	CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,"===================================================================================");
 
-	sal_printf("======================= EXEC ==================================================\n");
+	CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,"======================= EXEC ==================================================");
 	if ((rc = sr_stat_process_connection_hash_exec_for_process(4455, ut_cb)) != SR_SUCCESS) {
-		sal_printf("sr_stat_process_connection_hash_exec_for_process FAILED !!!\n");
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,"sr_stat_process_connection_hash_exec_for_process FAILED !!!");
 		return;
 	}
 
-	sal_printf("====== start DELETE ==============================================\n");
+	CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,"====== start DELETE ==============================================");
 	// Delete the first prrocess, There are 2 processes in the same bucket
 	if ((rc = sr_stat_process_connection_hash_delete(4455)) != SR_SUCCESS) {
-		sal_printf("sr_stat_process_connection__hash_delete_process FAILED !!!\n");
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,"sr_stat_process_connection__hash_delete_process FAILED !!!");
 		return;
 	}
-	sal_printf("====== After delete process 4455 ==============================================\n");
+	CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,"====== After delete process 4455 ==============================================");
 	sr_stat_process_connection_hash_print();
-	sal_printf("===================================================================================\n");
+	CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,"===================================================================================");
 
 	// Delete a process from the midle
 	if ((rc = sr_stat_process_connection_hash_delete(4460)) != SR_SUCCESS) {
-		sal_printf("sr_stat_process_connection__hash_delete_process FAILED !!!\n");
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,"sr_stat_process_connection__hash_delete_process FAILED !!!");
 		return;
 	}
-	sal_printf("====== After delete process 4460 ==============================================\n");
+	CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,"====== After delete process 4460 ==============================================");
 	sr_stat_process_connection_hash_print();
-	sal_printf("===================================================================================\n");
+	CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,"===================================================================================");
 
 	// Delete the last process
 	if ((rc = sr_stat_process_connection_hash_delete(4461)) != SR_SUCCESS) {
-		sal_printf("sr_stat_process_connection__hash_delete_process FAILED !!!\n");
+		CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,"sr_stat_process_connection__hash_delete_process FAILED !!!\n");
 		return;
 	}
-	sal_printf("====== After delete process 4461 the last ==============================================\n");
+	CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,"====== After delete process 4461 the last ==============================================");
 	sr_stat_process_connection_hash_print();
-	printf("===================================================================================\n");
-	sal_printf("========  Before Delete connections ===============================================\n");
+	CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,"===================================================================================");
+	CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,"========  Before Delete connections ===============================================");
 
 	// Check deletion of socket.
  	// Add 3 sockets to a process
@@ -679,7 +712,7 @@ void sr_stat_process_connection_ut(void)
 	connection_info.con_stats.tx_msgs = 7;
 
 	if ((rc = sr_stat_process_connection_hash_update(5455, &connection_info)) != SR_SUCCESS) {
-		sal_printf("sr_stat_process_connection_hash_update_process FAILED !!!\n");
+		CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,"sr_stat_process_connection_hash_update_process FAILED !!!");
 		return;
 	}
 	connection_info.con_id.saddr.v4addr = 0xAABBCC0F;
@@ -693,7 +726,7 @@ void sr_stat_process_connection_ut(void)
 	connection_info.con_stats.tx_msgs = 7;
 
 	if ((rc = sr_stat_process_connection_hash_update(5455, &connection_info)) != SR_SUCCESS) {
-		sal_printf("sr_stat_process_connection_hash_update_process FAILED !!!\n");
+		CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,"sr_stat_process_connection_hash_update_process FAILED !!!");
 		return;
 	}
 	connection_info.con_id.saddr.v4addr = 0xAABBCC11;
@@ -707,7 +740,7 @@ void sr_stat_process_connection_ut(void)
 	connection_info.con_stats.tx_msgs = 7;
 
 	if ((rc = sr_stat_process_connection_hash_update(5455, &connection_info)) != SR_SUCCESS) {
-		sal_printf("sr_stat_process_connection_hash_update_process FAILED !!!\n");
+		CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,"sr_stat_process_connection_hash_update_process FAILED !!!");
 		return;
 	}
 	connection_info.con_id.saddr.v4addr = 0xAABBCC13;
@@ -721,25 +754,25 @@ void sr_stat_process_connection_ut(void)
 	connection_info.con_stats.tx_msgs = 7;
 
 	if ((rc = sr_stat_process_connection_hash_update(5455, &connection_info)) != SR_SUCCESS) {
-		sal_printf("sr_stat_process_connection_hash_update_process FAILED !!!\n");
+		CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,"sr_stat_process_connection_hash_update_process FAILED !!!");
 		return;
 	}
 
-	sal_printf("===============================================================================\n");
+	CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,"===============================================================================");
 	sr_stat_process_connection_hash_print();
-	printf("===================================================================================\n");
+	CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,"===================================================================================");
 
-	sal_printf("============ Delete the first connection  ===========================================\n");
+	CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,"============ Delete the first connection  ===========================================");
 	con_id.saddr.v4addr = 0xAABBCC0D;
 	con_id.daddr.v4addr = 0xAABBCC0E;
 	con_id.ip_proto = 6;
 	con_id.sport = 4007;
 	con_id.dport = 5007;
 	rc = sr_stat_process_connection_delete_socket(5455, &con_id);
-	printf("After delete rc:%d \n", rc);
+	CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,"After delete rc:%d \n", rc);
 	sr_stat_process_connection_hash_print();
-	printf("===================================================================================\n");
-	sal_printf("============ Delete a midle connection  ===========================================\n");
+	CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,"===================================================================================");
+	CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,"============ Delete a midle connection  ===========================================");
 	con_id.saddr.v4addr = 0xAABBCC0F;
 	con_id.daddr.v4addr = 0xAABBCC10;
 	con_id.ip_proto = 6;
@@ -747,8 +780,8 @@ void sr_stat_process_connection_ut(void)
 	con_id.dport = 5008;
 	sr_stat_process_connection_delete_socket(5455, &con_id);
 	sr_stat_process_connection_hash_print();
-	printf("===================================================================================\n");
-	sal_printf("============ Delete the last connection  ===========================================\n");
+	CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,"===================================================================================");
+	CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,"============ Delete the last connection  ===========================================");
 	con_id.saddr.v4addr = 0xAABBCC13;
 	con_id.daddr.v4addr = 0xAABBCC14;
 	con_id.ip_proto = 6;
@@ -756,8 +789,8 @@ void sr_stat_process_connection_ut(void)
 	con_id.dport = 5010;
 	sr_stat_process_connection_delete_socket(5455, &con_id);
 	sr_stat_process_connection_hash_print();
-	printf("===================================================================================\n");
-	sal_printf("============ Delete the connection 4009,5009  ===========================================\n");
+	CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,"===================================================================================");
+	CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,"============ Delete the connection 4009,5009  ===========================================");
 	con_id.saddr.v4addr = 0xAABBCC11;
 	con_id.daddr.v4addr = 0xAABBCC12;
 	con_id.ip_proto = 6;
@@ -765,8 +798,8 @@ void sr_stat_process_connection_ut(void)
 	con_id.dport = 5009;
 	sr_stat_process_connection_delete_socket(5455, &con_id);
 	sr_stat_process_connection_hash_print();
-	printf("===================================================================================\n");
-	sal_printf("============ Delete the lonly connection 4006,5006 ===========================================\n");
+	CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,"===================================================================================");
+	CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,"============ Delete the lonly connection 4006,5006 ===========================================");
 	con_id.saddr.v4addr = 0xAABBCC0B;
 	con_id.daddr.v4addr = 0xAABBCC0C;
 	con_id.ip_proto = 6;
@@ -785,22 +818,21 @@ void sr_stat_process_connection_ut(void)
 	connection_info.con_stats.tx_bytes = 20;
 	connection_info.con_stats.tx_msgs = 7;
 	if ((rc = sr_stat_process_connection_hash_update(7788, &connection_info)) != SR_SUCCESS) {
-		sal_printf("sr_stat_process_connection_hash_update_process FAILED !!!\n");
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,"sr_stat_process_connection_hash_update_process FAILED !!!");
 		return;
 	}
 	sr_stat_process_connection_delete_socket(7788, &connection_info.con_id);
-	printf("===================================================================================\n");
+	CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,"===================================================================================");
 	sr_stat_process_connection_hash_print();
 	if ((rc = sr_stat_process_connection_hash_delete(7788)) != SR_SUCCESS) {
-		sal_printf("sr_stat_process_connection__hash_delete_process FAILED !!!\n");
+		CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,"sr_stat_process_connection__hash_delete_process FAILED !!!");
 		return;
 	}
-	printf("===== After delete ================================================================\n");
+	CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,"===== After delete ================================================================");
 	sr_stat_process_connection_hash_print();
 	sr_stat_process_connection_delete_empty_process();
-	printf("===== After delete  process ================================================================\n");
+	CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,"===== After delete  process ================================================================");
 	sr_stat_process_connection_hash_print();
 }
-#ifdef UNIT_TEST
 #endif
 

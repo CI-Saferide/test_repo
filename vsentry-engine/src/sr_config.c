@@ -137,13 +137,15 @@ SR_BOOL read_config_file (void)
 		case CONFIG_NET_RULE: {
 			struct sr_net_record	net_rec;
 			if (1 != fread(&net_rec, sizeof(net_rec), 1, conf_file)) {
-				sal_printf("fail to read from config file, line %d\n", __LINE__);
+				CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+					"fail to read from config file, line %d\n", __LINE__);
 				fclose (conf_file);
 				return SR_FALSE;
 			}
 			memset(process, 0, 4096);
 			if (net_rec.process_size != fread(&process, sizeof(SR_8), net_rec.process_size, conf_file)) {
-				sal_printf("fail to read from config file, line %d\n", __LINE__);
+				CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+					"fail to read from config file, line %d\n", __LINE__);
 				fclose (conf_file);
 				return SR_FALSE;
 			}
@@ -158,19 +160,22 @@ SR_BOOL read_config_file (void)
 			struct sr_file_record	file_rec;
 			char					filename[4096];
 			if (1 != fread(&file_rec, sizeof(file_rec), 1, conf_file)) {
-				sal_printf("fail to read from config file, line %d\n", __LINE__);
+				CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+					"fail to read from config file, line %d\n", __LINE__);
 				fclose (conf_file);
 				return SR_FALSE;
 			}
 			memset(process, 0, 4096);
 			memset(filename, 0, 4096);
 			if (file_rec.process_size != fread(&process, sizeof(SR_8), file_rec.process_size, conf_file)) {
-				sal_printf("fail to read from config file, line %d\n", __LINE__);
+				CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+					"fail to read from config file, line %d\n", __LINE__);
 				fclose (conf_file);
 				return SR_FALSE;
 			}
 			if (file_rec.filename_size != fread(&filename, sizeof(SR_8), file_rec.filename_size, conf_file)) {
-				sal_printf("fail to read from config file, line %d\n", __LINE__);
+				CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+					"fail to read from config file, line %d\n", __LINE__);
 				fclose (conf_file);
 				return SR_FALSE;
 			}
@@ -181,13 +186,15 @@ SR_BOOL read_config_file (void)
 		case CONFIG_CAN_RULE: {
 			struct sr_can_record	can_rec;
 			if (1 != fread(&can_rec, sizeof(can_rec), 1, conf_file)) {
-				sal_printf("fail to read from config file, line %d\n", __LINE__);
+				CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+					"fail to read from config file, line %d\n", __LINE__);
 				fclose (conf_file);
 				return SR_FALSE;
 			}
 			memset(process, 0, 4096);
 			if (can_rec.process_size != fread(&process, sizeof(SR_8), can_rec.process_size, conf_file)) {
-				sal_printf("fail to read from config file, line %d\n", __LINE__);
+				CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+					"fail to read from config file, line %d\n", __LINE__);
 				fclose (conf_file);
 				return SR_FALSE;
 			}
@@ -198,26 +205,32 @@ SR_BOOL read_config_file (void)
 		case CONFIG_PHONE_ENTRY: {
 			struct sr_phone_record	phone_rec;
 			if (1 != fread(&phone_rec, sizeof(phone_rec), 1, conf_file)) {
-				sal_printf("fail to read from config file, line %d\n", __LINE__);
+				CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+					"fail to read from config file, line %d\n", __LINE__);
 				fclose (conf_file);
 				return SR_FALSE;
 			}
-			printf ("msg type = phone entry\n");
-			printf ("phone_id = %d\n", phone_rec.phone_id);
-			printf ("phone_number = %s\n", phone_rec.phone_number);
+			CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,
+				"msg type = phone entry\n");
+			CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,
+				"phone_id = %d\n", phone_rec.phone_id);
+			CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,
+				"phone_number = %s\n", phone_rec.phone_number);
 			break;
 			}
 		case CONFIG_EMAIL_ENTRY: {
 			struct sr_email_record	email_rec;
 			char					email[256];
 			if (1 != fread(&email_rec, sizeof(email_rec), 1, conf_file)) {
-				sal_printf("fail to read from config file, line %d\n", __LINE__);
+				CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+					"fail to read from config file, line %d\n", __LINE__);
 				fclose (conf_file);
 				return SR_FALSE;
 			}
 			memset(email, 0, 256);
 			if (email_rec.email_size != fread(&email, sizeof(SR_8), email_rec.email_size, conf_file)) {
-				sal_printf("fail to read from config file, line %d\n", __LINE__);
+				CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+					"fail to read from config file, line %d\n", __LINE__);
 				fclose (conf_file);
 				return SR_FALSE;
 			}
@@ -230,13 +243,15 @@ SR_BOOL read_config_file (void)
 			struct sr_log_record	log_rec;
 			char					log_target[256];
 			if (1 != fread(&log_rec, sizeof(log_rec), 1, conf_file)) {
-				sal_printf("fail to read from config file, line %d\n", __LINE__);
+				CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+					"fail to read from config file, line %d\n", __LINE__);
 				fclose (conf_file);
 				return SR_FALSE;
 			}
 			memset(log_target, 0, 256);
 			if (log_rec.log_size != fread(&log_target, sizeof(SR_8), log_rec.log_size, conf_file)) {
-				sal_printf("fail to read from config file, line %d\n", __LINE__);
+				CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+					"fail to read from config file, line %d\n", __LINE__);
 				fclose (conf_file);
 				return SR_FALSE;
 			}
@@ -271,7 +286,8 @@ SR_U32 sr_create_filter_paths(void)
 	sal_os_t os;
 	
 	if (sal_get_os(&os) != SR_SUCCESS) {
-		sal_printf("%s failed sal_get_os\n");
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+			"%s failed sal_get_os\n");
 		return SR_ERROR;
 	}
 
@@ -286,7 +302,7 @@ SR_U32 sr_create_filter_paths(void)
 	return SR_SUCCESS;
 }
 
-#ifdef UNIT_TEST
+#if 0 /* currently not is use, ledt for debug purposes */
 static void file_hash_ut(void)
 {
  	SR_32 rc;
@@ -392,8 +408,9 @@ SR_BOOL config_ut(void)
 	file_rec.process_size = strlen(file_rec.process);
 	file_rec.filename_size = strlen(file_rec.filename);
 	write_config_record(&file_rec, CONFIG_FILE_RULE);
-		
-#endif
+#endif		
+//#if 0
+
 	can_rec.rulenum=40;	
 	can_rec.msg_id=-1;		
 	can_rec.action.actions_bitmap=SR_CLS_ACTION_DROP;	
@@ -402,7 +419,8 @@ SR_BOOL config_ut(void)
 	//strncpy(can_rec.process, "*", strlen("*"));
 	can_rec.process_size = strlen(can_rec.process);
 	write_config_record(&can_rec, CONFIG_CAN_RULE);
-
+//#endif
+//#endif
 /*
 	//phone_rec.phone_id=17;
 	//strncpy(phone_rec.phone_number, "054-7653982", strlen("054-7653982"));

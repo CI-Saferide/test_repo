@@ -49,7 +49,8 @@ SR_32 sr_gen_hash_insert(struct sr_gen_hash *hash, void *key, void *data)
 			break;
 	}
 	if (*iter) {
-		sal_printf("hash_inserti Error, key exists \n");
+		CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,
+			"hash_inserti Error, key exists \n");
 		return SR_ERROR;
 	}
 	/* Add new key */
@@ -125,7 +126,8 @@ void sr_gen_hash_print(struct sr_gen_hash *hash)
 			count++;
 		}
 	}
-	sal_printf("GEN HASH table print count:%d \n", count);
+	CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,
+		"GEN HASH table print count:%d \n", count);
 }
 
 void *sr_gen_hash_get(struct sr_gen_hash *hash, void *key)

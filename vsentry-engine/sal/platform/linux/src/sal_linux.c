@@ -8,7 +8,8 @@ SR_32 sal_task_stop(void *data)
 	pthread_t *thread = (pthread_t*)data;
 
 	if (!thread) {
-		sal_printf("sal_task_stop: invalid argument %p\n", data);
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_LOW,
+			"sal_task_stop: invalid argument %p\n", data);
 		return SR_ERROR;
 	}
 
@@ -34,14 +35,16 @@ SR_32 sal_task_start(void **data, SR_32 (*task_func)(void *data))
 	pthread_t *thread = (pthread_t*)malloc(sizeof(pthread_t));
 
 	if (pthread_create(thread, NULL, sal_wrapper_func, task_func) != 0) {
-		sal_printf("sal_task_start: failed to create new thread\n");
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_LOW,
+			"sal_task_start: failed to create new thread\n");
 		free(thread);
 		return SR_ERROR;
 	}
 
 	*data = (void*)thread;
 
-	sal_printf("sal_task_start: new task was created\n");
+	CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,
+		"sal_task_start: new task was created\n");
 
 	return SR_SUCCESS;
 }
@@ -66,19 +69,6 @@ SR_32 sal_sprintf(SR_8 *str, SR_8 *fmt, ...)
 	va_end(args);
 
 	return i;
-}
-
-void sal_printf(SR_8 *fmt, ...)
-{
-	va_list args;
-	SR_8 msg[SR_MAX_LOG];
-
-	va_start(args, fmt);
-	vsnprintf(msg, SR_MAX_LOG-1, fmt, args);
-	va_end(args);
-
-	msg[SR_MAX_LOG - 1] = 0;
-	printf("%s", msg);
 }
 
 void sal_schedule_timeout(SR_U32 timeout)
@@ -108,11 +98,13 @@ SR_U32 sal_get_os(sal_os_t *os)
 	*os = SAL_OS_UNKNOWN;
 
 	if (!(fin = fopen("/proc/version", "r"))) {
-		sal_printf("%s failed opening /proc/version\n");
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_LOW,
+			"%s failed opening /proc/version\n");
 		return SR_ERROR;
 	}
 	if (!fgets(line, PROC_LEN, fin)) {
-		sal_printf("%s failed reading from /proc/version\n");
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_LOW,
+			"%s failed reading from /proc/version\n");
 		return SR_ERROR;
 	}
 	if (strstr(line, UBUNTU)) {
@@ -137,7 +129,8 @@ SR_64 sal_gets_space(const SR_8* path)
 	struct statvfs stat;
 	
 	if (statvfs(path, &stat) != 0){
-		sal_printf("\nFailed statvfs !\n");
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_LOW,
+			"\nFailed statvfs !\n");
 		return -1;
 	}
 	//the size in bytes

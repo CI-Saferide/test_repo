@@ -20,12 +20,15 @@ SR_8 sr_control_msg_dispatch(struct sr_control_msg *msg)
 	switch (msg->msg_type) {
 		case SR_CONTROL_SET_STATE:
 			if ((SR_TRUE == msg->state) && (SR_TRUE == vsentry_state))
-				sal_kernel_print_info("vsentry state is already enabled\n");
+				CEF_log_event(SR_CEF_CID_SYSTEM, "warning", SEVERITY_MEDIUM,
+							"vsentry state is already enabled");
 			else if ((SR_FALSE == msg->state) && (SR_FALSE == vsentry_state))
-				sal_kernel_print_info("vsentry state is already diabled\n");
+				CEF_log_event(SR_CEF_CID_SYSTEM, "warning", SEVERITY_MEDIUM,
+							"vsentry state is already disabled");
 			else {
 				vsentry_state = msg->state;
-				sal_kernel_print_warn("vsentry state changed to %s\n", (vsentry_state == SR_TRUE)? "enabled" : "disabled");
+				CEF_log_event(SR_CEF_CID_SYSTEM, "info", SEVERITY_LOW,
+								"vsentry state changed to %s\n", (vsentry_state == SR_TRUE)? "enabled" : "disabled");	
 			}
 			break;
 #ifdef CONFIG_STAT_ANALYSIS
@@ -36,7 +39,8 @@ SR_8 sr_control_msg_dispatch(struct sr_control_msg *msg)
 			break;
 		case SR_CONTROL_TRANSMIT_CONNECTIONS:
 			if (sr_stat_analysis_start_transmit() != SR_SUCCESS) {
-				sal_kernel_print_err("TRansmission of connection failed \n");
+				CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+							"Transmission of connection failed");
 				return SR_ERROR;
 			}
 			break;

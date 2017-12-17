@@ -55,7 +55,8 @@ unsigned int sr_netfilter_hook_fn(void *priv,
 #ifdef SR_STAT_ANALYSIS_DEBUG
 			non_uc ++;
 			if (non_uc % 100 == 0)
-				printk("DROPED BC :%x count:%d \n", con.con_id.saddr.v4addr, non_uc);
+				CEF_log_event(SR_CEF_CID_SYSTEM, "Stat dropped broadcast" , SEVERITY_LOW,
+							"DROPED BC :%x count:%d \n", con.con_id.saddr.v4addr, non_uc);
 #endif
 			return NF_ACCEPT;
 		}
@@ -64,7 +65,8 @@ unsigned int sr_netfilter_hook_fn(void *priv,
 #ifdef SR_STAT_ANALYSIS_DEBUG
 			non_uc ++;
 			if (non_uc % 100 == 0)
-				printk("DROPED BC :%x count:%d \n", con.con_id.saddr.v4addr, non_uc);
+				CEF_log_event(SR_CEF_CID_SYSTEM, "Stat dropped broadcast" , SEVERITY_LOW,
+							"DROPED BC :%x count:%d \n", con.con_id.saddr.v4addr, non_uc);
 #endif
 			return NF_ACCEPT;
 		}
@@ -113,14 +115,14 @@ int sr_netfilter_init(void)
 	nfho.priority = NF_IP_PRI_FIRST;    
 	nf_register_hook(&nfho);         // Register the hook
 
-    sal_printf("Registering netfilter hooks!\n");
+    sal_kernel_print_info("Registering netfilter hooks!\n");
     return 0;
 }
 
 void sr_netfilter_uninit(void)
 {
 	nf_unregister_hook(&nfho);
-    sal_printf("Unregistering netfilter hooks!\n");
+    sal_kernel_print_info("Unregistering netfilter hooks!\n");
 }
 
 #endif

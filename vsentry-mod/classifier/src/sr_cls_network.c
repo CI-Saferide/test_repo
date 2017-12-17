@@ -21,14 +21,14 @@ void sr_cls_network_init(void)
 	memset(&sr_cls_network_dst_any_rules, 0, sizeof(bit_array));
 
 	if (!rn_inithead((void **)&sr_cls_src_ipv4, (8 * offsetof(struct sockaddr_in, sin_addr)))) {
-		sal_kernel_print_alert("Error Initializing src radix tree\n");
+		sal_kernel_print_err("Error Initializing src radix tree\n");
 	} else {
 		if (!rn_inithead((void **)&sr_cls_dst_ipv4, (8 * offsetof(struct sockaddr_in, sin_addr)))) {
 			rn_detachhead((void **)&sr_cls_src_ipv4);
 			sr_cls_src_ipv4 = NULL;
-			sal_kernel_print_alert("Error Initializing dst radix tree\n");
+			sal_kernel_print_err("Error Initializing dst radix tree\n");
 		} else {
-			sal_kernel_print_alert("Successfully Initialized radix tree\n");
+			sal_kernel_print_info("Successfully Initialized radix tree\n");
 		}
 	}
 }
@@ -145,7 +145,8 @@ int sr_cls_del_ipv4(SR_U32 addr, SR_U32 netmask, int rulenum, SR_8 dir)
 
 	node = rn_lookup((void*)ip, (void*)mask, tree_head);
 	if (!node) { // failed to insert - free memory
-		sal_kernel_print_alert("sr_cls_del_ipv4: Did not find node!\n");
+		CEF_log_event(SR_CEF_CID_NETWORK, "error", SEVERITY_HIGH,
+						"failed to del ipv4 for rule %d, node not found!\n", rulenum);
 		SR_FREE(ip);
 		SR_FREE(mask);
 		return SR_ERROR;
@@ -156,7 +157,8 @@ int sr_cls_del_ipv4(SR_U32 addr, SR_U32 netmask, int rulenum, SR_8 dir)
 		//sal_kernel_print_alert("Cleared last rule from entry, removing entry\n");
 		node = rn_delete((void*)ip, (void*)mask, tree_head);
 		if (!node) { // failed to insert - free memory
-			sal_kernel_print_alert("sr_cls_del_ipv4: Did not find node!\n");
+			CEF_log_event(SR_CEF_CID_NETWORK, "error", SEVERITY_HIGH,
+							"failed to del ipv4 for rule %d, node not found!\n", rulenum);
 			SR_FREE(ip);
 			SR_FREE(mask);
 			return SR_ERROR;
@@ -193,11 +195,11 @@ int sr_cls_find_ipv4(SR_U32 addr, SR_8 dir)
 		SR_16 rule;
 		char *cp;
 		memcpy(&matched_rules, &node->sr_private.rules, sizeof(matched_rules)); 
-		sal_kernel_print_alert("Found match for IP %lx:\n", (unsigned long)addr);
+		sal_kernel_print_info("Found match for IP %lx:\n", (unsigned long)addr);
 		cp = (char *)node->rn_key + 4;
-		printk("Node key is %x.%x.%x.%x\n", cp[0], cp[1], cp[2], cp[3]);
+		sal_kernel_print_info("Node key is %x.%x.%x.%x\n", cp[0], cp[1], cp[2], cp[3]);
 		while ((rule = sal_ffs_and_clear_array (&matched_rules)) != -1) {
-			sal_kernel_print_alert("Rule #%d\n", rule);
+			sal_kernel_print_info("Rule #%d\n", rule);
 		}
 	}
 #endif
@@ -236,6 +238,7 @@ int sr_cls_walker_delrule(struct radix_node *node, void *rulenum)
 	return 0;
 }
 
+#ifdef UNIT_TEST
 void sr_cls_network_ut(void)
 {
 	//sr_cls_add_ipv4(htonl(0x23232323), htonl(0xffffffff),10);
@@ -262,16 +265,17 @@ void sr_cls_network_ut(void)
 	sr_cls_find_ipv4(htonl(0x12345678), SR_DIR_SRC);
 	sr_cls_del_ipv4(htonl(0x12345678), htonl(0xffffffff),40, SR_DIR_SRC);
 	sr_cls_find_ipv4(htonl(0x12345678), SR_DIR_SRC);
-	printk("Ran all classifier UTs\n");
+	sal_kernel_print_info("run network classifier UTs\n");
 }
-
+#endif /* UNIT_TEST */
 SR_8 sr_cls_network_msg_dispatch(struct sr_cls_network_msg *msg)
 {
 	int st;
 
 	switch (msg->msg_type) {
 		case SR_CLS_IPV4_DEL_RULE:
-			sal_debug_network("[del_ipv4] addr=0x%x, netmask=0x%x, rulenum=%d\n",
+			CEF_log_debug(SR_CEF_CID_NETWORK, "info", SEVERITY_LOW,
+							"[del_ipv4] addr=0x%x, netmask=0x%x, rulenum=%d\n",
 							msg->addr, msg->netmask, msg->rulenum);	
 			if ((st = sr_cls_del_ipv4(msg->addr, msg->netmask, msg->rulenum, msg->dir)) != SR_SUCCESS)
 			    return st;
@@ -280,7 +284,8 @@ SR_8 sr_cls_network_msg_dispatch(struct sr_cls_network_msg *msg)
 			return sr_cls_uid_del_rule(SR_NET_RULES, msg->uid, msg->rulenum);
 			break;
 		case SR_CLS_IPV4_ADD_RULE:
-			printk("[add_ipv4] addr=%x, netmask=%x, rulenum=%d\n",
+			CEF_log_debug(SR_CEF_CID_NETWORK, "info", SEVERITY_LOW,
+							"[add_ipv4] addr=%x, netmask=%x, rulenum=%d\n",
 							msg->addr, msg->netmask, msg->rulenum);
 			if ((st = sr_cls_add_ipv4(msg->addr, msg->netmask, msg->rulenum, msg->dir)) != SR_SUCCESS)
 			    return st;

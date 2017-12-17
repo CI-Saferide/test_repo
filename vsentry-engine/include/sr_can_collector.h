@@ -5,8 +5,6 @@
 #include "sr_tasks.h"
 #include "sr_sal_common.h"
 
-//#define MAX_FILE_QUEUE 24 //queue size of int
-
 struct canTaskParams {
     SR_8 *can_interface;		/* can interface name */
     SR_32 can_fd;				/* fd of the opened socket */

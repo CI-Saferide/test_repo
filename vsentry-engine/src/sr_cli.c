@@ -6,8 +6,8 @@
 
 void start_cli(void)
 {
-	sal_printf("%s%s", CLR_SCREEN, CSR_HOME);
-	sal_printf("+------------------------------------------------------------------------------+\n");
+	printf("%s%s", CLR_SCREEN, CSR_HOME);
+	printf("+------------------------------------------------------------------------------+\n");
 	while (1) {
 		SR_8 input = getch();
 

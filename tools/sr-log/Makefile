@@ -11,6 +11,8 @@ SRCS 		:= sr_log.c \
 
 INCLUDES	:= -I$(shell pwd)/include \
 			   -I$(TOP_DIR)/../common/include \
+			   -I$(TOP_DIR)/../vsentry-engine/include \
+			   -I$(TOP_DIR)/../vsentry-engine/sal/include \
 			   -I$(TOP_DIR)/sal/platform/linux/include \
 
 OBJS 		:= $(addprefix $(OBJDIR)/,$(SRCS:.c=.o))

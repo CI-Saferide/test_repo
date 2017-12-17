@@ -33,7 +33,6 @@
 #include <linux/can.h>
 #include <linux/can/raw.h>
 
-
 #define VS_FILE_NAME 	"/dev/vsentry"
 
 #define UBUNTU "Ubuntu"

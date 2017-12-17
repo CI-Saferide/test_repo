@@ -42,11 +42,11 @@ int sr_cls_exec_inode_add_rule(enum sr_rule_type type, SR_U32 exec_inode, SR_U32
 		if (!ent) {
 			ent = SR_ZALLOC(sizeof(*ent));
 			if (!ent) {
-				sal_kernel_print_alert("Error: Failed to allocate memory\n");
+				CEF_log_event(SR_CEF_CID_FILE, "error", SEVERITY_HIGH, "Failed to allocate memory for exec_file rule %d\n", rulenum);
 				return SR_ERROR;
 			} else {
 				ent->key = exec_inode;
-				sal_printf("\t\tADD exec file inode : %u\n",ent->key);
+				CEF_log_debug(SR_CEF_CID_FILE, "info", SEVERITY_LOW, "add exec file inode : %u\n",ent->key);
 				sr_hash_insert(sr_cls_exec_file_table, ent);
 			}
 		}
@@ -65,7 +65,7 @@ int sr_cls_exec_inode_del_rule(enum sr_rule_type type, SR_U32 exec_inode, SR_U32
 	if (likely(exec_inode != INODE_ANY)) {
 		struct sr_hash_ent_multy_t *ent= (struct sr_hash_ent_multy_t *)sr_hash_lookup(sr_cls_exec_file_table, exec_inode);
 		if (!ent) {
-			sal_kernel_print_alert("Error: %s inode rule not found\n", __FUNCTION__);
+			CEF_log_event(SR_CEF_CID_FILE, "error", SEVERITY_HIGH,"failed to delete exec_file rule %d, inode %d not found\n", rulenum, exec_inode);
 			return SR_ERROR;
 		}
 		sal_clear_bit_array(rulenum, &(ent->rules[type]));
@@ -103,11 +103,11 @@ int sr_cls_exec_file_init(void)
 {
 	sr_cls_exec_file_table = sr_hash_new_table(EXEC_FILE_HASH_TABLE_SIZE);
 	if (!sr_cls_exec_file_table) {
-		sal_kernel_print_alert("Failed to allocate hash table!\n");
+		sal_kernel_print_err("Failed to allocate hash table!\n");
 		return SR_ERROR;
 	}
 	memset(&sr_cls_exec_file_any_rules, 0, sizeof(bit_array) * SR_RULES_TYPE_MAX);
-	sal_kernel_print_alert("Successfully initialized file classifier!\n");
+	sal_kernel_print_info("Successfully initialized file classifier!\n");
 	return SR_SUCCESS;
 }
 
@@ -121,10 +121,10 @@ void sr_cls_exec_file_uninit(void)
 
 	for(i = 0; i < EXEC_FILE_HASH_TABLE_SIZE; i++) {
 		if (sr_cls_exec_file_table->buckets[i].head != NULL){
-			sal_printf("hash_index[%d] - DELETEING\n",i);
+			sal_kernel_print_info("hash_index[%d] - DELETEING\n",i);
 			curr = sr_cls_exec_file_table->buckets[i].head;				
 			while (curr != NULL){
-				sal_printf("\t\texec file inode : %u\n",curr->key);
+				sal_kernel_print_info("\t\texec file inode : %u\n",curr->key);
 				next = curr->next;
 				SR_FREE(curr);
 				curr= next;
@@ -133,12 +133,12 @@ void sr_cls_exec_file_uninit(void)
 	}
 
 	if(sr_cls_exec_file_table->buckets != NULL){
-		sal_printf("DELETEING exec_file table->bucket\n");
+		sal_kernel_print_info("DELETEING exec_file table->bucket\n");
 		SR_FREE(sr_cls_exec_file_table->buckets);
 	}
 	SR_FREE(sr_cls_exec_file_table);
 	sr_cls_exec_file_table = NULL;
-	sal_printf("[%s]: Successfully removed exec file classifier!\n", MODULE_NAME);
+	sal_kernel_print_info("[%s]: Successfully removed exec file classifier!\n", MODULE_NAME);
 }
 
 void sr_cls_exec_file_empty_table(SR_BOOL is_lock)
@@ -153,30 +153,30 @@ void sr_cls_exec_file_ut(void)
         struct sr_hash_ent_multy_t *ent;
         int err_num = 0;
 
-        sal_printf("sr_cls_uid_ut: started\n");
+        sal_kernel_print_info("sr_cls_uid_ut: started\n");
 
         sr_cls_exec_inode_add_rule(SR_NET_RULES, 69, 7);
         ent = (struct sr_hash_ent_multy_t *)sr_cls_exec_inode_find(SR_NET_RULES, 69);
         if (!ent || (ent->key != 69)) {
-                sal_printf("sr_cls_exec_file_ut: failed to match INODE 69\n");
+                sal_kernel_print_info("sr_cls_exec_file_ut: failed to match INODE 69\n");
                 err_num++;
         }
         sr_cls_exec_inode_add_rule(SR_FILE_RULES, 50, 17);
         ent = (struct sr_hash_ent_multy_t *)sr_cls_exec_inode_find(SR_FILE_RULES, 50);
         if (!ent || (ent->key != 50)) {
-                sal_printf("sr_cls_exec_file_ut: failed to match INODE 50\n");
+                sal_kernel_print_info("sr_cls_exec_file_ut: failed to match INODE 50\n");
                 err_num++;
         }
         sr_cls_exec_inode_add_rule(SR_CAN_RULES, 55, 17);
         ent = (struct sr_hash_ent_multy_t *)sr_cls_exec_inode_find(SR_FILE_RULES, 55);
         if (!ent || (ent->key != 55)) {
-                sal_printf("sr_cls_exec_file_ut: failed to match INODE 50\n");
+                sal_kernel_print_info("sr_cls_exec_file_ut: failed to match INODE 50\n");
                 err_num++;
         }
         sr_cls_exec_inode_add_rule(SR_FILE_RULES, 40, 18);
         ent = (struct sr_hash_ent_multy_t *)sr_cls_exec_inode_find(SR_FILE_RULES, 40);
         if (!ent || (ent->key != 40)) {
-                sal_printf("sr_cls_exec_file_ut: failed to match INODE 40\n");
+                sal_kernel_print_info("sr_cls_exec_file_ut: failed to match INODE 40\n");
                 err_num++;
         }
 
@@ -184,7 +184,7 @@ void sr_cls_exec_file_ut(void)
         sr_cls_exec_inode_del_rule(SR_FILE_RULES, 50, 17);
         ent = (struct sr_hash_ent_multy_t *)sr_cls_exec_inode_find(SR_FILE_RULES, 50);
         if (ent) { 
-                sal_printf("sr_cls_exec_file_ut: failed after delete INODE 50\n");
+                sal_kernel_print_info("sr_cls_exec_file_ut: failed after delete INODE 50\n");
                 err_num++;
         }
 
@@ -192,17 +192,17 @@ void sr_cls_exec_file_ut(void)
         sr_cls_exec_inode_add_rule(SR_FILE_RULES, 40, 28);
         ent = (struct sr_hash_ent_multy_t *)sr_cls_exec_inode_find(SR_FILE_RULES, 40);
         if (!ent || (ent->key != 40)) {
-                sal_printf("sr_cls_exec_file_ut: failed to match INODE 40\n");
+                sal_kernel_print_info("sr_cls_exec_file_ut: failed to match INODE 40\n");
                 err_num++;
         }
 
         /* Check content of bits */
         if (ent->rules[SR_FILE_RULES].summary != 1) {
-                sal_printf("sr_cls_exec_file_ut: failed update corrent summery bit map INODE 40\n");
+                sal_kernel_print_info("sr_cls_exec_file_ut: failed update corrent summery bit map INODE 40\n");
                 err_num++;
         }
         if (!sal_bit_array_is_set(18, &(ent->rules[SR_FILE_RULES])) || !sal_bit_array_is_set(28, &(ent->rules[SR_FILE_RULES]))) {
-                sal_printf("sr_cls_exec_file_ut: failed update corrent bit map INODE 40\n");
+                sal_kernel_print_info("sr_cls_exec_file_ut: failed update corrent bit map INODE 40\n");
                 err_num++;
         }
  
@@ -210,16 +210,16 @@ void sr_cls_exec_file_ut(void)
         sr_cls_exec_inode_del_rule(SR_FILE_RULES, 40, 28);
         ent = (struct sr_hash_ent_multy_t *)sr_cls_exec_inode_find(SR_FILE_RULES, 40);
         if (!ent) { 
-                sal_printf("sr_cls_exec_file_ut: failed after delete INODE 40\n");
+                sal_kernel_print_info("sr_cls_exec_file_ut: failed after delete INODE 40\n");
                 err_num++;
         }
         /* Check content of bits */
         if (ent->rules[SR_FILE_RULES].summary != 1) {
-                sal_printf("sr_cls_exec_file_ut: failed update corrent summery bit map INODE 40\n");
+                sal_kernel_print_info("sr_cls_exec_file_ut: failed update corrent summery bit map INODE 40\n");
                 err_num++;
         }
         if (!sal_bit_array_is_set(18, &(ent->rules[SR_FILE_RULES])) || sal_bit_array_is_set(28, &(ent->rules[SR_FILE_RULES]))) {
-                sal_printf("sr_cls_exec_file_ut: failed update corrent bit map INODE 40\n");
+                sal_kernel_print_info("sr_cls_exec_file_ut: failed update corrent bit map INODE 40\n");
                 err_num++;
         }
 
@@ -227,13 +227,13 @@ void sr_cls_exec_file_ut(void)
         sr_cls_exec_inode_del_rule(SR_FILE_RULES, 40, 18);
         ent = (struct sr_hash_ent_multy_t *)sr_cls_exec_inode_find(SR_FILE_RULES, 40);
         if (ent) { 
-                sal_printf("sr_cls_exec_file_ut: failed after delete INODE 40\n");
+                sal_kernel_print_info("sr_cls_exec_file_ut: failed after delete INODE 40\n");
                 err_num++;
         }
 
         if (err_num) 
-            sal_printf("sr_cls_uid_ut: FAEILD %d errors\n", err_num);
+            sal_kernel_print_info("sr_cls_uid_ut: FAEILD %d errors\n", err_num);
         else
-            sal_printf("sr_cls_uid_ut: SUCCESS\n");
+            sal_kernel_print_info("sr_cls_uid_ut: SUCCESS\n");
 }
 #endif /* UNIT_TEST */

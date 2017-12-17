@@ -114,12 +114,15 @@ SR_32 can_collector_task(void *data)
             }            
             strcat(buffer,"\n");                 
             log_it(buffer);
+#ifdef SR_CAN_DEBUG_PRINT
             if(can_args.can_print)
-				sal_printf("%s",buffer);
+				printf("%s",buffer);
+#endif
 		}	
 	}
     close(can_args.can_fd);
-	sal_printf("CAN collector ended\n");
+	CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,
+		"CAN collector ended\n");
 
 	return SR_SUCCESS;
 }

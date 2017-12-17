@@ -1,5 +1,6 @@
 #include "sr_ring_buf.h"
 #include "sr_sal_common.h"
+#include "sr_log.h"
 
 SR_32 sr_ring_buf_calc_buffers(SR_32 mem_size, SR_32 each_buf_size)
 {
@@ -29,7 +30,8 @@ SR_32 sr_init_ring_buf(sr_ring_buffer *rb, SR_32 mem_size, SR_32 num_of_buffers,
 
 	total_mem_needed = sr_ring_buf_calc_mem(num_of_buffers, each_buf_size);
 	if (total_mem_needed > mem_size) {
-		sal_printf("sr_init_ring_buf: required mem [%d] is bigger than allocated [%d]\n",
+		CEF_log_event(SR_CEF_CID_SYSTEM, "ring buffer init", SEVERITY_LOW,
+			"sr_init_ring_buf: required mem [%d] is bigger than allocated [%d]\n",
 			total_mem_needed, mem_size);
 		return 0;
 	}
@@ -46,7 +48,8 @@ SR_32 sr_init_ring_buf(sr_ring_buffer *rb, SR_32 mem_size, SR_32 num_of_buffers,
 	}
 
 #ifdef SR_RB_DEBUG
-	sal_printf("sr_init_ring_buf: used memory size %d\n", total_mem_needed);
+	CEF_log_debug(SR_CEF_CID_SYSTEM, "debug", SEVERITY_LOW,
+		"sr_init_ring_buf: used memory size %d\n", total_mem_needed);
 	sr_print_rb_info(rb);
 #endif
 
@@ -61,7 +64,8 @@ SR_8 *sr_get_buf(sr_ring_buffer *rb, SR_32 size)
 
 	if (size > rb->each_buf_size) {
 #ifdef SR_RB_DEBUG
-		sal_printf("sr_get_buf: requested size [%d] bigger than buffer size [%d]\n",
+	CEF_log_debug(SR_CEF_CID_SYSTEM, "debug", SEVERITY_HIGH,
+		"sr_get_buf: requested size [%d] bigger than buffer size [%d]\n",
 			size, rb->each_buf_size);
 #endif
 		return ptr;
@@ -69,7 +73,8 @@ SR_8 *sr_get_buf(sr_ring_buffer *rb, SR_32 size)
 
 	if ( ((rb->free_ptr + 1) % rb->num_of_bufs) == read_ptr) {
 #ifdef SR_RB_DEBUG
-		sal_printf("sr_get_buf: no free buffers free_ptr %d read_ptr %d\n", rb->free_ptr, read_ptr);
+	CEF_log_debug(SR_CEF_CID_SYSTEM, "debug", SEVERITY_HIGH,
+		"sr_get_buf: no free buffers free_ptr %d read_ptr %d\n", rb->free_ptr, read_ptr);
 #endif
 		return ptr;
 	}
@@ -79,7 +84,8 @@ SR_8 *sr_get_buf(sr_ring_buffer *rb, SR_32 size)
 
 	rb->free_ptr = (rb->free_ptr + 1) % rb->num_of_bufs;
 #ifdef SR_RB_DEBUG
-	sal_printf("sr_get_buf: new free_ptr %d\n", rb->free_ptr);
+	CEF_log_debug(SR_CEF_CID_SYSTEM, "debug", SEVERITY_LOW,
+		"sr_get_buf: new free_ptr %d\n", rb->free_ptr);
 #endif
 	return ptr;
 }
@@ -91,7 +97,8 @@ SR_32 sr_write_buf(sr_ring_buffer *rb, SR_32 size)
 
 	if (size > rb->each_buf_size) {
 #ifdef SR_RB_DEBUG
-		sal_printf("sr_wite_buf: requested size [%d] bigger than buffer size [%d]\n",
+	CEF_log_debug(SR_CEF_CID_SYSTEM, "debug", SEVERITY_HIGH,
+		"sr_wite_buf: requested size [%d] bigger than buffer size [%d]\n",
 			size, rb->each_buf_size);
 #endif
 		return SR_ERROR;
@@ -99,13 +106,15 @@ SR_32 sr_write_buf(sr_ring_buffer *rb, SR_32 size)
 
 	if (free_ptr == rb->write_ptr) {
 #ifdef SR_RB_DEBUG
-	sal_printf("sr_write_buf: no buffer was allocated, free_ptr %d write_ptr %d\n", free_ptr, rb->write_ptr);
+	CEF_log_debug(SR_CEF_CID_SYSTEM, "debug", SEVERITY_HIGH,
+		"sr_write_buf: no buffer was allocated, free_ptr %d write_ptr %d\n", free_ptr, rb->write_ptr);
 #endif
 		return 0;
 	}
 
 #ifdef SR_RB_DEBUG
-	sal_printf("Writing to buf @offset %d size %d\n", rb->write_ptr, size);
+	CEF_log_debug(SR_CEF_CID_SYSTEM, "debug", SEVERITY_LOW,
+		"Writing to buf @offset %d size %d\n", rb->write_ptr, size);
 #endif
 	buf_ptr = &buf_ptr[rb->write_ptr];
 	buf_ptr->content_size = size;
@@ -114,7 +123,8 @@ SR_32 sr_write_buf(sr_ring_buffer *rb, SR_32 size)
 
 	rb->write_ptr = (rb->write_ptr + 1) % rb->num_of_bufs;
 #ifdef SR_RB_DEBUG
-	sal_printf("sr_write_buf: new write_ptr %d\n", rb->write_ptr);
+	CEF_log_debug(SR_CEF_CID_SYSTEM, "debug", SEVERITY_LOW,
+		"sr_write_buf: new write_ptr %d\n", rb->write_ptr);
 #endif
 	return size;
 }
@@ -127,7 +137,8 @@ SR_8 *sr_read_buf(sr_ring_buffer *rb, SR_32 *size)
 
 	if (rb->read_ptr == write_ptr) {
 #ifdef SR_RB_DEBUG
-		sal_printf("sr_read_buf: no readable buffers. read_ptr %d write_ptr %d\n", rb->read_ptr, write_ptr);
+	CEF_log_debug(SR_CEF_CID_SYSTEM, "debug", SEVERITY_HIGH,
+		"sr_read_buf: no readable buffers. read_ptr %d write_ptr %d\n", rb->read_ptr, write_ptr);
 #endif
 		*size = 0;
 		return NULL;
@@ -136,7 +147,8 @@ SR_8 *sr_read_buf(sr_ring_buffer *rb, SR_32 *size)
 	buf_ptr += rb->read_ptr;
 
 #ifdef SR_RB_DEBUG
-	sal_printf("sr_read_buf: buf at offset %d size %d\n",
+	CEF_log_debug(SR_CEF_CID_SYSTEM, "debug", SEVERITY_LOW,
+		"sr_read_buf: buf at offset %d size %d\n",
 		rb->read_ptr, buf_ptr->content_size);
 #endif
 	*size = buf_ptr->content_size;
@@ -154,14 +166,16 @@ void sr_free_buf(sr_ring_buffer *rb)
 
 	if ( (write_ptr == rb->read_ptr) ) {
 #ifdef SR_RB_DEBUG
-		sal_printf("sr_free_buf: no used buffers\n");
+	CEF_log_debug(SR_CEF_CID_SYSTEM, "debug", SEVERITY_LOW,
+		"sr_free_buf: no used buffers\n");
 #endif
 		return;
 	}
 
 	rb->read_ptr = (rb->read_ptr + 1) % rb->num_of_bufs;
 #ifdef SR_RB_DEBUG
-	sal_printf("sr_free_buf: new read_ptr %d\n", rb->read_ptr);
+	CEF_log_debug(SR_CEF_CID_SYSTEM, "debug", SEVERITY_LOW,
+		"sr_free_buf: new read_ptr %d\n", rb->read_ptr);
 #endif
 }
 
@@ -170,16 +184,26 @@ void sr_print_rb_info(sr_ring_buffer *rb)
 	/*SR_32 i;
 	sr_buffer *buf_ptr = (sr_buffer *)((SR_U8*)rb + sizeof(sr_ring_buffer));*/
 
-	sal_printf("read_ptr            = %08x\n", rb->read_ptr);
-	sal_printf("write_ptr           = %08x\n", rb->write_ptr);
-	sal_printf("free_ptr            = %08x\n", rb->free_ptr);
-	sal_printf("each_buf_size       = %08x\n", rb->each_buf_size);
-	sal_printf("num_of_bufs         = %08x\n", rb->num_of_bufs);
-	sal_printf("buf_mem_offset      = %08x\n", rb->buf_mem_offset);
-	sal_printf("total_read_bytes    = %08x\n", rb->total_read_bytes);
-	sal_printf("total_read_bufs     = %08x\n", rb->total_read_bufs);
-	sal_printf("total_write_bytes   = %08x\n", rb->total_write_bytes);
-	sal_printf("total_write_bufs    = %08x\n", rb->total_write_bufs);
+	CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,
+			"read_ptr            = %08x", rb->read_ptr);
+	CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,
+			"write_ptr           = %08x", rb->write_ptr);
+	CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,
+			"free_ptr            = %08x", rb->free_ptr);
+	CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,
+			"each_buf_size       = %08x", rb->each_buf_size);
+	CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,
+			"num_of_bufs         = %08x", rb->num_of_bufs);
+	CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,
+			"buf_mem_offset      = %08x", rb->buf_mem_offset);
+	CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,
+			"total_read_bytes    = %08x", rb->total_read_bytes);
+	CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,
+			"total_read_bufs     = %08x", rb->total_read_bufs);
+	CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,
+			"total_write_bytes   = %08x", rb->total_write_bytes);
+	CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,
+			"total_write_bufs    = %08x", rb->total_write_bufs);
 
 	/*for (i=0; i<rb->num_of_bufs; i++) {
 		sal_printf("buf_ptr[%08X] %p offset %08x content_size %08x\n", i, buf_ptr, buf_ptr->offset, buf_ptr->content_size);
