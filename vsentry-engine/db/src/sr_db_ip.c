@@ -1,6 +1,7 @@
 #include "sr_db.h"
 #include "string.h"
 #include "sal_linux.h"
+#include "sal_mem.h"
 #include "list.h"
 
 static list_t ip_rules_list;
@@ -52,7 +53,14 @@ SR_32 sr_db_ip_rule_init(void)
 
 SR_32 sr_db_ip_rule_add(ip_rule_t *ip_rule)
 {
-	if (!list_append(&ip_rules_list, ip_rule)) {
+	ip_rule_t *new_item;
+    
+	SR_Zalloc(new_item, ip_rule_t *, sizeof(ip_rule_t));
+	if (!new_item)
+		return SR_ERROR;
+    *new_item = *ip_rule;
+
+	if (!list_append(&ip_rules_list, new_item)) {
 		sal_printf("%s list_append failed !!!\n", __FUNCTION__);
 		return SR_ERROR;
 	}

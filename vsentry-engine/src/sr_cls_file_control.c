@@ -29,7 +29,7 @@ int sr_cls_file_add_rule(char *filename, char *exec, char *user, SR_U32 rulenum,
 	}
 
 	if ((st = sr_get_inode(exec, 0, &exec_inode)) != SR_SUCCESS) {
-	    sal_printf("Error: %s failed getting inode \n", __FUNCTION__);
+	    sal_printf("Error: %s failed getting exec inode \n", __FUNCTION__);
 	    return st;
 	}
 

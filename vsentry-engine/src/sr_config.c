@@ -26,6 +26,7 @@
 #include "sentry.h"
 #include "action.h"
 #include "ip_rule.h"
+#include "file_rule.h"
 #include "sr_db.h"
 
 #ifdef SR_STAT_ANALYSIS_DEBUG
@@ -41,7 +42,6 @@ static void handler(int signal)
 			//sr_learn_rule_connection_hash_print();
 			//sr_control_util(SR_CONTROL_GARBAGE_COLLECTION);
 			//sr_control_util(SR_CONTROL_PRINT_CONNECTIONS);
-			sr_db_ip_rule_print();
 			break;
 		default:
 			break;
@@ -88,13 +88,13 @@ static SR_32 handle_action(action_t *action)
 	return SR_SUCCESS;
 }
 
-static SR_32 convert_action(ip_rule_t *rule, SR_U16 *actions_bitmap)
+static SR_32 convert_action(char *action_name, SR_U16 *actions_bitmap)
 {
 	action_t *db_action;
 	
-	db_action = sr_db_action_get_action(rule->action_name);
+	db_action = sr_db_action_get_action(action_name);
 	if (!db_action) {
-		sal_printf("%s action:%s not found\n", __FUNCTION__, rule->action_name);
+		sal_printf("%s action:%s not found\n", __FUNCTION__, action_name);
 		return SR_ERROR;
 	}
 	switch (db_action->action) {
@@ -122,7 +122,7 @@ static SR_32 add_ip_rule(ip_rule_t *rule)
 		return SR_ERROR;
 	}
 
-	if (convert_action(rule, &actions_bitmap) != SR_SUCCESS) {
+	if (convert_action(rule->action_name, &actions_bitmap) != SR_SUCCESS) {
 		sal_printf("%s convert action: FAILED\n", __FUNCTION__);
 		return SR_ERROR;
 	}
@@ -140,9 +140,22 @@ static SR_32 add_ip_rule(ip_rule_t *rule)
 static SR_32 update_ip_rule(ip_rule_t *rule)
 {
 	ip_rule_t *old_rule;
+	SR_U16 actions_bitmap = 0;
 
-	if (!(old_rule = sr_db_ip_rule_get(rule)))
+	if (!(old_rule = sr_db_ip_rule_get(rule))) {
+		sal_printf("%s failed gettig old rule#:%d \n", __FUNCTION__, rule->rulenum);
 		return SR_ERROR;
+	}
+
+	if (strncmp(rule->action_name, old_rule->action_name, ACTION_STR_SIZE) != 0) {
+		if (convert_action(rule->action_name, &actions_bitmap) != SR_SUCCESS) {
+			sal_printf("%s convert action: FAILED\n", __FUNCTION__);
+			return SR_ERROR;
+		}
+		sr_cls_rule_add(SR_NET_RULES, rule->rulenum, actions_bitmap, SR_FILEOPS_READ, SR_RATE_TYPE_BYTES, rule->tuple.max_rate, /* net_rule.rate_action */ 0 ,
+                         /* net_ruole.action.log_target */ 0 , /* net_rule.tuple.action.email_id */ 0 , /* net_rule.tuple.action.phone_id */ 0 , /* net_rule.action.skip_rulenum */ 0);
+		strncpy(old_rule->action_name, rule->action_name, ACTION_STR_SIZE);
+	}
 
 	if (old_rule->tuple.srcport != rule->tuple.srcport) {
 		sr_cls_port_del_rule(old_rule->tuple.srcport, old_rule->tuple.program, old_rule->tuple.user, old_rule->rulenum, SR_DIR_SRC, old_rule->tuple.proto);
@@ -182,12 +195,95 @@ static SR_32 update_ip_rule(ip_rule_t *rule)
 
 static SR_32 delete_ip_rule(ip_rule_t *rule)
 {
-	
 	sr_cls_port_del_rule(rule->tuple.srcport, rule->tuple.program, rule->tuple.user, rule->rulenum, SR_DIR_SRC, rule->tuple.proto);
 	sr_cls_port_del_rule(rule->tuple.dstport, rule->tuple.program, rule->tuple.user, rule->rulenum, SR_DIR_DST, rule->tuple.proto);
 	sr_cls_del_ipv4(rule->tuple.srcaddr.s_addr, rule->tuple.program, rule->tuple.user, rule->tuple.srcnetmask.s_addr, rule->rulenum, SR_DIR_SRC);
 	sr_cls_del_ipv4(rule->tuple.dstaddr.s_addr, rule->tuple.program, rule->tuple.user, rule->tuple.dstnetmask.s_addr, rule->rulenum, SR_DIR_DST);
 	sr_db_ip_rule_delete(rule);
+
+	return SR_SUCCESS;
+}
+
+#define PERM_R (1 << 2)
+#define PERM_W (1 << 1)
+#define PERM_X (1 << 0)
+
+static void convert_permissions(char *permissions, SR_U8 *premisions_bitmaps)
+{
+	SR_U8 perms;
+        if (!permissions)
+                return;
+	
+	perms = atoi(permissions + 2);
+
+	*premisions_bitmaps = 0;
+ 	if (perms & PERM_X)
+ 		*premisions_bitmaps |= SR_FILEOPS_EXEC;
+	if (perms & PERM_W)
+		*premisions_bitmaps |= SR_FILEOPS_WRITE;
+	if (perms & PERM_R)
+		*premisions_bitmaps |= SR_FILEOPS_READ;
+}
+
+static SR_32 add_file_rule(file_rule_t *rule)
+{
+	SR_U16 actions_bitmap = 0;
+	SR_U8 permissions = 0;
+
+	if (sr_db_file_rule_add(rule) != SR_SUCCESS) {
+		sal_printf("%s sr_db_file_rule_add: FAILED\n", __FUNCTION__);
+		return SR_ERROR;
+	}
+
+	if (convert_action(rule->action_name, &actions_bitmap) != SR_SUCCESS) {
+		sal_printf("%s convert action: FAILED\n", __FUNCTION__);
+		return SR_ERROR;
+	}
+
+	convert_permissions(rule->tuple.permission, &permissions);
+	sr_cls_file_add_rule(rule->tuple.filename, rule->tuple.program, rule->tuple.user, rule->rulenum, 1);
+	sr_cls_rule_add(SR_FILE_RULES, rule->rulenum, actions_bitmap, permissions, SR_RATE_TYPE_BYTES, rule->tuple.max_rate, /* net_rule.rate_action */ 0 ,
+                         /* net_ruole.action.log_target */ 0 , /* net_rule.tuple.action.email_id */ 0 , /* net_rule.tuple.action.phone_id */ 0 , /* net_rule.action.skip_rulenum */ 0);
+
+	return SR_SUCCESS;
+}
+
+static SR_32 update_file_rule(file_rule_t *rule)
+{
+	SR_U16 actions_bitmap = 0;
+	SR_U8 permissions = 0;
+	file_rule_t *old_rule;
+
+	if (!(old_rule = sr_db_file_rule_get(rule))) {
+		sal_printf("%s failed gettig old rule#:%d \n", __FUNCTION__, rule->rulenum);
+		return SR_ERROR;
+	}
+	sr_cls_file_del_rule(old_rule->tuple.filename, old_rule->tuple.program, old_rule->tuple.user, rule->rulenum, 1);
+	if (strncmp(rule->action_name, old_rule->action_name, ACTION_STR_SIZE) != 0 || 	
+		strncmp(rule->tuple.permission, old_rule->tuple.permission, 4) != 0) {
+		convert_permissions(rule->tuple.permission, &permissions);
+		if (convert_action(rule->action_name, &actions_bitmap) != SR_SUCCESS) {
+			sal_printf("%s convert action: FAILED\n", __FUNCTION__);
+			return SR_ERROR;
+		}
+		sr_cls_rule_add(SR_FILE_RULES, rule->rulenum, actions_bitmap, permissions, SR_RATE_TYPE_EVENT, rule->tuple.max_rate, /* net_rule.rate_action */ 0 ,
+                         /* net_ruole.action.log_target */ 0 , /* net_rule.tuple.action.email_id */ 0 , /* net_rule.tuple.action.phone_id */ 0 , /* net_rule.action.skip_rulenum */ 0);
+		strncpy(old_rule->action_name, rule->action_name, ACTION_STR_SIZE);
+		strncpy(old_rule->tuple.permission, rule->tuple.permission, 4);
+	}
+
+	strncpy(old_rule->tuple.filename, rule->tuple.filename, FILE_NAME_SIZE);
+	strncpy(old_rule->tuple.program, rule->tuple.program, PROG_NAME_SIZE);
+	strncpy(old_rule->tuple.user, rule->tuple.user, USER_NAME_SIZE);
+	sr_cls_file_add_rule(rule->tuple.filename, rule->tuple.program, rule->tuple.user, rule->rulenum, 1);
+
+	return SR_SUCCESS;
+}
+
+static SR_32 delete_file_rule(file_rule_t *rule)
+{
+	sr_cls_file_del_rule(rule->tuple.filename, rule->tuple.program, rule->tuple.user, rule->rulenum, 1);
+	sr_db_file_rule_delete(rule);
 
 	return SR_SUCCESS;
 }
@@ -200,6 +296,7 @@ void sr_config_vsentry_db_cb(int type, int op, void *entry)
 			handle_action((action_t *)entry);
 			break;
 		case SENTRY_ENTRY_IP:
+			ip_rule_display((ip_rule_t *)entry);
 			switch (op) {
 				case SENTRY_OP_CREATE:
 					add_ip_rule((ip_rule_t *)entry);
@@ -217,6 +314,20 @@ void sr_config_vsentry_db_cb(int type, int op, void *entry)
 		case SENTRY_ENTRY_CAN:
 			break;
 		case SENTRY_ENTRY_FILE:
+			file_rule_display((file_rule_t *)entry);
+			switch (op) {
+				case SENTRY_OP_CREATE:
+					add_file_rule((file_rule_t *)entry);
+					break;
+				case SENTRY_OP_MODIFY:
+					update_file_rule((file_rule_t *)entry);
+        				break;
+				case SENTRY_OP_DELETE:
+					delete_file_rule((file_rule_t *)entry);
+        				break;
+				default:
+					break;
+			}
 			break;
 		case SENTRY_ENTRY_ENG:
 			handle_engine_start_stop((char *)entry);
