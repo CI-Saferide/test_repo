@@ -302,7 +302,7 @@ SR_U32 sr_create_filter_paths(void)
 	return SR_SUCCESS;
 }
 
-#ifdef UNIT_TEST
+#if 0 /* currently not is use, ledt for debug purposes */
 static void file_hash_ut(void)
 {
  	SR_32 rc;

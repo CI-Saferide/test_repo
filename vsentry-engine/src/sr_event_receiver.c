@@ -57,8 +57,8 @@ void sr_event_receiver(SR_8 *msg_buff, SR_U32 msg_len)
 					"File created :%s \n", pNewFile->name ? (char *)(pNewFile->name) : "");
 #endif
 				if ((rc = sr_cls_file_create((char *)(pNewFile->name))) != SR_SUCCESS) {
-					CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_LOW,
-						"Error %s: handle_file_created, failed file:%s\n", __FUNCTION__, pNewFile->name);
+					CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+						"failed to handle file create for %s", pNewFile->name);
 				}
 				break;
 #ifdef CONFIG_STAT_ANALYSIS
@@ -73,8 +73,8 @@ void sr_event_receiver(SR_8 *msg_buff, SR_U32 msg_len)
 				if (spid <= 0)
 					break;
 				if ((rc = sr_stat_analysis_process_died(pProcessDied->pid)) != SR_SUCCESS) {
-					CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_LOW,
-						"sr_stat_analysis_process_died FAILED !!!\n");
+					CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+						"failed to handle process died");
 					break;
 				}
 				break;

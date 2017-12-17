@@ -21,7 +21,7 @@ void config_defaults(void)
 	strcpy(config_params.temp_log_path, "/tmp/");
 	
 	config_params.cef_file_size = 1; /* in MB */
-	config_params.cef_file_cycling = 4; /*amount of cef files*/
+	config_params.cef_file_cycling = 10; /*amount of cef files*/
 	strcpy(config_params.CEF_log_path, "/var/log/");
 }
 
@@ -36,7 +36,7 @@ SR_8 read_vsentry_config(char* config_filename, struct config_params_t config)
 
     if ((fp=fopen(config_filename, "r")) == NULL) {
         CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-			"Failed to open config file %s, using defaults\n", config_filename);
+			"failed to open config file %s, using defaults\n", config_filename);
         return SR_ERROR;
     }
     while(! feof(fp)) {

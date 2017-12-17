@@ -22,7 +22,8 @@ int sr_cls_process_add(SR_32 pid)
         }
         ent = SR_ZALLOC(sizeof(*ent));
 	if (!ent) {
-	    sal_kernel_print_err("Error: Failed to allocate memory\n");
+	    CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+						"failed to add process %d, memory allocation fail", pid);
 	    return SR_ERROR;
         }
 

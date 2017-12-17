@@ -119,7 +119,7 @@ int sr_cls_port_add_rule(SR_U32 port, SR_U32 rulenum, SR_8 dir, SR_8 proto)
 			ent = SR_ZALLOC(sizeof(*ent)); // <-A MINE!!!
 			if (!ent) {
 				CEF_log_event(SR_CEF_CID_NETWORK, "error", SEVERITY_HIGH,
-					"Error: Failed to allocate memory\n");
+								"failed to allocate memory\n");
 				return SR_ERROR;
 			} else {
 				ent->ent_type = DST_PORT;
@@ -139,7 +139,7 @@ int sr_cls_port_del_rule(SR_U32 port, SR_U32 rulenum, SR_8 dir, SR_8 proto)
 		struct sr_hash_ent_t *ent=sr_hash_lookup((dir==SR_DIR_DST)?sr_cls_dport_table[SR_PROTO_SELECTOR(proto)]:sr_cls_sport_table[SR_PROTO_SELECTOR(proto)], port);
 		if (!ent) {
 			CEF_log_event(SR_CEF_CID_NETWORK, "error", SEVERITY_HIGH,
-				"Error can't del rule# %u on PORT:%u - rule not found\n",rulenum,port);
+							"cannot del rule# %u on PORT:%u - rule not found\n", rulenum, port);
 			return SR_ERROR;
 		}
 		sal_clear_bit_array(rulenum, &ent->rules);
@@ -160,15 +160,15 @@ void print_table(struct sr_hash_table_t *table)
 	
 	if (table != NULL) {
 		CEF_log_event(SR_CEF_CID_NETWORK, "error", SEVERITY_HIGH,
-			"Printing PORT elements!\n");
+						"printing PORT elements!\n");
 		for(i = 0; i < HT_PORT_SIZE; i++) {
 			if (table->buckets[i].head != NULL){
 				CEF_log_event(SR_CEF_CID_NETWORK, "error", SEVERITY_HIGH,
-					"hash_index[%d]\n",i);
+								"hash_index[%d]\n",i);
 				curr = table->buckets[i].head;				
 				while (curr != NULL){
 					CEF_log_event(SR_CEF_CID_NETWORK, "error", SEVERITY_HIGH,
-						"\t\tport: %u\n",curr->key);
+									"port: %u\n",curr->key);
 					sr_cls_print_port_rules(curr->key, SR_DIR_DST, IPPROTO_TCP); // TODO: needed ?
 					next = curr->next;
 					curr= next;
@@ -177,10 +177,10 @@ void print_table(struct sr_hash_table_t *table)
 		}		
 		if(table->buckets != NULL){
 			CEF_log_event(SR_CEF_CID_NETWORK, "info", SEVERITY_LOW,
-				"Printed PORT table->bucket\n");
+							"printed PORT table->bucket\n");
 		}
 		CEF_log_event(SR_CEF_CID_NETWORK, "info", SEVERITY_LOW,
-			"Printed PORT table that orig size was: %u\n",table->size);
+						"printed PORT table that orig size was: %u\n",table->size);
 	}	
 }
 
@@ -190,7 +190,7 @@ struct sr_hash_ent_t *sr_cls_port_find(SR_U32 port, SR_8 dir, SR_8 proto)
 	struct sr_hash_ent_t *ent=sr_hash_lookup((dir==SR_DIR_DST)?sr_cls_dport_table[SR_PROTO_SELECTOR(proto)]:sr_cls_sport_table[SR_PROTO_SELECTOR(proto)], port);
 	if (!ent) {
 		CEF_log_event(SR_CEF_CID_NETWORK, "error", SEVERITY_HIGH,
-			"Error:%u Port not found\n",port);
+						"port %u not found\n",port);
 		return NULL;
 	}
 	//CEF_log_event(SR_CEF_CID_NETWORK, "info", SEVERITY_LOW,"%lu Port found with rule:%lu\n",ent->key,ent->rule);
@@ -206,13 +206,13 @@ void sr_cls_print_port_rules(SR_U32 port, SR_8 dir, SR_8 proto)
 	sal_memset(&rules, 0, sizeof(rules));;
 	if (!ent) {
 		CEF_log_event(SR_CEF_CID_NETWORK, "error", SEVERITY_HIGH,
-			"Error:%u port rule not found\n",port);
+						"port %u rule not found\n",port);
 		return;
 	}
 	sal_or_self_op_arrays(&rules, &ent->rules);
 	while ((rule = sal_ffs_and_clear_array (&rules)) != -1) {
 		CEF_log_event(SR_CEF_CID_NETWORK, "info", SEVERITY_LOW,
-			"\t\t\tRule #%d\n", rule);
+						"rule #%d\n", rule);
 	}
 }
 
@@ -232,8 +232,8 @@ SR_8 sr_cls_port_msg_dispatch(struct sr_cls_port_msg *msg)
 
 	switch (msg->msg_type) {
 		case SR_CLS_PORT_DEL_RULE:
-			CEF_log_event(SR_CEF_CID_NETWORK, "info", SEVERITY_LOW,
-				"[PORT]Delete port %d,rulenum %d ,dir %d, proto %d\n", msg->port, msg->rulenum,msg->dir, msg->proto);
+			CEF_log_debug(SR_CEF_CID_NETWORK, "info", SEVERITY_LOW,
+							"[PORT]Delete port %d,rulenum %d ,dir %d, proto %d\n", msg->port, msg->rulenum,msg->dir, msg->proto);
 			if ((st = sr_cls_port_del_rule(msg->port, msg->rulenum,msg->dir, msg->proto)) != SR_SUCCESS) { 
 			   return st;
 			}
@@ -243,8 +243,8 @@ SR_8 sr_cls_port_msg_dispatch(struct sr_cls_port_msg *msg)
 			return sr_cls_uid_del_rule(SR_NET_RULES, msg->uid, msg->rulenum);
 			break;
 		case SR_CLS_PORT_ADD_RULE:
-			CEF_log_event(SR_CEF_CID_NETWORK, "info", SEVERITY_LOW,
-				"[PORT]Add port %d,rulenum %d ,dir %d, proto %d\n", msg->port, msg->rulenum,msg->dir, msg->proto);
+			CEF_log_debug(SR_CEF_CID_NETWORK, "info", SEVERITY_LOW,
+							"[PORT]Add port %d,rulenum %d ,dir %d, proto %d\n", msg->port, msg->rulenum,msg->dir, msg->proto);
 			if ((st = sr_cls_port_add_rule(msg->port, msg->rulenum,msg->dir, msg->proto)) != SR_SUCCESS) { 
 			   return st;
 			}
@@ -280,6 +280,7 @@ int myRandom(int bottom, int top){ // for unit testing
     return (usec % (top - bottom)) + bottom;
 }
 
+#ifdef UNIT_TEST
 void sr_cls_port_ut(void)
 {
 /*	
@@ -348,5 +349,5 @@ void sr_cls_port_ut(void)
 	//print_table(sr_cls_dport_table);
 	sr_cls_port_del_rule(16394, 27, SR_DIR_DST, IPPROTO_TCP);
 	print_table(sr_cls_dport_table[SR_PROTO_SELECTOR(IPPROTO_TCP)]);
-
 }
+#endif /* UNIT_TEST */

@@ -20,7 +20,8 @@ SR_32 sr_stat_port_update(SR_U16 port, SR_U32 pid)
         }
         ent = SR_ZALLOC(sizeof(*ent));
 	if (!ent) {
-	    sal_kernel_print_alert("Error: Failed to allocate memory\n");
+	    CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+							"failed to update stat port, memory allocation fail");
 	    return SR_ERROR;
         }
 
@@ -54,10 +55,10 @@ int sr_stat_port_init(void)
 {
 	sr_stat_port_table = sr_hash_new_table(STST_PORT_HASH_TABLE_SIZE);
 	if (!sr_stat_port_table) {
-		sal_kernel_print_alert("Failed to allocate hash table!\n");
+		sal_kernel_print_err("Failed to allocate hash table!\n");
 		return SR_ERROR;
 	}
-	sal_kernel_print_alert("Successfully initialized process table!\n");
+	sal_kernel_print_info("Successfully initialized process table!\n");
 
 	return SR_SUCCESS;
 }

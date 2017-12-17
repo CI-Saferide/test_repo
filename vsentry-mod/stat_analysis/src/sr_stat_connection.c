@@ -68,14 +68,14 @@ static SR_U32 sr_connection_increase_LRU_arr(LRU_container_t *LRU_container, SR_
 
 	if (LRU_container->size >= LRU_ALLOCATION_MAX_SIZE) {
 		CEF_log_event(SR_CEF_CID_NETWORK, "warning", SEVERITY_MEDIUM,
-			"LRU reached it maximum size\n");
+						"LRU reached it's maximum size\n");
 		return SR_ERROR;
 	}
 
 	tmp = LRU_container->objects;
 	if (!(LRU_container->objects = SR_ZALLOC(sizeof(sr_connection_data_t *) * LRU_container->size))) {
 		CEF_log_event(SR_CEF_CID_NETWORK, "error", SEVERITY_HIGH,
-			"Error: Failed to resize memory\n");
+						"failed to resize memory\n");
 		return SR_ERROR;
 	}
 	LRU_container->size += size;
@@ -131,7 +131,7 @@ SR_U32 sr_connection_transmit(void)
 #endif
 		if (sr_connection_increase_LRU_arr(LRU_transmit, LRU_ADD_SIZE) != SR_SUCCESS) {
 			CEF_log_event(SR_CEF_CID_NETWORK, "error", SEVERITY_HIGH,
-				"sr_connection_increase_LRU_arr failed to resize LRU array\n");
+							"failed to resize LRU array");
 			return SR_ERROR;
 		}
 		LRU_allocate_more = SR_FALSE;
@@ -139,7 +139,7 @@ SR_U32 sr_connection_transmit(void)
 	} else if (LRU_allocate_more) {
 #ifdef SR_STAT_ANALYSIS_DEBUG
 	CEF_log_event(SR_CEF_CID_NETWORK, "info", SEVERITY_LOW,
-		"LRU DEBUG LRU_allocate_more\n");
+					"LRU DEBUG LRU_allocate_more\n");
 #endif
 		if (sr_connection_increase_LRU_arr(LRU_transmit, LRU_ADD_SIZE) != SR_SUCCESS) {
 			CEF_log_event(SR_CEF_CID_NETWORK, "error", SEVERITY_HIGH,
@@ -154,7 +154,7 @@ SR_U32 sr_connection_transmit(void)
 	return SR_SUCCESS;
 }
 
-#ifdef SR_STAT_ANALYSIS_DEBUG
+#if defined(CONDSR_STAT_ANALYSIS_DEBUG) || defined(UNIT_TEST)
 static void sr_connection_print_LRU(void)
 {
 	SR_U32 i,ind = SR_ATOMIC_READ(&(LRU_update->ind));
@@ -164,7 +164,7 @@ static void sr_connection_print_LRU(void)
 			sal_kernel_print_err("ERROR NULL in ind:%d \n", i);
 			break;
 		}
-		sal_printf("------- LRU saddr:%x daddr:%x proto:%d sport:%d dport:%d rxbytes:%d rxmsgs:%d txbytes:%d txmsgs:%d \n",
+		sal_kernel_print_info("------- LRU saddr:%x daddr:%x proto:%d sport:%d dport:%d rxbytes:%d rxmsgs:%d txbytes:%d txmsgs:%d \n",
 		LRU_update->objects[i]->con_id.saddr.v4addr, LRU_update->objects[i]->con_id.daddr.v4addr,
 		LRU_update->objects[i]->con_id.ip_proto, LRU_update->objects[i]->con_id.sport, 
 		LRU_update->objects[i]->con_id.dport, LRU_update->objects[i]->rx_bytes, LRU_update->objects[i]->rx_msgs,
@@ -198,7 +198,7 @@ static void sr_connection_print(void *data)
         old_print(con);
 #endif
 /*
-	sal_printf("Connection: proto:%d saddr:%x dassdr:%x sport:%d dport:%d pid:%d rx_msgs:%u rx_bytes:%u tx_mgs:%u tx_bytes:%u \n",
+	sal_kernel_print_info("Connection: proto:%d saddr:%x dassdr:%x sport:%d dport:%d pid:%d rx_msgs:%u rx_bytes:%u tx_mgs:%u tx_bytes:%u \n",
                 con->con_id.ip_proto,
                 con->con_id.saddr.v4addr,
                 con->con_id.daddr.v4addr,
@@ -619,7 +619,7 @@ void sr_stat_connection_ut(void)
         con.tx_msgs = 200;
         con.tx_bytes = 2000;
 	if ((rc = sr_stat_connection_insert(&con, 0)) != SR_SUCCESS) {
- 		sal_printf("ERROR failed sr_stat_connection_insert\n");
+ 		sal_kernel_print_err("ERROR failed sr_stat_connection_insert\n");
 		return;
 	}
 	sal_kernel_print_info("XXXXXXXXXXXXXXXXX print LRU with 5\n");

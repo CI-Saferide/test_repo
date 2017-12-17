@@ -18,14 +18,11 @@ SR_32 sr_classifier_init(void)
 	sr_cls_exec_file_init();
 	sr_cls_process_init();
 
-//#ifdef UNIT_TEST
-	//sr_cls_network_ut();
-	//sr_cls_port_ut();
-	//sr_cls_canid_ut();
-//#endif
-
+#ifdef UNIT_TEST
 	sr_cls_network_ut();
-
+	sr_cls_port_ut();
+	sr_cls_canid_ut();
+#endif
 	return 0;
 }
 
@@ -124,8 +121,8 @@ SR_32 sr_classifier_network(disp_info_t* info)
 		}
 		//PID
 		if ((st = sr_cls_process_add(info->tuple_info.id.pid)) != SR_SUCCESS) {
-			CEF_log_event(SR_CEF_CID_SYSTEM, "Error", SEVERITY_HIGH,
-				"Error adding process \n");
+			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+							"error adding process \n");
 	    	}
 		ptr = sr_cls_process_match(SR_NET_RULES, info->tuple_info.id.pid);
 		if (ptr) {
@@ -151,7 +148,7 @@ SR_32 sr_classifier_network(disp_info_t* info)
 			if (action & SR_CLS_ACTION_DROP) {
 				CEF_log_event(SR_CEF_CID_NETWORK, "Connection denied by rule" , SEVERITY_HIGH, ext);
 			} else {
-				CEF_log_event(SR_CEF_CID_NETWORK, "Connection attempt logged by rule" , SEVERITY_UNKNOWN, ext);
+				CEF_log_event(SR_CEF_CID_NETWORK, "Connection attempt logged by rule" , SEVERITY_LOW, ext);
 			}
 		}
 		if (action & SR_CLS_ACTION_DROP)
@@ -218,8 +215,8 @@ SR_32 sr_classifier_file(disp_info_t* info)
 
 	// PID
 	if ((st = sr_cls_process_add(info->fileinfo.id.pid)) != SR_SUCCESS) {
-	    CEF_log_event(SR_CEF_CID_SYSTEM, "Error", SEVERITY_HIGH,
-				"Error adding process \n");
+	    CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+						"error adding process \n");
 	}
 	ptr = sr_cls_process_match(SR_FILE_RULES, info->fileinfo.id.pid);
 	if (ptr) {
@@ -239,10 +236,9 @@ SR_32 sr_classifier_file(disp_info_t* info)
 			if (action & SR_CLS_ACTION_DROP)
 				CEF_log_event(SR_CEF_CID_FILE, "File operation denied by rule" , SEVERITY_HIGH, ext);
 			else
-				CEF_log_event(SR_CEF_CID_FILE, "File operation allowd by rule" , SEVERITY_HIGH, ext);
+				CEF_log_event(SR_CEF_CID_FILE, "File operation allowd by rule" , SEVERITY_LOW, ext);
 		}
 		if (action & SR_CLS_ACTION_DROP) {
-			//sal_printf("sr_classifier_file: Rule drop\n");
 			return SR_CLS_ACTION_DROP;
 		}
 		if (action & SR_CLS_ACTION_ALLOW) {
@@ -272,8 +268,8 @@ SR_32 sr_classifier_canbus(disp_info_t* info)
 
 	if (info->can_info.id.pid) { 
 	    if ((st = sr_cls_process_add(info->can_info.id.pid)) != SR_SUCCESS) {
-	        CEF_log_event(SR_CEF_CID_SYSTEM, "Error", SEVERITY_HIGH,
-				"Error adding process \n");
+	        CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+							"error adding process \n");
 	    }
 	    ptr = sr_cls_process_match(SR_CAN_RULES, info->can_info.id.pid);
 	    if (ptr) {
@@ -310,11 +306,11 @@ SR_32 sr_classifier_canbus(disp_info_t* info)
 			} else if (action & SR_CLS_ACTION_ALLOW) {
 				sprintf(actionstring, "Allow");
 				strncpy(msg, "CAN message allowed by rule", 64);
-				severity = SEVERITY_UNKNOWN;
+				severity = SEVERITY_LOW;
 			} else {
 				sprintf(actionstring, "log-only"); // TBD: when adding more terminal actions
 				strncpy(msg, "CAN message logged by rule", 64);
-				severity = SEVERITY_UNKNOWN;
+				severity = SEVERITY_LOW;
 			}
 
 			CEF_log_event(SR_CEF_CID_CAN, msg , severity, 

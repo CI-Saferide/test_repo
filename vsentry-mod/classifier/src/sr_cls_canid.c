@@ -4,8 +4,7 @@
 #include "sr_cls_canid.h"
 #include "sr_cls_canbus_common.h"
 #include "sr_classifier.h"
-
-#include <linux/time.h> // for unit testing
+#include "sr_sal_common.h"
 
 #define HT_canid_SIZE 32
 struct sr_hash_table_t *sr_cls_canid_table;
@@ -125,7 +124,7 @@ int sr_cls_canid_del_rule(SR_32 canid, SR_U32 rulenum)
 	return SR_SUCCESS;
 }
 
-#ifdef DEBUG
+#ifdef UNIT_TEST
 void print_table_canid(struct sr_hash_table_t *table)
 {
 	SR_32 i;
@@ -151,7 +150,7 @@ void print_table_canid(struct sr_hash_table_t *table)
 		sal_kernel_print_info("Printed CAN MsgID table that orig size was: %u\n",sr_cls_canid_table->size);
 	}	
 }
-#endif
+#endif /* UNIT_TEXT */
 
 struct sr_hash_ent_t *sr_cls_canid_find(SR_32 canid)
 {
@@ -223,6 +222,7 @@ SR_8 sr_cls_canid_msg_dispatch(struct sr_cls_canbus_msg *msg)
 	return SR_SUCCESS;
 }
 
+#ifdef UNIT_TEST
 int myRandom_canid(int bottom, int top){ // for unit testing
 	
 	SR_U32 get_time;
@@ -254,9 +254,8 @@ void sr_cls_canid_ut(void)
 		rand = myRandom_canid(0, SR_MAX_CANID);
 		sr_cls_canid_add_rule(rand,myRandom_canid(0, 4096));
 	}*/
-#ifdef DEBUG
+
 	print_table_canid(sr_cls_canid_table);
-#endif
 	sr_cls_canid_add_rule(22,10);
 	sr_cls_canid_add_rule(566,4);
 	sr_cls_canid_add_rule(80,8);
@@ -274,9 +273,8 @@ void sr_cls_canid_ut(void)
 	sr_cls_canid_add_rule(83,11);
 	sr_cls_canid_add_rule(9,10);
 	sr_cls_canid_add_rule(19,2000);
-#ifdef DEBUG
+	
 	print_table_canid(sr_cls_canid_table);
-#endif	
 	sr_cls_canid_find(444);
 	sr_cls_canid_find(80);
 	
@@ -314,8 +312,6 @@ void sr_cls_canid_ut(void)
 	sr_cls_canid_add_rule(32778, 47);
 	//print_table_canid(sr_cls_canid_table);
 	sr_cls_canid_del_rule(1639, 27);
-#ifdef DEBUG
 	print_table_canid(sr_cls_canid_table);
-#endif
-
 }
+#endif /* UNIT_TEST */

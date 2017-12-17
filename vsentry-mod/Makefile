@@ -16,7 +16,7 @@ EXTRA_CFLAGS += -I$(TOP_DIR)/stat_analysis/include
 EXTRA_CFLAGS += -I$(TOP_DIR)/../common/stat_analysis/include
 
 #EXTRA_CFLAGS += -DUNIT_TEST
-#EXTRA_CFLAGS += -D_KERNEL
+EXTRA_CFLAGS += -D_KERNEL
 #debug flags
 #EXTRA_CFLAGS += -DDEBUG_EVENT_MEDIATOR
 #EXTRA_CFLAGS += -DDEBUG_DISPATCHER

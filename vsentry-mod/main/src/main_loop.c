@@ -106,6 +106,8 @@ SR_32 sr_msg_dispatch(char *msg, int size)
 #endif
 		case SR_MSG_TYPE_DEFAULT:
 			sal_kernel_print_info("wrong msg_type\n");
+			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+							"msg dispatcher received wrong message type (%d)", hdr->msg_type);
 			break;
 	}
 

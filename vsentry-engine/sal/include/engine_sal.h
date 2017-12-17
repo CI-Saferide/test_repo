@@ -3,7 +3,7 @@
 
 #include "sr_tasks.h"
 
-//CHECK LATER  WHY CANT USE sal_mem.h
+//TODO: move memory functions BACK to sal_shmem.h
 
 #define SR_Malloc(p, t, n) (p = (t) malloc((unsigned long)(n)))
 #define SR_Zalloc(p, t, n) (p = (t) calloc(1, (unsigned long)(n)))

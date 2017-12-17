@@ -46,8 +46,8 @@ void sr_event_stats_receiver(SR_8 *msg_buff, SR_U32 msg_len)
 				}
 #endif
 				if ((rc = sr_stat_process_connection_hash_update(pConStats->pid, &connection_info)) != SR_SUCCESS) {
-                			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_LOW,
-								"sr_stat_process_connection_hash_update_process FAILED !!!\n");
+                			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+								"failed to update hash table for process connection");
 					break;	
 				}
 				break;
@@ -55,8 +55,8 @@ void sr_event_stats_receiver(SR_8 *msg_buff, SR_U32 msg_len)
 				pConTran = (struct sr_ec_connection_transmit_t *) &msg_buff[offset];
 				offset += sizeof(struct sr_ec_connection_transmit_t);
 				if ((rc = sr_stat_process_connection_hash_finish_transmit(pConTran->count)) != SR_SUCCESS) {
-                			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_LOW,
-								"sr_stat_process_connection_hash_exec_for_process FAILED !!!\n");
+                			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+								"failed to hash exec for process connection");
 					break;	
 				}
 				break;

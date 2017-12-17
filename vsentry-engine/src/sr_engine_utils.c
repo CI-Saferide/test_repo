@@ -10,13 +10,13 @@ SR_U8 sr_get_inode(char *file_name, int is_dir, SR_U32 *inode)
 
 	if (*file_name != '*') {
 	    if(lstat(file_name, &buf)) { // Error
-	       CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_LOW,
-			"Error: failed to get inode for file :%s:\n", file_name);
+	       CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+							"failed to get inode for file :%s:\n", file_name);
 	       return SR_ERROR;
 	    }
 	    if (is_dir && S_ISDIR(buf.st_mode)) {
-	       CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_LOW,
-			"Error: Directory cannot be added as execution file\n");
+	       CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+							"directory cannot be added as execution file\n");
 	       return SR_ERROR;
 	    }
 	    *inode = buf.st_ino;
