@@ -35,7 +35,7 @@ SR_8 read_vsentry_config(char* config_filename, struct config_params_t config)
     SR_8 	*n __attribute__((unused));
 
     if ((fp=fopen(config_filename, "r")) == NULL) {
-        CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_LOW,
+        CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 			"Failed to open config file %s, using defaults\n", config_filename);
         return SR_ERROR;
     }

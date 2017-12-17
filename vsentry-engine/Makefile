@@ -53,7 +53,6 @@ INCLUDES 	:=  -I../common/include \
 				-Iinclude \
 				-I$(TOP_DIR)/../tools/radix/include \
 				-Isal/platform/linux/include \
-				-Isal/platform/linux/include \
 				-Isal/include \
 				-I../tools/sr-log/include \
 				-I../tools/sr-hash/include \

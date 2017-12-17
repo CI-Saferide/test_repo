@@ -136,7 +136,7 @@ SR_32 sr_stat_process_connection_hash_init(void)
         hash_ops.free = process_connection_free;
         hash_ops.print = process_connection_print;
         if (!(process_connection_hash = sr_gen_hash_new(HASH_SIZE, hash_ops))) {
-                CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_LOW,
+                CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
                 "file_hash_init: sr_gen_hash_new failed\n");
                 return SR_ERROR;
         }
@@ -189,7 +189,7 @@ SR_32 sr_stat_process_connection_hash_update(SR_U32 process_id, sr_stat_connecti
         if (!(process_connection_item = sr_gen_hash_get(process_connection_hash, (void *)(long int)process_id))) {
 		SR_Zalloc(process_connection_item, process_connection_item_t *, sizeof(process_connection_item_t));
 		if (!process_connection_item) {
-			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_LOW,
+			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 				"%s: memory allocation failed\n", __FUNCTION__);
 			return SR_ERROR;
 		}
@@ -197,7 +197,7 @@ SR_32 sr_stat_process_connection_hash_update(SR_U32 process_id, sr_stat_connecti
 		update_connection_item(process_connection_item, connection_info);
 		/* Add the process */
 		if ((rc = sr_gen_hash_insert(process_connection_hash, (void *)(long int)process_id, process_connection_item)) != SR_SUCCESS) {
-			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_LOW,
+			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 			"%s: sr_gen_hash_insert failed\n", __FUNCTION__);
 			return SR_ERROR;
 		}
@@ -229,7 +229,7 @@ SR_32 sr_stat_process_connection_hash_exec_for_process(SR_U32 process_id, SR_32 
 		return SR_SUCCESS;
 	for (iter = process_connection_item->process_connection_list; iter; iter = iter->next) {
 		if ((rc = cb(process_id, &(iter->connection_info))) != SR_SUCCESS) {
-			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_LOW,
+			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 				"%s: exec cb failed\n", __FUNCTION__);
 			return SR_ERROR;
 		}
@@ -481,7 +481,7 @@ void sr_stat_process_connection_ut(void)
 	connection_info.con_stats.tx_msgs = 6;
 
 	if ((rc = sr_stat_process_connection_hash_update(4455, &connection_info)) != SR_SUCCESS) {
-		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_LOW,
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 		"sr_stat_process_connection_hash_update_process FAILED !!!\n");
 		return;
 	}
@@ -520,7 +520,7 @@ void sr_stat_process_connection_ut(void)
 	connection_info.con_stats.tx_msgs = 20;
 
 	if ((rc = sr_stat_process_connection_hash_update(4455, &connection_info)) != SR_SUCCESS) {
-		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_LOW,
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 		"sr_stat_process_connection_hash_update_process FAILED !!!\n");
 		return;
 	}
@@ -545,7 +545,7 @@ void sr_stat_process_connection_ut(void)
 	connection_info.con_stats.tx_msgs = 50;
 
 	if ((rc = sr_stat_process_connection_hash_update(4456, &connection_info)) != SR_SUCCESS) {
-		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_LOW,
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 		"sr_stat_process_connection_hash_update_process FAILED !!!\n");
 		return;
 	}
@@ -601,7 +601,7 @@ void sr_stat_process_connection_ut(void)
 	connection_info.con_stats.tx_msgs = 1;
 
 	if ((rc = sr_stat_process_connection_hash_update(4456, &connection_info)) != SR_SUCCESS) {
-		CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,"sr_stat_process_connection_hash_update_process FAILED !!!\n");
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,"sr_stat_process_connection_hash_update_process FAILED !!!\n");
 		return;
 	}
 
@@ -624,7 +624,7 @@ void sr_stat_process_connection_ut(void)
 	connection_info.con_stats.tx_msgs = 1;
 
 	if ((rc = sr_stat_process_connection_hash_update(4460, &connection_info)) != SR_SUCCESS) {
-		CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,"sr_stat_process_connection_hash_update_process FAILED !!!\n");
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,"sr_stat_process_connection_hash_update_process FAILED !!!\n");
 		return;
 	}
 
@@ -639,7 +639,7 @@ void sr_stat_process_connection_ut(void)
 	connection_info.con_stats.tx_msgs = 1;
 
 	if ((rc = sr_stat_process_connection_hash_update(4461, &connection_info)) != SR_SUCCESS) {
-		CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,"sr_stat_process_connection_hash_update_process FAILED !!!\n");
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,"sr_stat_process_connection_hash_update_process FAILED !!!\n");
 		return;
 	}
 	
@@ -655,7 +655,7 @@ void sr_stat_process_connection_ut(void)
 	connection_info.con_stats.tx_msgs = 7;
 
 	if ((rc = sr_stat_process_connection_hash_update(5455, &connection_info)) != SR_SUCCESS) {
-		CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,"sr_stat_process_connection_hash_update_process FAILED !!!\n");
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,"sr_stat_process_connection_hash_update_process FAILED !!!\n");
 		return;
 	}
 	CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,"===============================================================================\n");
@@ -664,14 +664,14 @@ void sr_stat_process_connection_ut(void)
 
 	CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,"======================= EXEC ==================================================\n");
 	if ((rc = sr_stat_process_connection_hash_exec_for_process(4455, ut_cb)) != SR_SUCCESS) {
-		CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,"sr_stat_process_connection_hash_exec_for_process FAILED !!!\n");
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,"sr_stat_process_connection_hash_exec_for_process FAILED !!!\n");
 		return;
 	}
 
 	CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,"====== start DELETE ==============================================\n");
 	// Delete the first prrocess, There are 2 processes in the same bucket
 	if ((rc = sr_stat_process_connection_hash_delete(4455)) != SR_SUCCESS) {
-		CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,"sr_stat_process_connection__hash_delete_process FAILED !!!\n");
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,"sr_stat_process_connection__hash_delete_process FAILED !!!\n");
 		return;
 	}
 	CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,"====== After delete process 4455 ==============================================\n");
@@ -680,7 +680,7 @@ void sr_stat_process_connection_ut(void)
 
 	// Delete a process from the midle
 	if ((rc = sr_stat_process_connection_hash_delete(4460)) != SR_SUCCESS) {
-		CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,"sr_stat_process_connection__hash_delete_process FAILED !!!\n");
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,"sr_stat_process_connection__hash_delete_process FAILED !!!\n");
 		return;
 	}
 	CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,"====== After delete process 4460 ==============================================\n");
@@ -817,7 +817,7 @@ void sr_stat_process_connection_ut(void)
 	connection_info.con_stats.tx_bytes = 20;
 	connection_info.con_stats.tx_msgs = 7;
 	if ((rc = sr_stat_process_connection_hash_update(7788, &connection_info)) != SR_SUCCESS) {
-		CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,"sr_stat_process_connection_hash_update_process FAILED !!!\n");
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,"sr_stat_process_connection_hash_update_process FAILED !!!\n");
 		return;
 	}
 	sr_stat_process_connection_delete_socket(7788, &connection_info.con_id);

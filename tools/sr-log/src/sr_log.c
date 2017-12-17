@@ -19,13 +19,13 @@ static SR_8 g_app_name[20];
 
 typedef const SR_8* cef_str;
 FILE* log_fp = 0;
-SR_U32 MB = 1024*1024; // 1MB
+SR_U32 MB; // 1MB
 cef_str cef_prefix = "vsentry";
 cef_str cef_postfix = ".log";
 
 void log_cef_msg(cef_str str)
 {
-    SR_8 file1[64], file2[64];
+    SR_8 file1[FILENAME_MAX], file2[FILENAME_MAX];
 	SR_U32 i;
 
     if(!log_fp){
@@ -129,7 +129,7 @@ SR_32 sr_log_init (const SR_8* app_name, SR_32 flags)
 {
 	sal_strcpy(g_app_name, (SR_8*)app_name);
 
-	MB *=config_params.cef_file_size;
+	MB = 1024*1024*config_params.cef_file_size;
 	printf("Starting LOG module!\n");
 	return SR_SUCCESS;
 }

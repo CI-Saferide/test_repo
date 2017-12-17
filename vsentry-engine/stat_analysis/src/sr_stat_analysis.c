@@ -14,13 +14,13 @@ SR_32 sr_stat_analysis_init(void)
 	SR_U64 t;
 
 	if (sr_stat_learn_rule_hash_init() != SR_SUCCESS) {
-		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_LOW,
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 			"stat analysis init failed at sr_stat_learn_rule_hash_init\n");
 		return SR_ERROR;
 	}
 
 	if (sr_stat_process_connection_hash_init() != SR_SUCCESS) {
-		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_LOW,
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 			"stat analysis init failed at sr_stat_process_connection_hash_init\n");
 		sr_stat_learn_rule_hash_uninit();
 		return SR_ERROR;
@@ -83,12 +83,12 @@ SR_32 sr_stat_analysis_process_died(SR_U32 pid)
 	t = sal_get_time();
 
 	if ((rc = sr_stat_process_connection_hash_exec_for_process(pid, process_died_cb)) != SR_SUCCESS) {
-		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_LOW,
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 			"sr_stat_process_connection_hash_exec_for_process FAILED !!!\n");
 		return SR_ERROR;
         }
 	if ((rc = sr_stat_process_connection_hash_delete(pid)) == SR_ERROR) {
-		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_LOW,
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 			"sr_stat_process_connection_hash_exec_for_process FAILED !!!\n");
 		return SR_ERROR;
         }

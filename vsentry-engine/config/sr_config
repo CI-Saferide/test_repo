@@ -13,6 +13,6 @@ LOG_PATH /candata/
 LOG_PATH_TEMP /tmp/
 
 #CEF cyclic logging params
-CEF_CYCLING 4
-CEF_FILE_LOG_SIZE_MB 1
-CEF_PATH_TEMP /tmp/
+CEF_CYCLING 10
+CEF_FILE_LOG_SIZE_MB 30
+CEF_PATH_TEMP /var/log/

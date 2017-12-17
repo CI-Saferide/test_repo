@@ -12,7 +12,7 @@ void sr_ml_conngraph_print_tree(void);
 SR_32 sr_ml_conngraph_init(void)
 {
 	if (!rn_inithead((void **)&sr_ml_conngraph_table, (8 * offsetof(struct sockaddr_in, sin_addr)))) {
-		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_LOW,
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 			"Error initializing conngraph\n");
 		return (SR_ERROR);
 	}
@@ -22,7 +22,7 @@ SR_32 sr_ml_conngraph_init(void)
 SR_32 sr_ml_conngraph_clear_graph(void)
 {
 	if (!rn_detachhead((void **)&sr_ml_conngraph_table)) {
-		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_LOW,
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 			"Error clearing conngraph\n");
 	}
 	return sr_ml_conngraph_init();
@@ -91,12 +91,12 @@ int sr_ml_node_save(struct radix_node *node, void *fd)
 
 	c=4; // ipv4/ipv6
 	if (write((int)*(int*)fd, &c, 1) != 1) { 
-		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_LOW,
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 			"Failed to write to conngraph conf file!\n");
 		return -1;
 	}
 	if (write((int)*(int*)fd, &ip->sin_addr.s_addr, 4) != 4) {
-		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_LOW,
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 			"Failed to write to conngraph conf file!\n");
 		return -1;
 	}
@@ -110,7 +110,7 @@ void sr_ml_conngraph_save(void)
 	fd = open(SR_CONNGRAPH_CONF_FILE,  O_WRONLY|O_CREAT|O_TRUNC, S_IRUSR|S_IWUSR);
 
 	if (fd < 0) {
-		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_LOW,
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 			"Failed to open conngraph conf file!\n");
 		return;
 	}
@@ -133,14 +133,14 @@ void sr_ml_conngraph_loadconf(void)
 	fd = open(SR_CONNGRAPH_CONF_FILE,  O_RDONLY);
 
 	if (fd < 0) {
-		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_LOW,
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 			"Failed to read conngraph conf file!\n");
 		return;
 	}
 	while (1) {
 		ret = read(fd, &c, 1);
 		if (ret < 0) {
-			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_LOW,
+			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 				"failed to read IP version\n");
 			close(fd);
 			return;
@@ -150,7 +150,7 @@ void sr_ml_conngraph_loadconf(void)
 			return;
 		}
 		if (c != 4) {
-			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_LOW,
+			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 				"Invalid IP version\n");
 			close(fd);
 			return;
@@ -162,14 +162,14 @@ void sr_ml_conngraph_loadconf(void)
 		}
 		ip->sin_family = AF_INET;
 		if (read(fd, &ip->sin_addr.s_addr, 4) != 4) {
-			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_LOW,
+			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 				"Failed to read IP address\n");
 			close(fd);
 			return;
 		}
 		node = rn_lookup((void*)ip, NULL, sr_ml_conngraph_table);
 		if(node) {
-			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_LOW,
+			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 				"Address %x already in tree\n", ip->sin_addr.s_addr);
 			free(ip);
 			continue;

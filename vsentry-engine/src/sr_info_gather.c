@@ -17,14 +17,14 @@ static SR_32 sr_info_gather_loop(void *data)
                 
         ret = sr_msg_alloc_buf(ENG2LOG_BUF, MAX_BUFFER_SIZE);
         if (ret != SR_SUCCESS){
-                CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_LOW,
+                CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 					"failed to init log buf\n");
                 return 0;
         }
          
         ret = sr_msg_alloc_buf(MOD2LOG_BUF, MAX_BUFFER_SIZE);
         if (ret != SR_SUCCESS){
-                CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_LOW,
+                CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 					"failed to init log buf\n");
                 return 0;
         }               
@@ -32,7 +32,7 @@ static SR_32 sr_info_gather_loop(void *data)
 #ifdef CONFIG_STAT_ANALYSIS
         ret = sr_msg_alloc_buf(MOD2STAT_BUF, MAX_BUFFER_SIZE);
         if (ret != SR_SUCCESS){
-                CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_LOW,
+                CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 					"failed to init stat buf\n");
                 return 0;
         }               
@@ -85,7 +85,7 @@ SR_32 sr_info_gather_init (void)
 			"Starting info_init module!\n");
 
         if (sr_start_task(SR_INFO_GATHER_TASK, sr_info_gather_loop) != SR_SUCCESS) {
-                CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_LOW,
+                CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 					"failed to start sr_info_gather_loop\n");
                 return SR_ERROR;
         }
