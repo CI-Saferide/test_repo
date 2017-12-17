@@ -55,17 +55,15 @@ static SR_32 handle_engine_start_stop(char *engine)
 {
         FILE *f;
 
-        if (!strncmp(engine, SR_DB_ENGINE_START, SR_DB_ENGINE_NAME_SIZE)) {
-                sr_control_set_state(SR_TRUE);
-                f = fopen("/tmp/sec_state", "w");
-                fprintf(f, "on");
-                fclose(f);
-        } else if (!strncmp(engine, SR_DB_ENGINE_STOP, SR_DB_ENGINE_NAME_SIZE)) {
-                sr_control_set_state(SR_FALSE);
-                f = fopen("/tmp/sec_state", "w");
-                fprintf(f, "off");
-                fclose(f);
-        }
+	f = fopen("/tmp/sec_state", "w");
+	if (!strncmp(engine, SR_DB_ENGINE_START, SR_DB_ENGINE_NAME_SIZE)) {
+		sr_control_set_state(SR_TRUE);
+		fprintf(f, "on");
+	} else if (!strncmp(engine, SR_DB_ENGINE_STOP, SR_DB_ENGINE_NAME_SIZE)) {
+		sr_control_set_state(SR_FALSE);
+		fprintf(f, "off");
+	}
+	fclose(f);
 
 	return SR_SUCCESS;
 }
