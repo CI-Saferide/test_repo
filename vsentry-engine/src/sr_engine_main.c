@@ -161,8 +161,11 @@ SR_32 sr_engine_start(void)
 	sr_db_init();
 	sentry_init(sr_config_vsentry_db_cb);
 
+#ifdef UNIT_TEST
 	config_ut();
+#endif
 
+	read_vsentry_config("sr_config", config_params);
 	can_args.can_interface = config_params.can0_interface;
 	if(config_params.collector_enable){
 		ret = sr_start_task(SR_CAN_COLLECT_TASK, can_collector_init);
