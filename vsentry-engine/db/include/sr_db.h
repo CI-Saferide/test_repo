@@ -5,6 +5,7 @@
 #include "action.h"
 #include "sr_db_ip.h"
 #include "sr_db_file.h"
+#include "sr_db_can.h"
 
 #define SR_DB_ENGINE_NAME_SIZE 32
 #define SR_DB_ENGINE_START "start"

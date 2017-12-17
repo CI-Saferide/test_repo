@@ -28,12 +28,14 @@ SR_32 sr_db_init(void)
 	sr_db_action_init();
 	sr_db_ip_rule_init();
 	sr_db_file_rule_init();
+	sr_db_can_rule_init();
 
 	return SR_SUCCESS;
 }
 
 void sr_db_deinit(void)
 {
+	sr_db_can_rule_deinit();
 	sr_db_file_rule_deinit();
 	sr_db_ip_rule_deinit();
 }

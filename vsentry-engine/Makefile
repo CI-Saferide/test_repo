@@ -51,6 +51,7 @@ SRCS 		:=  main.c \
 				sr_info_gather.c \
 				sr_db_ip.c \
 				sr_db_file.c \
+				sr_db_can.c \
 
 # include folders
 INCLUDES 	:=  -I../common/include \

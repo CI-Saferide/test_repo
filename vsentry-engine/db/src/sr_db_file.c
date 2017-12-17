@@ -12,7 +12,8 @@ static bool file_rule_search_cb(void *candidate, void *data)
 	file_rule_t *search_ptr = (file_rule_t *)data;
 	file_rule_t *candidate_ptr = (file_rule_t *)candidate;
 
-	if (search_ptr->rulenum == candidate_ptr->rulenum)
+	if ((search_ptr->rulenum == candidate_ptr->rulenum) &&
+		(search_ptr->tuple.id == candidate_ptr->tuple.id))
 		return SR_TRUE;
 
 	return SR_FALSE;
