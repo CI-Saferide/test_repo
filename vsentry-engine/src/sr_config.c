@@ -203,10 +203,21 @@ static SR_32 update_ip_rule(ip_rule_t *rule)
 
 static SR_32 delete_ip_rule(ip_rule_t *rule)
 {
-	sr_cls_port_del_rule(rule->tuple.srcport, rule->tuple.program, rule->tuple.user, rule->rulenum, SR_DIR_SRC, rule->tuple.proto);
-	sr_cls_port_del_rule(rule->tuple.dstport, rule->tuple.program, rule->tuple.user, rule->rulenum, SR_DIR_DST, rule->tuple.proto);
-	sr_cls_del_ipv4(rule->tuple.srcaddr.s_addr, rule->tuple.program, rule->tuple.user, rule->tuple.srcnetmask.s_addr, rule->rulenum, SR_DIR_SRC);
-	sr_cls_del_ipv4(rule->tuple.dstaddr.s_addr, rule->tuple.program, rule->tuple.user, rule->tuple.dstnetmask.s_addr, rule->rulenum, SR_DIR_DST);
+	ip_rule_t *old_rule;
+	char *old_user, *old_program;
+
+	if (!(old_rule = sr_db_ip_rule_get(rule))) {
+		sal_printf("%s failed gettig old rule#:%d \n", __FUNCTION__, rule->rulenum);
+		return SR_SUCCESS;
+	}
+
+	old_program = *(old_rule->tuple.program) ? old_rule->tuple.program : "*";
+	old_user = *(old_rule->tuple.user) ? old_rule->tuple.user : "*";
+
+	sr_cls_port_del_rule(old_rule->tuple.srcport, old_program, old_user, old_rule->rulenum, SR_DIR_SRC, old_rule->tuple.proto);
+	sr_cls_port_del_rule(old_rule->tuple.dstport, old_program, old_user, old_rule->rulenum, SR_DIR_DST, old_rule->tuple.proto);
+	sr_cls_del_ipv4(old_rule->tuple.srcaddr.s_addr, old_program, old_user, old_rule->tuple.srcnetmask.s_addr, old_rule->rulenum, SR_DIR_SRC);
+	sr_cls_del_ipv4(old_rule->tuple.dstaddr.s_addr, old_program, old_user, old_rule->tuple.dstnetmask.s_addr, old_rule->rulenum, SR_DIR_DST);
 	sr_db_ip_rule_delete(rule);
 
 	return SR_SUCCESS;
@@ -300,7 +311,15 @@ static SR_32 update_file_rule(file_rule_t *rule)
 
 static SR_32 delete_file_rule(file_rule_t *rule)
 {
-	sr_cls_file_del_rule(rule->tuple.filename, rule->tuple.program, rule->tuple.user, rule->rulenum, 1);
+	file_rule_t *old_rule;
+
+	if (!(old_rule = sr_db_file_rule_get(rule))) {
+		sal_printf("%s failed gettig old rule#:%d \n", __FUNCTION__, rule->rulenum);
+		return SR_SUCCESS;
+    }
+
+	sr_cls_file_del_rule(old_rule->tuple.filename, *(old_rule->tuple.program) ? old_rule->tuple.program : "*",
+		*(old_rule->tuple.user) ? old_rule->tuple.user : "*", old_rule->rulenum, 1);
 	sr_db_file_rule_delete(rule);
 
 	return SR_SUCCESS;
@@ -368,7 +387,14 @@ static SR_32 update_can_rule(can_rule_t *rule)
 
 static SR_32 delete_can_rule(can_rule_t *rule)
 {
-	sr_cls_canid_del_rule(rule->tuple.msg_id, rule->tuple.program, rule->tuple.user, rule->rulenum);
+	can_rule_t *old_rule;
+
+	if (!(old_rule = sr_db_can_rule_get(rule))) {
+		sal_printf("%s failed gettig old rule#:%d \n", __FUNCTION__, rule->rulenum);
+		return SR_SUCCESS;
+	}
+
+	sr_cls_canid_del_rule(old_rule->tuple.msg_id, *(old_rule->tuple.program) ? old_rule->tuple.program : "*", *(old_rule->tuple.user) ? old_rule->tuple.user : "*", old_rule->rulenum);
 	sr_db_can_rule_delete(rule);
 
 	return SR_SUCCESS;
