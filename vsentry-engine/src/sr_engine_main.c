@@ -95,15 +95,15 @@ SR_32 sr_engine_start(void)
 	
 	read_vsentry_config("sr_config", config_params);
 	
-	CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,
-		"vsentry engine started\n");
-
 	ret = sr_log_init("[vsentry]", 0);
 	if (ret != SR_SUCCESS){
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 			"failed to init sr_log\n");
 		return SR_ERROR;
 	}
+
+	CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,
+		"vsentry engine started\n");
 
 #ifdef CONFIG_STAT_ANALYSIS
 	ret = sr_stat_analysis_init();
