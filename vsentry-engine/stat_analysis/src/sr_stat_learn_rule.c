@@ -42,7 +42,7 @@ static void learn_rule_print(void *data_in_hash)
 {
 	learn_rule_item_t *learn_rule_item = (learn_rule_item_t *)data_in_hash;
 
-	CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,"Learn rule#%d : updated:%d  %s RX p:%d b:%d TX p:%d b:%d \n",  learn_rule_item->rule_num,
+	CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,"Learn rule#%d : updated:%d  %s RX p:%d b:%d TX p:%d b:%d",  learn_rule_item->rule_num,
 		learn_rule_item->is_updated, learn_rule_item->exec, learn_rule_item->counters.rx_msgs, learn_rule_item->counters.rx_bytes,
 		learn_rule_item->counters.tx_msgs, learn_rule_item->counters.tx_bytes);
 }
@@ -169,7 +169,7 @@ static SR_32 sr_stat_learn_rule_update_rule(char *exec, SR_U16 rule_num, sr_stat
 	sr_cls_rule_add(SR_NET_RULES, rule_num, actions, SR_FILEOPS_READ, SR_RATE_TYPE_BYTES, counters->rx_bytes, rl_exceed_action, 0, 0, 0, 0);
 
 	CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,"UPDATE rule#%d %s TX p:%d b:%d", 
-		rule_num + 1, exec, counters->rt_msgs, counters->tx_bytes);
+		rule_num + 1, exec, counters->tx_msgs, counters->tx_bytes);
 	sr_cls_add_ipv4(address, exec, "*", 0xffffffff, rule_num + 1, SR_DIR_SRC);
 	sr_cls_add_ipv4(0, exec, "*", 0, rule_num + 1, SR_DIR_DST);
 	sr_cls_port_add_rule(0, exec, "*", rule_num + 1, SR_DIR_SRC, 17); 

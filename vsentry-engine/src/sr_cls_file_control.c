@@ -29,7 +29,7 @@ int sr_cls_file_add_rule(char *filename, char *exec, char *user, SR_U32 rulenum,
 	}
 
 	if ((st = sr_get_inode(exec, 0, &exec_inode)) != SR_SUCCESS) {
-	    CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_LOW,
+	    CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 			"Error file add rule failed getting inode \n");
 	    return st;
 	}
