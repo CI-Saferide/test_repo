@@ -40,7 +40,7 @@ static void file_rule_print_cb(void *data)
 {
 	file_rule_t *file_rule = (file_rule_t *)data;
 
-	sal_printf("file_rule#%d tuple:%d name:%s perm:%s user:%s program:%s \n",
+	CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW, "file_rule#%d tuple:%d name:%s perm:%s user:%s program:%s",
 		file_rule->rulenum, file_rule->tuple.id, file_rule->tuple.filename, file_rule->tuple.permission, file_rule->tuple.user, file_rule->tuple.program);
 }
 
@@ -60,7 +60,7 @@ SR_32 sr_db_file_rule_add(file_rule_t *file_rule)
 		return SR_ERROR;
 	*new_item = *file_rule;
 	if (!list_append(&file_rules_list, new_item)) {
-		sal_printf("%s list_append failed !!!\n", __FUNCTION__);
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, "file rule add list_append failed ");
 		return SR_ERROR;
 	}
 

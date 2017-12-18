@@ -40,7 +40,7 @@ static void can_rule_print_cb(void *data)
 {
 	can_rule_t *can_rule = (can_rule_t *)data;
 
-	sal_printf("can_rule#%d tuple:%d msgid:%x direction:%d user:%s program:%s \n",
+	CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW, "can_rule#%d tuple:%d msgid:%x direction:%d user:%s program:%s", 
 		can_rule->rulenum, can_rule->tuple.id, can_rule->tuple.msg_id, can_rule->tuple.direction, can_rule->tuple.user, can_rule->tuple.program);
 }
 
@@ -60,7 +60,7 @@ SR_32 sr_db_can_rule_add(can_rule_t *can_rule)
 		return SR_ERROR;
 	*new_item = *can_rule;
 	if (!list_append(&can_rules_list, new_item)) {
-		sal_printf("%s list_append failed !!!\n", __FUNCTION__);
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, "cal rule add :list_append failed");
 		return SR_ERROR;
 	}
 

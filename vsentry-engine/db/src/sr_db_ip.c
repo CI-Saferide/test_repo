@@ -39,7 +39,7 @@ static void ip_rule_print_cb(void *data)
 {
 	ip_rule_t *ip_rule = (ip_rule_t *)data;
 
-	sal_printf("ip_rule#%d tuple:%d prot:%d saddr:%x sport:%d daddr:%x dport:%d \n",
+	CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW, "ip_rule#%d tuple:%d prot:%d saddr:%x sport:%d daddr:%x dport:%d",
 		ip_rule->rulenum, ip_rule->tuple.id, ip_rule->tuple.proto, ip_rule->tuple.srcaddr.s_addr, ip_rule->tuple.srcport,
 		ip_rule->tuple.dstaddr.s_addr, ip_rule->tuple.dstport);
 }
@@ -58,10 +58,10 @@ SR_32 sr_db_ip_rule_add(ip_rule_t *ip_rule)
 	SR_Zalloc(new_item, ip_rule_t *, sizeof(ip_rule_t));
 	if (!new_item)
 		return SR_ERROR;
-    *new_item = *ip_rule;
+    	*new_item = *ip_rule;
 
 	if (!list_append(&ip_rules_list, new_item)) {
-		sal_printf("%s list_append failed !!!\n", __FUNCTION__);
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, "ip rule add list_append failed !!!\n");
 		return SR_ERROR;
 	}
 

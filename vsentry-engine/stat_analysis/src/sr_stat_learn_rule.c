@@ -125,10 +125,6 @@ SR_32 sr_stat_learn_rule_hash_update(char *exec, sr_stat_con_stats_t *con_stats)
 			learn_rule_item->is_updated = SR_TRUE;
 		}
 	}
-#ifdef SR_STAT_ANALYSIS_DEBUG
-	if (learn_rule_item->is_updated)
-		sal_printf("UUUUUUU learn rule is updated !!\n");
-#endif
 
 	return SR_SUCCESS;
 }

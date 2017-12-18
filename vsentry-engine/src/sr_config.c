@@ -75,7 +75,7 @@ static SR_32 handle_action(action_t *action)
 
 	db_action = sr_db_action_get_action(action->action_name);
 	if (!db_action) {
-		sal_printf("%s action:%s not found\n", __FUNCTION__, action->action_name);
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, "handle action  action:%s not found", action->action_name);
 		return SR_ERROR;
 	}
 	db_action->action = action->action;
@@ -93,7 +93,7 @@ static SR_32 convert_action(char *action_name, SR_U16 *actions_bitmap)
 	
 	db_action = sr_db_action_get_action(action_name);
 	if (!db_action) {
-		sal_printf("%s action:%s not found\n", __FUNCTION__, action_name);
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, "convert action  action:%s not found", db_action->action_name);
 		return SR_ERROR;
 	}
 	switch (db_action->action) {
@@ -118,12 +118,12 @@ static SR_32 add_ip_rule(ip_rule_t *rule)
 	char *user, *program;
 
 	if (sr_db_ip_rule_add(rule) != SR_SUCCESS) {
-		sal_printf("%s sr_db_ip_rule_add: FAILED\n", __FUNCTION__);
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, "add ip rule failed ad to db");
 		return SR_ERROR;
 	}
 
 	if (convert_action(rule->action_name, &actions_bitmap) != SR_SUCCESS) {
-		sal_printf("%s convert action: FAILED\n", __FUNCTION__);
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, "add ip rule convert action failed");
 		return SR_ERROR;
 	}
 
@@ -147,7 +147,7 @@ static SR_32 update_ip_rule(ip_rule_t *rule)
 	char *user, *program, *old_user, *old_program;
 
 	if (!(old_rule = sr_db_ip_rule_get(rule))) {
-		sal_printf("%s failed gettig old rule#:%d \n", __FUNCTION__, rule->rulenum);
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, "update ip rule failed gettig old rule#:%d \n", rule->rulenum);
 		return SR_ERROR;
 	}
 	user = *(rule->tuple.user) ? rule->tuple.user : "*";
@@ -157,7 +157,7 @@ static SR_32 update_ip_rule(ip_rule_t *rule)
 
 	if (strncmp(rule->action_name, old_rule->action_name, ACTION_STR_SIZE) != 0) {
 		if (convert_action(rule->action_name, &actions_bitmap) != SR_SUCCESS) {
-			sal_printf("%s convert action: FAILED\n", __FUNCTION__);
+			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, "update ip rule convert_action failed");
 			return SR_ERROR;
 		}
 		sr_cls_rule_add(SR_NET_RULES, rule->rulenum, actions_bitmap, SR_FILEOPS_READ, SR_RATE_TYPE_BYTES, rule->tuple.max_rate, /* net_rule.rate_action */ 0 ,
@@ -207,7 +207,7 @@ static SR_32 delete_ip_rule(ip_rule_t *rule)
 	char *old_user, *old_program;
 
 	if (!(old_rule = sr_db_ip_rule_get(rule))) {
-		sal_printf("%s failed gettig old rule#:%d \n", __FUNCTION__, rule->rulenum);
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, "delete ip rule db get rule failed gettig old rule#:%d", rule->rulenum);
 		return SR_SUCCESS;
 	}
 
@@ -254,12 +254,12 @@ static SR_32 add_file_rule(file_rule_t *rule)
 	program = *(rule->tuple.program) ? rule->tuple.program : "*";
 
 	if (sr_db_file_rule_add(rule) != SR_SUCCESS) {
-		sal_printf("%s sr_db_file_rule_add: FAILED\n", __FUNCTION__);
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, "add file rule db add rule failed");
 		return SR_ERROR;
 	}
 
 	if (convert_action(rule->action_name, &actions_bitmap) != SR_SUCCESS) {
-		sal_printf("%s convert action: FAILED\n", __FUNCTION__);
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, "add file rule convert_action failed");
 		return SR_ERROR;
 	}
 
@@ -279,7 +279,7 @@ static SR_32 update_file_rule(file_rule_t *rule)
 	char *user, *program, *old_user, *old_program;
 
 	if (!(old_rule = sr_db_file_rule_get(rule))) {
-		sal_printf("%s failed gettig old rule#:%d \n", __FUNCTION__, rule->rulenum);
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, "update file rule failed gettig old rule#:%d \n", rule->rulenum);
 		return SR_ERROR;
 	}
 	user = *(rule->tuple.user) ? rule->tuple.user : "*";
@@ -292,7 +292,7 @@ static SR_32 update_file_rule(file_rule_t *rule)
 		strncmp(rule->tuple.permission, old_rule->tuple.permission, 4) != 0) {
 		convert_permissions(rule->tuple.permission, &permissions);
 		if (convert_action(rule->action_name, &actions_bitmap) != SR_SUCCESS) {
-			sal_printf("%s convert action: FAILED\n", __FUNCTION__);
+			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, "update file rule: convert action failed");
 			return SR_ERROR;
 		}
 		sr_cls_rule_add(SR_FILE_RULES, rule->rulenum, actions_bitmap, permissions, SR_RATE_TYPE_EVENT, rule->tuple.max_rate, /* net_rule.rate_action */ 0 ,
@@ -314,9 +314,9 @@ static SR_32 delete_file_rule(file_rule_t *rule)
 	file_rule_t *old_rule;
 
 	if (!(old_rule = sr_db_file_rule_get(rule))) {
-		sal_printf("%s failed gettig old rule#:%d \n", __FUNCTION__, rule->rulenum);
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, "delete file rule: failed gettig old rule#:%d", rule->rulenum);
 		return SR_SUCCESS;
-    }
+	}
 
 	sr_cls_file_del_rule(old_rule->tuple.filename, *(old_rule->tuple.program) ? old_rule->tuple.program : "*",
 		*(old_rule->tuple.user) ? old_rule->tuple.user : "*", old_rule->rulenum, 1);
@@ -334,12 +334,12 @@ static SR_32 add_can_rule(can_rule_t *rule)
 	program = *(rule->tuple.program) ? rule->tuple.program : "*";
 
 	if (sr_db_can_rule_add(rule) != SR_SUCCESS) {
-		sal_printf("%s sr_db_can_rule_add: FAILED\n", __FUNCTION__);
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, "add can rule: add to db failed");
 		return SR_ERROR;
 	}
 
 	if (convert_action(rule->action_name, &actions_bitmap) != SR_SUCCESS) {
-		sal_printf("%s convert action: FAILED\n", __FUNCTION__);
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, "add can rule: convert to action failed");
 		return SR_ERROR;
 	}
 
@@ -360,7 +360,7 @@ static SR_32 update_can_rule(can_rule_t *rule)
 	program = *(rule->tuple.program) ? rule->tuple.program : "*";
 
 	if (!(old_rule = sr_db_can_rule_get(rule))) {
-		sal_printf("%s failed gettig old rule#:%d \n", __FUNCTION__, rule->rulenum);
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, "update can rule: add to db failed");
 		return SR_ERROR;
 	}
 	old_user = *(old_rule->tuple.user) ? old_rule->tuple.user : "*";
@@ -368,7 +368,7 @@ static SR_32 update_can_rule(can_rule_t *rule)
 	sr_cls_canid_del_rule(old_rule->tuple.msg_id, old_program, old_user, old_rule->rulenum);
 	if (strncmp(rule->action_name, old_rule->action_name, ACTION_STR_SIZE)) {
 		if (convert_action(rule->action_name, &actions_bitmap) != SR_SUCCESS) {
-			sal_printf("%s convert action: FAILED\n", __FUNCTION__);
+			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, "update can rule: convert_action failed");
 			return SR_ERROR;
 		}
 		sr_cls_rule_add(SR_CAN_RULES, rule->rulenum, actions_bitmap, 0, SR_RATE_TYPE_EVENT, rule->tuple.max_rate, /* net_rule.rate_action */ 0 ,
@@ -390,7 +390,7 @@ static SR_32 delete_can_rule(can_rule_t *rule)
 	can_rule_t *old_rule;
 
 	if (!(old_rule = sr_db_can_rule_get(rule))) {
-		sal_printf("%s failed gettig old rule#:%d \n", __FUNCTION__, rule->rulenum);
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, "delete can rule: get from db failed rule:%d", rule->rulenum);
 		return SR_SUCCESS;
 	}
 
