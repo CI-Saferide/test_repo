@@ -8,6 +8,7 @@ void sr_cls_rule_add(SR_32 rule_type,
 						SR_U16 rulenum,
 						SR_U16 actions,
 						SR_8 file_ops,
+						sr_rate_type_t rate_type,
 						SR_U32 rl_max_rate,
 						SR_U16 rl_exceed_action,
 						SR_U16 log_target,
@@ -25,6 +26,7 @@ void sr_cls_rule_add(SR_32 rule_type,
 			msg->sub_msg.rulenum = rulenum;	
 			msg->sub_msg.actions = actions;
 			msg->sub_msg.file_ops = file_ops;
+			msg->sub_msg.rate_type = rate_type;
 			msg->sub_msg.rl_max_rate = rl_max_rate;
 			msg->sub_msg.rl_exceed_action=rl_exceed_action;	
 			msg->sub_msg.log_target = log_target;

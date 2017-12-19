@@ -17,6 +17,7 @@
 #include "sr_sal_common.h"
 #include "sr_control.h"
 #include "sr_ver.h"
+#include "sr_config.h"
 #include "sr_file_hash.h"
 #include "sr_can_collector.h"
 #include "sr_config_parse.h"
@@ -24,6 +25,8 @@
 #ifdef CONFIG_STAT_ANALYSIS
 #include "sr_stat_analysis.h"
 #endif
+#include "internal_api.h"
+#include "sr_db.h"
 #ifdef CONFIG_CAN_ML
 #include "sr_ml_can.h"
 #endif /* CONFIG_CAN_ML */
@@ -89,7 +92,6 @@ static void eng2mod_test(void)
 	}
 }
 
-
 SR_32 sr_engine_start(void)
 {
 	SR_32 ret;
@@ -100,8 +102,7 @@ SR_32 sr_engine_start(void)
 
 	ret = sr_log_init("[vsentry]", 0);
 	if (ret != SR_SUCCESS){
-		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-			"failed to init sr_log\n");
+		printf("failed to init sr_log\n");
 		return SR_ERROR;
 	}
 	CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,
@@ -169,8 +170,14 @@ SR_32 sr_engine_start(void)
 		return SR_ERROR;
 	}
 
-	config_ut();
+	sr_db_init();
+	sentry_init(sr_config_vsentry_db_cb);
 
+#ifdef UNIT_TEST
+	config_ut();
+#endif
+
+	read_vsentry_config("sr_config", config_params);
 	can_args.can_interface = config_params.can0_interface;
 	if(config_params.collector_enable){
 		ret = sr_start_task(SR_CAN_COLLECT_TASK, can_collector_init);
@@ -220,6 +227,7 @@ SR_32 sr_engine_start(void)
 
 	sr_stop_task(SR_CAN_COLLECT_TASK);
 	sr_stop_task(SR_ENGINE_TASK);
+	sentry_stop();
 #ifdef CONFIG_STAT_ANALYSIS
 	sr_stat_analysis_uninit();
 #endif /* CONFIG_STAT_ANALYSIS */
@@ -228,6 +236,7 @@ SR_32 sr_engine_start(void)
 #endif /* CONFIG_CAN_ML */
 	sr_info_gather_uninit();
 	sr_file_hash_deinit();
+	sr_db_deinit();
 
 	return 0;
 }

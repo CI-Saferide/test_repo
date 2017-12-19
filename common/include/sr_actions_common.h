@@ -14,6 +14,11 @@ enum sr_rule_type{
         SR_RULES_TYPE_MAX,
 };
 
+typedef enum {
+        SR_RATE_TYPE_EVENT,
+        SR_RATE_TYPE_BYTES,
+} sr_rate_type_t;
+
 enum {
 	SR_CLS_RULES_DEL = 0,
 	SR_CLS_RULES_ADD,
@@ -42,6 +47,7 @@ struct sr_cls_rules_msg {
 	SR_U16 rulenum; 
 	SR_U16 actions;
 	SR_8 file_ops;
+	sr_rate_type_t rate_type;
 	SR_U32 rl_max_rate;
 	SR_U16 rl_exceed_action;
 	SR_U16 log_target;

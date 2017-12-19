@@ -15,7 +15,8 @@ TARGET 		:= sr_engine
 VPATH 		:=  $(TOP_DIR)/sal/platform/linux/src \
 				$(TOP_DIR)/src \
 				$(TOP_DIR)/../common/src \
-				$(TOP_DIR)/stat_analysis/src
+				$(TOP_DIR)/stat_analysis/src \
+				$(TOP_DIR)/db/src
 
 # sources to compile
 SRCS 		:=  main.c \
@@ -40,6 +41,7 @@ SRCS 		:=  main.c \
 				sr_engine_main.c \
 				sr_config.c \
 				sr_cli.c \
+				sr_db.c \
 				sr_control.c \
 				sr_can_collector.c \
 				sr_config_parse.c \
@@ -47,7 +49,11 @@ SRCS 		:=  main.c \
 				sr_stat_learn_rule.c \
 				sr_stat_analysis.c \
 				sr_info_gather.c \
+				sr_db_ip.c \
+				sr_db_file.c \
+				sr_db_can.c \
 				sr_ml_can.c \
+
 
 # include folders
 INCLUDES 	:=  -I../common/include \
@@ -57,16 +63,19 @@ INCLUDES 	:=  -I../common/include \
 				-Isal/include \
 				-I../tools/sr-log/include \
 				-I../tools/sr-hash/include \
+				-I../tools/json \
+				-I../vsentry-lib/include \
 				-I../common/stat_analysis/include \
 				-Istat_analysis/include \
+				-Idb/include \
 
 OBJS		:=  $(addprefix $(OBJDIR)/,$(SRCS:.c=.o))
 DEPS		:=  $(OBJS:.o=.d)
 
 # libs to link with
-LIBS		:= -lpthread -lsr_log -lsr_hash
+LIBS		:= -lpthread -lsr_log -lsr_hash -ljsmn -lsentry -lsysrepo
 # and where to search them 
-LIB_PATH 	:= -L$(LIBDIR)
+LIB_PATH 	:= -L$(LIBDIR) -L../vsentry-lib/lib
 
 CFLAGS 		+= -MMD -Wall
 CFLAGS 		+= -DCONFIG_STAT_ANALYSIS
@@ -88,6 +97,7 @@ endif
 all: $(TARGET)
 
 build_ver:
+$(TARGET): $(OBJDIR) $(OBJS) libsr_log libsr_hash libjsmn
 	@echo "static const char SR_GIT_BUILD[] = \"`git log --pretty=format:'%h' -n 1`\"; " > $(TOP_DIR)/../common/include/sr_build_ver.h
 
 $(TARGET): build_ver $(OBJDIR) $(OBJS) libsr_log libsr_hash
@@ -104,6 +114,9 @@ libsr_log:
 
 libsr_hash:
 	@$(MAKE) -s -C ../tools/sr-hash TOP_DIR=$(TOP_DIR)
+
+libjsmn:
+	@$(MAKE) -s -C ../tools/json TOP_DIR=$(TOP_DIR)
 
 $(OBJDIR)/%.o: %.c
 	@echo "compiling $(notdir $<)"

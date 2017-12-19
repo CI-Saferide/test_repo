@@ -23,7 +23,14 @@
 #include <signal.h>
 #endif
 #endif
+#include "sentry.h"
+#include "action.h"
+#include "ip_rule.h"
+#include "file_rule.h"
+#include "can_rule.h"
+#include "sr_db.h"
 
+#ifdef SR_STAT_ANALYSIS_DEBUG
 static void handler(int signal)
 {
 	switch (signal) { 
@@ -31,7 +38,7 @@ static void handler(int signal)
 			sr_learn_rule_connection_hash_print();
 			break;
 		case 12:
-			sr_stat_analysis_learn_mode_set(SR_STAT_MODE_PROTECT);
+			//sr_stat_analysis_learn_mode_set(SR_STAT_MODE_PROTECT);
 			//sr_stat_analysis_dump();
 			//sr_learn_rule_connection_hash_print();
 			//sr_control_util(SR_CONTROL_GARBAGE_COLLECTION);
@@ -41,8 +48,420 @@ static void handler(int signal)
 			break;
  	}
 }
+#endif
 
 static char filename[] = "sr_engine.cfg";
+
+static SR_32 handle_engine_start_stop(char *engine)
+{
+        FILE *f;
+
+	f = fopen("/tmp/sec_state", "w");
+	if (!strncmp(engine, SR_DB_ENGINE_START, SR_DB_ENGINE_NAME_SIZE)) {
+		sr_control_set_state(SR_TRUE);
+		fprintf(f, "on");
+	} else if (!strncmp(engine, SR_DB_ENGINE_STOP, SR_DB_ENGINE_NAME_SIZE)) {
+		sr_control_set_state(SR_FALSE);
+		fprintf(f, "off");
+	}
+	fclose(f);
+
+	return SR_SUCCESS;
+}
+
+static SR_32 handle_action(action_t *action)
+{
+	action_t *db_action;
+
+	db_action = sr_db_action_get_action(action->action_name);
+	if (!db_action) {
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, "handle action  action:%s not found", action->action_name);
+		return SR_ERROR;
+	}
+	db_action->action = action->action;
+	db_action->log_facility = action->log_facility;
+	db_action->log_severity = action->log_severity;
+	db_action->black_list = action->black_list;
+	db_action->terminate = action->terminate;
+
+	return SR_SUCCESS;
+}
+
+static SR_32 convert_action(char *action_name, SR_U16 *actions_bitmap)
+{
+	action_t *db_action;
+	
+	db_action = sr_db_action_get_action(action_name);
+	if (!db_action) {
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, "convert action  action:%s not found", db_action->action_name);
+		return SR_ERROR;
+	}
+	switch (db_action->action) {
+                case ACTION_DROP:
+                        *actions_bitmap = SR_CLS_ACTION_DROP;
+                        break;
+                case ACTION_ALLOW:
+                        *actions_bitmap = SR_CLS_ACTION_ALLOW;
+                        break;
+                default:
+                        break;
+        }
+        if (db_action->log_facility != LOG_NONE)
+                *actions_bitmap |= SR_CLS_ACTION_LOG;
+
+	return SR_SUCCESS;
+}
+
+static SR_32 add_ip_rule(ip_rule_t *rule)
+{
+	SR_U16 actions_bitmap = 0;
+	char *user, *program;
+
+	if (sr_db_ip_rule_add(rule) != SR_SUCCESS) {
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, "add ip rule failed ad to db");
+		return SR_ERROR;
+	}
+
+	if (convert_action(rule->action_name, &actions_bitmap) != SR_SUCCESS) {
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, "add ip rule convert action failed");
+		return SR_ERROR;
+	}
+
+	user = *(rule->tuple.user) ? rule->tuple.user : "*";
+	program = *(rule->tuple.program) ? rule->tuple.program : "*";
+
+	sr_cls_port_add_rule(rule->tuple.srcport, program, user, rule->rulenum, SR_DIR_SRC, rule->tuple.proto);
+	sr_cls_port_add_rule(rule->tuple.dstport, program, user, rule->rulenum, SR_DIR_DST, rule->tuple.proto);
+	sr_cls_add_ipv4(rule->tuple.srcaddr.s_addr, program, user, rule->tuple.srcnetmask.s_addr, rule->rulenum, SR_DIR_SRC);
+	sr_cls_add_ipv4(rule->tuple.dstaddr.s_addr, program, user, rule->tuple.dstnetmask.s_addr, rule->rulenum, SR_DIR_DST);
+	sr_cls_rule_add(SR_NET_RULES, rule->rulenum, actions_bitmap, SR_FILEOPS_READ, SR_RATE_TYPE_BYTES, rule->tuple.max_rate, /* net_rule.rate_action */ 0 ,
+                         /* net_ruole.action.log_target */ 0 , /* net_rule.tuple.action.email_id */ 0 , /* net_rule.tuple.action.phone_id */ 0 , /* net_rule.action.skip_rulenum */ 0);
+
+	return SR_SUCCESS;
+}
+
+static SR_32 update_ip_rule(ip_rule_t *rule)
+{
+	ip_rule_t *old_rule;
+	SR_U16 actions_bitmap = 0;
+	char *user, *program, *old_user, *old_program;
+
+	if (!(old_rule = sr_db_ip_rule_get(rule))) {
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, "update ip rule failed gettig old rule#:%d \n", rule->rulenum);
+		return SR_ERROR;
+	}
+	user = *(rule->tuple.user) ? rule->tuple.user : "*";
+	program = *(rule->tuple.program) ? rule->tuple.program : "*";
+	old_user = *(old_rule->tuple.user) ? old_rule->tuple.user : "*";
+	old_program = *(old_rule->tuple.program) ? old_rule->tuple.program : "*";
+
+	if (strncmp(rule->action_name, old_rule->action_name, ACTION_STR_SIZE) != 0) {
+		if (convert_action(rule->action_name, &actions_bitmap) != SR_SUCCESS) {
+			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, "update ip rule convert_action failed");
+			return SR_ERROR;
+		}
+		sr_cls_rule_add(SR_NET_RULES, rule->rulenum, actions_bitmap, SR_FILEOPS_READ, SR_RATE_TYPE_BYTES, rule->tuple.max_rate, /* net_rule.rate_action */ 0 ,
+                         /* net_ruole.action.log_target */ 0 , /* net_rule.tuple.action.email_id */ 0 , /* net_rule.tuple.action.phone_id */ 0 , /* net_rule.action.skip_rulenum */ 0);
+		strncpy(old_rule->action_name, rule->action_name, ACTION_STR_SIZE);
+	}
+
+	if (old_rule->tuple.srcport != rule->tuple.srcport) {
+		sr_cls_port_del_rule(old_rule->tuple.srcport, old_program, old_user, old_rule->rulenum, SR_DIR_SRC, old_rule->tuple.proto);
+		sr_cls_port_add_rule(rule->tuple.srcport, program, user, rule->rulenum, SR_DIR_SRC, rule->tuple.proto);
+		old_rule->tuple.srcport = rule->tuple.srcport;
+	}	
+	if (old_rule->tuple.dstport != rule->tuple.dstport) {
+		sr_cls_port_del_rule(old_rule->tuple.dstport, old_program, old_user, old_rule->rulenum, SR_DIR_DST, old_rule->tuple.proto);
+		sr_cls_port_add_rule(rule->tuple.dstport, program, user, rule->rulenum, SR_DIR_DST, rule->tuple.proto);
+		old_rule->tuple.dstport = rule->tuple.dstport;
+	}	
+	if (old_rule->tuple.srcaddr.s_addr != rule->tuple.srcaddr.s_addr ||
+	    old_rule->tuple.srcnetmask.s_addr != old_rule->tuple.srcnetmask.s_addr) {
+		sr_cls_del_ipv4(old_rule->tuple.srcaddr.s_addr, old_program, old_user, old_rule->tuple.srcnetmask.s_addr, old_rule->rulenum, SR_DIR_SRC);
+		sr_cls_add_ipv4(rule->tuple.srcaddr.s_addr, program, user, rule->tuple.srcnetmask.s_addr, rule->rulenum, SR_DIR_SRC);
+		old_rule->tuple.srcaddr.s_addr = rule->tuple.srcaddr.s_addr;
+	}	
+	if (old_rule->tuple.dstaddr.s_addr != rule->tuple.dstaddr.s_addr ||
+	    old_rule->tuple.dstnetmask.s_addr != old_rule->tuple.dstnetmask.s_addr) {
+		sr_cls_del_ipv4(old_rule->tuple.dstaddr.s_addr, old_program, old_user, old_rule->tuple.dstnetmask.s_addr, old_rule->rulenum, SR_DIR_DST);
+		sr_cls_add_ipv4(rule->tuple.dstaddr.s_addr, program, user, rule->tuple.dstnetmask.s_addr, rule->rulenum, SR_DIR_DST);
+		old_rule->tuple.dstaddr.s_addr = rule->tuple.dstaddr.s_addr;
+	}	
+	if (strncmp(old_program, program, PROG_NAME_SIZE) != 0) {
+		sr_cls_port_del_rule(old_rule->tuple.srcport, old_program, old_user, old_rule->rulenum, SR_DIR_SRC, old_rule->tuple.proto);
+		sr_cls_port_add_rule(rule->tuple.srcport, program, user, rule->rulenum, SR_DIR_SRC, rule->tuple.proto);
+		strncpy(old_rule->tuple.program, rule->tuple.program, PROG_NAME_SIZE);
+	}	
+	if (strncmp(old_user, user, USER_NAME_SIZE) != 0) {
+		sr_cls_port_del_rule(old_rule->tuple.srcport, old_program, old_user, old_rule->rulenum, SR_DIR_SRC, old_rule->tuple.proto);
+		sr_cls_port_add_rule(rule->tuple.srcport, program, user, rule->rulenum, SR_DIR_SRC, rule->tuple.proto);
+		strncpy(old_rule->tuple.user, rule->tuple.user, USER_NAME_SIZE);
+	}	
+
+	return SR_SUCCESS;
+}
+
+static SR_32 delete_ip_rule(ip_rule_t *rule)
+{
+	ip_rule_t *old_rule;
+	char *old_user, *old_program;
+
+	if (!(old_rule = sr_db_ip_rule_get(rule))) {
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, "delete ip rule db get rule failed gettig old rule#:%d", rule->rulenum);
+		return SR_SUCCESS;
+	}
+
+	old_program = *(old_rule->tuple.program) ? old_rule->tuple.program : "*";
+	old_user = *(old_rule->tuple.user) ? old_rule->tuple.user : "*";
+
+	sr_cls_port_del_rule(old_rule->tuple.srcport, old_program, old_user, old_rule->rulenum, SR_DIR_SRC, old_rule->tuple.proto);
+	sr_cls_port_del_rule(old_rule->tuple.dstport, old_program, old_user, old_rule->rulenum, SR_DIR_DST, old_rule->tuple.proto);
+	sr_cls_del_ipv4(old_rule->tuple.srcaddr.s_addr, old_program, old_user, old_rule->tuple.srcnetmask.s_addr, old_rule->rulenum, SR_DIR_SRC);
+	sr_cls_del_ipv4(old_rule->tuple.dstaddr.s_addr, old_program, old_user, old_rule->tuple.dstnetmask.s_addr, old_rule->rulenum, SR_DIR_DST);
+	sr_db_ip_rule_delete(rule);
+
+	return SR_SUCCESS;
+}
+
+#define PERM_R (1 << 2)
+#define PERM_W (1 << 1)
+#define PERM_X (1 << 0)
+
+static void convert_permissions(char *permissions, SR_U8 *premisions_bitmaps)
+{
+	SR_U8 perms;
+        if (!permissions)
+                return;
+	
+	perms = atoi(permissions + 2);
+
+	*premisions_bitmaps = 0;
+ 	if (perms & PERM_X)
+ 		*premisions_bitmaps |= SR_FILEOPS_EXEC;
+	if (perms & PERM_W)
+		*premisions_bitmaps |= SR_FILEOPS_WRITE;
+	if (perms & PERM_R)
+		*premisions_bitmaps |= SR_FILEOPS_READ;
+}
+
+static SR_32 add_file_rule(file_rule_t *rule)
+{
+	SR_U16 actions_bitmap = 0;
+	SR_U8 permissions = 0;
+	char *user, *program;
+
+	user = *(rule->tuple.user) ? rule->tuple.user : "*";
+	program = *(rule->tuple.program) ? rule->tuple.program : "*";
+
+	if (sr_db_file_rule_add(rule) != SR_SUCCESS) {
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, "add file rule db add rule failed");
+		return SR_ERROR;
+	}
+
+	if (convert_action(rule->action_name, &actions_bitmap) != SR_SUCCESS) {
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, "add file rule convert_action failed");
+		return SR_ERROR;
+	}
+
+	convert_permissions(rule->tuple.permission, &permissions);
+	sr_cls_file_add_rule(rule->tuple.filename, program, user, rule->rulenum, 1);
+	sr_cls_rule_add(SR_FILE_RULES, rule->rulenum, actions_bitmap, permissions, SR_RATE_TYPE_BYTES, rule->tuple.max_rate, /* net_rule.rate_action */ 0 ,
+                         /* net_ruole.action.log_target */ 0 , /* net_rule.tuple.action.email_id */ 0 , /* net_rule.tuple.action.phone_id */ 0 , /* net_rule.action.skip_rulenum */ 0);
+
+	return SR_SUCCESS;
+}
+
+static SR_32 update_file_rule(file_rule_t *rule)
+{
+	SR_U16 actions_bitmap = 0;
+	SR_U8 permissions = 0;
+	file_rule_t *old_rule;
+	char *user, *program, *old_user, *old_program;
+
+	if (!(old_rule = sr_db_file_rule_get(rule))) {
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, "update file rule failed gettig old rule#:%d \n", rule->rulenum);
+		return SR_ERROR;
+	}
+	user = *(rule->tuple.user) ? rule->tuple.user : "*";
+	program = *(rule->tuple.program) ? rule->tuple.program : "*";
+	old_user = *(old_rule->tuple.user) ? old_rule->tuple.user : "*";
+	old_program = *(old_rule->tuple.program) ? old_rule->tuple.program : "*";
+
+	sr_cls_file_del_rule(old_rule->tuple.filename, old_program, old_user, rule->rulenum, 1);
+	if (strncmp(rule->action_name, old_rule->action_name, ACTION_STR_SIZE) != 0 || 	
+		strncmp(rule->tuple.permission, old_rule->tuple.permission, 4) != 0) {
+		convert_permissions(rule->tuple.permission, &permissions);
+		if (convert_action(rule->action_name, &actions_bitmap) != SR_SUCCESS) {
+			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, "update file rule: convert action failed");
+			return SR_ERROR;
+		}
+		sr_cls_rule_add(SR_FILE_RULES, rule->rulenum, actions_bitmap, permissions, SR_RATE_TYPE_EVENT, rule->tuple.max_rate, /* net_rule.rate_action */ 0 ,
+                         /* net_ruole.action.log_target */ 0 , /* net_rule.tuple.action.email_id */ 0 , /* net_rule.tuple.action.phone_id */ 0 , /* net_rule.action.skip_rulenum */ 0);
+		strncpy(old_rule->action_name, rule->action_name, ACTION_STR_SIZE);
+		strncpy(old_rule->tuple.permission, rule->tuple.permission, 4);
+	}
+
+	strncpy(old_rule->tuple.filename, rule->tuple.filename, FILE_NAME_SIZE);
+	strncpy(old_rule->tuple.program, rule->tuple.program, PROG_NAME_SIZE);
+	strncpy(old_rule->tuple.user, rule->tuple.user, USER_NAME_SIZE);
+	sr_cls_file_add_rule(rule->tuple.filename, program, user, rule->rulenum, 1);
+
+	return SR_SUCCESS;
+}
+
+static SR_32 delete_file_rule(file_rule_t *rule)
+{
+	file_rule_t *old_rule;
+
+	if (!(old_rule = sr_db_file_rule_get(rule))) {
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, "delete file rule: failed gettig old rule#:%d", rule->rulenum);
+		return SR_SUCCESS;
+	}
+
+	sr_cls_file_del_rule(old_rule->tuple.filename, *(old_rule->tuple.program) ? old_rule->tuple.program : "*",
+		*(old_rule->tuple.user) ? old_rule->tuple.user : "*", old_rule->rulenum, 1);
+	sr_db_file_rule_delete(rule);
+
+	return SR_SUCCESS;
+}
+
+static SR_32 add_can_rule(can_rule_t *rule)
+{
+	SR_U16 actions_bitmap = 0;
+	char *user, *program;
+
+	user = *(rule->tuple.user) ? rule->tuple.user : "*";
+	program = *(rule->tuple.program) ? rule->tuple.program : "*";
+
+	if (sr_db_can_rule_add(rule) != SR_SUCCESS) {
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, "add can rule: add to db failed");
+		return SR_ERROR;
+	}
+
+	if (convert_action(rule->action_name, &actions_bitmap) != SR_SUCCESS) {
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, "add can rule: convert to action failed");
+		return SR_ERROR;
+	}
+
+	sr_cls_canid_add_rule(rule->tuple.msg_id, program, user, rule->rulenum);
+	sr_cls_rule_add(SR_CAN_RULES, rule->rulenum, actions_bitmap, 0, SR_RATE_TYPE_BYTES, rule->tuple.max_rate, /* net_rule.rate_action */ 0 ,
+                         /* net_ruole.action.log_target */ 0 , /* net_rule.tuple.action.email_id */ 0 , /* net_rule.tuple.action.phone_id */ 0 , /* net_rule.action.skip_rulenum */ 0);
+
+	return SR_SUCCESS;
+}
+
+static SR_32 update_can_rule(can_rule_t *rule)
+{
+	SR_U16 actions_bitmap = 0;
+	can_rule_t *old_rule;
+	char *user, *program, *old_user, *old_program;
+
+	user = *(rule->tuple.user) ? rule->tuple.user : "*";
+	program = *(rule->tuple.program) ? rule->tuple.program : "*";
+
+	if (!(old_rule = sr_db_can_rule_get(rule))) {
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, "update can rule: add to db failed");
+		return SR_ERROR;
+	}
+	old_user = *(old_rule->tuple.user) ? old_rule->tuple.user : "*";
+	old_program = *(old_rule->tuple.program) ? old_rule->tuple.program : "*";
+	sr_cls_canid_del_rule(old_rule->tuple.msg_id, old_program, old_user, old_rule->rulenum);
+	if (strncmp(rule->action_name, old_rule->action_name, ACTION_STR_SIZE)) {
+		if (convert_action(rule->action_name, &actions_bitmap) != SR_SUCCESS) {
+			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, "update can rule: convert_action failed");
+			return SR_ERROR;
+		}
+		sr_cls_rule_add(SR_CAN_RULES, rule->rulenum, actions_bitmap, 0, SR_RATE_TYPE_EVENT, rule->tuple.max_rate, /* net_rule.rate_action */ 0 ,
+                         /* net_ruole.action.log_target */ 0 , /* net_rule.tuple.action.email_id */ 0 , /* net_rule.tuple.action.phone_id */ 0 , /* net_rule.action.skip_rulenum */ 0);
+		strncpy(old_rule->action_name, rule->action_name, ACTION_STR_SIZE);
+	}
+
+	old_rule->tuple.msg_id = rule->tuple.msg_id;
+	old_rule->tuple.direction = rule->tuple.direction;
+	strncpy(old_rule->tuple.program, rule->tuple.program, PROG_NAME_SIZE);
+	strncpy(old_rule->tuple.user, rule->tuple.user, USER_NAME_SIZE);
+	sr_cls_canid_add_rule(rule->tuple.msg_id, program, user, rule->rulenum);
+
+	return SR_SUCCESS;
+}
+
+static SR_32 delete_can_rule(can_rule_t *rule)
+{
+	can_rule_t *old_rule;
+
+	if (!(old_rule = sr_db_can_rule_get(rule))) {
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, "delete can rule: get from db failed rule:%d", rule->rulenum);
+		return SR_SUCCESS;
+	}
+
+	sr_cls_canid_del_rule(old_rule->tuple.msg_id, *(old_rule->tuple.program) ? old_rule->tuple.program : "*", *(old_rule->tuple.user) ? old_rule->tuple.user : "*", old_rule->rulenum);
+	sr_db_can_rule_delete(rule);
+
+	return SR_SUCCESS;
+}
+
+void sr_config_vsentry_db_cb(int type, int op, void *entry)
+{
+	switch (type) {
+		case SENTRY_ENTRY_ACTION:
+			handle_action((action_t *)entry);
+			break;
+		case SENTRY_ENTRY_IP:
+			ip_rule_display((ip_rule_t *)entry);
+			switch (op) {
+				case SENTRY_OP_CREATE:
+					add_ip_rule((ip_rule_t *)entry);
+					break;
+				case SENTRY_OP_MODIFY:
+					update_ip_rule((ip_rule_t *)entry);
+        				break;
+				case SENTRY_OP_DELETE:
+					delete_ip_rule((ip_rule_t *)entry);
+        				break;
+				default:
+					break;
+			}
+        		break;
+		case SENTRY_ENTRY_CAN:
+			can_rule_display((can_rule_t *)entry);
+			switch (op) {
+				case SENTRY_OP_CREATE:
+					add_can_rule((can_rule_t *)entry);
+					break;
+				case SENTRY_OP_MODIFY:
+					update_can_rule((can_rule_t *)entry);
+        				break;
+				case SENTRY_OP_DELETE:
+					delete_can_rule((can_rule_t *)entry);
+        				break;
+				default:
+					break;
+			}
+			break;
+		case SENTRY_ENTRY_FILE:
+			file_rule_display((file_rule_t *)entry);
+			switch (op) {
+				case SENTRY_OP_CREATE:
+					add_file_rule((file_rule_t *)entry);
+					break;
+				case SENTRY_OP_MODIFY:
+					update_file_rule((file_rule_t *)entry);
+        				break;
+				case SENTRY_OP_DELETE:
+					delete_file_rule((file_rule_t *)entry);
+        				break;
+				default:
+					break;
+			}
+			break;
+		case SENTRY_ENTRY_ENG:
+			handle_engine_start_stop((char *)entry);
+			break;
+		default:
+			break;
+	}
+}
+
 
 SR_BOOL write_config_record (void* ptr, enum sr_header_type rec_type)
 {
@@ -153,7 +572,7 @@ SR_BOOL read_config_file (void)
 			sr_cls_port_add_rule(net_rec.dst_port, process, "*", net_rec.rulenum, SR_DIR_DST, net_rec.proto);
 			sr_cls_add_ipv4(htonl(net_rec.src_addr), process, "*", htonl(net_rec.src_netmask), net_rec.rulenum, SR_DIR_SRC);
 			sr_cls_add_ipv4(htonl(net_rec.dst_addr), process, "*", htonl(net_rec.dst_netmask), net_rec.rulenum, SR_DIR_DST);
-			sr_cls_rule_add(SR_NET_RULES, net_rec.rulenum, net_rec.action.actions_bitmap, 0, net_rec.max_rate, net_rec.rate_action, net_rec.action.log_target, net_rec.action.email_id, net_rec.action.phone_id, net_rec.action.skip_rulenum);
+			sr_cls_rule_add(SR_NET_RULES, net_rec.rulenum, net_rec.action.actions_bitmap, 0, SR_RATE_TYPE_EVENT, net_rec.max_rate, net_rec.rate_action, net_rec.action.log_target, net_rec.action.email_id, net_rec.action.phone_id, net_rec.action.skip_rulenum);
 			break;
 			}
 		case CONFIG_FILE_RULE: {
@@ -180,7 +599,7 @@ SR_BOOL read_config_file (void)
 				return SR_FALSE;
 			}
 			sr_cls_file_add_rule(filename, process, "*", file_rec.rulenum, 1);
-			sr_cls_rule_add(SR_FILE_RULES, file_rec.rulenum, file_rec.action.actions_bitmap, SR_FILEOPS_READ, file_rec.max_rate, file_rec.rate_action, file_rec.action.log_target, file_rec.action.email_id, file_rec.action.phone_id, file_rec.action.skip_rulenum);
+			sr_cls_rule_add(SR_FILE_RULES, file_rec.rulenum, file_rec.action.actions_bitmap, SR_FILEOPS_READ, SR_RATE_TYPE_EVENT, file_rec.max_rate, file_rec.rate_action, file_rec.action.log_target, file_rec.action.email_id, file_rec.action.phone_id, file_rec.action.skip_rulenum);
 			break;
 			}
 		case CONFIG_CAN_RULE: {
@@ -199,7 +618,7 @@ SR_BOOL read_config_file (void)
 				return SR_FALSE;
 			}
 			sr_cls_canid_add_rule(can_rec.msg_id, process, "*", can_rec.rulenum);
-			sr_cls_rule_add(SR_CAN_RULES, can_rec.rulenum, can_rec.action.actions_bitmap, 0, can_rec.max_rate, can_rec.rate_action, can_rec.action.log_target, can_rec.action.email_id, can_rec.action.phone_id, can_rec.action.skip_rulenum);
+			sr_cls_rule_add(SR_CAN_RULES, can_rec.rulenum, can_rec.action.actions_bitmap, 0, SR_RATE_TYPE_EVENT, can_rec.max_rate, can_rec.rate_action, can_rec.action.log_target, can_rec.action.email_id, can_rec.action.phone_id, can_rec.action.skip_rulenum);
 			break;
 			}
 		case CONFIG_PHONE_ENTRY: {
@@ -342,8 +761,10 @@ SR_BOOL config_ut(void)
 	struct sr_log_entry			log_rec = {0};
 #endif
 
+#ifdef SR_STAT_ANALYSIS_DEBUG
 	signal(10, handler);
 	signal(12, handler);
+#endif
 
 #if 0
 	sr_stat_learn_rule_ut();

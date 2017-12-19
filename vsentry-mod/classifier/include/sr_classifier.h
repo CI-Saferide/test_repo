@@ -30,6 +30,7 @@ struct sr_rl_t{ // rate limit tracking
 	SR_ATOMIC count;   	// lapsed counter since last timestamp
 	SR_U32 timestamp; 	// timestamp of last counter clear (jiffies?)
 	SR_U8  exceed_action;   // What to do upon exceeding the limit
+	sr_rate_type_t rate_type; // Rate byte: events or bytes.
 };
 
 struct cls_rule_action_t{
@@ -46,10 +47,10 @@ struct cls_rule_action_t{
 
 // Rate Limits related functions
 void sr_cls_rl_init(struct sr_rl_t *rl);
-enum cls_actions sr_cls_rl_check(struct sr_rl_t *rl, SR_U32 timestamp);
-void sr_cls_rule_add(SR_32 rule_type, SR_U16 rulenum, SR_U16 actions, SR_8 file_ops, SR_U32 rl_max_rate, SR_U16 rl_exceed_action, SR_U16 log_target, SR_U16 email_id, SR_U16 phone_id, SR_U16 skip_rulenum);
+enum cls_actions sr_cls_rl_check(struct sr_rl_t *rl, SR_U32 timestamp, SR_U32 size);
+void sr_cls_rule_add(SR_32 rule_type, SR_U16 rulenum, SR_U16 actions, SR_8 file_ops, sr_rate_type_t rate_type, SR_U32 rl_max_rate, SR_U16 rl_exceed_action, SR_U16 log_target, SR_U16 email_id, SR_U16 phone_id, SR_U16 skip_rulenum);
 void sr_cls_rule_del(SR_32 rule_type, SR_U16 rulenum);
-enum cls_actions sr_cls_network_rule_match(SR_U16 rulenum);
+enum cls_actions sr_cls_network_rule_match(SR_U16 rulenum, SR_U32 size);
 enum cls_actions sr_cls_file_rule_match(SR_8 fileop, SR_U16 rulenum);
 enum cls_actions sr_cls_can_rule_match(SR_U16 rulenum);
 SR_8 sr_cls_rules_msg_dispatch(struct sr_cls_rules_msg *msg);

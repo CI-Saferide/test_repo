@@ -49,8 +49,9 @@ unsigned int sr_netfilter_hook_fn(void *priv,
 		struct tcphdr *tcp_header;
 		struct udphdr *udp_header;
 
-		con.con_id.saddr.v4addr = ntohl(ip_header->daddr);
-		if (con.con_id.saddr.v4addr == INADDR_BROADCAST) {
+		con.con_id.saddr.v4addr = ntohl(ip_header->saddr);
+		con.con_id.daddr.v4addr = ntohl(ip_header->daddr);
+		if (con.con_id.daddr.v4addr == INADDR_BROADCAST) {
 			// Hnalde broadcast
 #ifdef SR_STAT_ANALYSIS_DEBUG
 			non_uc ++;
@@ -60,7 +61,7 @@ unsigned int sr_netfilter_hook_fn(void *priv,
 #endif
 			return NF_ACCEPT;
 		}
-		if (IN_MULTICAST(con.con_id.saddr.v4addr)) {
+		if (IN_MULTICAST(con.con_id.daddr.v4addr)) {
 			// Hnalde Multicast
 #ifdef SR_STAT_ANALYSIS_DEBUG
 			non_uc ++;
@@ -73,21 +74,20 @@ unsigned int sr_netfilter_hook_fn(void *priv,
 
 		if (!ip_header->daddr || !ip_header->saddr)
 			return NF_ACCEPT;
-		con.con_id.daddr.v4addr = ntohl(ip_header->saddr);
 		con.con_id.ip_proto = ip_header->protocol;
 		if (ip_header->protocol == IPPROTO_TCP) { 
 			tcp_header = (struct tcphdr *)skb_transport_header(skb);
 			if (!tcp_header->dest || !tcp_header->source)
 				return NF_ACCEPT;
-			con.con_id.sport = ntohs(tcp_header->dest);
-			con.con_id.dport = ntohs(tcp_header->source);
+			con.con_id.dport = ntohs(tcp_header->dest);
+			con.con_id.sport = ntohs(tcp_header->source);
 			con.rx_bytes = ntohs(ip_header->tot_len) - ip_header->ihl * 4 - tcp_header->doff * 4;
 		} else {
 			udp_header = (struct udphdr *)skb_transport_header(skb);
 			if (!udp_header->dest || !udp_header->source)
 				return NF_ACCEPT;
-			con.con_id.sport = ntohs(udp_header->dest);
-			con.con_id.dport = ntohs(udp_header->source);
+			con.con_id.dport = ntohs(udp_header->dest);
+			con.con_id.sport = ntohs(udp_header->source);
 			con.rx_bytes = ntohs(udp_header->len) - UDP_HLEN;
 		}
 		con.rx_msgs = 1;

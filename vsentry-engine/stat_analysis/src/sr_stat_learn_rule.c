@@ -5,9 +5,17 @@
 #include "sr_stat_analysis_common.h"
 #include "sr_stat_analysis.h"
 #include "sr_stat_process_connection.h"
+#include "sr_cls_network_control.h"
+#include "sr_cls_rules_control.h"
 #include "sr_sal_common.h"
+#include "sr_actions_common.h"
+#include "sr_cls_port_control.h"
+#include "sal_linux.h"
 
 #define HASH_SIZE 500
+#define START_RULE_NUM 300
+
+static SR_U16 rule_number = START_RULE_NUM;
 
 static struct sr_gen_hash *learn_rule_hash;
 
@@ -15,6 +23,7 @@ typedef struct learn_rule_item  {
 	char exec[SR_MAX_PATH_SIZE];
 	sr_stat_con_stats_t counters;
 	SR_BOOL is_updated;
+	SR_U16 rule_num;
 } learn_rule_item_t;
 
 static SR_32 learn_rule_comp(void *data_in_hash, void *comp_val)
@@ -33,7 +42,7 @@ static void learn_rule_print(void *data_in_hash)
 {
 	learn_rule_item_t *learn_rule_item = (learn_rule_item_t *)data_in_hash;
 
-	CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,"Learn rule : updated:%d  %s RX p:%d b:%d TX p:%d b:%d", 
+	CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,"Learn rule#%d : updated:%d  %s RX p:%d b:%d TX p:%d b:%d",  learn_rule_item->rule_num,
 		learn_rule_item->is_updated, learn_rule_item->exec, learn_rule_item->counters.rx_msgs, learn_rule_item->counters.rx_bytes,
 		learn_rule_item->counters.tx_msgs, learn_rule_item->counters.tx_bytes);
 }
@@ -76,7 +85,7 @@ void sr_stat_learn_rule_hash_uninit(void)
 
 SR_32 sr_stat_learn_rule_hash_update(char *exec, sr_stat_con_stats_t *con_stats)
 {
-        learn_rule_item_t *learn_rule_item;
+	learn_rule_item_t *learn_rule_item;
 	SR_32 rc;
 
 	/* If the file exists add the rule to the file. */
@@ -89,15 +98,32 @@ SR_32 sr_stat_learn_rule_hash_update(char *exec, sr_stat_con_stats_t *con_stats)
 		strncpy(learn_rule_item->exec, exec, SR_MAX_PATH_SIZE);
 		learn_rule_item->counters = *con_stats;
 		learn_rule_item->is_updated = SR_TRUE;
+		learn_rule_item->rule_num = rule_number;
+		// rule for TX and rule for RX
+		rule_number += 2;
 		/* Add the process */
 		if ((rc = sr_gen_hash_insert(learn_rule_hash, (void *)exec, learn_rule_item)) != SR_SUCCESS) {
 			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,"%s: sr_gen_hash_insert failed\n", __FUNCTION__);
 			return SR_ERROR;
-		}
-		
+		}	
 	} else {
-		learn_rule_item->counters = *con_stats;
-		learn_rule_item->is_updated = SR_TRUE;
+		/* Update only bigger counters */
+		if (con_stats->rx_msgs > learn_rule_item->counters.rx_msgs) {
+			learn_rule_item->counters.rx_msgs = con_stats->rx_msgs;
+			learn_rule_item->is_updated = SR_TRUE;
+		}
+		if (con_stats->rx_bytes > learn_rule_item->counters.rx_bytes) {
+			learn_rule_item->counters.rx_bytes = con_stats->rx_bytes;
+			learn_rule_item->is_updated = SR_TRUE;
+		}
+		if (con_stats->tx_msgs > learn_rule_item->counters.tx_msgs) {
+			learn_rule_item->counters.tx_msgs = con_stats->tx_msgs;
+			learn_rule_item->is_updated = SR_TRUE;
+		}
+		if (con_stats->tx_bytes > learn_rule_item->counters.tx_bytes) {
+			learn_rule_item->counters.tx_bytes = con_stats->tx_bytes;
+			learn_rule_item->is_updated = SR_TRUE;
+		}
 	}
 
 	return SR_SUCCESS;
@@ -124,10 +150,27 @@ void sr_learn_rule_connection_hash_print(void)
 	sr_gen_hash_print(learn_rule_hash);
 }
 
-static SR_32 sr_stat_learn_rule_update_rule(char *exec, sr_stat_con_stats_t *counters)
+static SR_32 sr_stat_learn_rule_update_rule(char *exec, SR_U16 rule_num, sr_stat_con_stats_t *counters)
 {
-	CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,"UPDATE rule ---- %s RX p:%d b:%d TX p:%d b:%d", 
-		exec, counters->rx_msgs, counters->rx_bytes, counters->tx_msgs, counters->tx_bytes);
+	SR_U16 actions = SR_CLS_ACTION_RATE, rl_exceed_action = SR_CLS_ACTION_DROP;
+	SR_U32 address = sal_get_ip_for_interface(SR_MAIN_INTERFACE);
+
+	/* Currently supports only UDP, TODO, support TCP, ANY protocl for port match */
+	CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,"UPDATE rule#%d %s RX p:%d b:%d", 
+		rule_num, exec, counters->rx_msgs, counters->rx_bytes);
+	sr_cls_add_ipv4(0, exec, "*", 0, rule_num, SR_DIR_SRC);
+	sr_cls_add_ipv4(address, exec, "*", 0xffffffff, rule_num, SR_DIR_DST);
+	sr_cls_port_add_rule(0, exec, "*", rule_num, SR_DIR_SRC, 17); 
+	sr_cls_port_add_rule(0, exec, "*", rule_num, SR_DIR_DST, 17); 
+	sr_cls_rule_add(SR_NET_RULES, rule_num, actions, SR_FILEOPS_READ, SR_RATE_TYPE_BYTES, counters->rx_bytes, rl_exceed_action, 0, 0, 0, 0);
+
+	CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,"UPDATE rule#%d %s TX p:%d b:%d", 
+		rule_num + 1, exec, counters->tx_msgs, counters->tx_bytes);
+	sr_cls_add_ipv4(address, exec, "*", 0xffffffff, rule_num + 1, SR_DIR_SRC);
+	sr_cls_add_ipv4(0, exec, "*", 0, rule_num + 1, SR_DIR_DST);
+	sr_cls_port_add_rule(0, exec, "*", rule_num + 1, SR_DIR_SRC, 17); 
+	sr_cls_port_add_rule(0, exec, "*", rule_num + 1, SR_DIR_DST, 17); 
+	sr_cls_rule_add(SR_NET_RULES, rule_num + 1, actions, SR_FILEOPS_READ, SR_RATE_TYPE_BYTES, counters->tx_bytes, rl_exceed_action, 0, 0, 0, 0);
 
 	return SR_SUCCESS;
 } 
@@ -140,7 +183,7 @@ static SR_32 update_process_rule_cb(void *hash_data, void *data)
 		return SR_SUCCESS;
 	learn_rule_item->is_updated = SR_FALSE;
 
-	return sr_stat_learn_rule_update_rule(learn_rule_item->exec, &(learn_rule_item->counters));
+	return sr_stat_learn_rule_update_rule(learn_rule_item->exec, learn_rule_item->rule_num, &(learn_rule_item->counters));
 }
 
 SR_32 sr_stat_learn_rule_create_process_rules(void)
