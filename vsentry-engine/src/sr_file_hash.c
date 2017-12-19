@@ -60,9 +60,9 @@ void file_print(void *data_in_hash)
 	}
 }
 
-static SR_32 create_key(void *data)
+static SR_U32 create_key(void *data)
 {
-	int i, len, sum = 0;
+	SR_U32 i, len, sum = 0;
 	char *name = (char *)data;
 
 	if (!data)

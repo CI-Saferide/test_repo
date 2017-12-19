@@ -4,7 +4,7 @@
 #include <sr_sal_common.h>
 
 typedef struct hash_ops {
-        SR_32 (*create_key)(void *key);
+        SR_U32 (*create_key)(void *key);
         SR_32 (*comp)(void *data_in_hash, void *comp_val);
         void (*free)(void *data_in_hash);
         void (*print)(void *data_in_hash);
