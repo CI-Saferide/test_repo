@@ -47,6 +47,7 @@ SRCS 		:=  main.c \
 				sr_stat_learn_rule.c \
 				sr_stat_analysis.c \
 				sr_info_gather.c \
+				sr_ml_can.c \
 
 # include folders
 INCLUDES 	:=  -I../common/include \
@@ -68,11 +69,12 @@ LIBS		:= -lpthread -lsr_log -lsr_hash
 LIB_PATH 	:= -L$(LIBDIR)
 
 CFLAGS 		+= -MMD -Wall
-CFLAGS += -DCONFIG_STAT_ANALYSIS
-CFLAGS += $(if $(SR_STAT_ANALYSIS_DEBUG),-DSR_STAT_ANALYSIS_DEBUG)
-CFLAGS += $(if $(SR_CAN_DEBUG_PRINT),-DSR_CAN_DEBUG_PRINT)
+CFLAGS 		+= -DCONFIG_STAT_ANALYSIS
+CFLAGS 		+= -DCONFIG_CAN_ML
+CFLAGS 		+= $(if $(SR_STAT_ANALYSIS_DEBUG),-DSR_STAT_ANALYSIS_DEBUG)
+CFLAGS 		+= $(if $(SR_CAN_DEBUG_PRINT),-DSR_CAN_DEBUG_PRINT)
 
-#CFLAGS 		+= -DSR_CAN_DEBUG_PRINT
+CFLAGS 		+= -DSR_CAN_DEBUG_PRINT
 #CFLAGS 		+= -DSR_RB_DEBUG -DSR_MSG_DEBUG
 CFLAGS 		+= -D__linux
 #CFLAGS 		+= -DUNIT_TEST

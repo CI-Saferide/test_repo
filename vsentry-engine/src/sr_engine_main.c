@@ -24,6 +24,12 @@
 #ifdef CONFIG_STAT_ANALYSIS
 #include "sr_stat_analysis.h"
 #endif
+#ifdef CONFIG_CAN_ML
+#include "sr_ml_can.h"
+#endif /* CONFIG_CAN_ML */
+
+//#include "sr_conio.h"
+
 extern struct canTaskParams can_args;
 extern struct config_params_t config_params;
 
@@ -91,9 +97,6 @@ SR_32 sr_engine_start(void)
 	FILE *f;
 	
 	read_vsentry_config("sr_config", config_params);
-	
-	CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,
-		"vsentry engine started\n");
 
 	ret = sr_log_init("[vsentry]", 0);
 	if (ret != SR_SUCCESS){
@@ -101,6 +104,8 @@ SR_32 sr_engine_start(void)
 			"failed to init sr_log\n");
 		return SR_ERROR;
 	}
+	CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,
+		"vsentry engine started\n");
 
 #ifdef CONFIG_STAT_ANALYSIS
 	ret = sr_stat_analysis_init();
@@ -110,6 +115,15 @@ SR_32 sr_engine_start(void)
 		return SR_ERROR;
 	}
 #endif
+
+#ifdef CONFIG_CAN_ML
+	ret = sr_ml_can_hash_init();
+	if (ret != SR_SUCCESS){
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+						"failed to init can_ml hash table\n");
+		return SR_ERROR;
+	}
+#endif /* CONFIG_CAN_ML */
 
 	ret = sr_info_gather_init();
 	if (ret != SR_SUCCESS){
@@ -192,11 +206,14 @@ SR_32 sr_engine_start(void)
 #ifdef SR_CAN_DEBUG_PRINT			
 			case 'p':
 				can_args.can_print = !can_args.can_print;
-					printf("\ncan-bus %s prints - enable|disable\n", can_args.can_interface);
-				break;	
+					printf("\rcan-bus %s prints - %s\n", can_args.can_interface, (can_args.can_print)? "enabled" : "disabled");
+				break;
 #endif						
 			case 'v':
 					printf("\navailable space under %s is: %lld bytes\n",disk,sal_gets_space(disk));
+				break;
+			case 'd':
+					sr_ml_can_print_hash();
 				break;				
 		}
 	}
@@ -205,7 +222,10 @@ SR_32 sr_engine_start(void)
 	sr_stop_task(SR_ENGINE_TASK);
 #ifdef CONFIG_STAT_ANALYSIS
 	sr_stat_analysis_uninit();
-#endif
+#endif /* CONFIG_STAT_ANALYSIS */
+#ifdef CONFIG_CAN_ML
+	sr_ml_can_hash_deinit();
+#endif /* CONFIG_CAN_ML */
 	sr_info_gather_uninit();
 	sr_file_hash_deinit();
 

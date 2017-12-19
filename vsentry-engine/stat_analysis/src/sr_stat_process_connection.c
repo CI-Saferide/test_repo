@@ -121,7 +121,7 @@ static void process_connection_print(void *data_in_hash)
 		"%d connections in process:%d", count, process_connection_item->process_id);
 }
 
-static SR_32 process_connection_create_key(void *data)
+static SR_U32 process_connection_create_key(void *data)
 {
 	// TODO : Ctreate a better hash ket creation function.
 	return (SR_U32)(long int)data;

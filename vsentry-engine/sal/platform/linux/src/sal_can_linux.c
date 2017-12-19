@@ -1,7 +1,9 @@
 #include "sr_can_collector.h"
 #include "sal_linux.h"
 #include "sr_sal_common.h"
-
+#ifdef CONFIG_CAN_ML
+#include "sr_ml_can.h"
+#endif /* CONFIG_CAN_ML */
 extern struct canTaskParams can_args;
 
 const int timestamp_on = 1;
@@ -82,21 +84,8 @@ SR_32 can_collector_task(void *data)
                 else if (cmsg->cmsg_type == SO_RXQ_OVFL)
                     memcpy(&dropcnt, CMSG_DATA(cmsg), sizeof(__u32));
             }
-            
-            
-            
-/*
-            time_t t = time(NULL);
-            struct tm tm = *localtime(&t);
-
-            sprintf(buffer_TS,"(%d-%d-%d %d:%d:%d.%06ld)",tm.tm_year + 1900,tm.tm_mon + 1,tm.tm_mday,
-                tm.tm_hour, tm.tm_min, tm.tm_sec, tv.tv_usec); //Buffer for timestamp
-*/
-
 					struct tm tm;
 					char timestring[25];
-
-					//printf("=========tm = *localtime(&tv.tv_sec);\n");
 					tm = *localtime(&tv.tv_sec);
 					strftime(timestring, 24, "%Y-%m-%d %H:%M:%S", &tm);
 					sprintf(buffer_TS,"(%s.%06ld) ", timestring, tv.tv_usec);
@@ -112,7 +101,12 @@ SR_32 can_collector_task(void *data)
                 sal_sprintf(buffer_PAYLOAD," %02x",frame.data[i]); //buffer for payload
                 strcat(buffer,buffer_PAYLOAD);
             }            
-            strcat(buffer,"\n");                 
+            strcat(buffer,"\n");
+#ifdef CONFIG_CAN_ML
+            /* send raw can to ml */
+			ml_can_get_raw_data((tv.tv_sec * 1000000) + tv.tv_usec, (SR_U32)frame.can_id);
+#endif /* CONFIG_CAN_ML */
+
             log_it(buffer);
 #ifdef SR_CAN_DEBUG_PRINT
             if(can_args.can_print)

@@ -39,7 +39,7 @@ static void learn_rule_print(void *data_in_hash)
 }
 #endif
 
-static SR_32 learn_rule_create_key(void *data)
+static SR_U32 learn_rule_create_key(void *data)
 {
 	learn_rule_item_t *learn_rule_item = (learn_rule_item_t *)data;
 	SR_U32 num = 0, len, i;

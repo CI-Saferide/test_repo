@@ -39,7 +39,7 @@ struct sr_gen_hash *sr_gen_hash_new(int size, hash_ops_t hash_ops)
 
 SR_32 sr_gen_hash_insert(struct sr_gen_hash *hash, void *key, void *data)
 {
-	int ind;
+	SR_U32 ind;
 	hash_item_t **iter;
 
 	GET_HASH_IND(hash, ind, key, SR_ERROR);
@@ -65,7 +65,7 @@ SR_32 sr_gen_hash_insert(struct sr_gen_hash *hash, void *key, void *data)
 
 SR_32 sr_gen_hash_delete(struct sr_gen_hash *hash, void *key)
 {
-	int ind;
+	SR_U32 ind;
 	hash_item_t **iter, *help;
 
 	GET_HASH_IND(hash, ind, key, SR_ERROR);
