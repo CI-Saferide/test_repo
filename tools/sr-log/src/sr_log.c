@@ -26,27 +26,35 @@ cef_str cef_postfix = ".log";
 void log_cef_msg(cef_str str)
 {
     SR_8 file1[FILENAME_MAX], file2[FILENAME_MAX];
-	SR_U32 i;
+
 
     if(!log_fp){
-		
+		memset(file1, 0, FILENAME_MAX);	
 		sprintf(file1,"%s%s%d%s",config_params.CEF_log_path,cef_prefix,0,cef_postfix);
 		log_fp = fopen(file1,"a");
     }
 
     if(log_fp){
 		if( ftell(log_fp) > MB){
+			
 			fclose(log_fp);
             log_fp = 0;
+            
+            SR_32 i_log = 0;
 
-            for(i = (config_params.cef_file_cycling-1);i >= 0;i--){
-				sprintf(file1,"%s%s%d%s",config_params.CEF_log_path,cef_prefix,i,cef_postfix );
-				sprintf(file2,"%s%s%d%s",config_params.CEF_log_path,cef_prefix, i+1,cef_postfix );
+            for(i_log = (config_params.cef_file_cycling-1);i_log >= 0;i_log--){
+				
+				memset(file1, 0, FILENAME_MAX);
+				memset(file2, 0, FILENAME_MAX);
+				sprintf(file1,"%s%s%d%s",config_params.CEF_log_path,cef_prefix,i_log,cef_postfix );
+				sprintf(file2,"%s%s%d%s",config_params.CEF_log_path,cef_prefix, i_log+1,cef_postfix );
 				sal_rename(file1, file2);
 			}
-
+			
+			memset(file1, 0, FILENAME_MAX);
             sprintf(file1,"%s%s%d%s",config_params.CEF_log_path,cef_prefix,0,cef_postfix);
             log_fp = fopen(file1, "a");
+            
         }
 
         fputs(str,log_fp);
