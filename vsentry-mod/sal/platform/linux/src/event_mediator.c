@@ -865,7 +865,7 @@ SR_32 vsentry_socket_sendmsg(struct socket *sock,struct msghdr *msg,SR_32 size)
 				disp.can_info.payload[i] = cfd->data[i];
 			}
 			/* TODO: remove it!!! this is only for the demo purposes */
-                        if (disp.can_info.payload[1] == 0 && 
+                        if (cfd->len > 7 && disp.can_info.payload[1] == 0 && 
                         	disp.can_info.payload[2] == 0 && 
                         	disp.can_info.payload[3] == 0 && 
                         	disp.can_info.payload[4] == 0 && 
