@@ -29,6 +29,9 @@
 #include "file_rule.h"
 #include "can_rule.h"
 #include "sr_db.h"
+#include "jsmn.h"
+#include <sysrepo.h>
+#include "sr_static_policy.h"
 
 #ifdef SR_STAT_ANALYSIS_DEBUG
 static void handler(int signal)
@@ -43,6 +46,7 @@ static void handler(int signal)
 			//sr_learn_rule_connection_hash_print();
 			//sr_control_util(SR_CONTROL_GARBAGE_COLLECTION);
 			//sr_control_util(SR_CONTROL_PRINT_CONNECTIONS);
+			sr_static_policy_db_ready();
 			break;
 		default:
 			break;
