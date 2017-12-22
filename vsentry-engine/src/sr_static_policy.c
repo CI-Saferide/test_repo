@@ -673,8 +673,9 @@ static void handle_system_policies(sr_session_ctx_t *sess, char *buf, jsmntok_t 
 static void handle_can_policies(sr_session_ctx_t *sess, char *buf, jsmntok_t *t, int *i)
 {
 	SR_32 c_i, c_n, o_n, o_i, id;
+	char str_param[MAX_STR_SIZE], str_value[MAX_STR_SIZE];
 
-        (*i)++;
+ 	(*i)++;
 
 	c_n = t[*i].size;
 
@@ -683,43 +684,50 @@ static void handle_can_policies(sr_session_ctx_t *sess, char *buf, jsmntok_t *t,
 		o_n = t[*i].size;
 		id = -1;
 		for (o_i = 0; o_i < o_n; o_i++) {
-        		(*i)++;
-                        if (jsoneq(buf, &t[*i], "id") == 0) {
-                                (*i)++;
-                                continue;
+			(*i)++;
+			if (jsoneq(buf, &t[*i], "id") == 0) {
+				(*i)++;
+				continue;
 			}
-                        if (jsoneq(buf, &t[*i], JSON_PRIORITY) == 0) {
-                                (*i)++;
+			if (jsoneq(buf, &t[*i], JSON_PRIORITY) == 0) {
+				(*i)++;
 				create_rule(sess, buf, &t[*i], CAN_PREFIX, &id);
-                                continue;
-                        }
+				continue;
+			}
 			if (id == -1) {
 				/* We have a problem here, the rule can not be processed */
 				CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, "Rule is correpted\n");
-                                (*i)++;
-                                continue;
+				(*i)++;
+				continue;
 			}
-                        if (jsoneq(buf, &t[*i], JSON_ACTION) == 0) {
-                                (*i)++;
+			if (jsoneq(buf, &t[*i], JSON_ACTION) == 0) {
+				(*i)++;
 				handle_string_from_rule(sess, buf, &t[*i], CAN_PREFIX, id, "action");
-                                continue;
+				continue;
 			}
-                        if (jsoneq(buf, &t[*i], JSON_CAN_MESSAGE_ID) == 0) {
-                                (*i)++;
-				handle_string_from_tuple(sess, buf, &t[*i], CAN_PREFIX, id, 0, "msg_id");
-                                continue;
+			if (jsoneq(buf, &t[*i], JSON_CAN_MESSAGE_ID) == 0) {
+				(*i)++;
+				json_get_string(&t[*i], buf, str_value);
+				if (!strcmp(str_value, "-1"))
+					strcpy(str_value, "any");
+				sprintf(str_param, "%snum='%d']/%s[id='%d']/%s", CAN_PREFIX, id, TUPLE, 0, "msg_id");
+				if (um_set_value(sess, str_param, str_value) != SR_SUCCESS) {
+					CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, "ERROR after um_set_value str_param:%s: str_value:%s: \n", str_param, str_value);
+					continue;
+				}
+				continue;
 			}
-                        if (jsoneq(buf, &t[*i], JSON_PROGRAM) == 0) {
-                                (*i)++;
+			if (jsoneq(buf, &t[*i], JSON_PROGRAM) == 0) {
+				(*i)++;
 				handle_string_from_tuple(sess, buf, &t[*i], CAN_PREFIX, id, 0, "program");
-                                continue;
+				continue;
 			}
-                        if (jsoneq(buf, &t[*i], JSON_USER) == 0) {
-                                (*i)++;
+			if (jsoneq(buf, &t[*i], JSON_USER) == 0) {
+				(*i)++;
 				handle_string_from_tuple(sess, buf, &t[*i], CAN_PREFIX, id, 0, "user");
-                                continue;
+				continue;
 			}
-        		(*i)++;
+			(*i)++;
 		} 
 	}
 }
