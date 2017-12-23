@@ -374,7 +374,7 @@ static int check_log_events(int fd)
 			if (strcmp(event->name, basename(candump_file_name_tgz)) == 0)
 				continue;
 
-			if (event->mask == IN_CLOSE_WRITE) {
+			if (event->mask == IN_CLOSE_WRITE || event->mask == IN_MOVED_TO) {
 				uploader_debug("event name %s\n", event->name);
 				snprintf(candump_file_name, CANDUMP_FILE_NAME_LEN, "%s%s",
 					config_params.log_path, event->name);
@@ -445,6 +445,7 @@ static void* monitor_file(void *data)
 		return NULL;
 	}
 
+	uploader_debug("watching %s\n", config_params.CEF_log_path);
 	/* start watching events on the log files */
 	wd = inotify_add_watch(fd, config_params.CEF_log_path, notify_mask);
 	if (wd == -1) {
@@ -452,6 +453,7 @@ static void* monitor_file(void *data)
 		return NULL;
 	}
 
+	uploader_debug("watching %s\n", config_params.log_path);
 	wd = inotify_add_watch(fd, config_params.log_path, notify_mask);
 	if (wd == -1) {
 		uploader_err("Cannot watch %s: %s\n", config_params.log_path, strerror(errno));
