@@ -47,12 +47,14 @@ SRCS 		:=  main.c \
 				sr_config_parse.c \
 				sr_stat_process_connection.c \
 				sr_stat_learn_rule.c \
+				sr_static_policy.c \
 				sr_stat_analysis.c \
 				sr_info_gather.c \
 				sr_db_ip.c \
 				sr_db_file.c \
 				sr_db_can.c \
 				sr_ml_can.c \
+                log_uploader.c
 
 
 # include folders
@@ -73,7 +75,7 @@ OBJS		:=  $(addprefix $(OBJDIR)/,$(SRCS:.c=.o))
 DEPS		:=  $(OBJS:.o=.d)
 
 # libs to link with
-LIBS		:= -lpthread -lsr_log -lsr_hash -ljsmn -lsentry -lsysrepo
+LIBS		:= -lpthread -lsr_log -lsr_hash -ljsmn -lsentry -lsysrepo -lcurl -larchive -lcrypto
 # and where to search them 
 LIB_PATH 	:= -L$(LIBDIR) -L../vsentry-lib/lib
 
@@ -97,12 +99,11 @@ endif
 all: $(TARGET)
 
 build_ver:
-$(TARGET): $(OBJDIR) $(OBJS) libsr_log libsr_hash libjsmn
 	@echo "static const char SR_GIT_BUILD[] = \"`git log --pretty=format:'%h' -n 1`\"; " > $(TOP_DIR)/../common/include/sr_build_ver.h
 
-$(TARGET): build_ver $(OBJDIR) $(OBJS) libsr_log libsr_hash
+$(TARGET): build_ver $(OBJDIR) $(OBJS) libsr_log libsr_hash libjsmn
 	@echo "linking $(notdir $@)"
-	$(CC) $(LDFLAGS) $(OBJS) -o $(BINDIR)/$(TARGET) $(LIB_PATH) $(LIBS)
+	@$(CC) $(LDFLAGS) $(OBJS) -o $(BINDIR)/$(TARGET) $(LIB_PATH) $(LIBS)
 
 $(OBJDIR):
 	@mkdir -p $(OBJDIR)
