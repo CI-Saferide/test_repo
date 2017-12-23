@@ -29,6 +29,9 @@
 #include "file_rule.h"
 #include "can_rule.h"
 #include "sr_db.h"
+#include "jsmn.h"
+#include <sysrepo.h>
+#include "sr_static_policy.h"
 
 #ifdef SR_STAT_ANALYSIS_DEBUG
 static void handler(int signal)
@@ -43,6 +46,7 @@ static void handler(int signal)
 			//sr_learn_rule_connection_hash_print();
 			//sr_control_util(SR_CONTROL_GARBAGE_COLLECTION);
 			//sr_control_util(SR_CONTROL_PRINT_CONNECTIONS);
+			sr_static_policy_db_ready();
 			break;
 		default:
 			break;
@@ -71,18 +75,21 @@ static SR_32 handle_engine_start_stop(char *engine)
 
 static SR_32 handle_action(action_t *action)
 {
-	action_t *db_action;
-
-	db_action = sr_db_action_get_action(action->action_name);
-	if (!db_action) {
-		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, "handle action  action:%s not found", action->action_name);
+	if (sr_db_action_update_action(action) != SR_SUCCESS) {
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, "handle action failed action:%s", action->action_name);
 		return SR_ERROR;
 	}
-	db_action->action = action->action;
-	db_action->log_facility = action->log_facility;
-	db_action->log_severity = action->log_severity;
-	db_action->black_list = action->black_list;
-	db_action->terminate = action->terminate;
+
+	return SR_SUCCESS;
+}
+
+/* XXX TODO - currently on;ly delete action from DB, shoudl also handle rules with this action */
+static SR_32 delete_action(action_t *action)
+{
+	if (sr_db_action_delete_action(action) != SR_SUCCESS) {
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, "handle action failed action:%s", action->action_name);
+		return SR_ERROR;
+	}
 
 	return SR_SUCCESS;
 }
@@ -404,7 +411,16 @@ void sr_config_vsentry_db_cb(int type, int op, void *entry)
 {
 	switch (type) {
 		case SENTRY_ENTRY_ACTION:
-			handle_action((action_t *)entry);
+			action_display((action_t *)entry);
+			switch (op) {
+				case SENTRY_OP_CREATE:
+				case SENTRY_OP_MODIFY:
+					handle_action((action_t *)entry);
+					break;
+				case SENTRY_OP_DELETE:
+					delete_action((action_t *)entry);
+					break;
+			}
 			break;
 		case SENTRY_ENTRY_IP:
 			ip_rule_display((ip_rule_t *)entry);

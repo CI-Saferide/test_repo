@@ -22,6 +22,7 @@
 #include "sr_can_collector.h"
 #include "sr_config_parse.h"
 #include "sr_info_gather.h"
+#include "sr_static_policy.h"
 #ifdef CONFIG_STAT_ANALYSIS
 #include "sr_stat_analysis.h"
 #endif
@@ -179,6 +180,8 @@ SR_32 sr_engine_start(void)
 	sr_db_init();
 	sentry_init(sr_config_vsentry_db_cb);
 
+	sr_static_policy_db_mng_start();
+
 #ifdef UNIT_TEST
 	config_ut();
 #endif
@@ -231,6 +234,7 @@ SR_32 sr_engine_start(void)
 		}
 	}
 
+	sr_static_policy_db_mng_stop();
 	sr_stop_task(SR_CAN_COLLECT_TASK);
 	sr_stop_task(SR_ENGINE_TASK);
 	sentry_stop();
