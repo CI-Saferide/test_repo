@@ -30,7 +30,7 @@
 #ifdef CONFIG_CAN_ML
 #include "sr_ml_can.h"
 #endif /* CONFIG_CAN_ML */
-
+#include "sr_log_uploader.h"
 //#include "sr_conio.h"
 
 extern struct canTaskParams can_args;
@@ -107,6 +107,12 @@ SR_32 sr_engine_start(void)
 	}
 	CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,
 		"vsentry engine started\n");
+
+	ret = sr_log_uploader_init();
+	if (ret != SR_SUCCESS){
+		printf("failed to init_log_uploader\n");
+		return SR_ERROR;
+	}
 
 #ifdef CONFIG_STAT_ANALYSIS
 	ret = sr_stat_analysis_init();
@@ -237,6 +243,7 @@ SR_32 sr_engine_start(void)
 	sr_info_gather_uninit();
 	sr_file_hash_deinit();
 	sr_db_deinit();
+	sr_log_uploader_deinit();
 
 	return 0;
 }
