@@ -23,7 +23,7 @@ void can_ml_print(void *data_in_hash)
 {
 	ml_can_item_t* ptr = (ml_can_item_t*)data_in_hash;
 	CEF_log_event(SR_CEF_CID_SYSTEM, "info", SEVERITY_LOW,
-					"can_ml msg_id: 0x%8x    delta = %ld    noise = %ld", ptr->msg_id, ptr->delta, ptr->noise);
+					"can_ml msg_id: 0x%x, sigma_plus = %d, sigma_minus = %d, K = %d, h = %d", ptr->msg_id, ptr->calc_sigma_plus, ptr->calc_sigma_plus, ptr->K, ptr->h);
 }
 
 static SR_U32 can_ml_create_key(void *data)
@@ -73,6 +73,7 @@ static SR_32 update_can_item(SR_U64 ts, SR_U32 msg_id)
 	ml_can_item_t 	*can_ml_item;
 	SR_32 			rc;
 	SR_U64			tmp_delta;
+	SR_32			tmp_calc;
 
 	/* If the file exists add the rule to the file. */
 	if (!(can_ml_item = sr_gen_hash_get(can_ml_hash, (void *)(long)msg_id))) {
@@ -82,6 +83,9 @@ static SR_32 update_can_item(SR_U64 ts, SR_U32 msg_id)
 					return SR_ERROR;
 			can_ml_item->msg_id = msg_id;
 			can_ml_item->ts = ts;
+			can_ml_item->calc_sigma_plus = 0;
+			can_ml_item->calc_sigma_minus = 0;
+			can_ml_item->K = (50000 / 2); /* just for the test */
 			if ((rc = sr_gen_hash_insert(can_ml_hash, (void *)(long)msg_id , can_ml_item)) != SR_SUCCESS) {
 					CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 									"failed to insert mid to can_ml table");
@@ -91,12 +95,23 @@ static SR_32 update_can_item(SR_U64 ts, SR_U32 msg_id)
 		/* mid exist, update the data */
 		if (can_ml_item->delta != 0) {
 			//TOOD: handle wrap arround cases;
-			tmp_delta = ts - can_ml_item->ts;
-			can_ml_item->noise = tmp_delta - can_ml_item->delta;
+			tmp_delta = (ts - can_ml_item->ts);
+			can_ml_item->d_delta = tmp_delta - can_ml_item->delta;
+			//printf ("BEFORE (%x): calc_sigma_plus =%d, calc_sigma_minus = %d, d_delta = %d, K = %d\n", msg_id, can_ml_item->calc_sigma_plus, can_ml_item->calc_sigma_minus, can_ml_item->d_delta, can_ml_item->K);
+			tmp_calc = can_ml_item->calc_sigma_plus + can_ml_item->d_delta - can_ml_item->K;
+			can_ml_item->calc_sigma_plus = (tmp_calc > 0)? tmp_calc : 0;
+			tmp_calc = can_ml_item->calc_sigma_minus - can_ml_item->d_delta - can_ml_item->K;
+			can_ml_item->calc_sigma_minus = (tmp_calc > 0)? tmp_calc : 0;
+			//printf ("AFTER(%x): calc_sigma_plus =%d, calc_sigma_minus = %d\n", msg_id, can_ml_item->calc_sigma_plus, can_ml_item->calc_sigma_minus);
+			if ((msg_id == 0x5a0) || (msg_id == 0x1a0) || (msg_id == 0x280)) {
+				printf ("mid = %x 	delta = %10d      calc_sigma_plus = %10d 	  calc_sigma_minus=%10d\n", msg_id, tmp_delta, can_ml_item->calc_sigma_plus, can_ml_item->calc_sigma_minus);
+			}
 			can_ml_item->delta = tmp_delta;
+			can_ml_item->ts = ts;
 		} else {
 			/* this os the second packet, no delta yet */
 			can_ml_item->delta = ts - can_ml_item->ts;
+			can_ml_item->ts = ts;
 		}
 	}
 

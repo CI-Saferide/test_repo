@@ -9,6 +9,9 @@ extern struct canTaskParams can_args;
 const int timestamp_on = 1;
 static __u32 dropcnt;
 
+static SR_U64 	ts_start = 0;
+static SR_U64	current_ts;
+
 SR_32 can_collector_task(void *data)
 {
     fd_set rdfs;
@@ -104,7 +107,12 @@ SR_32 can_collector_task(void *data)
             strcat(buffer,"\n");
 #ifdef CONFIG_CAN_ML
             /* send raw can to ml */
-			ml_can_get_raw_data((tv.tv_sec * 1000000) + tv.tv_usec, (SR_U32)frame.can_id);
+            if (!ts_start)
+				ts_start = (tv.tv_sec * 1000000) + tv.tv_usec;
+			else
+				current_ts = ((tv.tv_sec * 1000000) + tv.tv_usec) - ts_start;
+			ml_can_get_raw_data(current_ts, (SR_U32)frame.can_id);
+			
 #endif /* CONFIG_CAN_ML */
 
             log_it(buffer);
