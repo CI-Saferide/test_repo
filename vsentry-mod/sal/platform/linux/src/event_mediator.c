@@ -1014,7 +1014,7 @@ int vsentry_socket_recvmsg(struct socket *sock,struct msghdr *msg,int size,int f
 				disp.tuple_info.size = size;
 
 #ifdef CONFIG_STAT_ANALYSIS
-			sr_stat_port_update(disp.tuple_info.sport, current->tgid);
+			sr_stat_port_update(disp.tuple_info.dport, current->tgid);
 #endif
 				
 #ifdef DEBUG_EVENT_MEDIATOR
