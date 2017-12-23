@@ -112,7 +112,7 @@ SR_U32 sr_connection_transmit(void)
 		con.con_id.sport = LRU_transmit->objects[i]->con_id.sport;
 		con.con_id.dport = LRU_transmit->objects[i]->con_id.dport;
 		if (con.con_id.ip_proto == IPPROTO_UDP && !LRU_transmit->objects[i]->pid) {
-			con.pid = sr_stat_port_find_pid(con.con_id.sport); 
+			con.pid = sr_stat_port_find_pid(con.con_id.dport); 
 		} else
 			con.pid = LRU_transmit->objects[i]->pid;
 		con.rx_msgs= LRU_transmit->objects[i]->rx_msgs;
