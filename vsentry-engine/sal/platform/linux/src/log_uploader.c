@@ -228,7 +228,7 @@ void write_archive(const char *outname, char *filename)
 	int len;
 	int fd;
 
-	uploader_debug("outname %s, filename %s\n", outname, filename);
+	//uploader_debug("outname %s, filename %s\n", outname, filename);
 	a = archive_write_new();
 	archive_write_add_filter_gzip(a);
 	archive_write_set_format_pax_restricted(a); // Note 1
@@ -310,6 +310,8 @@ static void can_log_upload(void)
         /* Check for errors */
         if(res != CURLE_OK)
         	uploader_err("curl_easy_perform failed: %s\n", curl_easy_strerror(res));
+
+        curl_easy_cleanup(curl);
     }
 
     fclose(fd);
@@ -375,7 +377,7 @@ static int check_log_events(int fd)
 				continue;
 
 			if (event->mask == IN_CLOSE_WRITE || event->mask == IN_MOVED_TO) {
-				uploader_debug("event name %s\n", event->name);
+				//uploader_debug("event name %s\n", event->name);
 				snprintf(candump_file_name, CANDUMP_FILE_NAME_LEN, "%s%s",
 					config_params.log_path, event->name);
 				sem_post(&sem_can_log_uploader);
