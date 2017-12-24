@@ -20,9 +20,18 @@
 #include <sysrepo.h>
 #include "sr_static_policy.h"
 #include "sr_tasks.h"
+#include <curl/curl.h>
 
-static SR_BOOL is_db_file_ready = SR_FALSE;
 static SR_BOOL is_run_db_mng = SR_TRUE;
+static SR_U32 static_policy_version;
+
+#define STATIC_POLICY_URL "http://saferide-policies.eu-west-1.elasticbeanstalk.com/policy/static/sync"
+#define STATIC_POLICY_VERSION_FILE "/etc/sentry/static_policy_version.txt"
+#define STATIC_POLICY_IP_VERSION "X-IP-VERSION"
+#define STATIC_POLICY_SYSTEM_VERSION "X-SYSTEM-VERSION"
+#define STATIC_POLICY_CAN_VERSION "X-CAN-VERSION"
+#define STATIC_POLICY_ACTIONS_VERSION "X-ACTIONS-VERSION"
+#define STATIC_POLICY_VERSION_SIZE 100
 
 #define ACT_PREFIX   "/saferide:config/sr_actions/list_actions["
 #define CAN_PREFIX   "/saferide:config/net/can/rule["
@@ -133,6 +142,33 @@ static param_t default_ip_tuple_params[] = {
 static param_t default_rule_params[] = {
     {"action", SR_STRING_T, "allow"},
 };
+
+static SR_32 set_version_to_file(SR_U32 version)
+{
+	FILE *fout;
+
+	if (!(fout = fopen(STATIC_POLICY_VERSION_FILE, "w"))) {
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+						"failed openning file :%s", STATIC_POLICY_VERSION_FILE);
+                return SR_ERROR;
+	}
+	fprintf(fout, "%u", version);
+	fflush(fout);
+
+	return SR_SUCCESS;
+}
+
+static SR_32 get_vesrion_from_file(SR_U32 *version)
+{
+	FILE *fin;
+
+	if (!(fin = fopen(STATIC_POLICY_VERSION_FILE, "r")))
+                return set_version_to_file(0);
+	if (fscanf(fin, "%u", version) < 1)
+                return set_version_to_file(0);
+
+	return SR_SUCCESS;
+}
 
 static int set_default_params(sr_session_ctx_t *sess, char *xpath, param_t* ptr,
     int size)
@@ -348,7 +384,7 @@ static SR_32 um_set_value(sr_session_ctx_t *sess, char *str_param, char *str_val
 
 static SR_32 json_get_int(jsmntok_t *t,  char *buf)
 {
-	char token[1000];
+	char token[512];
 
 	memcpy(token, buf + t->start, t->end - t->start);
 	token[t->end - t->start] = 0;
@@ -418,7 +454,7 @@ static void handle_actions(sr_session_ctx_t *sess, char *buf, jsmntok_t *t, int 
                 	(*i)++;
 		}
 		sprintf(str_param, "/%s/%s/%s[name='%s']", DB_PREFIX, SR_ACTIONS, LIST_ACTIONS, action_name);
-#ifndef JSON_DEBUG
+#ifdef JSON_DEBUG
 		printf(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> Action#%s drop:%d str_param:%s:\n", action_name, is_drop, str_param);
 #endif
 
@@ -732,27 +768,11 @@ static void handle_can_policies(sr_session_ctx_t *sess, char *buf, jsmntok_t *t,
 	}
 }
 
-#define MAX_FILE_BUFFER 50000
-#define JSON_DB_FILE_NAME "/home/arik/json/file.json"
-
-static SR_32 parse_json(sr_session_ctx_t *sess)
+static SR_32 parse_json(sr_session_ctx_t *sess, char *buf, SR_U32 *version)
 {
-	char buf[MAX_FILE_BUFFER];
-	SR_32 i, r, n, rc;
+	SR_32 i, r, rc;
 	jsmn_parser p;
 	jsmntok_t *t = NULL;
-	FILE *fin;
-
-	if (!(fin = fopen(JSON_DB_FILE_NAME, "r"))) {
-		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, "Failed to open JSON file :%s\n", JSON_DB_FILE_NAME);
-		return SR_ERROR;
-	}
-	
-	n = fread(buf, 1, MAX_FILE_BUFFER, fin); 
-	if (n <= 0) {
-		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, "Failed to read JSON file\n");
-		return SR_ERROR;
-	}
 
 	jsmn_init(&p);
 	r = jsmn_parse(&p, buf, strlen(buf), NULL, 0);
@@ -760,9 +780,7 @@ static SR_32 parse_json(sr_session_ctx_t *sess)
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, "Failed to parse JSON: %d\n", r);
 		return SR_ERROR;
 	}
-#ifndef JSON_DEBUG
 	printf("Json parse r:%d \n", r);
-#endif
 	if (!(t = malloc(r * sizeof(jsmntok_t)))) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, "Failed alloc memory:\n");
 		return SR_ERROR;
@@ -777,6 +795,7 @@ static SR_32 parse_json(sr_session_ctx_t *sess)
         for (i = 0; i < r ; i++) {
 		if (jsoneq(buf, &t[i], ACTION_VER) == 0) {
 			i++;
+			*version = (SR_U32)json_get_int(&t[i], buf);
 		}
 		if (jsoneq(buf, &t[i], IP_VER) == 0) {
 			i++;
@@ -822,6 +841,110 @@ out:
 	return rc;
 }
 
+struct curl_fetch_st {
+    char *payload;
+    size_t size;
+};
+
+size_t curl_callback (void *contents, size_t size, size_t nmemb, void *userp)
+{
+    size_t realsize = size * nmemb;                             /* calculate buffer size */
+    struct curl_fetch_st *p = (struct curl_fetch_st *) userp;   /* cast pointer to fetch struct */
+
+    /* expand buffer */
+    p->payload = (char *) realloc(p->payload, p->size + realsize + 1);
+
+    /* check buffer */
+    if (p->payload == NULL) {
+      /* this isn't good */
+      fprintf(stderr, "ERROR: Failed to expand buffer in curl_callback");
+      free(p->payload);
+      return -1;
+    }
+
+    /* copy contents to buffer */
+    memcpy(&(p->payload[p->size]), contents, realsize);
+
+    /* set new buffer size */
+    p->size += realsize;
+
+    /* ensure null termination */
+    p->payload[p->size] = 0;
+
+    /* return size */
+    return realsize;
+}
+
+static SR_32 get_server_db(sr_session_ctx_t *sess)
+{
+	CURL *curl;
+	CURLcode res;
+	struct curl_slist *chunk = NULL;
+	char ip_version[STATIC_POLICY_VERSION_SIZE], system_version[STATIC_POLICY_VERSION_SIZE], can_version[STATIC_POLICY_VERSION_SIZE], action_version[STATIC_POLICY_VERSION_SIZE];
+	SR_U32 new_version = 0;
+  
+	struct curl_fetch_st curl_fetch = {};
+	struct curl_fetch_st *fetch = &curl_fetch;
+  
+	curl_global_init(CURL_GLOBAL_DEFAULT);
+
+	curl = curl_easy_init();
+	if (!curl) {
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,  "curl_easy_init:");
+		return SR_ERROR; 
+	}
+
+	curl_easy_setopt(curl, CURLOPT_URL, STATIC_POLICY_URL);
+	
+	fetch->payload = NULL;
+	fetch->size = 0;
+
+	sprintf(ip_version, "%s: %u", STATIC_POLICY_IP_VERSION, static_policy_version);
+	sprintf(system_version, "%s: %u", STATIC_POLICY_SYSTEM_VERSION, static_policy_version);
+	sprintf(can_version, "%s: %u", STATIC_POLICY_CAN_VERSION, static_policy_version);
+	sprintf(action_version, "%s: %u", STATIC_POLICY_ACTIONS_VERSION, static_policy_version);
+	curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
+	chunk = curl_slist_append(chunk, "X-VIN: 1234512345abcdef");
+	curl_easy_setopt(curl, CURLOPT_HTTPHEADER, chunk);
+	chunk = curl_slist_append(chunk, ip_version);
+	curl_easy_setopt(curl, CURLOPT_HTTPHEADER, chunk);
+	chunk = curl_slist_append(chunk, can_version);
+	curl_easy_setopt(curl, CURLOPT_HTTPHEADER, chunk);
+	chunk = curl_slist_append(chunk, system_version);
+	curl_easy_setopt(curl, CURLOPT_HTTPHEADER, chunk);
+	chunk = curl_slist_append(chunk, action_version);
+	curl_easy_setopt(curl, CURLOPT_HTTPHEADER, chunk);
+	
+	curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, curl_callback);
+	curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void *) fetch);
+    
+	/* Perform the request, res will get the return code */
+	if ((res = curl_easy_perform(curl)) != CURLE_OK) {
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,  "curl_easy_perform failed: %s", curl_easy_strerror(res));
+		goto out;
+	}
+
+#ifdef SR_STATIC_POLICY_DEBUG
+	printf("Fetched payload :%s: \n", fetch->payload);
+#endif
+	if (!fetch->payload)	
+		goto out;
+	parse_json(sess, fetch->payload, &new_version);
+	if (new_version != static_policy_version) {
+		static_policy_version = new_version;
+		if (set_version_to_file(new_version) != SR_SUCCESS) {
+			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,  "FAILED setting new version");
+		}
+	}
+
+	curl_easy_cleanup(curl);
+	curl_global_cleanup();
+out:
+	if (fetch->payload)
+		free(fetch->payload);
+	return SR_SUCCESS;
+}
+
 SR_32 database_management(void *p)
 {
 	sr_conn_ctx_t *conn = NULL;
@@ -848,10 +971,10 @@ SR_32 database_management(void *p)
     	}
 
 	while (is_run_db_mng) { 
-		while (!is_db_file_ready)
-			sleep(1);
-		is_db_file_ready = SR_FALSE;
-		parse_json(sess);
+		sleep(1);
+		if (get_server_db(sess) != SR_SUCCESS) {
+			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,  "get_server_db_failed:");
+		}
 	}
 
 cleanup:
@@ -864,22 +987,18 @@ cleanup:
 	return SR_ERROR;
 }
 
-SR_32 sr_static_policy_db_ready(void)
-{
-	is_db_file_ready = SR_TRUE;
-
-	return SR_SUCCESS;
-}
-
 SR_32 sr_static_policy_db_mng_start(void)
 {
-	is_run_db_mng = SR_TRUE;
+	if (get_vesrion_from_file(&static_policy_version) != SR_SUCCESS) {
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, "failed to get version");
+		return SR_ERROR;
+	}
 
+	is_run_db_mng = SR_TRUE;
 	if (sr_start_task(SR_STATIC_POLICY, database_management) != SR_SUCCESS) {
-                CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-                                                                "failed to start static policy");
-                return SR_ERROR;
-        }
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, "failed to start static policy");
+		return SR_ERROR;
+	}
 
 	return SR_SUCCESS;
 }
