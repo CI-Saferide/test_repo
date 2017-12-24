@@ -21,6 +21,7 @@
 #include "sr_static_policy.h"
 #include "sr_tasks.h"
 #include <curl/curl.h>
+#include <ctype.h>
 
 static SR_BOOL is_run_db_mng = SR_TRUE;
 static SR_U32 static_policy_version;
@@ -50,7 +51,7 @@ static SR_U32 static_policy_version;
 #define JSON_PROTOCOL "protocol"
 #define JSON_SRCPORT "srcPort"
 #define JSON_DSTPORT "dstPort"
-#define JSON_PROGRAM "exceProgram"
+#define JSON_PROGRAM "execProgram"
 #define JSON_USER "user"
 #define ACTION_VER "actionVersion"
 #define IP_VER "ipVersion"
@@ -74,7 +75,8 @@ static SR_U32 static_policy_version;
 #define JSON_ACTION_LOG "log"
 #define JSON_FILE_NAME "fileName"
 #define JSON_PERMISSIONS "permissions"
-#define JSON_CAN_MESSAGE_ID "messageId"
+#define JSON_CAN_MESSAGE_ID "msgId"
+#define JSON_CAN_DIRECTION "canDirection"
 #define MAX_STR_SIZE 512
 #define ARRAYSIZE(arr)  (sizeof(arr) / sizeof(arr[0]))
 
@@ -706,6 +708,12 @@ static void handle_system_policies(sr_session_ctx_t *sess, char *buf, jsmntok_t 
 	}
 }
 
+static void convert_tolower(char *s)
+{
+	for (; *s; s++)
+		*s = (char)tolower(*s);
+}
+
 static void handle_can_policies(sr_session_ctx_t *sess, char *buf, jsmntok_t *t, int *i)
 {
 	SR_32 c_i, c_n, o_n, o_i, id;
@@ -747,6 +755,17 @@ static void handle_can_policies(sr_session_ctx_t *sess, char *buf, jsmntok_t *t,
 				if (!strcmp(str_value, "-1"))
 					strcpy(str_value, "any");
 				sprintf(str_param, "%snum='%d']/%s[id='%d']/%s", CAN_PREFIX, id, TUPLE, 0, "msg_id");
+				if (um_set_value(sess, str_param, str_value) != SR_SUCCESS) {
+					CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, "ERROR after um_set_value str_param:%s: str_value:%s: \n", str_param, str_value);
+					continue;
+				}
+				continue;
+			}
+			if (jsoneq(buf, &t[*i], JSON_CAN_DIRECTION) == 0) {
+				(*i)++;
+				json_get_string(&t[*i], buf, str_value);
+				convert_tolower(str_value);
+				sprintf(str_param, "%snum='%d']/%s[id='%d']/%s", CAN_PREFIX, id, TUPLE, 0, "direction");
 				if (um_set_value(sess, str_param, str_value) != SR_SUCCESS) {
 					CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, "ERROR after um_set_value str_param:%s: str_value:%s: \n", str_param, str_value);
 					continue;
