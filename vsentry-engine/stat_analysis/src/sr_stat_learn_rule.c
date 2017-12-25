@@ -11,9 +11,12 @@
 #include "sr_actions_common.h"
 #include "sr_cls_port_control.h"
 #include "sal_linux.h"
+#include <curl/curl.h>
 
 #define HASH_SIZE 500
 #define START_RULE_NUM 300
+
+#define SR_DYNAMIC_POLICY_URL "http://saferide-policies.eu-west-1.elasticbeanstalk.com/policy/ip/dynamic"
 
 static SR_U16 rule_number = START_RULE_NUM;
 
@@ -83,15 +86,51 @@ void sr_stat_learn_rule_hash_uninit(void)
         sr_gen_hash_destroy(learn_rule_hash);
 }
 
-static void notify_learning(char *exec, sr_stat_con_stats_t *stats)
+static SR_32 notify_learning(char *exec, sr_stat_con_stats_t *stats)
 {
-	CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,
-		"LLLLLLLLLLLLLLLLLLLLLLERAN RULE -- exec:%s rxp:%d rxb:%d txp:%d txb:%d", exec,
-			stats->rx_msgs, stats->rx_bytes, stats->tx_msgs, stats->tx_bytes);
+	CURL *curl;
+	CURLcode res;
+	struct curl_slist *chunk = NULL;
+	char buf[SR_MAX_PATH_SIZE + 200];
+	SR_32 rc = SR_SUCCESS;
+
+	sprintf(buf, "PROCESS:%s|TX:%llu|RX:%llu;", exec, stats->tx_bytes, stats->rx_bytes);
+	CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW, "LLLLLLLLLLLLLLLLLLLLLLERAN RULE -- :%s", buf);
 #ifdef SR_STAT_ANALYSIS_DEBUG
-	printf("LLLLLLLLLLLLLLLLLLLLLLERAN RULE -- exec:%s rxp:%d rxb:%d txp:%d txb:%d\n", exec,
-		stats->rx_msgs, stats->rx_bytes, stats->tx_msgs, stats->tx_bytes);
+	printf("LLLLLLLLLLLLLLLLLLLLLLERAN RULE -- :%s\n", buf);
 #endif
+
+	if (!(curl = curl_easy_init())) {
+		CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW, "curl_easy_init failed");
+		rc =  SR_ERROR;
+		goto out;
+	}
+	/* First set the URL that is about to receive our POST. This URL can
+	just as well be a https:// URL if that is what should receive the
+	data. */
+	curl_easy_setopt(curl, CURLOPT_URL, SR_DYNAMIC_POLICY_URL);
+	/* Now specify the POST data */
+	curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
+	chunk = curl_slist_append(chunk, "application/x-www-form-urlencoded");
+	curl_easy_setopt(curl, CURLOPT_HTTPHEADER, chunk);
+	chunk = curl_slist_append(chunk, "X-VIN: 1234512345abcdef");
+	curl_easy_setopt(curl, CURLOPT_HTTPHEADER, chunk);
+
+	curl_easy_setopt(curl, CURLOPT_POSTFIELDS, buf);
+
+	/* Perform the request, res will get the return code */
+	res = curl_easy_perform(curl);
+	/* Check for errors */
+	if(res != CURLE_OK)
+		fprintf(stderr, "curl_easy_perform() failed: %s\n",
+            		  curl_easy_strerror(res));
+
+	curl_easy_cleanup(curl);
+
+out:
+	curl_global_cleanup();
+
+	return rc;
 }
 
 SR_32 sr_stat_learn_rule_hash_update(char *exec, sr_stat_con_stats_t *con_stats, SR_BOOL is_updated)
