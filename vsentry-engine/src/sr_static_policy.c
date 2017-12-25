@@ -27,7 +27,7 @@ static SR_BOOL is_run_db_mng = SR_TRUE;
 static SR_U32 static_policy_version;
 
 #define STATIC_POLICY_URL "http://saferide-policies.eu-west-1.elasticbeanstalk.com/policy/static/sync"
-#define STATIC_POLICY_VERSION_FILE "/etc/sentry/static_policy_version.txt"
+#define STATIC_POLICY_VERSION_FILE "/etc/sentry/version.txt"
 #define STATIC_POLICY_IP_VERSION "X-IP-VERSION"
 #define STATIC_POLICY_SYSTEM_VERSION "X-SYSTEM-VERSION"
 #define STATIC_POLICY_CAN_VERSION "X-CAN-VERSION"
