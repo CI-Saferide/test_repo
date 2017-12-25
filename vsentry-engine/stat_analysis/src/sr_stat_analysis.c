@@ -120,5 +120,10 @@ void sr_stat_analysis_learn_mode_set(sr_stat_mode_t new_stat_mode)
 {
 	if (new_stat_mode == SR_STAT_MODE_PROTECT && stat_mode == SR_STAT_MODE_LEARN)
 		st_stats_process_connection_protect();
+	if (new_stat_mode == SR_STAT_MODE_LEARN && stat_mode == SR_STAT_MODE_PROTECT) {
+		// Go back to learn mode, cleaning up the learn rules table.
+		stat_mode = SR_STAT_MODE_HALT;
+		st_stats_process_connection_learn();
+	}
 	stat_mode = new_stat_mode;
 } 

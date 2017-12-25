@@ -83,7 +83,18 @@ void sr_stat_learn_rule_hash_uninit(void)
         sr_gen_hash_destroy(learn_rule_hash);
 }
 
-SR_32 sr_stat_learn_rule_hash_update(char *exec, sr_stat_con_stats_t *con_stats)
+static void notify_learning(char *exec, sr_stat_con_stats_t *stats)
+{
+	CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,
+		"LLLLLLLLLLLLLLLLLLLLLLERAN RULE -- exec:%s rxp:%d rxb:%d txp:%d txb:%d", exec,
+			stats->rx_msgs, stats->rx_bytes, stats->tx_msgs, stats->tx_bytes);
+#ifdef SR_STAT_ANALYSIS_DEBUG
+	printf("LLLLLLLLLLLLLLLLLLLLLLERAN RULE -- exec:%s rxp:%d rxb:%d txp:%d txb:%d\n", exec,
+		stats->rx_msgs, stats->rx_bytes, stats->tx_msgs, stats->tx_bytes);
+#endif
+}
+
+SR_32 sr_stat_learn_rule_hash_update(char *exec, sr_stat_con_stats_t *con_stats, SR_BOOL is_updated)
 {
 	learn_rule_item_t *learn_rule_item;
 	SR_32 rc;
@@ -106,8 +117,11 @@ SR_32 sr_stat_learn_rule_hash_update(char *exec, sr_stat_con_stats_t *con_stats)
 			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,"%s: sr_gen_hash_insert failed\n", __FUNCTION__);
 			return SR_ERROR;
 		}	
+		notify_learning(exec, con_stats);
 	} else {
 		/* Update only bigger counters */
+		if (!is_updated)
+			return SR_SUCCESS;
 		if (con_stats->rx_msgs > learn_rule_item->counters.rx_msgs) {
 			learn_rule_item->counters.rx_msgs = con_stats->rx_msgs;
 			learn_rule_item->is_updated = SR_TRUE;
@@ -124,6 +138,7 @@ SR_32 sr_stat_learn_rule_hash_update(char *exec, sr_stat_con_stats_t *con_stats)
 			learn_rule_item->counters.tx_bytes = con_stats->tx_bytes;
 			learn_rule_item->is_updated = SR_TRUE;
 		}
+		notify_learning(exec, con_stats);
 	}
 
 	return SR_SUCCESS;
@@ -145,6 +160,11 @@ SR_32 sr_stat_learn_rule_hash_delete(char *exec)
 	return rc;
 }
 
+SR_32 sr_stat_learn_rule_delete_all(void)
+{
+	return sr_gen_hash_delete_all(learn_rule_hash);
+}
+
 void sr_learn_rule_connection_hash_print(void)
 {
 	sr_gen_hash_print(learn_rule_hash);
@@ -156,16 +176,16 @@ static SR_32 sr_stat_learn_rule_update_rule(char *exec, SR_U16 rule_num, sr_stat
 	SR_U32 address = sal_get_ip_for_interface(SR_MAIN_INTERFACE);
 
 	/* Currently supports only UDP, TODO, support TCP, ANY protocl for port match */
-	CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,"UPDATE rule#%d %s RX p:%d b:%d", 
-		rule_num, exec, counters->rx_msgs, counters->rx_bytes);
+	CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,"UPDATE rule#%d %s RX dst:%x p:%d b:%d", 
+		rule_num, exec, address, counters->rx_msgs, counters->rx_bytes);
 	sr_cls_add_ipv4(0, exec, "*", 0, rule_num, SR_DIR_SRC);
 	sr_cls_add_ipv4(address, exec, "*", 0xffffffff, rule_num, SR_DIR_DST);
 	sr_cls_port_add_rule(0, exec, "*", rule_num, SR_DIR_SRC, 17); 
 	sr_cls_port_add_rule(0, exec, "*", rule_num, SR_DIR_DST, 17); 
 	sr_cls_rule_add(SR_NET_RULES, rule_num, actions, SR_FILEOPS_READ, SR_RATE_TYPE_BYTES, counters->rx_bytes, rl_exceed_action, 0, 0, 0, 0);
 
-	CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,"UPDATE rule#%d %s TX p:%d b:%d", 
-		rule_num + 1, exec, counters->tx_msgs, counters->tx_bytes);
+	CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,"UPDATE rule#%d %s TX src:%x p:%d b:%d", 
+		rule_num + 1, exec, address, counters->tx_msgs, counters->tx_bytes);
 	sr_cls_add_ipv4(address, exec, "*", 0xffffffff, rule_num + 1, SR_DIR_SRC);
 	sr_cls_add_ipv4(0, exec, "*", 0, rule_num + 1, SR_DIR_DST);
 	sr_cls_port_add_rule(0, exec, "*", rule_num + 1, SR_DIR_SRC, 17); 
@@ -189,6 +209,40 @@ static SR_32 update_process_rule_cb(void *hash_data, void *data)
 SR_32 sr_stat_learn_rule_create_process_rules(void)
 {
 	sr_stat_learn_rule_hash_exec_for_all(update_process_rule_cb);
+
+	return SR_SUCCESS;
+}
+
+static SR_32 delete_process_rule_cb(void *hash_data, void *data)
+{
+	learn_rule_item_t *learn_rule_item = (learn_rule_item_t *)hash_data;
+	SR_U32 address = sal_get_ip_for_interface(SR_MAIN_INTERFACE);
+
+	CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,"DELETE rule#%d %s ", learn_rule_item->rule_num, learn_rule_item->exec);
+	sr_cls_del_ipv4(0, learn_rule_item->exec, "*", 0, learn_rule_item->rule_num, SR_DIR_SRC);
+	sr_cls_del_ipv4(address, learn_rule_item->exec, "*", 0xffffffff, learn_rule_item->rule_num, SR_DIR_DST);
+	sr_cls_port_del_rule(0, learn_rule_item->exec, "*", learn_rule_item->rule_num, SR_DIR_SRC, 17); 
+	sr_cls_port_del_rule(0, learn_rule_item->exec, "*", learn_rule_item->rule_num, SR_DIR_DST, 17); 
+	sr_cls_rule_del(SR_NET_RULES, learn_rule_item->rule_num);
+
+	CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,"DELETE rule#%d %s ", learn_rule_item->rule_num + 1, learn_rule_item->exec);
+	sr_cls_del_ipv4(address, learn_rule_item->exec, "*", 0xffffffff, learn_rule_item->rule_num + 1, SR_DIR_SRC);
+	sr_cls_del_ipv4(0, learn_rule_item->exec, "*", 0, learn_rule_item->rule_num + 1, SR_DIR_DST);
+	sr_cls_port_del_rule(0, learn_rule_item->exec, "*", learn_rule_item->rule_num + 1, SR_DIR_SRC, 17); 
+	sr_cls_port_del_rule(0, learn_rule_item->exec, "*", learn_rule_item->rule_num + 1, SR_DIR_DST, 17); 
+	sr_cls_rule_del(SR_NET_RULES, learn_rule_item->rule_num + 1);
+
+	return SR_SUCCESS;
+}
+
+SR_32 sr_stat_learn_rule_cleanup_process_rules(void)
+{
+	sr_stat_learn_rule_hash_exec_for_all(delete_process_rule_cb);
+
+	// Reset rule number 
+	rule_number = START_RULE_NUM;
+
+	sr_stat_learn_rule_delete_all();
 
 	return SR_SUCCESS;
 }
