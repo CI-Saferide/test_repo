@@ -990,10 +990,10 @@ SR_32 database_management(void *p)
     	}
 
 	while (is_run_db_mng) { 
-		sleep(1);
 		if (get_server_db(sess) != SR_SUCCESS) {
 			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,  "get_server_db_failed:");
 		}
+		sleep(1);
 	}
 
 cleanup:
