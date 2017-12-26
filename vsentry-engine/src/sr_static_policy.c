@@ -158,7 +158,8 @@ static SR_32 set_version_to_file(SR_U32 version)
                 return SR_ERROR;
 	}
 	fprintf(fout, "%u", version);
-	fflush(fout);
+
+	fclose(fout);
 
 	return SR_SUCCESS;
 }
@@ -170,7 +171,9 @@ static SR_32 get_vesrion_from_file(SR_U32 *version)
 	if (!(fin = fopen(STATIC_POLICY_VERSION_FILE, "r")))
                 return set_version_to_file(0);
 	if (fscanf(fin, "%u", version) < 1)
-                return set_version_to_file(0);
+                set_version_to_file(0);
+
+	fclose(fin);
 
 	return SR_SUCCESS;
 }
@@ -880,6 +883,7 @@ static SR_32 get_server_db(sr_session_ctx_t *sess)
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,  "can open cpu into file:%s", STATIC_POLICY_CPU_FILE);
 		return SR_ERROR; 
 	}
+	fclose(cpu_fd);
 
 	SR_CURL_INIT(STATIC_POLICY_URL);
 	
