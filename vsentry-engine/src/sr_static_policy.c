@@ -168,6 +168,7 @@ static SR_32 get_vesrion_from_file(SR_U32 *version)
 {
 	FILE *fin;
 
+	*version = 0;
 	if (!(fin = fopen(STATIC_POLICY_VERSION_FILE, "r")))
                 return set_version_to_file(0);
 	if (fscanf(fin, "%u", version) < 1)
