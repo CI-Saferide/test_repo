@@ -884,7 +884,6 @@ static SR_32 get_server_db(sr_session_ctx_t *sess)
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,  "can open cpu into file:%s", STATIC_POLICY_CPU_FILE);
 		return SR_ERROR; 
 	}
-	fclose(cpu_fd);
 
 	SR_CURL_INIT(STATIC_POLICY_URL);
 	
@@ -936,6 +935,8 @@ out:
 	SR_CURL_DEINIT(curl);
 	if (fetch->payload)
 		free(fetch->payload);
+	fclose(cpu_fd);
+
 	return SR_SUCCESS;
 }
 
