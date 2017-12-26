@@ -3,6 +3,8 @@
 
 #include "sr_stat_analysis.h"
 
+#define LEARN_RULE_TOLLERANCE 1.05
+
 SR_32 sr_stat_learn_rule_hash_init(void);
 void sr_stat_learn_rule_hash_uninit(void);
 SR_32 sr_stat_learn_rule_hash_update(char *exec, sr_stat_con_stats_t *con_stats, SR_BOOL is_updated);

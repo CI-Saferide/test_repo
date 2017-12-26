@@ -13,6 +13,7 @@
 #include "sal_linux.h"
 #include <curl/curl.h>
 #include "sr_config_parse.h"
+#include "sr_stat_learn_rule.h"
 
 #define HASH_SIZE 500
 #define START_RULE_NUM 300
@@ -99,9 +100,6 @@ static SR_32 notify_learning(char *exec, sr_stat_con_stats_t *stats)
 
 	sprintf(buf, "PROCESS:%s|TX:%llu|RX:%llu;", exec, stats->tx_bytes, stats->rx_bytes);
 	CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW, "LLLLLLLLLLLLLLLLLLLLLLERAN RULE -- :%s", buf);
-#ifdef SR_STAT_ANALYSIS_DEBUG
-	printf("LLLLLLLLLLLLLLLLLLLLLLERAN RULE -- :%s\n", buf);
-#endif
 
 	if (!(curl = curl_easy_init())) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW, "curl_easy_init failed");
@@ -141,6 +139,7 @@ SR_32 sr_stat_learn_rule_hash_update(char *exec, sr_stat_con_stats_t *con_stats,
 {
 	learn_rule_item_t *learn_rule_item;
 	SR_32 rc;
+	SR_BOOL is_notify = SR_FALSE;
 
 	/* If the file exists add the rule to the file. */
         if (!(learn_rule_item = sr_gen_hash_get(learn_rule_hash, exec))) {
@@ -153,11 +152,15 @@ SR_32 sr_stat_learn_rule_hash_update(char *exec, sr_stat_con_stats_t *con_stats,
 		learn_rule_item->counters = *con_stats;
 		learn_rule_item->is_updated = SR_TRUE;
 		learn_rule_item->rule_num = rule_number;
+#ifdef SR_STAT_ANALYSIS_DEBUG
+		CEF_log_event(SR_CEF_CID_SYSTEM, "info", SEVERITY_LOW,"------------------III Learned rule was inserted:%d exec:%s: txb:%d rxb:%d", rule_number, exec, 
+			con_stats->tx_bytes, con_stats->rx_bytes);
+#endif
 		// rule for TX and rule for RX
 		rule_number += 2;
 		/* Add the process */
 		if ((rc = sr_gen_hash_insert(learn_rule_hash, (void *)exec, learn_rule_item)) != SR_SUCCESS) {
-			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,"%s: sr_gen_hash_insert failed\n", __FUNCTION__);
+			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,"%s: sr_gen_hash_insert failed", __FUNCTION__);
 			return SR_ERROR;
 		}	
 		notify_learning(exec, con_stats);
@@ -165,23 +168,35 @@ SR_32 sr_stat_learn_rule_hash_update(char *exec, sr_stat_con_stats_t *con_stats,
 		/* Update only bigger counters */
 		if (!is_updated)
 			return SR_SUCCESS;
+		if (sr_stat_analysis_learn_mode_get() != SR_STAT_MODE_LEARN && 
+			(con_stats->rx_msgs > learn_rule_item->counters.rx_msgs * LEARN_RULE_TOLLERANCE ||
+			con_stats->rx_bytes > learn_rule_item->counters.rx_bytes * LEARN_RULE_TOLLERANCE ||
+			con_stats->tx_msgs > learn_rule_item->counters.tx_msgs * LEARN_RULE_TOLLERANCE ||
+			con_stats->tx_bytes > learn_rule_item->counters.tx_bytes * LEARN_RULE_TOLLERANCE)) {
+			return SR_SUCCESS;
+		}
+#ifdef SR_STAT_ANALYSIS_DEBUG
+		CEF_log_event(SR_CEF_CID_SYSTEM, "info", SEVERITY_LOW, "---------------- UUU Learned rule was updated:%d exec:%s: txb:%d rxb:%d", rule_number - 2, exec, con_stats->tx_bytes,
+			con_stats->rx_bytes);
+#endif
 		if (con_stats->rx_msgs > learn_rule_item->counters.rx_msgs) {
 			learn_rule_item->counters.rx_msgs = con_stats->rx_msgs;
-			learn_rule_item->is_updated = SR_TRUE;
+			is_notify = learn_rule_item->is_updated = SR_TRUE;
 		}
 		if (con_stats->rx_bytes > learn_rule_item->counters.rx_bytes) {
 			learn_rule_item->counters.rx_bytes = con_stats->rx_bytes;
-			learn_rule_item->is_updated = SR_TRUE;
+			is_notify = learn_rule_item->is_updated = SR_TRUE;
 		}
 		if (con_stats->tx_msgs > learn_rule_item->counters.tx_msgs) {
 			learn_rule_item->counters.tx_msgs = con_stats->tx_msgs;
-			learn_rule_item->is_updated = SR_TRUE;
+			is_notify = learn_rule_item->is_updated = SR_TRUE;
 		}
 		if (con_stats->tx_bytes > learn_rule_item->counters.tx_bytes) {
 			learn_rule_item->counters.tx_bytes = con_stats->tx_bytes;
-			learn_rule_item->is_updated = SR_TRUE;
+			is_notify = learn_rule_item->is_updated = SR_TRUE;
 		}
-		notify_learning(exec, con_stats);
+		if (is_notify)
+			notify_learning(exec, &(learn_rule_item->counters));
 	}
 
 	return SR_SUCCESS;

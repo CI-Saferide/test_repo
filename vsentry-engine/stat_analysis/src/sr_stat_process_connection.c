@@ -8,7 +8,6 @@
 #include "sr_stat_analysis.h"
 
 #define HASH_SIZE 500
-#define MAX_TOLLERANCE 1.1
 
 static struct sr_gen_hash *process_connection_hash;
 
@@ -376,10 +375,10 @@ static SR_32 finish_transmit(void *hash_data, void *data)
 
 	/* when in protect mode only consider diff with tolerance */
 	if (stat_mode != SR_STAT_MODE_LEARN && 
-		((process_connection_item->max_con_stats.rx_msgs && con_stats.rx_msgs > process_connection_item->max_con_stats.rx_msgs * MAX_TOLLERANCE) ||
-			(process_connection_item->max_con_stats.rx_bytes && con_stats.rx_bytes > process_connection_item->max_con_stats.rx_bytes * MAX_TOLLERANCE) ||
-			(process_connection_item->max_con_stats.tx_msgs && con_stats.tx_msgs > process_connection_item->max_con_stats.tx_msgs * MAX_TOLLERANCE) ||
-			(process_connection_item->max_con_stats.tx_bytes && con_stats.tx_bytes > process_connection_item->max_con_stats.tx_bytes * MAX_TOLLERANCE))) {
+		((process_connection_item->max_con_stats.rx_msgs && con_stats.rx_msgs > process_connection_item->max_con_stats.rx_msgs * LEARN_RULE_TOLLERANCE) ||
+			(process_connection_item->max_con_stats.rx_bytes && con_stats.rx_bytes > process_connection_item->max_con_stats.rx_bytes * LEARN_RULE_TOLLERANCE) ||
+			(process_connection_item->max_con_stats.tx_msgs && con_stats.tx_msgs > process_connection_item->max_con_stats.tx_msgs * LEARN_RULE_TOLLERANCE) ||
+			(process_connection_item->max_con_stats.tx_bytes && con_stats.tx_bytes > process_connection_item->max_con_stats.tx_bytes * LEARN_RULE_TOLLERANCE))) {
 		goto out;
 	}
 	if (con_stats.rx_msgs > process_connection_item->max_con_stats.rx_msgs) {
