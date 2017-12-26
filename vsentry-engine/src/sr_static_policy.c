@@ -22,9 +22,11 @@
 #include "sr_tasks.h"
 #include "sr_curl.h"
 #include <ctype.h>
+#include "sr_config_parse.h"
 
 static SR_BOOL is_run_db_mng = SR_TRUE;
 static SR_U32 static_policy_version;
+extern struct config_params_t config_params;
 
 #define STATIC_POLICY_URL "http://saferide-policies.eu-west-1.elasticbeanstalk.com/policy/static/sync"
 #define STATIC_POLICY_VERSION_FILE "/etc/sentry/version.txt"
@@ -872,6 +874,7 @@ static SR_32 get_server_db(sr_session_ctx_t *sess)
  	struct curl_httppost* post = NULL, *last = NULL; 
 	struct curl_fetch_st curl_fetch = {};
 	struct curl_fetch_st *fetch = &curl_fetch;
+	char post_vin[64];
 
 	if (!(cpu_fd = fopen(STATIC_POLICY_CPU_FILE, "rb"))) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,  "can open cpu into file:%s", STATIC_POLICY_CPU_FILE);
@@ -890,7 +893,8 @@ static SR_32 get_server_db(sr_session_ctx_t *sess)
 	curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
 	curl_formadd(&post, &last, CURLFORM_COPYNAME, "cpu", CURLFORM_FILE, STATIC_POLICY_CPU_FILE, CURLFORM_END);
 	curl_easy_setopt(curl, CURLOPT_HTTPPOST, post);
-	chunk = curl_slist_append(chunk, XVIN);
+	snprintf(post_vin, 64, "X-VIN: %s", config_params.vin);
+	chunk = curl_slist_append(chunk, post_vin);
 	curl_easy_setopt(curl, CURLOPT_HTTPHEADER, chunk);
 	chunk = curl_slist_append(chunk, ip_version);
 	curl_easy_setopt(curl, CURLOPT_HTTPHEADER, chunk);

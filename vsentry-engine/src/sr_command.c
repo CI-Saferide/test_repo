@@ -5,8 +5,10 @@
 #include <ctype.h>
 #include "sr_stat_analysis.h"
 #include "sr_control.h"
+#include "sr_config_parse.h"
 
 static SR_BOOL is_run_cmd  = SR_TRUE;
+extern struct config_params_t config_params;
 
 #define GET_CMD_URL "http://saferide-policies.eu-west-1.elasticbeanstalk.com/commands/sync"
 #define CMD_LERAN "StateLearn"
@@ -36,6 +38,7 @@ static SR_32 handle_command(void)
 	CURL *curl;
 	CURLcode res;
 	struct curl_slist *chunk = NULL;
+	char post_vin[64];
 
 	struct curl_fetch_st curl_fetch;
 	struct curl_fetch_st *fetch = &curl_fetch;
@@ -43,12 +46,13 @@ static SR_32 handle_command(void)
 	SR_CURL_INIT(GET_CMD_URL);
 	curl_easy_setopt(curl, CURLOPT_URL, GET_CMD_URL);
 
-        fetch->payload = (char *) calloc(1, sizeof(fetch->payload));
-        fetch->size = 0;
+	fetch->payload = (char *) calloc(1, sizeof(fetch->payload));
+	fetch->size = 0;
 
 	curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
-        chunk = curl_slist_append(chunk,  XVIN);
-        curl_easy_setopt(curl, CURLOPT_HTTPHEADER, chunk);
+	snprintf(post_vin, 64, "X-VIN: %s", config_params.vin);
+	chunk = curl_slist_append(chunk,  post_vin);
+	curl_easy_setopt(curl, CURLOPT_HTTPHEADER, chunk);
 
 	curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, curl_callback);
 	curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void *) fetch);

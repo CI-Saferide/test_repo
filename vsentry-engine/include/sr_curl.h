@@ -3,8 +3,6 @@
 
 #include <curl/curl.h>
 
-#define XVIN "X-VIN: 1234512345abcdef"
-
 struct curl_fetch_st {
     char *payload;
     size_t size;
