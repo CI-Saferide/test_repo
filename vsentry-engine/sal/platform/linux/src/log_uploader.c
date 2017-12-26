@@ -135,7 +135,7 @@ static int upload_log_file(char* filename, int offset)
 	res = curl_easy_perform(upload_curl_handle);
 
 	if(res != CURLE_OK) {
-		uploader_err("curl_easy_perform failed: %s\n", curl_easy_strerror(res));
+		uploader_err("curl_easy_perform failed: %s (%d)\n", curl_easy_strerror(res), res);
 		goto out;
 	}
 	ret = size;
@@ -309,7 +309,7 @@ static void can_log_upload(void)
         res = curl_easy_perform(curl);
         /* Check for errors */
         if(res != CURLE_OK)
-        	uploader_err("curl_easy_perform failed: %s\n", curl_easy_strerror(res));
+        	uploader_err("curl_easy_perform failed: %s (%d)\n", curl_easy_strerror(res), res);
 
         curl_easy_cleanup(curl);
     }

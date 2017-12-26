@@ -73,32 +73,13 @@ void log_print_cef_msg(CEF_payload *cef)
     time(&timer);
     tm_info = localtime(&timer);
     strftime(buffer, 26, "%Y-%m-%d %H:%M:%S", tm_info);
-	
-	switch (cef->class) {
-	case SR_CEF_CID_FILE:
-		sal_strcpy(cef_class,"File");
-		break;
-    case SR_CEF_CID_NETWORK:
-		sal_strcpy(cef_class,"Network");
-		break;
-    case SR_CEF_CID_CAN:
-		sal_strcpy(cef_class,"CAN");
-		break;
-	case SR_CEF_CID_SYSTEM:
-		sal_strcpy(cef_class,"System");
-		break;
-	default:
-		sal_strcpy(cef_class,"Class N/A");	
-		break;
-	}
-	
 		
-	sprintf(cef_buffer,"%s CEF:%d.%d|%s|%s|%d.%d|%s|%s|%d|%d|%s\n",
+	sprintf(cef_buffer,"%s CEF:%d.%d|%s|%s|%d.%d|%d|%s|%d|%d|%s\n",
 			buffer,
 			CEF_VER_MAJOR,CEF_VER_MINOR,
 			VENDOR_NAME,PRODUCT_NAME,
 			VSENTRY_VER_MAJOR,VSENTRY_VER_MINOR,
-			cef_class,cef->name, cef->sev, cef->confidence, cef->extension);
+			cef->class,cef->name, cef->sev, cef->confidence, cef->extension);
 			
 	SR_Lock(&cef_lock);
 	log_cef_msg(cef_buffer);
