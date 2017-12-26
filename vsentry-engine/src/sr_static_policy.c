@@ -20,7 +20,7 @@
 #include <sysrepo.h>
 #include "sr_static_policy.h"
 #include "sr_tasks.h"
-#include <curl/curl.h>
+#include "sr_curl.h"
 #include <ctype.h>
 
 static SR_BOOL is_run_db_mng = SR_TRUE;
@@ -861,40 +861,6 @@ out:
 	return rc;
 }
 
-struct curl_fetch_st {
-    char *payload;
-    size_t size;
-};
-
-size_t curl_callback (void *contents, size_t size, size_t nmemb, void *userp)
-{
-    size_t realsize = size * nmemb;                             /* calculate buffer size */
-    struct curl_fetch_st *p = (struct curl_fetch_st *) userp;   /* cast pointer to fetch struct */
-
-    /* expand buffer */
-    p->payload = (char *) realloc(p->payload, p->size + realsize + 1);
-
-    /* check buffer */
-    if (p->payload == NULL) {
-      /* this isn't good */
-      fprintf(stderr, "ERROR: Failed to expand buffer in curl_callback");
-      free(p->payload);
-      return -1;
-    }
-
-    /* copy contents to buffer */
-    memcpy(&(p->payload[p->size]), contents, realsize);
-
-    /* set new buffer size */
-    p->size += realsize;
-
-    /* ensure null termination */
-    p->payload[p->size] = 0;
-
-    /* return size */
-    return realsize;
-}
-
 static SR_32 get_server_db(sr_session_ctx_t *sess)
 {
 	CURL *curl;
@@ -911,16 +877,8 @@ static SR_32 get_server_db(sr_session_ctx_t *sess)
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,  "can open cpu into file:%s", STATIC_POLICY_CPU_FILE);
 		return SR_ERROR; 
 	}
-  
-	curl_global_init(CURL_GLOBAL_DEFAULT);
 
-	curl = curl_easy_init();
-	if (!curl) {
-		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,  "curl_easy_init:");
-		return SR_ERROR; 
-	}
-
-	curl_easy_setopt(curl, CURLOPT_URL, STATIC_POLICY_URL);
+	SR_CURL_INIT(STATIC_POLICY_URL);
 	
 	fetch->payload = NULL;
 	fetch->size = 0;
@@ -932,7 +890,7 @@ static SR_32 get_server_db(sr_session_ctx_t *sess)
 	curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
 	curl_formadd(&post, &last, CURLFORM_COPYNAME, "cpu", CURLFORM_FILE, STATIC_POLICY_CPU_FILE, CURLFORM_END);
 	curl_easy_setopt(curl, CURLOPT_HTTPPOST, post);
-	chunk = curl_slist_append(chunk, "X-VIN: 1234512345abcdef");
+	chunk = curl_slist_append(chunk, XVIN);
 	curl_easy_setopt(curl, CURLOPT_HTTPHEADER, chunk);
 	chunk = curl_slist_append(chunk, ip_version);
 	curl_easy_setopt(curl, CURLOPT_HTTPHEADER, chunk);
@@ -965,9 +923,8 @@ static SR_32 get_server_db(sr_session_ctx_t *sess)
 		}
 	}
 
-	curl_easy_cleanup(curl);
-	curl_global_cleanup();
 out:
+	SR_CURL_DEINIT(curl);
 	if (fetch->payload)
 		free(fetch->payload);
 	return SR_SUCCESS;
