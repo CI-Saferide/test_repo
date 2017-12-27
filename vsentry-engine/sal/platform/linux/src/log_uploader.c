@@ -135,7 +135,7 @@ static int upload_log_file(char* filename, int offset)
 	res = curl_easy_perform(upload_curl_handle);
 
 	if(res != CURLE_OK) {
-		uploader_err("curl_easy_perform failed: %s\n", curl_easy_strerror(res));
+		uploader_err("curl_easy_perform failed: %s (%d)\n", curl_easy_strerror(res), res);
 		goto out;
 	}
 	ret = size;
@@ -228,7 +228,7 @@ void write_archive(const char *outname, char *filename)
 	int len;
 	int fd;
 
-	uploader_debug("outname %s, filename %s\n", outname, filename);
+	//uploader_debug("outname %s, filename %s\n", outname, filename);
 	a = archive_write_new();
 	archive_write_add_filter_gzip(a);
 	archive_write_set_format_pax_restricted(a); // Note 1
@@ -309,7 +309,9 @@ static void can_log_upload(void)
         res = curl_easy_perform(curl);
         /* Check for errors */
         if(res != CURLE_OK)
-        	uploader_err("curl_easy_perform failed: %s\n", curl_easy_strerror(res));
+        	uploader_err("curl_easy_perform failed: %s (%d)\n", curl_easy_strerror(res), res);
+
+        curl_easy_cleanup(curl);
     }
 
     fclose(fd);
@@ -374,8 +376,8 @@ static int check_log_events(int fd)
 			if (strcmp(event->name, basename(candump_file_name_tgz)) == 0)
 				continue;
 
-			if (event->mask == IN_CLOSE_WRITE) {
-				uploader_debug("event name %s\n", event->name);
+			if (event->mask == IN_CLOSE_WRITE || event->mask == IN_MOVED_TO) {
+				//uploader_debug("event name %s\n", event->name);
 				snprintf(candump_file_name, CANDUMP_FILE_NAME_LEN, "%s%s",
 					config_params.log_path, event->name);
 				sem_post(&sem_can_log_uploader);
@@ -445,6 +447,7 @@ static void* monitor_file(void *data)
 		return NULL;
 	}
 
+	uploader_debug("watching %s\n", config_params.CEF_log_path);
 	/* start watching events on the log files */
 	wd = inotify_add_watch(fd, config_params.CEF_log_path, notify_mask);
 	if (wd == -1) {
@@ -452,6 +455,7 @@ static void* monitor_file(void *data)
 		return NULL;
 	}
 
+	uploader_debug("watching %s\n", config_params.log_path);
 	wd = inotify_add_watch(fd, config_params.log_path, notify_mask);
 	if (wd == -1) {
 		uploader_err("Cannot watch %s: %s\n", config_params.log_path, strerror(errno));

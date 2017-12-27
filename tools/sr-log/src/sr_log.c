@@ -11,7 +11,7 @@ SR_LOCK cef_lock = SR_MUTEX_INIT; //for locking the cef wirte to file function
 
 extern struct config_params_t config_params;
 
-// FORMAT: Jan 18 11:07:53 host CEF:Version|Device Vendor|Device Product|Device Version|Device Event Class ID|Name|Severity|[Extension]
+// FORMAT: Date Time CEF:Version|Device Vendor|Device Product|Device Version|Device Event Class ID|Name|Severity|Confidence|[Extension]
 // Severity is a string or integer and reflectsthe importance of the event. The valid string values are Unknown, Low, Medium, High, and Very-High. The valid integer values are 0-3=Low, 4-6=Medium, 7- 8=High, and 9-10=Very-High.
 char severity_strings[SEVERITY_MAX][10] = { "Unknown", "Low", "Medium", "High", "Very-High"};
 
@@ -73,32 +73,13 @@ void log_print_cef_msg(CEF_payload *cef)
     time(&timer);
     tm_info = localtime(&timer);
     strftime(buffer, 26, "%Y-%m-%d %H:%M:%S", tm_info);
-	
-	switch (cef->class) {
-	case SR_CEF_CID_FILE:
-		sal_strcpy(cef_class,"File");
-		break;
-    case SR_CEF_CID_NETWORK:
-		sal_strcpy(cef_class,"Network");
-		break;
-    case SR_CEF_CID_CAN:
-		sal_strcpy(cef_class,"CAN");
-		break;
-	case SR_CEF_CID_SYSTEM:
-		sal_strcpy(cef_class,"System");
-		break;
-	default:
-		sal_strcpy(cef_class,"Class N/A");	
-		break;
-	}
-	
 		
-	sprintf(cef_buffer,"%s CEF:%d.%d|%s|%s|%d.%d|%s|%s|%s\n",
+	sprintf(cef_buffer,"%s CEF:%d.%d|%s|%s|%d.%d|%d|%s|%d|%d|%s\n",
 			buffer,
 			CEF_VER_MAJOR,CEF_VER_MINOR,
 			VENDOR_NAME,PRODUCT_NAME,
 			VSENTRY_VER_MAJOR,VSENTRY_VER_MINOR,
-			cef_class,cef->name, cef->extension);
+			cef->class,cef->name, cef->sev, cef->confidence, cef->extension);
 			
 	SR_Lock(&cef_lock);
 	log_cef_msg(cef_buffer);
@@ -124,6 +105,7 @@ void CEF_log_event(const SR_U32 class, const char *event_name, enum SR_CEF_SEVER
 		payload->class = class;		
 		sal_strcpy(payload->name,(char*)event_name);
 		payload->sev = severity;
+		payload->confidence = 100; /* currently hard coded */
 		sal_strcpy(payload->extension,msg);
 		
 		log_print_cef_msg(payload);
