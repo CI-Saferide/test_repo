@@ -6,6 +6,8 @@
 #include <sr_sal_common.h>
 #include <sal_mem.h>
 
+static SR_BOOL 	learning = 1;	
+
 #define ML_CAN_HASH_SIZE 500
 static struct sr_gen_hash *can_ml_hash;
 
@@ -68,12 +70,51 @@ SR_32 r_ml_can_hash_delete_all(void)
 	return sr_gen_hash_delete_all(can_ml_hash);
 }
 
+static SR_U32 calc_h (SR_U32 K)
+{
+	return (2 * K);
+}
+
+static SR_32 calc_K_factors(void *hash_data, void *data)
+{
+	//SR_U32	dt_mean;
+	ml_can_item_t* ptr = (ml_can_item_t*)hash_data;
+	ptr->mean_delta = (SR_U32)((ptr->sum_delta) / (ptr->samples));
+	ptr->K = (ptr->mean_delta / 2);
+	ptr->h = calc_h(ptr->K);
+	if ((ptr->msg_id == 0x5a0) || (ptr->msg_id == 0x1a0) || (ptr->msg_id == 0x280))
+		printf("msg_id 0x%x: samples = %d, sum_delta = %d, mean = %d, K= %d, h= %d\n", ptr->msg_id, ptr->samples, ptr->sum_delta, ptr->mean_delta, ptr->K, ptr->h);
+	ptr->calc_sigma_plus = 0;
+	ptr->calc_sigma_minus = 0;
+	return SR_SUCCESS;
+}
+
+static SR_BOOL can_ml_test(ml_can_item_t* item)
+{
+	SR_32			tmp_calc;
+	
+	tmp_calc = item->calc_sigma_plus + item->delta - item->mean_delta - item->K;
+	item->calc_sigma_plus = (tmp_calc > 0)? tmp_calc : 0;
+	tmp_calc = item->calc_sigma_minus - item->delta + item->mean_delta - item->K;
+	item->calc_sigma_minus = (tmp_calc > 0)? tmp_calc : 0;
+	if (item->calc_sigma_plus > item->h) {
+		printf ("msg_id 0x%x blocked by sigma_plus\n",item->msg_id);
+		return SR_FALSE;
+	} else if (item->calc_sigma_minus > item->h) {
+		printf ("msg_id 0x%x blocked by sigma_minus\n",item->msg_id);
+		return SR_FALSE;
+	}
+	printf ("normal\n");
+	//if ((item->msg_id == 0x5a0) || (item->msg_id == 0x1a0))
+		//printf ("msg_id 0x%x, sigma_plus = %d, sigma_minus = %d, K= %d, h= %d\n",item->msg_id, item->calc_sigma_plus, item->calc_sigma_minus, item->K, item->h);
+	return SR_TRUE;
+}
+
 static SR_32 update_can_item(SR_U64 ts, SR_U32 msg_id)
 {
 	ml_can_item_t 	*can_ml_item;
 	SR_32 			rc;
 	SR_U64			tmp_delta;
-	SR_32			tmp_calc;
 
 	/* If the file exists add the rule to the file. */
 	if (!(can_ml_item = sr_gen_hash_get(can_ml_hash, (void *)(long)msg_id))) {
@@ -85,7 +126,9 @@ static SR_32 update_can_item(SR_U64 ts, SR_U32 msg_id)
 			can_ml_item->ts = ts;
 			can_ml_item->calc_sigma_plus = 0;
 			can_ml_item->calc_sigma_minus = 0;
-			can_ml_item->K = (50000 / 2); /* just for the test */
+			can_ml_item->K = 0;
+			can_ml_item->sum_delta = 0;
+			can_ml_item->samples = 0;
 			if ((rc = sr_gen_hash_insert(can_ml_hash, (void *)(long)msg_id , can_ml_item)) != SR_SUCCESS) {
 					CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 									"failed to insert mid to can_ml table");
@@ -97,24 +140,33 @@ static SR_32 update_can_item(SR_U64 ts, SR_U32 msg_id)
 			//TOOD: handle wrap arround cases;
 			tmp_delta = (ts - can_ml_item->ts);
 			can_ml_item->d_delta = tmp_delta - can_ml_item->delta;
-			//printf ("BEFORE (%x): calc_sigma_plus =%d, calc_sigma_minus = %d, d_delta = %d, K = %d\n", msg_id, can_ml_item->calc_sigma_plus, can_ml_item->calc_sigma_minus, can_ml_item->d_delta, can_ml_item->K);
-			tmp_calc = can_ml_item->calc_sigma_plus + can_ml_item->d_delta - can_ml_item->K;
-			can_ml_item->calc_sigma_plus = (tmp_calc > 0)? tmp_calc : 0;
-			tmp_calc = can_ml_item->calc_sigma_minus - can_ml_item->d_delta - can_ml_item->K;
-			can_ml_item->calc_sigma_minus = (tmp_calc > 0)? tmp_calc : 0;
-			//printf ("AFTER(%x): calc_sigma_plus =%d, calc_sigma_minus = %d\n", msg_id, can_ml_item->calc_sigma_plus, can_ml_item->calc_sigma_minus);
-			if ((msg_id == 0x5a0) || (msg_id == 0x1a0) || (msg_id == 0x280)) {
-				printf ("mid = %x 	delta = %10d      calc_sigma_plus = %10d 	  calc_sigma_minus=%10d\n", msg_id, tmp_delta, can_ml_item->calc_sigma_plus, can_ml_item->calc_sigma_minus);
-			}
 			can_ml_item->delta = tmp_delta;
 			can_ml_item->ts = ts;
+			//if ((can_ml_item->msg_id == 0x5a0) || (can_ml_item->msg_id == 0x1a0) || (can_ml_item->msg_id == 0x280))	
+				//printf ("msg_id = 0x%x, delta = %d, d_delta = %d\n", can_ml_item->msg_id, can_ml_item->delta, can_ml_item->delta);
+			if (learning) {
+				can_ml_item->sum_delta+= can_ml_item->delta;
+				can_ml_item->samples++;
+				if (ts  > LEARNING_TIME) {
+					learning = 0;
+					sr_gen_hash_exec_for_each(can_ml_hash, calc_K_factors, NULL);
+					printf ("learning finished\n");
+				}
+			} else {
+				/* detect mode */
+				//printf ("detect mode\n");
+				can_ml_test(can_ml_item);
+			}
 		} else {
 			/* this os the second packet, no delta yet */
 			can_ml_item->delta = ts - can_ml_item->ts;
 			can_ml_item->ts = ts;
+			if (learning) {
+				can_ml_item->sum_delta+= can_ml_item->delta;
+				can_ml_item->samples++;
+			}
 		}
 	}
-
 	return SR_SUCCESS;
 }
 

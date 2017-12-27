@@ -222,19 +222,21 @@ SR_32 sr_engine_start(void)
 #ifdef SR_CAN_DEBUG_PRINT			
 			case 'p':
 				can_args.can_print = !can_args.can_print;
-					printf("\rcan-bus %s prints - %s\n", can_args.can_interface, (can_args.can_print)? "enabled" : "disabled");
+				printf("\rcan-bus %s prints - %s\n", can_args.can_interface, (can_args.can_print)? "enabled" : "disabled");
 				break;
 #endif						
 			case 'v':
 					printf("\navailable space under %s is: %lld bytes\n",disk,sal_gets_space(disk));
 				break;
 			case 'd':
+#ifdef CONFIG_CAN_ML
+					printf ("printing debud info for ml_can\n");
 					sr_ml_can_print_hash();
-				break;				
+#endif /* CONFIG_CAN_ML */
+				break;
 		}
 	}
-
-	sr_static_policy_db_mng_stop();
+	//sr_static_policy_db_mng_stop();
 	sr_stop_task(SR_CAN_COLLECT_TASK);
 	sr_stop_task(SR_ENGINE_TASK);
 	sentry_stop();
@@ -248,6 +250,5 @@ SR_32 sr_engine_start(void)
 	sr_file_hash_deinit();
 	sr_db_deinit();
 	sr_log_uploader_deinit();
-
 	return 0;
 }
