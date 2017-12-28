@@ -806,7 +806,9 @@ static SR_32 parse_json(sr_session_ctx_t *sess, char *buf, SR_U32 *version)
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, "Failed to parse JSON: %d\n", r);
 		return SR_ERROR;
 	}
+#ifdef JSON_DEBUG
 	printf("Json parse r:%d \n", r);
+#endif
 	if (!(t = malloc(r * sizeof(jsmntok_t)))) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, "Failed alloc memory:\n");
 		return SR_ERROR;
@@ -894,7 +896,7 @@ static SR_32 get_server_db(sr_session_ctx_t *sess)
 	sprintf(system_version, "%s: %u", STATIC_POLICY_SYSTEM_VERSION, static_policy_version);
 	sprintf(can_version, "%s: %u", STATIC_POLICY_CAN_VERSION, static_policy_version);
 	sprintf(action_version, "%s: %u", STATIC_POLICY_ACTIONS_VERSION, static_policy_version);
-	curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
+//	curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
 	curl_formadd(&post, &last, CURLFORM_COPYNAME, "cpu", CURLFORM_FILE, STATIC_POLICY_CPU_FILE, CURLFORM_END);
 	curl_easy_setopt(curl, CURLOPT_HTTPPOST, post);
 	snprintf(post_vin, 64, "X-VIN: %s", config_params.vin);

@@ -49,7 +49,7 @@ static SR_32 handle_command(void)
 	fetch->payload = (char *) calloc(1, sizeof(fetch->payload));
 	fetch->size = 0;
 
-	curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
+	//curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
 	snprintf(post_vin, 64, "X-VIN: %s", config_params.vin);
 	chunk = curl_slist_append(chunk,  post_vin);
 	curl_easy_setopt(curl, CURLOPT_HTTPHEADER, chunk);
