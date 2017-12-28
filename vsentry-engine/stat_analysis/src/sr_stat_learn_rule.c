@@ -111,7 +111,7 @@ static SR_32 notify_learning(char *exec, sr_stat_con_stats_t *stats)
 	data. */
 	curl_easy_setopt(curl, CURLOPT_URL, SR_DYNAMIC_POLICY_URL);
 	/* Now specify the POST data */
-	curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
+	//curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
 	chunk = curl_slist_append(chunk, "application/x-www-form-urlencoded");
 	curl_easy_setopt(curl, CURLOPT_HTTPHEADER, chunk);
 	snprintf(post_vin, 64, "X-VIN: %s", config_params.vin);
