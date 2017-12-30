@@ -33,10 +33,10 @@ typedef struct counters {
 } counters_t;
 
 static SR_U64 cur_time;
-counters_t system_max;
-counters_t connection_max;
+static counters_t system_max;
 
 static SR_BOOL is_finish_transmit_in_progress = SR_FALSE;
+static SR_BOOL is_connection_update_in_progress = SR_FALSE;
 
 #if 0
 void static print_connection(sr_connection_id_t *con_id)
@@ -183,8 +183,13 @@ static SR_32 update_connection_item(process_connection_item_t *process_connectio
 
 SR_32 sr_stat_process_connection_hash_update(SR_U32 process_id, sr_stat_connection_info_t *connection_info)
 {
-        process_connection_item_t *process_connection_item;
-	SR_32 rc;
+	process_connection_item_t *process_connection_item;
+	SR_32 rc= SR_SUCCESS;
+
+	if (sr_stat_analysis_learn_mode_get() == SR_STAT_MODE_HALT) {
+		return SR_SUCCESS;
+	}
+	is_connection_update_in_progress = SR_TRUE;
 
 	/* If the file exists add the rule to the file. */
         if (!(process_connection_item = sr_gen_hash_get(process_connection_hash, (void *)(long int)process_id))) {
@@ -192,7 +197,8 @@ SR_32 sr_stat_process_connection_hash_update(SR_U32 process_id, sr_stat_connecti
 		if (!process_connection_item) {
 			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 							"stat conn update memory allocation failed");
-			return SR_ERROR;
+			rc = SR_ERROR;
+			goto out;
 		}
 		process_connection_item->process_id = process_id;
 		update_connection_item(process_connection_item, connection_info);
@@ -200,13 +206,16 @@ SR_32 sr_stat_process_connection_hash_update(SR_U32 process_id, sr_stat_connecti
 		if ((rc = sr_gen_hash_insert(process_connection_hash, (void *)(long int)process_id, process_connection_item)) != SR_SUCCESS) {
 			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 							"stat conn update sr_gen_hash_insert failed");
-			return SR_ERROR;
+			rc = SR_ERROR;
+			goto out;
 		}
 		
 	} else
 		update_connection_item(process_connection_item, connection_info);
 
-	return SR_SUCCESS;
+out:
+	is_connection_update_in_progress = SR_FALSE;
+	return rc;
 }
 
 SR_32 sr_stat_process_connection_hash_delete(SR_U32 process_id)
@@ -288,7 +297,7 @@ SR_32 sr_stat_process_connection_delete_aged_connections(void)
 	return SR_SUCCESS;
 }
 
-static SR_32 sr_stat_learn_process_rule(SR_32 pid, sr_stat_con_stats_t *stats, SR_BOOL is_updated)
+static SR_32 sr_stat_learn_process_rule(SR_32 pid, sr_stat_con_stats_t *stats)
 {
 	char exec[SR_MAX_PATH_SIZE];
 
@@ -297,7 +306,10 @@ static SR_32 sr_stat_learn_process_rule(SR_32 pid, sr_stat_con_stats_t *stats, S
                 return SR_SUCCESS;
 	}
 
-	if (sr_stat_learn_rule_hash_update(exec, stats, is_updated) != SR_SUCCESS)
+#ifdef SR_STAT_ANALYSIS_DEBUG
+	printf("LLLLLLLLLLLLLLLLLLL sr_stat_learn_process_rule exec:%s: rx:%d \n", exec, stats->rx_bytes);
+#endif
+	if (sr_stat_learn_rule_hash_update(exec, stats) != SR_SUCCESS)
 		return SR_ERROR;
 
 	return SR_SUCCESS;
@@ -333,20 +345,26 @@ static SR_32 finish_transmit(void *hash_data, void *data)
 	for (iter = process_connection_item->process_connection_list; iter; iter = iter->next) {
 		if (!iter->connection_info.is_updated)
 			continue;
-		diff_rx_p = iter->connection_info.con_stats.rx_msgs - iter->connection_info.prev_con_stats.rx_msgs;
-		diff_rx_b = iter->connection_info.con_stats.rx_bytes - iter->connection_info.prev_con_stats.rx_bytes;
-		diff_tx_p = iter->connection_info.con_stats.tx_msgs - iter->connection_info.prev_con_stats.tx_msgs;
-		diff_tx_b = iter->connection_info.con_stats.tx_bytes - iter->connection_info.prev_con_stats.tx_bytes;
+		/* The first learning is ignored. It is sved only in prev*/
+		diff_rx_b = diff_rx_p = diff_tx_b = diff_tx_p = 0;
+		if (iter->connection_info.prev_con_stats.rx_msgs)
+			diff_rx_p = iter->connection_info.con_stats.rx_msgs - iter->connection_info.prev_con_stats.rx_msgs;
+		if (iter->connection_info.prev_con_stats.rx_bytes)
+			diff_rx_b = iter->connection_info.con_stats.rx_bytes - iter->connection_info.prev_con_stats.rx_bytes;
+		if (iter->connection_info.prev_con_stats.tx_msgs)
+			diff_tx_p = iter->connection_info.con_stats.tx_msgs - iter->connection_info.prev_con_stats.tx_msgs;
+		if (iter->connection_info.prev_con_stats.tx_bytes)
+			diff_tx_b = iter->connection_info.con_stats.tx_bytes - iter->connection_info.prev_con_stats.tx_bytes;
 
 #ifdef SR_STAT_ANALYSIS_DEBUG
-		if (iter->connection_info.con_id.sport == 8888 || iter->connection_info.con_id.dport == 8888) { 
+		if (iter->connection_info.con_id.sport == 5001 || iter->connection_info.con_id.dport == 5001) { 
 			CEF_log_debug(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,
-			"PPPPPPPPPPPPPP %s sport:%d dport:%d RX diffs:%d orig:%d prev:%d TX diffs:%d orig:%d prev:%d",
+			"PPPPPPPPPPPPPP state:%s sport:%d dport:%d RX diffs:%d orig:%d prev:%d TX diffs:%d orig:%d prev:%d",
 				stat_mode == SR_STAT_MODE_LEARN ? "Learn" : "Protect",
 				iter->connection_info.con_id.sport, iter->connection_info.con_id.dport,
              			diff_rx_b, iter->connection_info.con_stats.rx_bytes, iter->connection_info.prev_con_stats.rx_bytes,
              			diff_tx_b, iter->connection_info.con_stats.tx_bytes, iter->connection_info.prev_con_stats.tx_bytes);
-			printf("TRANSMITTED %s sport:%d dport:%d RX diffs:%d orig:%d prev:%d TX diffs:%d orig:%d prev:%d\n",
+			printf("------------------ TRANSMITTED state:%s sport:%d dport:%d RX diffs:%d orig:%d prev:%d TX diffs:%d orig:%d prev:%d\n",
 				stat_mode == SR_STAT_MODE_LEARN ? "Learn" : "Protect",
 				iter->connection_info.con_id.sport, iter->connection_info.con_id.dport,
              			diff_rx_b, iter->connection_info.con_stats.rx_bytes, iter->connection_info.prev_con_stats.rx_bytes,
@@ -398,7 +416,8 @@ static SR_32 finish_transmit(void *hash_data, void *data)
 		is_process_updated = SR_TRUE;
 	}
 
-	sr_stat_learn_process_rule(process_connection_item->process_id, &(process_connection_item->max_con_stats), is_process_updated);
+	if (is_process_updated)
+		sr_stat_learn_process_rule(process_connection_item->process_id, &(process_connection_item->max_con_stats));
 
 out:
 	is_finish_transmit_in_progress = SR_FALSE;
@@ -438,10 +457,13 @@ SR_32 st_stats_process_connection_protect(void)
 SR_32 st_stats_process_connection_learn(void)
 {
 	// Wait for previous transmmit to finish processing, It was advised to halt. 
-	while (is_finish_transmit_in_progress)
+	while (is_finish_transmit_in_progress || is_connection_update_in_progress)
 		usleep(100000);
 
+	// clean up all learning rules fron kernel
+	sr_gen_hash_delete_all(process_connection_hash);
 	sr_stat_learn_rule_cleanup_process_rules();
+	memset(&system_max, 0, sizeof(system_max));
 	
 	return SR_SUCCESS;
 }

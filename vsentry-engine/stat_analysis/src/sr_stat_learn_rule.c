@@ -135,7 +135,7 @@ out:
 	return rc;
 }
 
-SR_32 sr_stat_learn_rule_hash_update(char *exec, sr_stat_con_stats_t *con_stats, SR_BOOL is_updated)
+SR_32 sr_stat_learn_rule_hash_update(char *exec, sr_stat_con_stats_t *con_stats)
 {
 	learn_rule_item_t *learn_rule_item;
 	SR_32 rc;
@@ -166,8 +166,6 @@ SR_32 sr_stat_learn_rule_hash_update(char *exec, sr_stat_con_stats_t *con_stats,
 		notify_learning(exec, con_stats);
 	} else {
 		/* Update only bigger counters */
-		if (!is_updated)
-			return SR_SUCCESS;
 		if (sr_stat_analysis_learn_mode_get() != SR_STAT_MODE_LEARN && 
 			(con_stats->rx_msgs > learn_rule_item->counters.rx_msgs * LEARN_RULE_TOLLERANCE ||
 			con_stats->rx_bytes > learn_rule_item->counters.rx_bytes * LEARN_RULE_TOLLERANCE ||
@@ -176,7 +174,7 @@ SR_32 sr_stat_learn_rule_hash_update(char *exec, sr_stat_con_stats_t *con_stats,
 			return SR_SUCCESS;
 		}
 #ifdef SR_STAT_ANALYSIS_DEBUG
-		CEF_log_event(SR_CEF_CID_SYSTEM, "info", SEVERITY_LOW, "---------------- UUU Learned rule was updated:%d exec:%s: txb:%d rxb:%d", rule_number - 2, exec, con_stats->tx_bytes,
+		CEF_log_event(SR_CEF_CID_SYSTEM, "info", SEVERITY_LOW, "---------------- UUU Learned rule is a candidate to be updated:%d exec:%s: txb:%d rxb:%d", rule_number - 2, exec, con_stats->tx_bytes,
 			con_stats->rx_bytes);
 #endif
 		if (con_stats->rx_msgs > learn_rule_item->counters.rx_msgs) {
