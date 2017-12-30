@@ -98,7 +98,7 @@ static SR_32 notify_learning(char *exec, sr_stat_con_stats_t *stats)
 	char buf[SR_MAX_PATH_SIZE + 200], post_vin[64];
 	SR_32 rc = SR_SUCCESS;
 
-	sprintf(buf, "PROCESS:%s|TX:%llu|RX:%llu;", exec, stats->tx_bytes, stats->rx_bytes);
+	sprintf(buf, "PROCESS:%s|TX:%llu|RX:%llu;", exec, 8 * stats->tx_bytes, 8 * stats->rx_bytes);
 	CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW, "LLLLLLLLLLLLLLLLLLLLLLERAN RULE -- :%s", buf);
 
 	if (!(curl = curl_easy_init())) {
@@ -124,8 +124,7 @@ static SR_32 notify_learning(char *exec, sr_stat_con_stats_t *stats)
 	res = curl_easy_perform(curl);
 	/* Check for errors */
 	if(res != CURLE_OK)
-		fprintf(stderr, "curl_easy_perform() failed: %s\n",
-            		  curl_easy_strerror(res));
+		fprintf(stderr, "curl_easy_perform() failed: %s\n", curl_easy_strerror(res));
 
 	curl_easy_cleanup(curl);
 
@@ -229,24 +228,28 @@ void sr_learn_rule_connection_hash_print(void)
 static SR_32 sr_stat_learn_rule_update_rule(char *exec, SR_U16 rule_num, sr_stat_con_stats_t *counters)
 {
 	SR_U16 actions = SR_CLS_ACTION_RATE, rl_exceed_action = SR_CLS_ACTION_DROP;
-	SR_U32 address = sal_get_ip_for_interface(SR_MAIN_INTERFACE);
+	//SR_U32 address = sal_get_ip_for_interface(SR_MAIN_INTERFACE);
+
+	// XXX TODO for demore purpose. Shoudl be removed.
+	if (!strstr(exec, "server") && !strstr(exec, "iperf"))
+		return SR_SUCCESS;
 
 	/* Currently supports only UDP, TODO, support TCP, ANY protocl for port match */
-	CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,"UPDATE rule#%d %s RX dst:%x p:%d b:%d", 
-		rule_num, exec, address, counters->rx_msgs, counters->rx_bytes);
+	CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,"UPDATE rule#%d exec:%s RX p:%d b:%d", 
+		rule_num, exec, 8 * counters->rx_msgs, 8 * counters->rx_bytes);
 	sr_cls_add_ipv4(0, exec, "*", 0, rule_num, SR_DIR_SRC);
-	sr_cls_add_ipv4(address, exec, "*", 0xffffffff, rule_num, SR_DIR_DST);
+	sr_cls_add_ipv4(0, exec, "*", 0, rule_num, SR_DIR_DST);
 	sr_cls_port_add_rule(0, exec, "*", rule_num, SR_DIR_SRC, 17); 
 	sr_cls_port_add_rule(0, exec, "*", rule_num, SR_DIR_DST, 17); 
-	sr_cls_rule_add(SR_NET_RULES, rule_num, actions, SR_FILEOPS_READ, SR_RATE_TYPE_BYTES, counters->rx_bytes, rl_exceed_action, 0, 0, 0, 0);
+	sr_cls_rule_add(SR_NET_RULES, rule_num, actions, SR_FILEOPS_READ, SR_RATE_TYPE_BYTES, counters->rx_bytes, rl_exceed_action, 0, 0, 0, 0, SR_DIR_RX);
 
-	CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,"UPDATE rule#%d %s TX src:%x p:%d b:%d", 
-		rule_num + 1, exec, address, counters->tx_msgs, counters->tx_bytes);
-	sr_cls_add_ipv4(address, exec, "*", 0xffffffff, rule_num + 1, SR_DIR_SRC);
+	CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,"UPDATE rule#%d exec:%s TX p:%d b:%d", 
+		rule_num + 1, exec, 8 * counters->tx_msgs, 8 * counters->tx_bytes);
+	sr_cls_add_ipv4(0, exec, "*", 0, rule_num + 1, SR_DIR_SRC);
 	sr_cls_add_ipv4(0, exec, "*", 0, rule_num + 1, SR_DIR_DST);
 	sr_cls_port_add_rule(0, exec, "*", rule_num + 1, SR_DIR_SRC, 17); 
 	sr_cls_port_add_rule(0, exec, "*", rule_num + 1, SR_DIR_DST, 17); 
-	sr_cls_rule_add(SR_NET_RULES, rule_num + 1, actions, SR_FILEOPS_READ, SR_RATE_TYPE_BYTES, counters->tx_bytes, rl_exceed_action, 0, 0, 0, 0);
+	sr_cls_rule_add(SR_NET_RULES, rule_num + 1, actions, SR_FILEOPS_READ, SR_RATE_TYPE_BYTES, counters->tx_bytes, rl_exceed_action, 0, 0, 0, 0, SR_DIR_TX);
 
 	return SR_SUCCESS;
 } 
@@ -272,17 +275,19 @@ SR_32 sr_stat_learn_rule_create_process_rules(void)
 static SR_32 delete_process_rule_cb(void *hash_data, void *data)
 {
 	learn_rule_item_t *learn_rule_item = (learn_rule_item_t *)hash_data;
-	SR_U32 address = sal_get_ip_for_interface(SR_MAIN_INTERFACE);
+
+	if (!strstr(learn_rule_item->exec, "server"))
+		return SR_SUCCESS;
 
 	CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,"DELETE rule#%d %s ", learn_rule_item->rule_num, learn_rule_item->exec);
 	sr_cls_del_ipv4(0, learn_rule_item->exec, "*", 0, learn_rule_item->rule_num, SR_DIR_SRC);
-	sr_cls_del_ipv4(address, learn_rule_item->exec, "*", 0xffffffff, learn_rule_item->rule_num, SR_DIR_DST);
+	sr_cls_del_ipv4(0, learn_rule_item->exec, "*", 0, learn_rule_item->rule_num, SR_DIR_DST);
 	sr_cls_port_del_rule(0, learn_rule_item->exec, "*", learn_rule_item->rule_num, SR_DIR_SRC, 17); 
 	sr_cls_port_del_rule(0, learn_rule_item->exec, "*", learn_rule_item->rule_num, SR_DIR_DST, 17); 
 	sr_cls_rule_del(SR_NET_RULES, learn_rule_item->rule_num);
 
 	CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,"DELETE rule#%d %s ", learn_rule_item->rule_num + 1, learn_rule_item->exec);
-	sr_cls_del_ipv4(address, learn_rule_item->exec, "*", 0xffffffff, learn_rule_item->rule_num + 1, SR_DIR_SRC);
+	sr_cls_del_ipv4(0, learn_rule_item->exec, "*", 0, learn_rule_item->rule_num + 1, SR_DIR_SRC);
 	sr_cls_del_ipv4(0, learn_rule_item->exec, "*", 0, learn_rule_item->rule_num + 1, SR_DIR_DST);
 	sr_cls_port_del_rule(0, learn_rule_item->exec, "*", learn_rule_item->rule_num + 1, SR_DIR_SRC, 17); 
 	sr_cls_port_del_rule(0, learn_rule_item->exec, "*", learn_rule_item->rule_num + 1, SR_DIR_DST, 17); 

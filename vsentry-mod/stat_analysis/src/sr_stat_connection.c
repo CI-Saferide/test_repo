@@ -309,10 +309,13 @@ SR_U32 sr_stat_connection_insert(sr_connection_data_t *con_data, SR_U16 flags)
 	if (!con_data)
 		return SR_ERROR;
 
+/* TODO temporary solution until learing is done from letfilter */
+#if 0
 	if (!con_data->con_id.saddr.v4addr || !con_data->con_id.daddr.v4addr ||
 		!con_data->con_id.sport || !con_data->con_id.dport) {
 		return SR_SUCCESS;
 	}
+#endif
 
 	if (flags & SR_CONNECTION_ATOMIC)
 		is_atomic = SR_TRUE;

@@ -38,7 +38,7 @@ void sr_cls_rule_del(SR_32 rule_type, SR_U16 rulenum)
 	sr_rules_db[rule_type][rulenum].actions = SR_CLS_ACTION_ALLOW;
 }
 void sr_cls_rule_add(SR_32 rule_type, SR_U16 rulenum, SR_U16 actions, SR_8 file_ops, sr_rate_type_t rate_type, SR_U32 rl_max_rate, SR_U16 rl_exceed_action,
-		SR_U16 log_target, SR_U16 email_id, SR_U16 phone_id, SR_U16 skip_rulenum)
+		SR_U16 log_target, SR_U16 email_id, SR_U16 phone_id, SR_U16 skip_rulenum, sr_dir_t dir)
 {
 	if (unlikely(rulenum>=SR_MAX_RULES)){
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
@@ -75,6 +75,7 @@ void sr_cls_rule_add(SR_32 rule_type, SR_U16 rulenum, SR_U16 actions, SR_8 file_
 	sr_cls_rl_init(&sr_rules_db[rule_type][rulenum].log_rate);
 	sr_rules_db[rule_type][rulenum].log_rate.max_rate = 2;
 	sr_rules_db[rule_type][rulenum].log_rate.rate_type = SR_RATE_TYPE_EVENT;
+	sr_rules_db[rule_type][rulenum].dir = dir;
 }
 
 enum cls_actions sr_cls_rl_check(struct sr_rl_t *rl, SR_U32 timestamp, SR_U32 size)
@@ -91,19 +92,19 @@ enum cls_actions sr_cls_rl_check(struct sr_rl_t *rl, SR_U32 timestamp, SR_U32 si
 		//sal_kernel_print_alert("sr_cls_rl_check: Rate exceeds configured rate\n");
 		return rl->exceed_action;
 	}
-	if (rl->rate_type == SR_RATE_TYPE_BYTES && rl->max_rate && rl->max_rate && SR_ATOMIC_ADD_RETURN(size, &rl->count) > rl->max_rate) {
-		//sal_kernel_print_alert("sr_cls_rl_check: Rate exceeds configured rate\n");
+	if (rl->rate_type == SR_RATE_TYPE_BYTES && rl->max_rate && SR_ATOMIC_ADD_RETURN(size, &rl->count) > rl->max_rate) {
 		return rl->exceed_action;
 	}
 	return SR_CLS_ACTION_ALLOW;
 }
 
-enum cls_actions sr_cls_network_rule_match(SR_U16 rulenum, SR_U32 size)
+enum cls_actions sr_cls_network_rule_match(SR_U16 rulenum, SR_U32 size, sr_dir_t traffic_dir)
 {
-	SR_U16 action, should_log;
+	SR_U16 action = 0, should_log;
 
 	if (sr_rules_db[SR_NET_RULES][rulenum].actions & SR_CLS_ACTION_RATE) { 
-		action = sr_cls_rl_check(&sr_rules_db[SR_NET_RULES][rulenum].rate, jiffies / HZ, size);
+		if (sr_rules_db[SR_NET_RULES][rulenum].dir == SR_DIR_ANY || sr_rules_db[SR_NET_RULES][rulenum].dir == traffic_dir)
+			action = sr_cls_rl_check(&sr_rules_db[SR_NET_RULES][rulenum].rate, jiffies / HZ, size);
 	} else {
 		action = sr_rules_db[SR_NET_RULES][rulenum].actions;
 	}
@@ -194,7 +195,8 @@ SR_8 sr_cls_rules_msg_dispatch(struct sr_cls_rules_msg *msg)
 			msg->log_target,
 			msg->email_id,
 			msg->phone_id,
-			msg->skip_rulenum);
+			msg->skip_rulenum,
+			msg->dir);
 			break;
 		default:
 			break;
