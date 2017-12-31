@@ -358,12 +358,11 @@ static SR_32 finish_transmit(void *hash_data, void *data)
 
 #ifdef SR_STAT_ANALYSIS_DEBUG
 		if (iter->connection_info.con_id.sport == 5001 || iter->connection_info.con_id.dport == 5001) { 
-			CEF_log_debug(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,
-			"PPPPPPPPPPPPPP state:%s sport:%d dport:%d RX diffs:%d orig:%d prev:%d TX diffs:%d orig:%d prev:%d",
+			CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,
+			"PPPPPPPPPPPPPP state:%s sport:%d dport:%d RX diffs:%d orig:%d prev:%d --------------",
 				stat_mode == SR_STAT_MODE_LEARN ? "Learn" : "Protect",
 				iter->connection_info.con_id.sport, iter->connection_info.con_id.dport,
-             			diff_rx_b, iter->connection_info.con_stats.rx_bytes, iter->connection_info.prev_con_stats.rx_bytes,
-             			diff_tx_b, iter->connection_info.con_stats.tx_bytes, iter->connection_info.prev_con_stats.tx_bytes);
+             			diff_rx_b, iter->connection_info.con_stats.rx_bytes, iter->connection_info.prev_con_stats.rx_bytes);
 			printf("------------------ TRANSMITTED state:%s sport:%d dport:%d RX diffs:%d orig:%d prev:%d TX diffs:%d orig:%d prev:%d\n",
 				stat_mode == SR_STAT_MODE_LEARN ? "Learn" : "Protect",
 				iter->connection_info.con_id.sport, iter->connection_info.con_id.dport,

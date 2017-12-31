@@ -200,7 +200,7 @@ static SR_U32 sr_event_process_rule(char *filename, char *exec, char *user, SR_U
 {
         sr_cls_file_add_rule(filename, exec, user, rulenum, 1);
         sr_cls_rule_add(SR_FILE_RULES, rulenum, actions, file_ops, SR_RATE_TYPE_EVENT, /* file_rule_tuple.max_rate */ 0, /* file_rule.rate_action */ 0 ,
-                         /* file_ruole.action.log_target */ 0 , /* file_rule.tuple.action.email_id */ 0 , /* file_rule.tuple.action.phone_id */ 0 , /* file_rule.action.skip_rulenum */ 0, SR_DIR_ANY);
+                         /* file_ruole.action.log_target */ 0 , /* file_rule.tuple.action.email_id */ 0 , /* file_rule.tuple.action.phone_id */ 0 , /* file_rule.action.skip_rulenum */ 0);
 
         return SR_SUCCESS;
 }

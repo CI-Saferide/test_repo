@@ -14,6 +14,7 @@
 #include "event_mediator.h"
 #ifdef CONFIG_STAT_ANALYSIS
 #include "sr_stat_connection.h"
+#include "sr_stat_port.h"
 #endif
 
 #ifdef CONFIG_NETFILTER
@@ -25,6 +26,7 @@ unsigned int sr_netfilter_hook_fn(void *priv,
                     const struct nf_hook_state *state)
 {
 	struct iphdr *ip_header = (struct iphdr *)skb_network_header(skb);
+	disp_info_t disp = {};
 #ifdef SR_STAT_ANALYSIS_DEBUG
 	static int non_uc;
 #endif
@@ -40,6 +42,23 @@ unsigned int sr_netfilter_hook_fn(void *priv,
 		if (vsentry_incoming_connection(skb) == SR_CLS_ACTION_DROP) {
 			return NF_DROP;
 		}
+	}
+
+	if (ip_header->protocol == IPPROTO_UDP) {
+		struct udphdr *udp_header;
+
+		udp_header = (struct udphdr *)skb_transport_header(skb);
+		disp.tuple_info.daddr.v4addr.s_addr = ntohl(ip_header->daddr);
+		disp.tuple_info.saddr.v4addr.s_addr = ntohl(ip_header->saddr);
+		disp.tuple_info.sport = ntohs(udp_header->source);
+		disp.tuple_info.dport = ntohs(udp_header->dest);
+		disp.tuple_info.ip_proto = IPPROTO_UDP;
+		disp.tuple_info.size = ntohs(udp_header->len) - UDP_HLEN;
+#ifdef CONFIG_STAT_ANALYSIS
+		disp.tuple_info.id.pid = sr_stat_port_find_pid(disp.tuple_info.dport);
+#endif
+		if (disp_ipv4_recvmsg(&disp) != SR_CLS_ACTION_ALLOW)
+			return NF_DROP;
 	}
 
 #ifdef CONFIG_STAT_ANALYSIS
