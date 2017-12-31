@@ -112,7 +112,7 @@ SR_U32 sr_connection_transmit(void)
 		con.con_id.sport = LRU_transmit->objects[i]->con_id.sport;
 		con.con_id.dport = LRU_transmit->objects[i]->con_id.dport;
 		if (con.con_id.ip_proto == IPPROTO_UDP && !LRU_transmit->objects[i]->pid) {
-			con.pid = sr_stat_port_find_pid(con.con_id.sport); 
+			con.pid = sr_stat_port_find_pid(con.con_id.dport); 
 		} else
 			con.pid = LRU_transmit->objects[i]->pid;
 		con.rx_msgs= LRU_transmit->objects[i]->rx_msgs;
@@ -309,10 +309,13 @@ SR_U32 sr_stat_connection_insert(sr_connection_data_t *con_data, SR_U16 flags)
 	if (!con_data)
 		return SR_ERROR;
 
+/* TODO temporary solution until learing is done from letfilter */
+#if 0
 	if (!con_data->con_id.saddr.v4addr || !con_data->con_id.daddr.v4addr ||
 		!con_data->con_id.sport || !con_data->con_id.dport) {
 		return SR_SUCCESS;
 	}
+#endif
 
 	if (flags & SR_CONNECTION_ATOMIC)
 		is_atomic = SR_TRUE;

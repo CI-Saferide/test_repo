@@ -20,9 +20,22 @@
 #include <sysrepo.h>
 #include "sr_static_policy.h"
 #include "sr_tasks.h"
+#include "sr_curl.h"
+#include <ctype.h>
+#include "sr_config_parse.h"
 
-static SR_BOOL is_db_file_ready = SR_FALSE;
 static SR_BOOL is_run_db_mng = SR_TRUE;
+static SR_U32 static_policy_version;
+extern struct config_params_t config_params;
+
+#define STATIC_POLICY_URL "http://saferide-policies.eu-west-1.elasticbeanstalk.com/policy/static/sync"
+#define STATIC_POLICY_VERSION_FILE "/etc/sentry/version.txt"
+#define STATIC_POLICY_CPU_FILE "/etc/sentry/cpu_info.txt"
+#define STATIC_POLICY_IP_VERSION "X-IP-VERSION"
+#define STATIC_POLICY_SYSTEM_VERSION "X-SYSTEM-VERSION"
+#define STATIC_POLICY_CAN_VERSION "X-CAN-VERSION"
+#define STATIC_POLICY_ACTIONS_VERSION "X-ACTIONS-VERSION"
+#define STATIC_POLICY_VERSION_SIZE 100
 
 #define ACT_PREFIX   "/saferide:config/sr_actions/list_actions["
 #define CAN_PREFIX   "/saferide:config/net/can/rule["
@@ -41,7 +54,7 @@ static SR_BOOL is_run_db_mng = SR_TRUE;
 #define JSON_PROTOCOL "protocol"
 #define JSON_SRCPORT "srcPort"
 #define JSON_DSTPORT "dstPort"
-#define JSON_PROGRAM "exceProgram"
+#define JSON_PROGRAM "execProgram"
 #define JSON_USER "user"
 #define ACTION_VER "actionVersion"
 #define IP_VER "ipVersion"
@@ -65,7 +78,8 @@ static SR_BOOL is_run_db_mng = SR_TRUE;
 #define JSON_ACTION_LOG "log"
 #define JSON_FILE_NAME "fileName"
 #define JSON_PERMISSIONS "permissions"
-#define JSON_CAN_MESSAGE_ID "messageId"
+#define JSON_CAN_MESSAGE_ID "msgId"
+#define JSON_CAN_DIRECTION "canDirection"
 #define MAX_STR_SIZE 512
 #define ARRAYSIZE(arr)  (sizeof(arr) / sizeof(arr[0]))
 
@@ -133,6 +147,37 @@ static param_t default_ip_tuple_params[] = {
 static param_t default_rule_params[] = {
     {"action", SR_STRING_T, "allow"},
 };
+
+static SR_32 set_version_to_file(SR_U32 version)
+{
+	FILE *fout;
+
+	if (!(fout = fopen(STATIC_POLICY_VERSION_FILE, "w"))) {
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+						"failed openning file :%s", STATIC_POLICY_VERSION_FILE);
+                return SR_ERROR;
+	}
+	fprintf(fout, "%u", version);
+
+	fclose(fout);
+
+	return SR_SUCCESS;
+}
+
+static SR_32 get_vesrion_from_file(SR_U32 *version)
+{
+	FILE *fin;
+
+	*version = 0;
+	if (!(fin = fopen(STATIC_POLICY_VERSION_FILE, "r")))
+                return set_version_to_file(0);
+	if (fscanf(fin, "%u", version) < 1)
+                set_version_to_file(0);
+
+	fclose(fin);
+
+	return SR_SUCCESS;
+}
 
 static int set_default_params(sr_session_ctx_t *sess, char *xpath, param_t* ptr,
     int size)
@@ -348,7 +393,7 @@ static SR_32 um_set_value(sr_session_ctx_t *sess, char *str_param, char *str_val
 
 static SR_32 json_get_int(jsmntok_t *t,  char *buf)
 {
-	char token[1000];
+	char token[512];
 
 	memcpy(token, buf + t->start, t->end - t->start);
 	token[t->end - t->start] = 0;
@@ -418,7 +463,7 @@ static void handle_actions(sr_session_ctx_t *sess, char *buf, jsmntok_t *t, int 
                 	(*i)++;
 		}
 		sprintf(str_param, "/%s/%s/%s[name='%s']", DB_PREFIX, SR_ACTIONS, LIST_ACTIONS, action_name);
-#ifndef JSON_DEBUG
+#ifdef JSON_DEBUG
 		printf(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> Action#%s drop:%d str_param:%s:\n", action_name, is_drop, str_param);
 #endif
 
@@ -670,6 +715,12 @@ static void handle_system_policies(sr_session_ctx_t *sess, char *buf, jsmntok_t 
 	}
 }
 
+static void convert_tolower(char *s)
+{
+	for (; *s; s++)
+		*s = (char)tolower(*s);
+}
+
 static void handle_can_policies(sr_session_ctx_t *sess, char *buf, jsmntok_t *t, int *i)
 {
 	SR_32 c_i, c_n, o_n, o_i, id;
@@ -717,6 +768,17 @@ static void handle_can_policies(sr_session_ctx_t *sess, char *buf, jsmntok_t *t,
 				}
 				continue;
 			}
+			if (jsoneq(buf, &t[*i], JSON_CAN_DIRECTION) == 0) {
+				(*i)++;
+				json_get_string(&t[*i], buf, str_value);
+				convert_tolower(str_value);
+				sprintf(str_param, "%snum='%d']/%s[id='%d']/%s", CAN_PREFIX, id, TUPLE, 0, "direction");
+				if (um_set_value(sess, str_param, str_value) != SR_SUCCESS) {
+					CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, "ERROR after um_set_value str_param:%s: str_value:%s: \n", str_param, str_value);
+					continue;
+				}
+				continue;
+			}
 			if (jsoneq(buf, &t[*i], JSON_PROGRAM) == 0) {
 				(*i)++;
 				handle_string_from_tuple(sess, buf, &t[*i], CAN_PREFIX, id, 0, "program");
@@ -732,27 +794,11 @@ static void handle_can_policies(sr_session_ctx_t *sess, char *buf, jsmntok_t *t,
 	}
 }
 
-#define MAX_FILE_BUFFER 50000
-#define JSON_DB_FILE_NAME "/home/arik/json/file.json"
-
-static SR_32 parse_json(sr_session_ctx_t *sess)
+static SR_32 parse_json(sr_session_ctx_t *sess, char *buf, SR_U32 *version)
 {
-	char buf[MAX_FILE_BUFFER];
-	SR_32 i, r, n, rc;
+	SR_32 i, r, rc;
 	jsmn_parser p;
 	jsmntok_t *t = NULL;
-	FILE *fin;
-
-	if (!(fin = fopen(JSON_DB_FILE_NAME, "r"))) {
-		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, "Failed to open JSON file :%s\n", JSON_DB_FILE_NAME);
-		return SR_ERROR;
-	}
-	
-	n = fread(buf, 1, MAX_FILE_BUFFER, fin); 
-	if (n <= 0) {
-		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, "Failed to read JSON file\n");
-		return SR_ERROR;
-	}
 
 	jsmn_init(&p);
 	r = jsmn_parse(&p, buf, strlen(buf), NULL, 0);
@@ -760,7 +806,7 @@ static SR_32 parse_json(sr_session_ctx_t *sess)
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, "Failed to parse JSON: %d\n", r);
 		return SR_ERROR;
 	}
-#ifndef JSON_DEBUG
+#ifdef JSON_DEBUG
 	printf("Json parse r:%d \n", r);
 #endif
 	if (!(t = malloc(r * sizeof(jsmntok_t)))) {
@@ -777,6 +823,7 @@ static SR_32 parse_json(sr_session_ctx_t *sess)
         for (i = 0; i < r ; i++) {
 		if (jsoneq(buf, &t[i], ACTION_VER) == 0) {
 			i++;
+			*version = (SR_U32)json_get_int(&t[i], buf);
 		}
 		if (jsoneq(buf, &t[i], IP_VER) == 0) {
 			i++;
@@ -822,6 +869,79 @@ out:
 	return rc;
 }
 
+static SR_32 get_server_db(sr_session_ctx_t *sess)
+{
+	CURL *curl;
+	CURLcode res;
+	struct curl_slist *chunk = NULL;
+	char ip_version[STATIC_POLICY_VERSION_SIZE], system_version[STATIC_POLICY_VERSION_SIZE], can_version[STATIC_POLICY_VERSION_SIZE], action_version[STATIC_POLICY_VERSION_SIZE];
+	SR_U32 new_version = 0;
+	FILE *cpu_fd;
+ 	struct curl_httppost* post = NULL, *last = NULL; 
+	struct curl_fetch_st curl_fetch = {};
+	struct curl_fetch_st *fetch = &curl_fetch;
+	char post_vin[64];
+
+	if (!(cpu_fd = fopen(STATIC_POLICY_CPU_FILE, "rb"))) {
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,  "can open cpu into file:%s", STATIC_POLICY_CPU_FILE);
+		return SR_ERROR; 
+	}
+
+	SR_CURL_INIT(STATIC_POLICY_URL);
+	
+	fetch->payload = NULL;
+	fetch->size = 0;
+
+	sprintf(ip_version, "%s: %u", STATIC_POLICY_IP_VERSION, static_policy_version);
+	sprintf(system_version, "%s: %u", STATIC_POLICY_SYSTEM_VERSION, static_policy_version);
+	sprintf(can_version, "%s: %u", STATIC_POLICY_CAN_VERSION, static_policy_version);
+	sprintf(action_version, "%s: %u", STATIC_POLICY_ACTIONS_VERSION, static_policy_version);
+//	curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
+	curl_formadd(&post, &last, CURLFORM_COPYNAME, "cpu", CURLFORM_FILE, STATIC_POLICY_CPU_FILE, CURLFORM_END);
+	curl_easy_setopt(curl, CURLOPT_HTTPPOST, post);
+	snprintf(post_vin, 64, "X-VIN: %s", config_params.vin);
+	chunk = curl_slist_append(chunk, post_vin);
+	curl_easy_setopt(curl, CURLOPT_HTTPHEADER, chunk);
+	chunk = curl_slist_append(chunk, ip_version);
+	curl_easy_setopt(curl, CURLOPT_HTTPHEADER, chunk);
+	chunk = curl_slist_append(chunk, can_version);
+	curl_easy_setopt(curl, CURLOPT_HTTPHEADER, chunk);
+	chunk = curl_slist_append(chunk, system_version);
+	curl_easy_setopt(curl, CURLOPT_HTTPHEADER, chunk);
+	chunk = curl_slist_append(chunk, action_version);
+	curl_easy_setopt(curl, CURLOPT_HTTPHEADER, chunk);
+	
+	curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, curl_callback);
+	curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void *) fetch);
+    
+	/* Perform the request, res will get the return code */
+	if ((res = curl_easy_perform(curl)) != CURLE_OK) {
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,  "curl_easy_perform failed: %s", curl_easy_strerror(res));
+		goto out;
+	}
+
+#ifdef SR_STATIC_POLICY_DEBUG
+	printf("Fetched payload :%s: \n", fetch->payload);
+#endif
+	if (!fetch->payload)	
+		goto out;
+	parse_json(sess, fetch->payload, &new_version);
+	if (new_version != static_policy_version) {
+		static_policy_version = new_version;
+		if (set_version_to_file(new_version) != SR_SUCCESS) {
+			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,  "FAILED setting new version");
+		}
+	}
+
+out:
+	SR_CURL_DEINIT(curl);
+	if (fetch->payload)
+		free(fetch->payload);
+	fclose(cpu_fd);
+
+	return SR_SUCCESS;
+}
+
 SR_32 database_management(void *p)
 {
 	sr_conn_ctx_t *conn = NULL;
@@ -848,10 +968,10 @@ SR_32 database_management(void *p)
     	}
 
 	while (is_run_db_mng) { 
-		while (!is_db_file_ready)
-			sleep(1);
-		is_db_file_ready = SR_FALSE;
-		parse_json(sess);
+		if (get_server_db(sess) != SR_SUCCESS) {
+			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,  "get_server_db_failed:");
+		}
+		sleep(1);
 	}
 
 cleanup:
@@ -864,22 +984,18 @@ cleanup:
 	return SR_ERROR;
 }
 
-SR_32 sr_static_policy_db_ready(void)
-{
-	is_db_file_ready = SR_TRUE;
-
-	return SR_SUCCESS;
-}
-
 SR_32 sr_static_policy_db_mng_start(void)
 {
-	is_run_db_mng = SR_TRUE;
+	if (get_vesrion_from_file(&static_policy_version) != SR_SUCCESS) {
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, "failed to get version");
+		return SR_ERROR;
+	}
 
+	is_run_db_mng = SR_TRUE;
 	if (sr_start_task(SR_STATIC_POLICY, database_management) != SR_SUCCESS) {
-                CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-                                                                "failed to start static policy");
-                return SR_ERROR;
-        }
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, "failed to start static policy");
+		return SR_ERROR;
+	}
 
 	return SR_SUCCESS;
 }

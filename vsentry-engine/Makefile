@@ -48,6 +48,7 @@ SRCS 		:=  main.c \
 				sr_stat_process_connection.c \
 				sr_stat_learn_rule.c \
 				sr_static_policy.c \
+				sr_command.c \
 				sr_stat_analysis.c \
 				sr_info_gather.c \
 				sr_db_ip.c \

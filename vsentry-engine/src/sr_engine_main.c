@@ -33,6 +33,7 @@
 #endif /* CONFIG_CAN_ML */
 #include "sr_log_uploader.h"
 //#include "sr_conio.h"
+#include "sr_command.h"
 
 extern struct canTaskParams can_args;
 extern struct config_params_t config_params;
@@ -182,6 +183,8 @@ SR_32 sr_engine_start(void)
 
 	sr_static_policy_db_mng_start();
 
+	sr_get_command_start();
+
 #ifdef UNIT_TEST
 	config_ut();
 #endif
@@ -234,6 +237,7 @@ SR_32 sr_engine_start(void)
 		}
 	}
 
+	sr_get_command_stop();
 	sr_static_policy_db_mng_stop();
 	sr_stop_task(SR_CAN_COLLECT_TASK);
 	sr_stop_task(SR_ENGINE_TASK);

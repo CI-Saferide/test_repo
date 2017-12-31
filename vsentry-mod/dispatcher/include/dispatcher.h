@@ -4,6 +4,7 @@
 #include "sr_log.h"
 #include "sr_types.h"
 #include "sr_sal_common.h"
+#include "sr_cls_network_common.h"
 
 #define MAIN_SOCKET_INDEX		0
 #define LOG_SOCKET_INDEX		1
@@ -70,6 +71,7 @@ typedef union {
 		SR_U16 	dport;
 		SR_U8   ip_proto;
 		SR_U32  size;
+		sr_dir_t dir;
 	}tuple_info;
 	
 	struct _socket_info {

@@ -2,6 +2,7 @@
 #define SR_ACTIONS_COMMON_H
 
 #include "sr_types.h"
+#include "sr_cls_network_common.h"
 
 #define SR_FILEOPS_READ  (1<<0)
 #define SR_FILEOPS_WRITE (1<<1)
@@ -54,6 +55,7 @@ struct sr_cls_rules_msg {
 	SR_U16 email_id;
 	SR_U16 phone_id; 
 	SR_U16 skip_rulenum;
+	sr_dir_t dir;
 };
 
 #endif /* SR_ACTIONS_COMMON_H */

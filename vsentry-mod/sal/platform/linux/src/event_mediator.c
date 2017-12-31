@@ -430,7 +430,7 @@ SR_32 vsentry_inode_rmdir(struct inode *dir, struct dentry *dentry)
 
 SR_32 vsentry_socket_connect(struct socket *sock, struct sockaddr *address, SR_32 addrlen)
 {
-	disp_info_t disp;
+	disp_info_t disp = {};
         struct task_struct *ts = current;
         const struct cred *rcred= ts->real_cred;
 	
@@ -476,7 +476,7 @@ SR_32 vsentry_socket_connect(struct socket *sock, struct sockaddr *address, SR_3
 
 SR_32 vsentry_incoming_connection(struct sk_buff *skb)
 {
-	disp_info_t disp;
+	disp_info_t disp = {};
 
 	memset(&disp, 0, sizeof(disp_info_t));
 	
@@ -731,7 +731,7 @@ SR_32 vsentry_inode_link(struct dentry *old_dentry, struct inode *dir, struct de
  */
 SR_32 vsentry_socket_create(SR_32 family, SR_32 type, SR_32 protocol, SR_32 kern)
 {
-	disp_info_t disp;
+	disp_info_t disp = {};
 	struct task_struct *ts = current;
 	const struct cred *rcred= ts->real_cred;		
 	return 0;
@@ -832,7 +832,7 @@ SR_32 vsentry_socket_sendmsg(struct socket *sock,struct msghdr *msg,SR_32 size)
 	sr_connection_data_t con = {}, *conp;
 	SR_U32 rc;
 #endif
-	disp_info_t disp;
+	disp_info_t disp = {};
 	struct task_struct *ts = current;
 	const struct cred *rcred= ts->real_cred;		
 	
@@ -934,6 +934,7 @@ SR_32 vsentry_socket_sendmsg(struct socket *sock,struct msghdr *msg,SR_32 size)
 			disp.tuple_info.sport = ntohs(sock->sk->sk_dport);
 			disp.tuple_info.ip_proto = sock->sk->sk_protocol;
 			disp.tuple_info.size = size;
+			disp.tuple_info.dir = SR_DIR_TX;
 #ifdef DEBUG_EVENT_MEDIATOR
         		CEF_log_event(SR_CEF_CID_SYSTEM, "Info" , SEVERITY_LOW,
 								"vsentry_socket_connect=%lx[%d] -> %lx[%d]\n",
@@ -972,7 +973,7 @@ int vsentry_socket_recvmsg(struct socket *sock,struct msghdr *msg,int size,int f
 #ifdef CONFIG_STAT_ANALYSIS
 	sr_connection_data_t *conp, con = {};
 #endif
-	disp_info_t disp;
+	disp_info_t disp = {};
 	struct task_struct *ts = current;
 	const struct cred *rcred= ts->real_cred;		
 
@@ -997,7 +998,7 @@ int vsentry_socket_recvmsg(struct socket *sock,struct msghdr *msg,int size,int f
 						CEF_log_event(SR_CEF_CID_SYSTEM, "Error", SEVERITY_HIGH,
 										"ERROR failed sr_stat_connection_insert\n");
 						return 0;
-        			}
+					}
 				}
 				return 0;
 			}
@@ -1008,13 +1009,14 @@ int vsentry_socket_recvmsg(struct socket *sock,struct msghdr *msg,int size,int f
        			disp.tuple_info.daddr.v4addr.s_addr = ntohl(sock->sk->sk_rcv_saddr); // This is the local address
 			disp.tuple_info.saddr.v4addr.s_addr = ntohl(sock->sk->sk_daddr); // This is the forighen address
  			/* sk_dport is network orderm sk_num is host order, WTF??? */
-       			disp.tuple_info.sport = ntohs(sock->sk->sk_dport);
-       			disp.tuple_info.dport = sock->sk->sk_num;
-       			disp.tuple_info.ip_proto = sock->sk->sk_protocol;
-				disp.tuple_info.size = size;
+			disp.tuple_info.sport = ntohs(sock->sk->sk_dport);
+			disp.tuple_info.dport = sock->sk->sk_num;
+			disp.tuple_info.ip_proto = sock->sk->sk_protocol;
+			disp.tuple_info.size = size;
+			disp.tuple_info.dir = SR_DIR_RX;
 
 #ifdef CONFIG_STAT_ANALYSIS
-			sr_stat_port_update(disp.tuple_info.sport, current->tgid);
+			sr_stat_port_update(disp.tuple_info.dport, current->tgid);
 #endif
 				
 #ifdef DEBUG_EVENT_MEDIATOR
