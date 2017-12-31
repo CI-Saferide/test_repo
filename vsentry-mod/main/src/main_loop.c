@@ -14,6 +14,9 @@
 #ifdef CONFIG_STAT_ANALYSIS
 #include "sr_stat_analysis.h"
 #endif
+#ifdef CONFIG_CAN_ML
+#include "ml_can.h"
+#endif
 
 #define MAX_RX_MSG_LEN 	512
 
@@ -103,7 +106,12 @@ SR_32 sr_msg_dispatch(char *msg, int size)
 		case SR_MSG_TYPE_STAT_ANALYSIS:
 			sr_stat_analysis_handle_message((struct sr_stat_analysis_msg *)hdr->msg_payload);
 			break;
-#endif
+#endif /* CONFIG_STAT_ANALYSIS */
+#ifdef CONFIG_CAN_ML
+		case SR_MSG_TYPE_ML_CAN:
+			sr_ml_can_handle_message((struct sr_ml_can_msg *)hdr->msg_payload);
+			break;
+#endif /* CONFIG_CAN_ML */
 		case SR_MSG_TYPE_DEFAULT:
 			sal_kernel_print_info("wrong msg_type\n");
 			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,

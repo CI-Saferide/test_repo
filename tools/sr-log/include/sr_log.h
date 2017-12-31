@@ -22,10 +22,12 @@ enum SR_CEF_SEVERITY {
 };
 
 enum SR_CEF_CLASS_ID {
-	SR_CEF_CID_FILE = 100,
-	SR_CEF_CID_NETWORK = 200,
-	SR_CEF_CID_CAN = 300, 
-	SR_CEF_CID_SYSTEM = 400,
+	SR_CEF_CID_FILE = 100,			/* file classifier events */
+	SR_CEF_CID_NETWORK = 200,		/* ip classifier events */
+	SR_CEF_CID_CAN = 300,			/* CAN CLASSIFIER EVENTS */
+	SR_CEF_CID_SYSTEM = 400,		/* general vsentry system events */
+	SR_CEF_CID_ML_CAN = 500,		/* CAN machine learning events */
+	SR_CEF_CID_STAT_IP = 600,		/* IP statisstical analysis events */
 };
 
 

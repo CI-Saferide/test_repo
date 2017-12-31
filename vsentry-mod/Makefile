@@ -14,8 +14,10 @@ EXTRA_CFLAGS += -I$(TOP_DIR)/dispatcher/include
 EXTRA_CFLAGS += -I$(TOP_DIR)/scanner_det/include
 EXTRA_CFLAGS += -I$(TOP_DIR)/stat_analysis/include
 EXTRA_CFLAGS += -I$(TOP_DIR)/../common/stat_analysis/include
+EXTRA_CFLAGS += -I$(TOP_DIR)/ml/include
 
 #EXTRA_CFLAGS += -DUNIT_TEST
+EXTRA_CFLAGS += -DCONFIG_CAN_ML
 EXTRA_CFLAGS += -D_KERNEL
 #debug flags
 #EXTRA_CFLAGS += -DDEBUG_EVENT_MEDIATOR
@@ -55,6 +57,7 @@ $(TARGET)-objs := sal/platform/linux/src/module_init.o \
 				  stat_analysis/src/sr_stat_port.o \
 				  ../tools/radix/src/sr_radix.o \
 				  ../tools/sr-hash/src/sr_hash.o \
+				  ../tools/sr-hash/src/sr_gen_hash.o \
 				  ../tools/sr-log/src/sr_kernel_log.o \
 				  sal/platform/linux/src/sal_linux.o \
 				  sal/platform/linux/src/sal_bitops_linux.o \
@@ -67,6 +70,7 @@ $(TARGET)-objs := sal/platform/linux/src/module_init.o \
 				  ../common/src/sr_msg.o \
 				  ../common/src/sr_tasks.o \
 				  main/src/sr_control.o \
+				  ml/src/ml_can.o \
 
 else
 

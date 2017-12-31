@@ -65,7 +65,6 @@ void log_cef_msg(cef_str str)
 void log_print_cef_msg(CEF_payload *cef)
 {	
 	SR_8 cef_buffer[MAX_PAYLOAD];
-	SR_8 cef_class[32];
 	time_t timer;
     SR_8 buffer[26]; //for time
     struct tm* tm_info;

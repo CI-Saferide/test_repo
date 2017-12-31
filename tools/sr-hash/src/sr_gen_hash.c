@@ -1,7 +1,6 @@
 #include <sr_sal_common.h>
 #include <sr_gen_hash.h>
 #include <sal_mem.h>
-#include <string.h>
 
 typedef struct hash_item {
 	struct hash_item *next;
@@ -43,14 +42,13 @@ SR_32 sr_gen_hash_insert(struct sr_gen_hash *hash, void *key, void *data)
 	hash_item_t **iter;
 
 	GET_HASH_IND(hash, ind, key, SR_ERROR);
-
 	for (iter = &(hash->table[ind]); *iter; iter = &((*iter)->next)) {
 		if (hash->hash_ops.comp && hash->hash_ops.comp((*iter)->data, key) == 0)
 			break;
 	}
 	if (*iter) {
-		CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,
-			"hash_inserti Error, key exists \n");
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+			"hash_insert error, key exists");
 		return SR_ERROR;
 	}
 	/* Add new key */
