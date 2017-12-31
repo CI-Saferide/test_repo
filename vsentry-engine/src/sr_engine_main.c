@@ -185,7 +185,9 @@ SR_32 sr_engine_start(void)
 
 	sr_get_command_start();
 
+#ifdef UNIT_TEST
 	config_ut();
+#endif
 
 	read_vsentry_config("sr_config", config_params);
 	can_args.can_interface = config_params.can0_interface;
