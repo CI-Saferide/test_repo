@@ -65,17 +65,20 @@ void log_cef_msg(cef_str str)
 void log_print_cef_msg(CEF_payload *cef)
 {	
 	SR_8 cef_buffer[MAX_PAYLOAD];
-	SR_8 cef_class[32];
 	time_t timer;
     SR_8 buffer[26]; //for time
     struct tm* tm_info;
-    
+    struct timeval tv;
+
+    gettimeofday(&tv, NULL); 
     time(&timer);
     tm_info = localtime(&timer);
     strftime(buffer, 26, "%Y-%m-%d %H:%M:%S", tm_info);
+
 		
-	sprintf(cef_buffer,"%s CEF:%d.%d|%s|%s|%d.%d|%d|%s|%d|%d|%s\n",
+	sprintf(cef_buffer,"%s.%.6ld CEF:%d.%d|%s|%s|%d.%d|%d|%s|%d|%d|%s\n",
 			buffer,
+                        tv.tv_usec,
 			CEF_VER_MAJOR,CEF_VER_MINOR,
 			VENDOR_NAME,PRODUCT_NAME,
 			VSENTRY_VER_MAJOR,VSENTRY_VER_MINOR,
