@@ -7,6 +7,7 @@
 typedef enum {
 	SR_STAT_MODE_LEARN,
 	SR_STAT_MODE_PROTECT,
+	SR_STAT_MODE_HALT,
 } sr_stat_mode_t;
 
 SR_32 sr_stat_analysis_init(void);

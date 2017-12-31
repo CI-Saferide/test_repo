@@ -134,7 +134,7 @@ SR_32 sr_classifier_network(disp_info_t* info)
 	// IP Proto - TODO
 
 	while ((rule = sal_ffs_and_clear_array (&ba_res)) != -1) {
-		action = sr_cls_network_rule_match(rule, info->tuple_info.size);
+		action = sr_cls_network_rule_match(rule, info->tuple_info.size, info->tuple_info.dir);
 		if (action & SR_CLS_ACTION_LOG) {
 			char ext[256],sip[16],dip[16], actionstring[16];
 			SR_U32 sip_t, dip_t;
