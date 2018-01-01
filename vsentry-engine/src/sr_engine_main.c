@@ -100,7 +100,7 @@ SR_32 sr_engine_start(void)
 	SR_U8 run = 1;
 	FILE *f;
 	
-	read_vsentry_config("sr_config", config_params);
+	read_vsentry_config("/etc/sentry/sr_config", config_params);
 
 	ret = sr_log_init("[vsentry]", 0);
 	if (ret != SR_SUCCESS){

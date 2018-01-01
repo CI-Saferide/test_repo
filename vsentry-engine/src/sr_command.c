@@ -19,16 +19,17 @@ extern struct config_params_t config_params;
 
 static SR_32 handle_engine_start_stop(SR_BOOL is_on)
 {
-        FILE *f;
+    FILE *f;
 
+    usleep(500000);
 	sr_control_set_state(is_on);
-     	if (!(f = fopen("/tmp/sec_state", "w"))) {
+    if (!(f = fopen("/tmp/sec_state", "w"))) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,  "failed opening file /tmp/sec_state");
 		return SR_ERROR;
 	}
 		
 	fprintf(f, is_on ? "on" : "off");
-     	fclose(f);
+   	fclose(f);
 
 	return SR_SUCCESS;
 }
@@ -45,6 +46,7 @@ static SR_32 handle_command(void)
 
 	SR_CURL_INIT(GET_CMD_URL);
 	curl_easy_setopt(curl, CURLOPT_URL, GET_CMD_URL);
+    curl_easy_setopt(curl, CURLOPT_NOSIGNAL, 1);
 
 	fetch->payload = (char *) calloc(1, sizeof(fetch->payload));
 	fetch->size = 0;
@@ -53,7 +55,7 @@ static SR_32 handle_command(void)
 	snprintf(post_vin, 64, "X-VIN: %s", config_params.vin);
 	chunk = curl_slist_append(chunk,  post_vin);
 	curl_easy_setopt(curl, CURLOPT_HTTPHEADER, chunk);
-
+	curl_easy_setopt(curl, CURLOPT_NOSIGNAL, 1);
 	curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, curl_callback);
 	curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void *) fetch);
 

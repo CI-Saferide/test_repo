@@ -68,8 +68,9 @@ static char filename[] = "sr_engine.cfg";
 
 static SR_32 handle_engine_start_stop(char *engine)
 {
-        FILE *f;
+	FILE *f;
 
+	usleep(500000);
 	f = fopen("/tmp/sec_state", "w");
 	if (!strncmp(engine, SR_DB_ENGINE_START, SR_DB_ENGINE_NAME_SIZE)) {
 		sr_control_set_state(SR_TRUE);

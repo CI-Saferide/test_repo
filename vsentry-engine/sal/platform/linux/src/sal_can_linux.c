@@ -62,7 +62,7 @@ SR_32 can_collector_task(void *data)
 		FD_SET(can_args.can_fd,&rdfs);
 
         if ((ret = select(can_args.can_fd + 1, &rdfs, NULL, NULL, timeout_current)) <= 0) {
-			sr_stop_task(SR_CAN_COLLECT_TASK);
+            sleep(1);
             continue;
         }
         if (FD_ISSET(can_args.can_fd,&rdfs)) {
