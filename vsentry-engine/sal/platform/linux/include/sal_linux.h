@@ -32,6 +32,10 @@
 #include <sys/statvfs.h>
 #include <linux/can.h>
 #include <linux/can/raw.h>
+#include <netdb.h>
+#include <ifaddrs.h>
+#include <linux/if_link.h>
+#include <sys/sysinfo.h>
 
 #define VS_FILE_NAME 	"/dev/vsentry"
 
@@ -55,5 +59,6 @@ SR_U32 sal_get_os(sal_os_t *os);
 SR_U64 sal_get_time(void);
 SR_32 sal_get_process_name(SR_U32 pid, char *exe, SR_U32 size);
 SR_U32 sal_get_ip_for_interface(char *interface);
+SR_U32 sal_get_host_info(char *host_info, int size);
 
 #endif /* SAL_LINUX_ENGINE_H*/
