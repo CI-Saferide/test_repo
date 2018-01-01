@@ -521,12 +521,16 @@ static SR_32 create_rule(sr_session_ctx_t *sess, char *buf, jsmntok_t *t, char *
 	return SR_SUCCESS;
 }
 
-static SR_32 handle_string_from_tuple(sr_session_ctx_t *sess, char *buf, jsmntok_t *t, char *prefix, SR_32 rule_id, SR_32 tuple_id, char *field_name)
+static SR_32 handle_string_from_tuple(sr_session_ctx_t *sess, char *buf, jsmntok_t *t, char *prefix, SR_32 rule_id, SR_32 tuple_id, char *field_name, char *default_value)
 {
 	char str_param[MAX_STR_SIZE], str_value[MAX_STR_SIZE];
 
+	*str_value = 0;
 	json_get_string(t, buf, str_value);
 	sprintf(str_param, "%snum='%d']/%s[id='%d']/%s", prefix, rule_id, TUPLE, tuple_id, field_name);
+	if (!*str_value || !strcmp(str_value, "null")) {
+		strcpy(str_value, default_value);
+	}
 	if (um_set_value(sess, str_param, str_value) != SR_SUCCESS) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, "ERROR after um_set_value str_param:%s: str_value:%s: \n", str_param, str_value);
 		return SR_ERROR;
@@ -582,22 +586,22 @@ static void handle_ip_policies(sr_session_ctx_t *sess, char *buf, jsmntok_t *t, 
 			}
                         if (jsoneq(buf, &t[*i], JSON_SRCIP) == 0) {
                                 (*i)++;
-				handle_string_from_tuple(sess, buf, &t[*i], IP_PREFIX, id, 0, "srcaddr");
+				handle_string_from_tuple(sess, buf, &t[*i], IP_PREFIX, id, 0, "srcaddr", "");
                                 continue;
 			}
                         if (jsoneq(buf, &t[*i], JSON_DSTIP) == 0) {
                                 (*i)++;
-				handle_string_from_tuple(sess, buf, &t[*i], IP_PREFIX, id, 0, "dstaddr");
+				handle_string_from_tuple(sess, buf, &t[*i], IP_PREFIX, id, 0, "dstaddr", "");
                                 continue;
 			}
                         if (jsoneq(buf, &t[*i], JSON_SRCNETMASK) == 0) {
                                 (*i)++;
-				handle_string_from_tuple(sess, buf, &t[*i], IP_PREFIX, id, 0, "srcnetmask");
+				handle_string_from_tuple(sess, buf, &t[*i], IP_PREFIX, id, 0, "srcnetmask", "");
                                 continue;
 			}
                         if (jsoneq(buf, &t[*i], JSON_DSTNETMASK) == 0) {
                                 (*i)++;
-				handle_string_from_tuple(sess, buf, &t[*i], IP_PREFIX, id, 0, "dstnetmask");
+				handle_string_from_tuple(sess, buf, &t[*i], IP_PREFIX, id, 0, "dstnetmask", "");
                                 continue;
 			}
                         if (jsoneq(buf, &t[*i], JSON_SRCPORT) == 0) {
@@ -631,12 +635,12 @@ static void handle_ip_policies(sr_session_ctx_t *sess, char *buf, jsmntok_t *t, 
 			}
                         if (jsoneq(buf, &t[*i], JSON_PROGRAM) == 0) {
                                 (*i)++;
-				handle_string_from_tuple(sess, buf, &t[*i], IP_PREFIX, id, 0, "program");
+				handle_string_from_tuple(sess, buf, &t[*i], IP_PREFIX, id, 0, "program", "*");
                                 continue;
 			}
                         if (jsoneq(buf, &t[*i], JSON_USER) == 0) {
                                 (*i)++;
-				handle_string_from_tuple(sess, buf, &t[*i], IP_PREFIX, id, 0, "user");
+				handle_string_from_tuple(sess, buf, &t[*i], IP_PREFIX, id, 0, "user", "*");
                                 continue;
 			}
                         if (jsoneq(buf, &t[*i], JSON_ACTION) == 0) {
@@ -687,7 +691,7 @@ static void handle_system_policies(sr_session_ctx_t *sess, char *buf, jsmntok_t 
 			}
                         if (jsoneq(buf, &t[*i], JSON_FILE_NAME) == 0) {
                                 (*i)++;
-				handle_string_from_tuple(sess, buf, &t[*i], FILE_PREFIX, id, 0, "filename");
+				handle_string_from_tuple(sess, buf, &t[*i], FILE_PREFIX, id, 0, "filename", "");
                                 continue;
 			}
                         if (jsoneq(buf, &t[*i], JSON_PERMISSIONS) == 0) {
@@ -702,12 +706,12 @@ static void handle_system_policies(sr_session_ctx_t *sess, char *buf, jsmntok_t 
 			}
                         if (jsoneq(buf, &t[*i], JSON_PROGRAM) == 0) {
                                 (*i)++;
-				handle_string_from_tuple(sess, buf, &t[*i], FILE_PREFIX, id, 0, "program");
+				handle_string_from_tuple(sess, buf, &t[*i], FILE_PREFIX, id, 0, "program", "*");
                                 continue;
 			}
                         if (jsoneq(buf, &t[*i], JSON_USER) == 0) {
                                 (*i)++;
-				handle_string_from_tuple(sess, buf, &t[*i], FILE_PREFIX, id, 0, "user");
+				handle_string_from_tuple(sess, buf, &t[*i], FILE_PREFIX, id, 0, "user", "*");
                                 continue;
 			}
         		(*i)++;
@@ -781,12 +785,12 @@ static void handle_can_policies(sr_session_ctx_t *sess, char *buf, jsmntok_t *t,
 			}
 			if (jsoneq(buf, &t[*i], JSON_PROGRAM) == 0) {
 				(*i)++;
-				handle_string_from_tuple(sess, buf, &t[*i], CAN_PREFIX, id, 0, "program");
+				handle_string_from_tuple(sess, buf, &t[*i], CAN_PREFIX, id, 0, "program", "*");
 				continue;
 			}
 			if (jsoneq(buf, &t[*i], JSON_USER) == 0) {
 				(*i)++;
-				handle_string_from_tuple(sess, buf, &t[*i], CAN_PREFIX, id, 0, "user");
+				handle_string_from_tuple(sess, buf, &t[*i], CAN_PREFIX, id, 0, "user", "*");
 				continue;
 			}
 			(*i)++;
