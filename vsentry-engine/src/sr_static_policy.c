@@ -824,6 +824,13 @@ static SR_32 parse_json(sr_session_ctx_t *sess, char *buf, SR_U32 *version)
 		if (jsoneq(buf, &t[i], ACTION_VER) == 0) {
 			i++;
 			*version = (SR_U32)json_get_int(&t[i], buf);
+			if (*version == static_policy_version)
+				goto out;
+			rc = sr_delete_item(sess, "/saferide:config", SR_EDIT_DEFAULT);
+			if (SR_ERR_OK != rc) {
+				CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, "sr_delete_item: %s\n", sr_strerror(rc));
+				return SR_ERROR;
+			}
 		}
 		if (jsoneq(buf, &t[i], IP_VER) == 0) {
 			i++;
