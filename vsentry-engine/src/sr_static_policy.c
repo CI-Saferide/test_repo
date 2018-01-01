@@ -826,6 +826,9 @@ static SR_32 parse_json(sr_session_ctx_t *sess, char *buf, SR_U32 *version)
 			*version = (SR_U32)json_get_int(&t[i], buf);
 			if (*version == static_policy_version)
 				goto out;
+#ifdef JSON_DEBUG
+			printf("New version :%d version:%d buf:%s:\n", *version, static_policy_version, buf);
+#endif
 			rc = sr_delete_item(sess, "/saferide:config", SR_EDIT_DEFAULT);
 			if (SR_ERR_OK != rc) {
 				CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, "sr_delete_item: %s\n", sr_strerror(rc));
