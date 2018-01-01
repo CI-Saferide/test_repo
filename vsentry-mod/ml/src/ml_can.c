@@ -59,7 +59,7 @@ void sr_ml_can_hash_deinit(void)
 	sr_gen_hash_destroy(can_ml_hash);
 }
 
-SR_32 r_ml_can_hash_delete_all(void)
+static SR_32 sr_ml_can_hash_delete_all(void)
 {
 	return sr_gen_hash_delete_all(can_ml_hash);
 }
@@ -105,7 +105,7 @@ static SR_32 update_can_item(disp_info_t* info, struct sr_ml_can_msg *msg)
 				return SR_ML_ALLOW;
 			}
 			can_ml_item->msg_id = info->can_info.msg_id;
-			can_ml_item->ts = info->can_info.ts;
+			can_ml_item->ts = 0;
 			can_ml_item->calc_sigma_plus = 0;
 			can_ml_item->calc_sigma_minus = 0;
 			can_ml_item->K = 0;
@@ -132,6 +132,10 @@ static SR_32 update_can_item(disp_info_t* info, struct sr_ml_can_msg *msg)
 				can_ml_item->payload[index] = info->can_info.payload[index];
 			if ((can_ml_item->h) && (protect == SR_TRUE))
 				return(can_ml_test(can_ml_item));
+		} else {
+			/* this is the second message, but the first "real" one */
+			/* (previous message came from the user space as learning info) */
+			can_ml_item->ts = info->can_info.ts;
 		}
 	}
 	/* we don't have learning data yet, cannot decide about this msg */
@@ -153,12 +157,20 @@ SR_32 sr_ml_can_handle_message(struct sr_ml_can_msg *msg)
 	disp_info_t info;
 	
 	if (msg->msg_id == 0xffffffff) {
-		/* this is indication for start the protection */
+		/* this is an indication for start the protection */
 		protect = SR_TRUE;
-		CEF_log_event(SR_CEF_CID_SYSTEM, "info", SEVERITY_LOW,
-						"can_ml start protection");
+		CEF_log_event(SR_CEF_CID_ML_CAN, "info", SEVERITY_LOW,
+						"can_ml protection started");
+	} if (msg->msg_id == 0xfffffffe) {
+		/* this is an indication for protection stop */
+		if (protect == SR_TRUE) {
+			CEF_log_event(SR_CEF_CID_ML_CAN, "info", SEVERITY_LOW,
+						"can_ml protection stopped");
+		}
+		protect = SR_FALSE;
+		sr_ml_can_hash_delete_all();
 	} else {
-		info.can_info.ts = get_curr_time_usec();
+		info.can_info.ts = 0;
 		info.can_info.msg_id = msg->msg_id;
 		update_can_item(&info, msg);
 	}

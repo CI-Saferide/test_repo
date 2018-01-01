@@ -49,7 +49,7 @@ static void learn_rule_print(void *data_in_hash)
 {
 	learn_rule_item_t *learn_rule_item = (learn_rule_item_t *)data_in_hash;
 
-	CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,"Learn rule#%d : updated:%d  %s RX p:%d b:%d TX p:%d b:%d",  learn_rule_item->rule_num,
+	CEF_log_event(SR_CEF_CID_STAT_IP, "Info", SEVERITY_LOW,"Learn rule#%d : updated:%d  %s RX p:%d b:%d TX p:%d b:%d",  learn_rule_item->rule_num,
 		learn_rule_item->is_updated, learn_rule_item->exec, learn_rule_item->counters.rx_msgs, learn_rule_item->counters.rx_bytes,
 		learn_rule_item->counters.tx_msgs, learn_rule_item->counters.tx_bytes);
 }
@@ -99,10 +99,10 @@ static SR_32 notify_learning(char *exec, sr_stat_con_stats_t *stats)
 	SR_32 rc = SR_SUCCESS;
 
 	sprintf(buf, "PROCESS:%s|TX:%llu|RX:%llu;", exec, 8 * stats->tx_bytes, 8 * stats->rx_bytes);
-	CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW, "LLLLLLLLLLLLLLLLLLLLLLERAN RULE -- :%s", buf);
+	CEF_log_event(SR_CEF_CID_STAT_IP, "info", SEVERITY_LOW, "LERAN RULE: %s", buf);
 
 	if (!(curl = curl_easy_init())) {
-		CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW, "curl_easy_init failed");
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_LOW, "curl_easy_init failed");
 		rc =  SR_ERROR;
 		goto out;
 	}
@@ -124,7 +124,7 @@ static SR_32 notify_learning(char *exec, sr_stat_con_stats_t *stats)
 	res = curl_easy_perform(curl);
 	/* Check for errors */
 	if(res != CURLE_OK)
-		fprintf(stderr, "curl_easy_perform() failed: %s\n", curl_easy_strerror(res));
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, "curl_easy_perform() failed: %s\n", curl_easy_strerror(res));
 
 	curl_easy_cleanup(curl);
 
@@ -152,7 +152,7 @@ SR_32 sr_stat_learn_rule_hash_update(char *exec, sr_stat_con_stats_t *con_stats)
 		learn_rule_item->is_updated = SR_TRUE;
 		learn_rule_item->rule_num = rule_number;
 #ifdef SR_STAT_ANALYSIS_DEBUG
-		CEF_log_event(SR_CEF_CID_SYSTEM, "info", SEVERITY_LOW,"------------------III Learned rule was inserted:%d exec:%s: txb:%d rxb:%d", rule_number, exec, 
+		CEF_log_event(SR_CEF_CID_SYSTEM, "info", SEVERITY_LOW,"Learned rule was inserted:%d exec:%s: txb:%d rxb:%d", rule_number, exec, 
 			con_stats->tx_bytes, con_stats->rx_bytes);
 #endif
 		// rule for TX and rule for RX
@@ -173,7 +173,7 @@ SR_32 sr_stat_learn_rule_hash_update(char *exec, sr_stat_con_stats_t *con_stats)
 			return SR_SUCCESS;
 		}
 #ifdef SR_STAT_ANALYSIS_DEBUG
-		CEF_log_event(SR_CEF_CID_SYSTEM, "info", SEVERITY_LOW, "---------------- UUU Learned rule is a candidate to be updated:%d exec:%s: txb:%d rxb:%d", rule_number - 2, exec, con_stats->tx_bytes,
+		CEF_log_event(SR_CEF_CID_SYSTEM, "info", SEVERITY_LOW, "Learned rule is a candidate to be updated:%d exec:%s: txb:%d rxb:%d", rule_number - 2, exec, con_stats->tx_bytes,
 			con_stats->rx_bytes);
 #endif
 		if (con_stats->rx_msgs > learn_rule_item->counters.rx_msgs) {
@@ -235,7 +235,7 @@ static SR_32 sr_stat_learn_rule_update_rule(char *exec, SR_U16 rule_num, sr_stat
 		return SR_SUCCESS;
 
 	/* Currently supports only UDP, TODO, support TCP, ANY protocl for port match */
-	CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,"UPDATE rule#%d exec:%s RX p:%d b:%d", 
+	CEF_log_event(SR_CEF_CID_STAT_IP, "info", SEVERITY_LOW,"UPDATE rule#%d exec:%s RX p:%d b:%d", 
 		rule_num, exec, 8 * counters->rx_msgs, 8 * counters->rx_bytes);
 	sr_cls_add_ipv4(0, exec, "*", 0, rule_num, SR_DIR_SRC);
 	sr_cls_add_ipv4(0, exec, "*", 0, rule_num, SR_DIR_DST);
@@ -243,7 +243,7 @@ static SR_32 sr_stat_learn_rule_update_rule(char *exec, SR_U16 rule_num, sr_stat
 	sr_cls_port_add_rule(0, exec, "*", rule_num, SR_DIR_DST, 17); 
 	sr_cls_rule_add(SR_NET_RULES, rule_num, actions, SR_FILEOPS_READ, SR_RATE_TYPE_BYTES, counters->rx_bytes, rl_exceed_action, 0, 0, 0, 0, SR_DIR_RX);
 
-	CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,"UPDATE rule#%d exec:%s TX p:%d b:%d", 
+	CEF_log_event(SR_CEF_CID_STAT_IP, "info", SEVERITY_LOW,"UPDATE rule#%d exec:%s TX p:%d b:%d", 
 		rule_num + 1, exec, 8 * counters->tx_msgs, 8 * counters->tx_bytes);
 	sr_cls_add_ipv4(0, exec, "*", 0, rule_num + 1, SR_DIR_SRC);
 	sr_cls_add_ipv4(0, exec, "*", 0, rule_num + 1, SR_DIR_DST);
@@ -279,14 +279,14 @@ static SR_32 delete_process_rule_cb(void *hash_data, void *data)
 	if (!strstr(learn_rule_item->exec, "server"))
 		return SR_SUCCESS;
 
-	CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,"DELETE rule#%d %s ", learn_rule_item->rule_num, learn_rule_item->exec);
+	CEF_log_event(SR_CEF_CID_STAT_IP, "info", SEVERITY_LOW,"DELETE rule#%d %s ", learn_rule_item->rule_num, learn_rule_item->exec);
 	sr_cls_del_ipv4(0, learn_rule_item->exec, "*", 0, learn_rule_item->rule_num, SR_DIR_SRC);
 	sr_cls_del_ipv4(0, learn_rule_item->exec, "*", 0, learn_rule_item->rule_num, SR_DIR_DST);
 	sr_cls_port_del_rule(0, learn_rule_item->exec, "*", learn_rule_item->rule_num, SR_DIR_SRC, 17); 
 	sr_cls_port_del_rule(0, learn_rule_item->exec, "*", learn_rule_item->rule_num, SR_DIR_DST, 17); 
 	sr_cls_rule_del(SR_NET_RULES, learn_rule_item->rule_num);
 
-	CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,"DELETE rule#%d %s ", learn_rule_item->rule_num + 1, learn_rule_item->exec);
+	CEF_log_event(SR_CEF_CID_STAT_IP, "info", SEVERITY_LOW,"DELETE rule#%d %s ", learn_rule_item->rule_num + 1, learn_rule_item->exec);
 	sr_cls_del_ipv4(0, learn_rule_item->exec, "*", 0, learn_rule_item->rule_num + 1, SR_DIR_SRC);
 	sr_cls_del_ipv4(0, learn_rule_item->exec, "*", 0, learn_rule_item->rule_num + 1, SR_DIR_DST);
 	sr_cls_port_del_rule(0, learn_rule_item->exec, "*", learn_rule_item->rule_num + 1, SR_DIR_SRC, 17); 
@@ -313,7 +313,7 @@ static SR_32 ut_cb(void *hash_data, void *data)
 {
 	learn_rule_item_t *learn_rule_item = (learn_rule_item_t *)hash_data;
 
-	CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,"Leran rule ---- %s RX p:%d b:%d TX p:%d b:%d", 
+	CEF_log_event(SR_CEF_CID_STAT_IP, "info", SEVERITY_LOW,"Leran rule ---- %s RX p:%d b:%d TX p:%d b:%d", 
 		learn_rule_item->exec, learn_rule_item->counters.rx_msgs, learn_rule_item->counters.rx_bytes, 
 		learn_rule_item->counters.tx_msgs, learn_rule_item->counters.tx_bytes);
 	

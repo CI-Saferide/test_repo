@@ -3,7 +3,11 @@
 
 #include "sr_types.h"
 
-#define LEARNING_TIME		(5000000)		/* time in usecs */
+typedef enum {
+	SR_ML_CAN_MODE_LEARN,
+	SR_ML_CAN_MODE_PROTECT,
+	SR_ML_CAN_MODE_HALT,
+} sr_ml_can_mode_t;
 
 typedef struct ml_can_ts {
    SR_U32		sec;						/* time stamp of last message in sec */
@@ -28,5 +32,6 @@ SR_32 sr_ml_can_hash_init(void);
 void ml_can_get_raw_data(SR_U64 ts, SR_U32 msg_id);
 void sr_ml_can_print_hash(void);
 void sr_ml_can_hash_deinit(void);
+void ml_can_set_state(sr_ml_can_mode_t state);
 
 #endif /* __SR_ML_CAN__ */

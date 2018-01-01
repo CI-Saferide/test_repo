@@ -15,7 +15,6 @@ typedef struct ml_can_item {
 	SR_32		h;							/* alarm threshold (from learning sequence)*/
 	SR_U32		mean_delta;					/* mean value of delta (from learning sequence) */
 	SR_U8		payload[8];					/* payload of the message */
-	SR_U32		index;						/* index of the message */
 }ml_can_item_t;
 
 SR_U8 test_can_msg(disp_info_t* info);

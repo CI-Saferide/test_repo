@@ -6,6 +6,9 @@
 #include "sr_stat_analysis.h"
 #include "sr_control.h"
 #include "sr_config_parse.h"
+#ifdef CONFIG_CAN_ML
+#include "sr_ml_can.h"
+#endif /* __SR_ML_CAN__ */
 
 static SR_BOOL is_run_cmd  = SR_TRUE;
 extern struct config_params_t config_params;
@@ -65,16 +68,34 @@ static SR_32 handle_command(void)
         if (!fetch->payload)
 		goto out;
 
-	if (strstr(fetch->payload, CMD_LERAN)) 
+	if (strstr(fetch->payload, CMD_LERAN)) {
 		sr_stat_analysis_learn_mode_set(SR_STAT_MODE_LEARN);
-	if (strstr(fetch->payload, CMD_PROTECT)) 
+		ml_can_set_state(SR_ML_CAN_MODE_LEARN);
+		CEF_log_event(SR_CEF_CID_SYSTEM, "state change", SEVERITY_LOW,
+							"state changed to learning mode");
+	}
+	if (strstr(fetch->payload, CMD_PROTECT)) {
 		sr_stat_analysis_learn_mode_set(SR_STAT_MODE_PROTECT);
-	if (strstr(fetch->payload, CMD_OFF)) 
+		ml_can_set_state(SR_ML_CAN_MODE_PROTECT);
+		CEF_log_event(SR_CEF_CID_SYSTEM, "state change", SEVERITY_LOW,
+							"state changed to protecting mode");
+	}
+	if (strstr(fetch->payload, CMD_OFF)) {
 		handle_engine_start_stop(SR_FALSE);
-	if (strstr(fetch->payload, CMD_ENABLE)) 
+		ml_can_set_state(SR_ML_CAN_MODE_HALT);
+		CEF_log_event(SR_CEF_CID_SYSTEM, "state change", SEVERITY_LOW,
+							"state changed to halt mode");
+	}
+	if (strstr(fetch->payload, CMD_ENABLE)) {
 		handle_engine_start_stop(SR_TRUE);
-	if (strstr(fetch->payload, CMD_DISABLE)) 
+		CEF_log_event(SR_CEF_CID_SYSTEM, "state change", SEVERITY_LOW,
+							"state changed to engine enabled");
+	}
+	if (strstr(fetch->payload, CMD_DISABLE)) {
 		handle_engine_start_stop(SR_FALSE);
+		CEF_log_event(SR_CEF_CID_SYSTEM, "state change", SEVERITY_LOW,
+							"state changed to engine diabled");
+	}
 
 out:
 	SR_CURL_DEINIT(curl);
