@@ -79,7 +79,7 @@ void sal_schedule_timeout(SR_U32 timeout)
 SR_32 sal_get_uid(char *user_name)
 {
 	struct passwd *pwd;
-     
+	 
 	if (!(pwd = getpwnam(user_name))) {
 		fprintf(stderr, "Failed to allocate struct passwd for getpwnam_r.\n");
 		return -1;
@@ -183,4 +183,50 @@ SR_U32 sal_get_ip_for_interface(char *interface)
 	close(fd);
 
 	return ((struct sockaddr_in *)&ifr.ifr_addr)->sin_addr.s_addr;
+}
+
+SR_U32 sal_get_host_info(char *host_info, int size)
+{
+	struct ifaddrs *ifaddr, *ifa;
+	int family, n;
+	struct sysinfo info;
+	unsigned long tx_bytes = 0, rx_bytes=0;
+	time_t timer;
+	struct tm* tm_info;
+	struct timeval tv;
+	SR_8 buffer[26];
+
+	gettimeofday(&tv, NULL);
+	time(&timer);
+	tm_info = localtime(&timer);
+	strftime(buffer, 26, "%Y-%m-%d %H:%M:%S", tm_info);
+
+	memset(&info, 0, sizeof(info));
+	sysinfo(&info);
+
+	if (!getifaddrs(&ifaddr)) {
+		for (ifa = ifaddr, n = 0; ifa != NULL; ifa = ifa->ifa_next, n++) {
+			if (ifa->ifa_addr == NULL)
+				continue;
+
+			if (strncmp(ifa->ifa_name, "lo", strlen(ifa->ifa_name)) == 0)
+				continue;
+
+			family = ifa->ifa_addr->sa_family;
+
+			if (family == AF_PACKET && ifa->ifa_data != NULL) {
+				struct rtnl_link_stats *stats = (struct rtnl_link_stats *)ifa->ifa_data;
+				tx_bytes += stats->tx_bytes;
+				rx_bytes += stats->rx_bytes;
+			}
+		}
+		freeifaddrs(ifaddr);
+	}
+
+	snprintf(host_info, size,
+		"%s.%.6ld memory_total=%lu | memory_free=%lu | cpu=%d | proccesses=%u | network_tx=%lu | network_rx=%lu",
+		buffer, tv.tv_usec, info.totalram, info.freeram,
+		get_nprocs_conf(), info.procs, tx_bytes, rx_bytes);
+
+	return SR_SUCCESS;
 }

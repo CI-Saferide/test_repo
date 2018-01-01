@@ -15,6 +15,7 @@
 #include <linux/can/skb.h>
 #include <linux/binfmts.h>
 #include "sr_control.h"
+#include <linux/time.h>
 #ifdef CONFIG_STAT_ANALYSIS
 #include "sr_stat_analysis.h"
 #endif
@@ -832,9 +833,12 @@ SR_32 vsentry_socket_sendmsg(struct socket *sock,struct msghdr *msg,SR_32 size)
 	sr_connection_data_t con = {}, *conp;
 	SR_U32 rc;
 #endif
+#ifdef CONFIG_CAN_ML
+	struct timeval tv;
+#endif /* CONFIG_CAN_ML */
 	disp_info_t disp = {};
 	struct task_struct *ts = current;
-	const struct cred *rcred= ts->real_cred;		
+	const struct cred *rcred= ts->real_cred;
 	
 	memset(&disp, 0, sizeof(disp_info_t));
 	
@@ -846,6 +850,9 @@ SR_32 vsentry_socket_sendmsg(struct socket *sock,struct msghdr *msg,SR_32 size)
 	
 	switch (family) {
 		case AF_CAN:
+			do_gettimeofday(&tv);
+			disp.can_info.ts = ((tv.tv_sec * 1000000) + tv.tv_usec);
+
 			disp.can_info.id.uid = (int)rcred->uid.val;
 			disp.can_info.id.pid = current->pid;
 			skb = sock_alloc_send_skb(copy_sock.sk, size + sizeof(struct can_skb_priv),
@@ -865,14 +872,14 @@ SR_32 vsentry_socket_sendmsg(struct socket *sock,struct msghdr *msg,SR_32 size)
 				disp.can_info.payload[i] = cfd->data[i];
 			}
 			/* TODO: remove it!!! this is only for the demo purposes */
-                        if (cfd->len > 7 && disp.can_info.payload[1] == 0 && 
+                        /*if (cfd->len > 7 && disp.can_info.payload[1] == 0 && 
                         	disp.can_info.payload[2] == 0 && 
                         	disp.can_info.payload[3] == 0 && 
                         	disp.can_info.payload[4] == 0 && 
                         	disp.can_info.payload[5] == 0 && 
                         	disp.can_info.payload[6] == 0) {
 							return 0;
-                        }
+                        }*/
 			CEF_log_debug(SR_CEF_CID_SYSTEM, "Event Mediator" , SEVERITY_LOW,
 							"[HOOK %s] family=af_can msd_id=%x payload_len=%d payload= %02x %02x %02x %02x %02x %02x %02x %02x pid=%d, uid=%d\n", 
 							hook_event_names[HOOK_SOCK_MSG_SEND].name,

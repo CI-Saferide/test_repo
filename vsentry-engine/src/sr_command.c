@@ -6,6 +6,9 @@
 #include "sr_stat_analysis.h"
 #include "sr_control.h"
 #include "sr_config_parse.h"
+#ifdef CONFIG_CAN_ML
+#include "sr_ml_can.h"
+#endif /* __SR_ML_CAN__ */
 
 static SR_BOOL is_run_cmd  = SR_TRUE;
 extern struct config_params_t config_params;
@@ -19,16 +22,17 @@ extern struct config_params_t config_params;
 
 static SR_32 handle_engine_start_stop(SR_BOOL is_on)
 {
-        FILE *f;
+    FILE *f;
 
+    usleep(500000);
 	sr_control_set_state(is_on);
-     	if (!(f = fopen("/tmp/sec_state", "w"))) {
+    if (!(f = fopen("/tmp/sec_state", "w"))) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,  "failed opening file /tmp/sec_state");
 		return SR_ERROR;
 	}
 		
 	fprintf(f, is_on ? "on" : "off");
-     	fclose(f);
+   	fclose(f);
 
 	return SR_SUCCESS;
 }
@@ -45,6 +49,7 @@ static SR_32 handle_command(void)
 
 	SR_CURL_INIT(GET_CMD_URL);
 	curl_easy_setopt(curl, CURLOPT_URL, GET_CMD_URL);
+    curl_easy_setopt(curl, CURLOPT_NOSIGNAL, 1);
 
 	fetch->payload = (char *) calloc(1, sizeof(fetch->payload));
 	fetch->size = 0;
@@ -53,7 +58,7 @@ static SR_32 handle_command(void)
 	snprintf(post_vin, 64, "X-VIN: %s", config_params.vin);
 	chunk = curl_slist_append(chunk,  post_vin);
 	curl_easy_setopt(curl, CURLOPT_HTTPHEADER, chunk);
-
+	curl_easy_setopt(curl, CURLOPT_NOSIGNAL, 1);
 	curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, curl_callback);
 	curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void *) fetch);
 
@@ -65,16 +70,34 @@ static SR_32 handle_command(void)
         if (!fetch->payload)
 		goto out;
 
-	if (strstr(fetch->payload, CMD_LERAN)) 
+	if (strstr(fetch->payload, CMD_LERAN)) {
 		sr_stat_analysis_learn_mode_set(SR_STAT_MODE_LEARN);
-	if (strstr(fetch->payload, CMD_PROTECT)) 
+		ml_can_set_state(SR_ML_CAN_MODE_LEARN);
+		CEF_log_event(SR_CEF_CID_SYSTEM, "state change", SEVERITY_LOW,
+							"state changed to learning mode");
+	}
+	if (strstr(fetch->payload, CMD_PROTECT)) {
 		sr_stat_analysis_learn_mode_set(SR_STAT_MODE_PROTECT);
-	if (strstr(fetch->payload, CMD_OFF)) 
+		ml_can_set_state(SR_ML_CAN_MODE_PROTECT);
+		CEF_log_event(SR_CEF_CID_SYSTEM, "state change", SEVERITY_LOW,
+							"state changed to protecting mode");
+	}
+	if (strstr(fetch->payload, CMD_OFF)) {
 		handle_engine_start_stop(SR_FALSE);
-	if (strstr(fetch->payload, CMD_ENABLE)) 
+		ml_can_set_state(SR_ML_CAN_MODE_HALT);
+		CEF_log_event(SR_CEF_CID_SYSTEM, "state change", SEVERITY_LOW,
+							"state changed to halt mode");
+	}
+	if (strstr(fetch->payload, CMD_ENABLE)) {
 		handle_engine_start_stop(SR_TRUE);
-	if (strstr(fetch->payload, CMD_DISABLE)) 
+		CEF_log_event(SR_CEF_CID_SYSTEM, "state change", SEVERITY_LOW,
+							"state changed to engine enabled");
+	}
+	if (strstr(fetch->payload, CMD_DISABLE)) {
 		handle_engine_start_stop(SR_FALSE);
+		CEF_log_event(SR_CEF_CID_SYSTEM, "state change", SEVERITY_LOW,
+							"state changed to engine diabled");
+	}
 
 out:
 	SR_CURL_DEINIT(curl);

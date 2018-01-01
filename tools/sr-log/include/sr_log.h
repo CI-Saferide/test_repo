@@ -3,7 +3,7 @@
 #include "sr_sal_common.h"
 #include "sr_ver.h"
 
-#define CEF_VER_MAJOR	0
+#define CEF_VER_MAJOR	1
 #define CEF_VER_MINOR	0
 #define VENDOR_NAME		"SafeRide"
 #define PRODUCT_NAME	"vSentry"
@@ -22,10 +22,12 @@ enum SR_CEF_SEVERITY {
 };
 
 enum SR_CEF_CLASS_ID {
-	SR_CEF_CID_FILE = 100,
-	SR_CEF_CID_NETWORK = 200,
-	SR_CEF_CID_CAN = 300, 
-	SR_CEF_CID_SYSTEM = 400,
+	SR_CEF_CID_FILE = 100,			/* file classifier events */
+	SR_CEF_CID_NETWORK = 200,		/* ip classifier events */
+	SR_CEF_CID_CAN = 300,			/* CAN CLASSIFIER EVENTS */
+	SR_CEF_CID_SYSTEM = 400,		/* general vsentry system events */
+	SR_CEF_CID_ML_CAN = 500,		/* CAN machine learning events */
+	SR_CEF_CID_STAT_IP = 600,		/* IP statisstical analysis events */
 };
 
 
@@ -37,7 +39,7 @@ enum SR_CEF_CLASS_ID {
 /*
 cef example:
 
-CEF:Version|Device Vendor|Device Product|Device Version|Device Event Class ID|Name|Severity|[Extension]
+CEF:Version|Device Vendor|Device Product|Device Version|Device Event Class ID|Name|Severity|confidence|[Extension]
 
 CEF:1.2|SafeRide|vSentry|1.0|100|Malware stopped|10|src=10.0.0.1 dst=2.1.2.2 spt=1232
 
@@ -48,9 +50,10 @@ CEF:1.0|SafeRide|vSentry|1.0|0|None|None|
 typedef struct CEF_payload
 {   			
 	enum SR_CEF_CLASS_ID		class;
-	char						name[32];
+	SR_8						name[32];
     enum SR_CEF_SEVERITY		sev;
-    char 						extension[512]; 
+    SR_8 						extension[512];
+    SR_U8						confidence;
 } CEF_payload;
 
 

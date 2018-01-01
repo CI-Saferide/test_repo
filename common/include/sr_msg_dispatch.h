@@ -14,6 +14,9 @@
 #ifdef CONFIG_STAT_ANALYSIS
 #include "sr_stat_analysis_common.h"
 #endif
+#ifdef CONFIG_CAN_ML
+#include "sr_ml_can_common.h"
+#endif
 
 typedef enum {
 	SR_MSG_TYPE_DEFAULT=0,
@@ -28,6 +31,9 @@ typedef enum {
 	SR_MSG_TYPE_CLS_FILTER_PATH,
 #ifdef CONFIG_STAT_ANALYSIS
 	SR_MSG_TYPE_STAT_ANALYSIS,
+#endif
+#ifdef CONFIG_CAN_ML
+	SR_MSG_TYPE_ML_CAN,
 #endif
 } sr_msg_dispatch_type;
 
@@ -83,7 +89,14 @@ typedef struct {
 	SR_8 msg_type;
 	struct sr_stat_analysis_msg sub_msg;
 } sr_stat_analysis_msg_t;
-#endif
+#endif /* CONFIG_STAT_ANALYSIS */
+
+#ifdef CONFIG_CAN_ML
+typedef struct {
+	SR_8 msg_type;
+	struct sr_ml_can_msg sub_msg;
+} sr_ml_can_msg_t;
+#endif /* CONFIG_CAN_ML */
 
 #pragma pack(pop)
 

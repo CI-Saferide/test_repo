@@ -27,6 +27,10 @@
 #include "sr_scanner_det.h"
 #include "sr_ver.h"
 
+#ifdef CONFIG_CAN_ML
+#include "ml_can.h"
+#endif /* CONFIG_CAN_ML */
+
 #ifdef UNIT_TEST
 #include "sal_bitops_test.h"
 #endif /* UNIT_TEST */
@@ -288,7 +292,16 @@ static int __init vsentry_init(void)
 		cdev_del(cdev_p);
 		return rc;
 	}
-#endif
+#endif /* CONFIG_STAT_ANALYSIS */
+
+#ifdef CONFIG_CAN_ML
+	rc = sr_ml_can_hash_init();
+	if (rc != SR_SUCCESS) {
+		pr_info("[%s]: init can_ml failed!\n", MODULE_NAME);
+		cdev_del(cdev_p);
+		return rc;
+	}
+#endif /* CONFIG_CAN_ML */
 
 	sr_classifier_init();
 
@@ -345,6 +358,10 @@ static void __exit vsentry_cleanup(void)
 	sr_classifier_uninit();
 #ifdef CONFIG_STAT_ANALYSIS
 	sr_stat_analysis_uninit();
+#endif
+
+#ifdef CONFIG_CAN_ML
+	sr_ml_can_hash_deinit();
 #endif
 
 	cdev_del(cdev_p);

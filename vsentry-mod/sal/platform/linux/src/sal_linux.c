@@ -191,3 +191,10 @@ SR_32 sal_elapsed_time_secs(SR_TIME_COUNT time_count)
 {
 	return (jiffies - time_count) / HZ;
 }
+
+SR_U64 get_curr_time_usec(void)
+{
+	struct timeval tv;
+	do_gettimeofday(&tv);
+	return ((tv.tv_sec * 1000000) + tv.tv_usec);
+}
