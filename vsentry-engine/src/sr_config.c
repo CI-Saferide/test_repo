@@ -153,7 +153,7 @@ static SR_32 add_ip_rule(ip_rule_t *rule)
 	sr_cls_add_ipv4(rule->tuple.srcaddr.s_addr, program, user, rule->tuple.srcnetmask.s_addr, rule->rulenum, SR_DIR_SRC);
 	sr_cls_add_ipv4(rule->tuple.dstaddr.s_addr, program, user, rule->tuple.dstnetmask.s_addr, rule->rulenum, SR_DIR_DST);
 	sr_cls_rule_add(SR_NET_RULES, rule->rulenum, actions_bitmap, SR_FILEOPS_READ, SR_RATE_TYPE_BYTES, rule->tuple.max_rate, /* net_rule.rate_action */ 0 ,
-                         /* net_ruole.action.log_target */ 0 , /* net_rule.tuple.action.email_id */ 0 , /* net_rule.tuple.action.phone_id */ 0 , /* net_rule.action.skip_rulenum */ 0, SR_DIR_ANY);
+                         /* net_ruole.action.log_target */ 0 , /* net_rule.tuple.action.email_id */ 0 , /* net_rule.tuple.action.phone_id */ 0 , /* net_rule.action.skip_rulenum */ 0);
 
 	return SR_SUCCESS;
 }
@@ -179,7 +179,7 @@ static SR_32 update_ip_rule(ip_rule_t *rule)
 			return SR_ERROR;
 		}
 		sr_cls_rule_add(SR_NET_RULES, rule->rulenum, actions_bitmap, SR_FILEOPS_READ, SR_RATE_TYPE_BYTES, rule->tuple.max_rate, /* net_rule.rate_action */ 0 ,
-                         /* net_ruole.action.log_target */ 0 , /* net_rule.tuple.action.email_id */ 0 , /* net_rule.tuple.action.phone_id */ 0 , /* net_rule.action.skip_rulenum */ 0, SR_DIR_ANY);
+                         /* net_ruole.action.log_target */ 0 , /* net_rule.tuple.action.email_id */ 0 , /* net_rule.tuple.action.phone_id */ 0 , /* net_rule.action.skip_rulenum */ 0);
 		strncpy(old_rule->action_name, rule->action_name, ACTION_STR_SIZE);
 	}
 
@@ -284,7 +284,7 @@ static SR_32 add_file_rule(file_rule_t *rule)
 	convert_permissions(rule->tuple.permission, &permissions);
 	sr_cls_file_add_rule(rule->tuple.filename, program, user, rule->rulenum, 1);
 	sr_cls_rule_add(SR_FILE_RULES, rule->rulenum, actions_bitmap, permissions, SR_RATE_TYPE_BYTES, rule->tuple.max_rate, /* net_rule.rate_action */ 0 ,
-                         /* net_ruole.action.log_target */ 0 , /* net_rule.tuple.action.email_id */ 0 , /* net_rule.tuple.action.phone_id */ 0 , /* net_rule.action.skip_rulenum */ 0, SR_DIR_ANY);
+                         /* net_ruole.action.log_target */ 0 , /* net_rule.tuple.action.email_id */ 0 , /* net_rule.tuple.action.phone_id */ 0 , /* net_rule.action.skip_rulenum */ 0);
 
 	return SR_SUCCESS;
 }
@@ -314,7 +314,7 @@ static SR_32 update_file_rule(file_rule_t *rule)
 			return SR_ERROR;
 		}
 		sr_cls_rule_add(SR_FILE_RULES, rule->rulenum, actions_bitmap, permissions, SR_RATE_TYPE_EVENT, rule->tuple.max_rate, /* net_rule.rate_action */ 0 ,
-                         /* net_ruole.action.log_target */ 0 , /* net_rule.tuple.action.email_id */ 0 , /* net_rule.tuple.action.phone_id */ 0 , /* net_rule.action.skip_rulenum */ 0, SR_DIR_ANY);
+                         /* net_ruole.action.log_target */ 0 , /* net_rule.tuple.action.email_id */ 0 , /* net_rule.tuple.action.phone_id */ 0 , /* net_rule.action.skip_rulenum */ 0);
 		strncpy(old_rule->action_name, rule->action_name, ACTION_STR_SIZE);
 		strncpy(old_rule->tuple.permission, rule->tuple.permission, 4);
 	}
@@ -363,7 +363,7 @@ static SR_32 add_can_rule(can_rule_t *rule)
 
 	sr_cls_canid_add_rule(rule->tuple.msg_id, program, user, rule->rulenum);
 	sr_cls_rule_add(SR_CAN_RULES, rule->rulenum, actions_bitmap, 0, SR_RATE_TYPE_BYTES, rule->tuple.max_rate, /* net_rule.rate_action */ 0 ,
-                         /* net_ruole.action.log_target */ 0 , /* net_rule.tuple.action.email_id */ 0 , /* net_rule.tuple.action.phone_id */ 0 , /* net_rule.action.skip_rulenum */ 0, SR_DIR_ANY);
+                         /* net_ruole.action.log_target */ 0 , /* net_rule.tuple.action.email_id */ 0 , /* net_rule.tuple.action.phone_id */ 0 , /* net_rule.action.skip_rulenum */ 0);
 
 	return SR_SUCCESS;
 }
@@ -390,7 +390,7 @@ static SR_32 update_can_rule(can_rule_t *rule)
 			return SR_ERROR;
 		}
 		sr_cls_rule_add(SR_CAN_RULES, rule->rulenum, actions_bitmap, 0, SR_RATE_TYPE_EVENT, rule->tuple.max_rate, /* net_rule.rate_action */ 0 ,
-                         /* net_ruole.action.log_target */ 0 , /* net_rule.tuple.action.email_id */ 0 , /* net_rule.tuple.action.phone_id */ 0 , /* net_rule.action.skip_rulenum */ 0, SR_DIR_ANY);
+                         /* net_ruole.action.log_target */ 0 , /* net_rule.tuple.action.email_id */ 0 , /* net_rule.tuple.action.phone_id */ 0 , /* net_rule.action.skip_rulenum */ 0);
 		strncpy(old_rule->action_name, rule->action_name, ACTION_STR_SIZE);
 	}
 
@@ -600,7 +600,7 @@ SR_BOOL read_config_file (void)
 			sr_cls_add_ipv4(htonl(net_rec.src_addr), process, "*", htonl(net_rec.src_netmask), net_rec.rulenum, SR_DIR_SRC);
 			sr_cls_add_ipv4(htonl(net_rec.dst_addr), process, "*", htonl(net_rec.dst_netmask), net_rec.rulenum, SR_DIR_DST);
 			sr_cls_rule_add(SR_NET_RULES, net_rec.rulenum, net_rec.action.actions_bitmap, 0, SR_RATE_TYPE_EVENT, net_rec.max_rate, net_rec.rate_action,
-				net_rec.action.log_target, net_rec.action.email_id, net_rec.action.phone_id, net_rec.action.skip_rulenum, SR_DIR_ANY);
+				net_rec.action.log_target, net_rec.action.email_id, net_rec.action.phone_id, net_rec.action.skip_rulenum);
 			break;
 			}
 		case CONFIG_FILE_RULE: {
@@ -628,7 +628,7 @@ SR_BOOL read_config_file (void)
 			}
 			sr_cls_file_add_rule(filename, process, "*", file_rec.rulenum, 1);
 			sr_cls_rule_add(SR_FILE_RULES, file_rec.rulenum, file_rec.action.actions_bitmap, SR_FILEOPS_READ, SR_RATE_TYPE_EVENT, file_rec.max_rate,
-				file_rec.rate_action, file_rec.action.log_target, file_rec.action.email_id, file_rec.action.phone_id, file_rec.action.skip_rulenum, SR_DIR_ANY);
+				file_rec.rate_action, file_rec.action.log_target, file_rec.action.email_id, file_rec.action.phone_id, file_rec.action.skip_rulenum);
 			break;
 			}
 		case CONFIG_CAN_RULE: {
@@ -647,7 +647,7 @@ SR_BOOL read_config_file (void)
 				return SR_FALSE;
 			}
 			sr_cls_canid_add_rule(can_rec.msg_id, process, "*", can_rec.rulenum);
-			sr_cls_rule_add(SR_CAN_RULES, can_rec.rulenum, can_rec.action.actions_bitmap, 0, SR_RATE_TYPE_EVENT, can_rec.max_rate, can_rec.rate_action, can_rec.action.log_target, can_rec.action.email_id, can_rec.action.phone_id, can_rec.action.skip_rulenum, SR_DIR_ANY);
+			sr_cls_rule_add(SR_CAN_RULES, can_rec.rulenum, can_rec.action.actions_bitmap, 0, SR_RATE_TYPE_EVENT, can_rec.max_rate, can_rec.rate_action, can_rec.action.log_target, can_rec.action.email_id, can_rec.action.phone_id, can_rec.action.skip_rulenum);
 			break;
 			}
 		case CONFIG_PHONE_ENTRY: {

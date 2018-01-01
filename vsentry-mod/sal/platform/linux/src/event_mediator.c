@@ -941,7 +941,6 @@ SR_32 vsentry_socket_sendmsg(struct socket *sock,struct msghdr *msg,SR_32 size)
 			disp.tuple_info.sport = ntohs(sock->sk->sk_dport);
 			disp.tuple_info.ip_proto = sock->sk->sk_protocol;
 			disp.tuple_info.size = size;
-			disp.tuple_info.dir = SR_DIR_TX;
 #ifdef DEBUG_EVENT_MEDIATOR
         		CEF_log_event(SR_CEF_CID_SYSTEM, "Info" , SEVERITY_LOW,
 								"vsentry_socket_connect=%lx[%d] -> %lx[%d]\n",
@@ -980,9 +979,14 @@ int vsentry_socket_recvmsg(struct socket *sock,struct msghdr *msg,int size,int f
 #ifdef CONFIG_STAT_ANALYSIS
 	sr_connection_data_t *conp, con = {};
 #endif
-	disp_info_t disp = {};
-	struct task_struct *ts = current;
+// XXX TODO temporary remove support from uid since clasification is done in netfilter.
+#if 0
 	const struct cred *rcred= ts->real_cred;		
+#endif
+
+	if (sr_cls_process_add(current->pid) != SR_SUCCESS) {
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, "error adding process \n");
+	}
 
 	switch (family) {
 		case AF_INET:
@@ -1011,19 +1015,8 @@ int vsentry_socket_recvmsg(struct socket *sock,struct msghdr *msg,int size,int f
 			}
 #endif
 
-			disp.tuple_info.id.uid = (int)rcred->uid.val;
-			disp.tuple_info.id.pid = current->pid;
-       			disp.tuple_info.daddr.v4addr.s_addr = ntohl(sock->sk->sk_rcv_saddr); // This is the local address
-			disp.tuple_info.saddr.v4addr.s_addr = ntohl(sock->sk->sk_daddr); // This is the forighen address
- 			/* sk_dport is network orderm sk_num is host order, WTF??? */
-			disp.tuple_info.sport = ntohs(sock->sk->sk_dport);
-			disp.tuple_info.dport = sock->sk->sk_num;
-			disp.tuple_info.ip_proto = sock->sk->sk_protocol;
-			disp.tuple_info.size = size;
-			disp.tuple_info.dir = SR_DIR_RX;
-
 #ifdef CONFIG_STAT_ANALYSIS
-			sr_stat_port_update(disp.tuple_info.dport, current->tgid);
+			sr_stat_port_update(sock->sk->sk_num, current->tgid); // This is the local port
 #endif
 				
 #ifdef DEBUG_EVENT_MEDIATOR
@@ -1035,12 +1028,6 @@ int vsentry_socket_recvmsg(struct socket *sock,struct msghdr *msg,int size,int f
                         		disp.tuple_info.dport);
 #endif /* DEBUG_EVENT_MEDIATOR */
 
-			/* call dispatcher */
-			if (disp_ipv4_recvmsg(&disp) == SR_CLS_ACTION_ALLOW) {
-				return 0;
-			} else {
-				return -EACCES;
-			}
 			break;
 		default:
 			/* we are not interested in the message */

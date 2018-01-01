@@ -6,12 +6,6 @@
 #define SR_DIR_DST 1
 #define PORT_ANY 0
 
-typedef enum {
-	SR_DIR_ANY = 0,
-	SR_DIR_RX,
-	SR_DIR_TX,
-} sr_dir_t;
-
 enum {
 	SR_CLS_IPV4_DEL_RULE = 0,
 	SR_CLS_IPV4_ADD_RULE,

@@ -59,7 +59,6 @@ SR_32 sr_classifier_network(disp_info_t* info)
 	SR_16 rule;
 	SR_U16 action;
 	bit_array ba_res;
-	int st;
 
 	memset(&ba_res, 0, sizeof(bit_array));
 
@@ -105,6 +104,9 @@ SR_32 sr_classifier_network(disp_info_t* info)
 		return SR_CLS_ACTION_ALLOW;
 	}
 	if (info->tuple_info.id.pid) {  // Zero PID is an indication that we are not in process context
+
+// XXX TODO uid can NOT be implemented from netfilter
+#if 0
 		// UID
 		if (info->tuple_info.id.uid != UID_ANY) {
 			ptr = sr_cls_match_uid(SR_NET_RULES, info->tuple_info.id.uid);
@@ -119,11 +121,8 @@ SR_32 sr_classifier_network(disp_info_t* info)
 		if (array_is_clear(ba_res)) {
 			return SR_CLS_ACTION_ALLOW;
 		}
+#endif
 		//PID
-		if ((st = sr_cls_process_add(info->tuple_info.id.pid)) != SR_SUCCESS) {
-			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-							"error adding process \n");
-	    	}
 		ptr = sr_cls_process_match(SR_NET_RULES, info->tuple_info.id.pid);
 		if (ptr) {
 			sal_and_self_op_two_arrays(&ba_res, ptr, sr_cls_exec_file_any(SR_NET_RULES));
@@ -134,7 +133,7 @@ SR_32 sr_classifier_network(disp_info_t* info)
 	// IP Proto - TODO
 
 	while ((rule = sal_ffs_and_clear_array (&ba_res)) != -1) {
-		action = sr_cls_network_rule_match(rule, info->tuple_info.size, info->tuple_info.dir);
+		action = sr_cls_network_rule_match(rule, info->tuple_info.size);
 		if (action & SR_CLS_ACTION_LOG) {
 			char ext[256],sip[16],dip[16], actionstring[16];
 			SR_U32 sip_t, dip_t;

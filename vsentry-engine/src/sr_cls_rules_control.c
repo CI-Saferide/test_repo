@@ -14,9 +14,8 @@ void sr_cls_rule_add(SR_32 rule_type,
 						SR_U16 log_target,
 						SR_U16 email_id,
 						SR_U16 phone_id,
-						SR_U16 skip_rulenum,
-						sr_dir_t dir){
-							
+						SR_U16 skip_rulenum)
+{
 	sr_rules_msg_cls_t *msg;
 	
 	msg = (sr_rules_msg_cls_t*)sr_get_msg(ENG2MOD_BUF, ENG2MOD_MSG_MAX_SIZE);
@@ -35,7 +34,6 @@ void sr_cls_rule_add(SR_32 rule_type,
 			msg->sub_msg.rulenum = rulenum;
 			msg->sub_msg.phone_id = phone_id;	
 			msg->sub_msg.skip_rulenum = skip_rulenum;
-			msg->sub_msg.dir = dir;
 			
 			sr_send_msg(ENG2MOD_BUF, sizeof(msg));
 		}
