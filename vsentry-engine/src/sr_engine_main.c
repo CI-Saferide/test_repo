@@ -232,7 +232,7 @@ SR_32 sr_engine_start(void)
 				break;
 			case 'd':
 #ifdef CONFIG_CAN_ML
-					printf ("printing debud info for ml_can\n");
+					printf ("printing debug info for ml_can\n");
 					sr_ml_can_print_hash();
 #endif /* CONFIG_CAN_ML */
 				break;

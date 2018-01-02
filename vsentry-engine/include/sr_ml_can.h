@@ -3,6 +3,9 @@
 
 #include "sr_types.h"
 
+#define	FE_UPDATE_TIME			1000000 	/* update every 1 sec */
+#define	DYNAMIC_POLICY_BUFFER	(64*200)	/* up to 200 msg_ids */
+
 typedef enum {
 	SR_ML_CAN_MODE_LEARN,
 	SR_ML_CAN_MODE_PROTECT,
