@@ -6,6 +6,7 @@
 
 #define SR_CAN_IN 0
 #define SR_CAN_OUT 1
+#define SR_CAN_BOTH 2
 
 enum {
 	SR_CLS_CANID_DEL_RULE = 0,

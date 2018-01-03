@@ -23,6 +23,7 @@
 #include "sr_curl.h"
 #include <ctype.h>
 #include "sr_config_parse.h"
+#include "sr_command.h"
 
 static SR_BOOL is_run_db_mng = SR_TRUE;
 static SR_U32 static_policy_version;
@@ -830,9 +831,7 @@ static SR_32 parse_json(sr_session_ctx_t *sess, char *buf, SR_U32 *version)
 			*version = (SR_U32)json_get_int(&t[i], buf);
 			if (*version == static_policy_version)
 				goto out;
-#ifdef JSON_DEBUG
-			printf("New version :%d version:%d buf:%s:\n", *version, static_policy_version, buf);
-#endif
+			CEF_log_event(SR_CEF_CID_SYSTEM, "info", SEVERITY_LOW, "New version :%d version:%d buf:%s:\n", *version, static_policy_version, buf);
 			rc = sr_delete_item(sess, "/saferide:config", SR_EDIT_DEFAULT);
 			if (SR_ERR_OK != rc) {
 				CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, "sr_delete_item: %s\n", sr_strerror(rc));
@@ -893,7 +892,8 @@ static SR_32 get_server_db(sr_session_ctx_t *sess)
  	struct curl_httppost* post = NULL, *last = NULL; 
 	struct curl_fetch_st curl_fetch = {};
 	struct curl_fetch_st *fetch = &curl_fetch;
-	char post_vin[64];
+	char post_buf[64];
+	char state_name[32];
 	char host_info[512];
 
 	sal_get_host_info(host_info, 512);
@@ -910,8 +910,15 @@ static SR_32 get_server_db(sr_session_ctx_t *sess)
 	curl_formadd(&post, &last, CURLFORM_COPYNAME, "cpu", CURLFORM_BUFFER, STATIC_POLICY_CPU_FILE, CURLFORM_BUFFERPTR,
 		host_info, CURLFORM_BUFFERLENGTH, strlen(host_info), CURLFORM_END);
 	curl_easy_setopt(curl, CURLOPT_HTTPPOST, post);
-	snprintf(post_vin, 64, "X-VIN: %s", config_params.vin);
-	chunk = curl_slist_append(chunk, post_vin);
+	//curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
+	snprintf(post_buf, 64, "X-VIN: %s", config_params.vin);
+	chunk = curl_slist_append(chunk, post_buf);
+	sr_command_get_state_str(state_name, 32);
+	snprintf(post_buf, 64, "X-STATE: %s", state_name);
+	chunk = curl_slist_append(chunk,  post_buf);
+    sr_command_get_ml_state_str(state_name, 32);
+	snprintf(post_buf, 64, "X-STATE-ML: %s", state_name);
+	chunk = curl_slist_append(chunk,  post_buf);
 	curl_easy_setopt(curl, CURLOPT_HTTPHEADER, chunk);
 	chunk = curl_slist_append(chunk, ip_version);
 	curl_easy_setopt(curl, CURLOPT_HTTPHEADER, chunk);
