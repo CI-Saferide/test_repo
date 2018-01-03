@@ -22,11 +22,12 @@ void CEF_log_event(const SR_U32 class, const char *event_name,enum SR_CEF_SEVERI
 	i = vsnprintf(msg, SR_MAX_LOG-1, fmt, args);
 	va_end(args);
 	msg[SR_MAX_LOG - 1] = 0;
-		
-	if (payload) {	
-		payload->class = class;		
+
+	if (payload) {
+		payload->class = class;
 		sal_strcpy(payload->name,(char*)event_name);
-		payload->sev = severity;	
+		payload->sev = severity;
+		payload->confidence = 100; /* currently hard coded */
 		sal_strcpy(payload->extension,msg);
 		sr_send_msg(MOD2LOG_BUF, sizeof(payload));
 	}else{
