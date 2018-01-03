@@ -142,7 +142,7 @@ int sr_cls_canid_add_rule(SR_32 canid, SR_U32 rulenum, SR_8 dir)
 		
 	}
 	CEF_log_event(SR_CEF_CID_CAN, "info", SEVERITY_LOW,
-					"rule# %u assigned to CAN MsgID: %x dir: %s\n",rulenum,canid,(dir==SR_CAN_OUT)? "OUT" : "IN");	
+					"rule# %u assigned to CAN MsgID: %x dir: %s\n",rulenum,canid,(dir==SR_CAN_OUT)? "OUT" : "IN");
 	return SR_SUCCESS;
 }
 
