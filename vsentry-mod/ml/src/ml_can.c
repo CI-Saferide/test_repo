@@ -4,7 +4,9 @@
 #include "sr_ml.h"
 #include "sr_gen_hash.h"
 #include "sal_mem.h"
+#include "sr_control.h"
 
+extern struct config_params_t config_params;
 static SR_BOOL	protect = SR_FALSE;
 
 #define ML_CAN_HASH_SIZE 500
@@ -64,6 +66,22 @@ static SR_32 sr_ml_can_hash_delete_all(void)
 	return sr_gen_hash_delete_all(can_ml_hash);
 }
 
+
+static SR_BOOL rate_limit(ml_can_item_t* item)
+{
+	if ((item->ts - item->last_cef_ts) < 1000000) {
+		if (item->cef_msg_cnt < (config_params.cef_max_rate-1)) {
+			item->cef_msg_cnt++;
+			return (SR_TRUE);
+		}
+	} else {
+		item->cef_msg_cnt = 0;
+		item->last_cef_ts = item->ts;
+		return (SR_TRUE);
+	}
+	return (SR_FALSE);
+}
+
 static SR_BOOL can_ml_test(ml_can_item_t* item)
 {
 	SR_32			tmp_calc;
@@ -77,14 +95,17 @@ static SR_BOOL can_ml_test(ml_can_item_t* item)
 	if (item->calc_sigma_plus > item->h) {
 		item->calc_sigma_plus = 0;
 		item->calc_sigma_minus = 0;
-		CEF_log_event(SR_CEF_CID_ML_CAN, "CAN msg dropped", SEVERITY_HIGH,
-					"msg 0x%x dropped by learning machine, IAT too high", item->msg_id);
+
+		if (rate_limit(item) == SR_TRUE)
+			CEF_log_event(SR_CEF_CID_ML_CAN, "CAN msg dropped", SEVERITY_HIGH,
+							"msg 0x%x dropped by learning machine, IAT too high", item->msg_id);
 		return SR_ML_DROP;
 	} else if (item->calc_sigma_minus > item->h) {
 		item->calc_sigma_plus = 0;
 		item->calc_sigma_minus = 0;
-		CEF_log_event(SR_CEF_CID_ML_CAN, "CAN msg dropped", SEVERITY_HIGH,
-					"msg 0x%x dropped by learning machine, IAT too low", item->msg_id);
+		if (rate_limit(item) == SR_TRUE)
+			CEF_log_event(SR_CEF_CID_ML_CAN, "CAN msg dropped", SEVERITY_HIGH,
+							"msg 0x%x dropped by learning machine, IAT too low", item->msg_id);
 		return SR_ML_DROP;
 	}
 	return SR_ML_ALLOW;
@@ -109,6 +130,7 @@ static SR_32 update_can_item(disp_info_t* info, struct sr_ml_can_msg *msg)
 			can_ml_item->calc_sigma_plus = 0;
 			can_ml_item->calc_sigma_minus = 0;
 			can_ml_item->K = 0;
+			can_ml_item->last_cef_ts = 0;
 			if (msg != NULL) {
 				/* we have learning data from user space, let's update it */
 				can_ml_item->K = msg->K;

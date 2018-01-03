@@ -34,6 +34,7 @@
 #include "sr_log_uploader.h"
 //#include "sr_conio.h"
 #include "sr_command.h"
+#include "sr_config_common.h"
 
 extern struct canTaskParams can_args;
 extern struct config_params_t config_params;
@@ -99,6 +100,7 @@ SR_32 sr_engine_start(void)
 	SR_32 ret;
 	SR_U8 run = 1;
 	FILE *f;
+	sr_config_msg_t *msg;
 	
 	read_vsentry_config("/etc/sentry/sr_config", config_params);
 
@@ -207,7 +209,16 @@ SR_32 sr_engine_start(void)
 	f = fopen("/tmp/sec_state", "w");
 	fprintf(f, "on");
 	fclose(f);
-	//sr_control_set_state(SR_FALSE); /* just an example */
+	
+	/* sending config params to kernel */
+    msg = (sr_config_msg_t*)sr_get_msg(ENG2MOD_BUF, ENG2MOD_MSG_MAX_SIZE);
+	if (msg) {
+		msg->msg_type = SR_MSG_TYPE_CONFIG;
+		msg->sub_msg.cef_max_rate = config_params.cef_max_rate; 
+		sr_send_msg(ENG2MOD_BUF, sizeof(msg));
+	} else
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+						"failed to transfer config info to kernel");
 	while (run) {
 		SR_8 input = getchar();
 
@@ -230,8 +241,8 @@ SR_32 sr_engine_start(void)
 			case 'v':
 					printf("\navailable space under %s is: %lld bytes\n",disk,sal_gets_space(disk));
 				break;
-			case 'd':
 #ifdef CONFIG_CAN_ML
+			case 'd':
 					printf ("printing debug info for ml_can\n");
 					sr_ml_can_print_hash();
 #endif /* CONFIG_CAN_ML */

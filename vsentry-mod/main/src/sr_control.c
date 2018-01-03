@@ -5,6 +5,8 @@
 #endif
 
 static SR_BOOL vsentry_state = SR_TRUE;
+struct config_params_t config_params;
+
 
 void vsentry_set_state (SR_BOOL state)
 {
@@ -51,5 +53,11 @@ SR_8 sr_control_msg_dispatch(struct sr_control_msg *msg)
 		default:
 			break;
 	}
+	return SR_SUCCESS;
+}
+
+SR_32 sr_config_handle_message(struct sr_config_msg *msg)
+{
+	config_params.cef_max_rate = msg->cef_max_rate;
 	return SR_SUCCESS;
 }

@@ -17,6 +17,7 @@
 #ifdef CONFIG_CAN_ML
 #include "sr_ml_can_common.h"
 #endif
+#include "sr_config_common.h"
 
 typedef enum {
 	SR_MSG_TYPE_DEFAULT=0,
@@ -35,6 +36,7 @@ typedef enum {
 #ifdef CONFIG_CAN_ML
 	SR_MSG_TYPE_ML_CAN,
 #endif
+	SR_MSG_TYPE_CONFIG,
 } sr_msg_dispatch_type;
 
 #pragma pack(push, 1)
@@ -97,6 +99,11 @@ typedef struct {
 	struct sr_ml_can_msg sub_msg;
 } sr_ml_can_msg_t;
 #endif /* CONFIG_CAN_ML */
+
+typedef struct {
+	SR_8 msg_type;
+	struct sr_config_msg sub_msg;
+} sr_config_msg_t;
 
 #pragma pack(pop)
 

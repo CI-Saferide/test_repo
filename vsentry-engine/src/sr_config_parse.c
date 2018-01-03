@@ -23,16 +23,17 @@ void config_defaults(void)
 	config_params.cef_file_size = 1; /* in MB */
 	config_params.cef_file_cycling = 10; /*amount of cef files*/
 	strcpy(config_params.CEF_log_path, "/var/log/");
+	config_params.cef_max_rate = 2;
 }
 
 #define CONFIG_LINE_BUFFER_SIZE 100
 
 SR_8 read_vsentry_config(char* config_filename, struct config_params_t config) 
 {
-    FILE 	*fp;
-    SR_8 	buf[CONFIG_LINE_BUFFER_SIZE];
-    SR_8	*position;
-    SR_8 	*n __attribute__((unused));
+    FILE 			*fp;
+    SR_8 			buf[CONFIG_LINE_BUFFER_SIZE];
+    SR_8			*position;
+    SR_8 			*n __attribute__((unused));
 
     if ((fp=fopen(config_filename, "r")) == NULL) {
         CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
@@ -101,7 +102,7 @@ SR_8 read_vsentry_config(char* config_filename, struct config_params_t config)
             config_params.temp_log_path[strlen(config_params.temp_log_path)-1]='\0';
         }
         
-       position = strstr(buf, "CEF_CYCLING ");
+        position = strstr(buf, "CEF_CYCLING ");
         if (position) {	
             config_params.cef_file_cycling =  atoi(position + (strlen("CEF_CYCLING ")));
         }
@@ -113,6 +114,10 @@ SR_8 read_vsentry_config(char* config_filename, struct config_params_t config)
         if (position) {	
             strcpy(config_params.CEF_log_path, position + (strlen("CEF_PATH_TEMP ")));
             config_params.CEF_log_path[strlen(config_params.CEF_log_path)-1]='\0';
+        }
+        position = strstr(buf, "CEF_MAX_RATE ");
+        if (position) {
+            config_params.cef_max_rate =  atoi(position + (strlen("CEF_MAX_RATE ")));
         }
     }
     fclose(fp);
