@@ -781,9 +781,13 @@ static void file_hash_ut(void)
 
 SR_BOOL config_ut(void)
 {
+#if 0
 	//struct sr_file_entry		file_rec = {0};
 	//struct sr_net_entry			net_rec = {0};
 	struct sr_can_entry			can_rec = {0};
+	
+#endif
+
 #if 0
 	struct sr_phone_record		phone_rec = {0};
 	struct sr_email_entry		email_rec = {0};

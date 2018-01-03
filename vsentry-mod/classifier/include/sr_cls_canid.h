@@ -6,8 +6,6 @@
 #include "sr_cls_canbus_common.h"
 #include "sr_hash.h"
 
-//extern bit_array sr_cls_canid_any_rules;
-
 #define SR_MAX_CANID 4095 //FFF in hexa max CAN MSG ID
 
 struct canid_ent_t {

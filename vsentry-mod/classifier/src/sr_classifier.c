@@ -257,7 +257,7 @@ SR_32 sr_classifier_canbus(disp_info_t* info)
 	
 	memset(&ba_res, 0, sizeof(bit_array));
 	
-	ptr = sr_cls_match_canid(info->can_info.msg_id,(info->can_info.dir==SR_CAN_OUT)?1:0);
+	ptr = sr_cls_match_canid(info->can_info.msg_id,(info->can_info.dir==SR_CAN_OUT)?SR_CAN_OUT:SR_CAN_IN);
 	if (ptr) {
 		sal_or_op_arrays(ptr,(info->can_info.dir==SR_CAN_OUT)?src_cls_out_canid_any():src_cls_in_canid_any(), &ba_res);
 	} else { // take only inbound/any

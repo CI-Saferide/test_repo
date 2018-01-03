@@ -5,8 +5,6 @@
 #include "sr_cls_canbus_common.h"
 #include "sr_classifier.h"
 
-#include <linux/time.h> // for unit testing
-
 #define HT_canid_SIZE 32
 struct sr_hash_table_t *sr_cls_out_canid_table;
 struct sr_hash_table_t *sr_cls_in_canid_table;
