@@ -343,6 +343,22 @@ static SR_32 delete_file_rule(file_rule_t *rule)
 	return SR_SUCCESS;
 }
 
+static SR_U8 convert_can_dir(SR_U8 dir)
+{
+	switch (dir) { 
+		case SENTRY_DIR_IN:
+			return SR_CAN_IN;
+		case SENTRY_DIR_OUT:
+			return SR_CAN_OUT;
+		case SENTRY_DIR_BOTH:
+			return SR_CAN_BOTH;
+		default:
+			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, "Invalid CAN direction:%d", dir);
+			break;
+	}
+	return SENTRY_DIR_BOTH;
+}
+
 static SR_32 add_can_rule(can_rule_t *rule)
 {
 	SR_U16 actions_bitmap = 0;
@@ -361,7 +377,7 @@ static SR_32 add_can_rule(can_rule_t *rule)
 		return SR_ERROR;
 	}
 
-	sr_cls_canid_add_rule(rule->tuple.msg_id, program, user, rule->rulenum,rule->tuple.direction);
+	sr_cls_canid_add_rule(rule->tuple.msg_id, program, user, rule->rulenum, convert_can_dir(rule->tuple.direction));
 	sr_cls_rule_add(SR_CAN_RULES, rule->rulenum, actions_bitmap, 0, SR_RATE_TYPE_BYTES, rule->tuple.max_rate, /* net_rule.rate_action */ 0 ,
                          /* net_ruole.action.log_target */ 0 , /* net_rule.tuple.action.email_id */ 0 , /* net_rule.tuple.action.phone_id */ 0 , /* net_rule.action.skip_rulenum */ 0);
 
@@ -383,7 +399,7 @@ static SR_32 update_can_rule(can_rule_t *rule)
 	}
 	old_user = *(old_rule->tuple.user) ? old_rule->tuple.user : "*";
 	old_program = *(old_rule->tuple.program) ? old_rule->tuple.program : "*";
-	sr_cls_canid_del_rule(old_rule->tuple.msg_id, old_program, old_user, old_rule->rulenum,old_rule->tuple.direction);
+	sr_cls_canid_del_rule(old_rule->tuple.msg_id, old_program, old_user, old_rule->rulenum, convert_can_dir(old_rule->tuple.direction));
 	if (strncmp(rule->action_name, old_rule->action_name, ACTION_STR_SIZE)) {
 		if (convert_action(rule->action_name, &actions_bitmap) != SR_SUCCESS) {
 			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, "update can rule: convert_action failed");
@@ -398,7 +414,7 @@ static SR_32 update_can_rule(can_rule_t *rule)
 	old_rule->tuple.direction = rule->tuple.direction;
 	strncpy(old_rule->tuple.program, rule->tuple.program, PROG_NAME_SIZE);
 	strncpy(old_rule->tuple.user, rule->tuple.user, USER_NAME_SIZE);
-	sr_cls_canid_add_rule(rule->tuple.msg_id, program, user, rule->rulenum,rule->tuple.direction);
+	sr_cls_canid_add_rule(rule->tuple.msg_id, program, user, rule->rulenum, convert_can_dir(rule->tuple.direction));
 
 	return SR_SUCCESS;
 }
@@ -412,7 +428,8 @@ static SR_32 delete_can_rule(can_rule_t *rule)
 		return SR_SUCCESS;
 	}
 
-	sr_cls_canid_del_rule(old_rule->tuple.msg_id, *(old_rule->tuple.program) ? old_rule->tuple.program : "*", *(old_rule->tuple.user) ? old_rule->tuple.user : "*", old_rule->rulenum,old_rule->tuple.direction);
+	sr_cls_canid_del_rule(old_rule->tuple.msg_id, *(old_rule->tuple.program) ? old_rule->tuple.program : "*", *(old_rule->tuple.user) ? old_rule->tuple.user : "*",
+		old_rule->rulenum, convert_can_dir(old_rule->tuple.direction));
 	sr_db_can_rule_delete(rule);
 
 	return SR_SUCCESS;
