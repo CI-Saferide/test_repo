@@ -73,7 +73,7 @@ extern struct config_params_t config_params;
 #define LOG_SEVERITY "log/log_severity"
 #define BLACK_LIST "black-list"
 #define TERMINATE "terminate"
-#define JSON_ACTION "action"
+#define JSON_ACTION "actionName"
 #define JSON_ACTION_DROP "drop"
 #define JSON_ACTION_ALLOW "allow"
 #define JSON_ACTION_LOG "log"
@@ -832,6 +832,7 @@ static SR_32 parse_json(sr_session_ctx_t *sess, char *buf, SR_U32 *version)
 			if (*version == static_policy_version)
 				goto out;
 			CEF_log_event(SR_CEF_CID_SYSTEM, "info", SEVERITY_LOW, "New version :%d version:%d buf:%s:\n", *version, static_policy_version, buf);
+			printf("New version :%d version:%d buf:%s:\n", *version, static_policy_version, buf);
 			rc = sr_delete_item(sess, "/saferide:config", SR_EDIT_DEFAULT);
 			if (SR_ERR_OK != rc) {
 				CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, "sr_delete_item: %s\n", sr_strerror(rc));
@@ -916,7 +917,7 @@ static SR_32 get_server_db(sr_session_ctx_t *sess)
 	sr_command_get_state_str(state_name, 32);
 	snprintf(post_buf, 64, "X-STATE: %s", state_name);
 	chunk = curl_slist_append(chunk,  post_buf);
-    sr_command_get_ml_state_str(state_name, 32);
+	sr_command_get_ml_state_str(state_name, 32);
 	snprintf(post_buf, 64, "X-STATE-ML: %s", state_name);
 	chunk = curl_slist_append(chunk,  post_buf);
 	curl_easy_setopt(curl, CURLOPT_HTTPHEADER, chunk);
