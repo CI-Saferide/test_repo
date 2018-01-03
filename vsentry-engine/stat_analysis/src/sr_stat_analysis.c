@@ -27,7 +27,7 @@ SR_32 sr_stat_analysis_init(void)
 	}
 	t = sal_get_time();
 	last_aging = t;
-	stat_mode = SR_STAT_MODE_LEARN;
+	stat_mode = SR_STAT_MODE_OFF;
 
 	return SR_SUCCESS;
 }
@@ -120,7 +120,7 @@ void sr_stat_analysis_learn_mode_set(sr_stat_mode_t new_stat_mode)
 {
 	if (new_stat_mode == SR_STAT_MODE_PROTECT && stat_mode == SR_STAT_MODE_LEARN)
 		st_stats_process_connection_protect();
-	if (new_stat_mode == SR_STAT_MODE_LEARN && stat_mode == SR_STAT_MODE_PROTECT) {
+	if (new_stat_mode == SR_STAT_MODE_LEARN && (stat_mode == SR_STAT_MODE_PROTECT || stat_mode == SR_STAT_MODE_OFF)) {
 		// Go back to learn mode, cleaning up the learn rules table.
 		stat_mode = SR_STAT_MODE_HALT;
 		st_stats_process_connection_learn();

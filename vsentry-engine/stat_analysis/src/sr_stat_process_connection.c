@@ -327,7 +327,7 @@ static SR_32 finish_transmit(void *hash_data, void *data)
 	SR_32 rc = SR_SUCCESS;
 
 	stat_mode = sr_stat_analysis_learn_mode_get();
-	if (stat_mode == SR_STAT_MODE_HALT) {
+	if (stat_mode == SR_STAT_MODE_HALT || stat_mode == SR_STAT_MODE_OFF) {
 		return SR_SUCCESS;
 	}
 
