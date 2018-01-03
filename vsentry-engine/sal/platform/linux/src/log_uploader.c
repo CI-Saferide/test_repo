@@ -267,12 +267,15 @@ void write_archive(const char *outname, char *filename)
     //uploader_debug("outname %s, filename %s\n", outname, filename);
     a = archive_write_new();
     archive_write_add_filter_gzip(a);
-    archive_write_set_format_pax_restricted(a); // Note 1
+    archive_write_set_format_pax_restricted(a);
     archive_write_open_filename(a, outname);
-    stat(filename, &st);
-    entry = archive_entry_new(); // Note 2
+    if (stat(filename, &st) < 0) {
+        uploader_err("stat on %s failed: %s\n", filename, strerror(errno));
+        return;
+    }
+    entry = archive_entry_new();
     archive_entry_set_pathname(entry, basename(filename));
-    archive_entry_set_size(entry, st.st_size); // Note 3
+    archive_entry_set_size(entry, st.st_size);
     archive_entry_set_filetype(entry, AE_IFREG);
     archive_entry_set_perm(entry, 0644);
     archive_write_header(a, entry);
@@ -284,8 +287,8 @@ void write_archive(const char *outname, char *filename)
     }
     close(fd);
     archive_entry_free(entry);
-    archive_write_close(a); // Note 4
-    archive_write_free(a); // Note 5
+    archive_write_close(a);
+    archive_write_free(a);
 }
 
 static void can_log_upload(void)
@@ -415,7 +418,7 @@ static int check_log_events(int fd)
             if (strcmp(event->name, basename(candump_file_name_tgz)) == 0)
                 continue;
 
-            if (event->mask == IN_CLOSE_WRITE || event->mask == IN_MOVED_TO) {
+            if (event->mask == IN_MOVED_TO) {
                 //uploader_debug("event name %s\n", event->name);
                 snprintf(candump_file_name, CANDUMP_FILE_NAME_LEN, "%s%s",
                     config_params.log_path, event->name);
