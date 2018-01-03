@@ -142,7 +142,7 @@ int sr_cls_canid_add_rule(SR_32 canid, SR_U32 rulenum, SR_8 dir)
 		
 	}
 	CEF_log_event(SR_CEF_CID_CAN, "info", SEVERITY_LOW,
-		"\t\trule# %u assigned to CAN MsgID: %x dir: %d\n",rulenum,canid,dir);	
+					"rule# %u assigned to CAN MsgID: %x dir: %s\n",rulenum,canid,(dir==SR_CAN_OUT)? "OUT" : "IN");
 	return SR_SUCCESS;
 }
 
@@ -152,7 +152,7 @@ int sr_cls_canid_del_rule(SR_32 canid, SR_U32 rulenum, SR_8 dir)
 		struct sr_hash_ent_t *ent=sr_hash_lookup((dir==SR_CAN_OUT)?sr_cls_out_canid_table:sr_cls_in_canid_table, canid);         
 		if (!ent) {
 			CEF_log_event(SR_CEF_CID_CAN, "error", SEVERITY_HIGH,
-				"Error can't del rule# %u on CAN MsgID:%x dir: %d - rule not found\n",rulenum,canid,dir);
+				"Error can't del rule# %u on CAN MsgID:%x dir: %s - rule not found\n",rulenum,canid,(dir==SR_CAN_OUT)? "OUT" : "IN");
 			return SR_ERROR;
 		}
 		sal_clear_bit_array(rulenum, &ent->rules);
@@ -163,7 +163,7 @@ int sr_cls_canid_del_rule(SR_32 canid, SR_U32 rulenum, SR_8 dir)
 		sal_clear_bit_array(rulenum, (dir==SR_CAN_OUT)?&sr_cls_out_canid_any_rules:&sr_cls_in_canid_any_rules);
 	}
 	CEF_log_event(SR_CEF_CID_CAN, "info", SEVERITY_LOW,
-		"\t\trule# %u removed from CAN MsgID: %x dir: %d\n",rulenum,canid,dir);
+		"rule# %u removed from CAN MsgID: %x dir: %s",rulenum,canid,(dir==SR_CAN_OUT)? "OUT" : "IN");
 	return SR_SUCCESS;
 }
 
@@ -244,7 +244,7 @@ SR_8 sr_cls_canid_msg_dispatch(struct sr_cls_canbus_msg *msg)
 	switch (msg->msg_type) {
 		case SR_CLS_CANID_DEL_RULE:
 			CEF_log_event(SR_CEF_CID_CAN, "info", SEVERITY_LOW,
-				"Delete rule %d from %x\n dir: %d", msg->rulenum, msg->canid,msg->dir);
+				"Delete rule %d from %x\n dir %s", msg->rulenum, msg->canid, (msg->dir==SR_CAN_OUT)? "OUT" : "IN");
 			if ((st =  sr_cls_canid_del_rule(msg->canid, msg->rulenum,msg->dir)) != SR_SUCCESS)
 			   return st;
 			if ((st = sr_cls_exec_inode_del_rule(SR_CAN_RULES, msg->exec_inode, msg->rulenum)) != SR_SUCCESS)
@@ -252,7 +252,7 @@ SR_8 sr_cls_canid_msg_dispatch(struct sr_cls_canbus_msg *msg)
 			return sr_cls_uid_del_rule(SR_CAN_RULES, msg->uid, msg->rulenum);
 		case SR_CLS_CANID_ADD_RULE:
 			CEF_log_event(SR_CEF_CID_CAN, "info", SEVERITY_LOW,
-				"Add rule %d uid:%d  to %x dir: %d\n", msg->rulenum, msg->uid, msg->canid,msg->dir);
+							"Add rule %d uid:%d  to %x dir %s", msg->rulenum, msg->uid, msg->canid, (msg->dir==SR_CAN_OUT)? "OUT" : "IN");
 			if ((st = sr_cls_canid_add_rule(msg->canid, msg->rulenum,msg->dir)) != SR_SUCCESS)
 			   return st;
 			if ((st =  sr_cls_exec_inode_add_rule(SR_CAN_RULES, msg->exec_inode, msg->rulenum)) != SR_SUCCESS)
