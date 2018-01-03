@@ -39,7 +39,7 @@ static SR_32 handle_engine_start_stop(SR_BOOL is_on)
 	return SR_SUCCESS;
 }
 
-void get_ml_state_str(char *state, SR_U32 size)
+void sr_command_get_ml_state_str(char *state, SR_U32 size)
 {
 	switch (sr_stat_analysis_learn_mode_get()) {
 		case SR_STAT_MODE_LEARN:
@@ -57,12 +57,20 @@ void get_ml_state_str(char *state, SR_U32 size)
 	}
 }
 
+void sr_command_get_state_str(char *state, SR_U32 size)
+{
+	if (last_is_enabled)
+		strncpy(state, CMD_ENABLE, size);
+	else 
+		strncpy(state, CMD_DISABLE, size);
+}
+
 static SR_32 handle_command(void)
 {
 	CURL *curl;
 	CURLcode res;
 	struct curl_slist *chunk = NULL;
-	char post_buf[64], state_name[32];
+	char post_buf[64];
 
 	struct curl_fetch_st curl_fetch;
 	struct curl_fetch_st *fetch = &curl_fetch;
@@ -76,11 +84,6 @@ static SR_32 handle_command(void)
 
 	//curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
 	snprintf(post_buf, 64, "X-VIN: %s", config_params.vin);
-	chunk = curl_slist_append(chunk,  post_buf);
-	snprintf(post_buf, 64, "X-STATE: %s", last_is_enabled ? CMD_ENABLE : CMD_DISABLE);
-	chunk = curl_slist_append(chunk,  post_buf);
-	get_ml_state_str(state_name, 32);
-	snprintf(post_buf, 64, "X-STATE-ML: %s", state_name);
 	chunk = curl_slist_append(chunk,  post_buf);
 	curl_easy_setopt(curl, CURLOPT_HTTPHEADER, chunk);
 	curl_easy_setopt(curl, CURLOPT_NOSIGNAL, 1);

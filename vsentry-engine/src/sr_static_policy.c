@@ -23,6 +23,7 @@
 #include "sr_curl.h"
 #include <ctype.h>
 #include "sr_config_parse.h"
+#include "sr_command.h"
 
 static SR_BOOL is_run_db_mng = SR_TRUE;
 static SR_U32 static_policy_version;
@@ -891,7 +892,8 @@ static SR_32 get_server_db(sr_session_ctx_t *sess)
  	struct curl_httppost* post = NULL, *last = NULL; 
 	struct curl_fetch_st curl_fetch = {};
 	struct curl_fetch_st *fetch = &curl_fetch;
-	char post_vin[64];
+	char post_buf[64];
+	char state_name[32];
 	char host_info[512];
 
 	sal_get_host_info(host_info, 512);
@@ -909,8 +911,14 @@ static SR_32 get_server_db(sr_session_ctx_t *sess)
 		host_info, CURLFORM_BUFFERLENGTH, strlen(host_info), CURLFORM_END);
 	curl_easy_setopt(curl, CURLOPT_HTTPPOST, post);
 	//curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
-	snprintf(post_vin, 64, "X-VIN: %s", config_params.vin);
-	chunk = curl_slist_append(chunk, post_vin);
+	snprintf(post_buf, 64, "X-VIN: %s", config_params.vin);
+	chunk = curl_slist_append(chunk, post_buf);
+	sr_command_get_state_str(state_name, 32);
+	snprintf(post_buf, 64, "X-STATE: %s", state_name);
+	chunk = curl_slist_append(chunk,  post_buf);
+    sr_command_get_ml_state_str(state_name, 32);
+	snprintf(post_buf, 64, "X-STATE-ML: %s", state_name);
+	chunk = curl_slist_append(chunk,  post_buf);
 	curl_easy_setopt(curl, CURLOPT_HTTPHEADER, chunk);
 	chunk = curl_slist_append(chunk, ip_version);
 	curl_easy_setopt(curl, CURLOPT_HTTPHEADER, chunk);
