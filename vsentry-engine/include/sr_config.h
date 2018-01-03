@@ -86,6 +86,7 @@ struct sr_file_entry{
 struct sr_can_record{		
 	SR_U16						rulenum;						/* rule number */
 	SR_U32						msg_id;							/* can msg id */
+	SR_8						direction;							/* can inbount/outbound */
 	struct sr_config_actions	action;							/* bitmap of actions */
 	SR_U16						rate_action;					/* bitmap of rate exceed actions */
 	SR_U32 						max_rate;						/* maximum rate */
@@ -97,6 +98,7 @@ struct sr_can_record{
 struct sr_can_entry{		
 	SR_U16						rulenum;						/* rule number */
 	SR_U32						msg_id;							/* can msg id */
+	SR_8						direction;							/* can inbount/outbound */
 	struct sr_config_actions	action;							/* bitmap of actions */
 	SR_U16						rate_action;					/* bitmap of rate exceed actions */
 	SR_U32 						max_rate;						/* maximum rate */

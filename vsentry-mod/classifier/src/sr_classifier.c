@@ -256,14 +256,14 @@ SR_32 sr_classifier_canbus(disp_info_t* info)
 	int st;
 	
 	memset(&ba_res, 0, sizeof(bit_array));
-
-	ptr = sr_cls_match_canid(info->can_info.msg_id);
-
+	
+	ptr = sr_cls_match_canid(info->can_info.msg_id,(info->can_info.dir==SR_CAN_OUT)?SR_CAN_OUT:SR_CAN_IN);
 	if (ptr) {
-		sal_or_op_arrays(ptr, src_cls_canid_any(), &ba_res);
-	} else { // take only src/any
-		sal_or_self_op_arrays(&ba_res, src_cls_canid_any());
+		sal_or_op_arrays(ptr,(info->can_info.dir==SR_CAN_OUT)?src_cls_out_canid_any():src_cls_in_canid_any(), &ba_res);
+	} else { // take only inbound/any
+		sal_or_self_op_arrays(&ba_res, (info->can_info.dir==SR_CAN_OUT)?src_cls_out_canid_any():src_cls_in_canid_any());
 	}
+	
 
 	if (info->can_info.id.pid) { 
 	    if ((st = sr_cls_process_add(info->can_info.id.pid)) != SR_SUCCESS) {
@@ -313,7 +313,8 @@ SR_32 sr_classifier_canbus(disp_info_t* info)
 			}
 
 			CEF_log_event(SR_CEF_CID_CAN, msg , severity, 
-							"RuleNumber=%d Action=%s CanID=%x", rule, actionstring, info->can_info.msg_id);
+							"RuleNumber=%d Action=%s CanID=%x %s", rule, actionstring, info->can_info.msg_id
+							, info->can_info.dir == SR_CAN_OUT?"OUT":"IN");
 		}
 		if (action & SR_CLS_ACTION_DROP)
 			return SR_CLS_ACTION_DROP;

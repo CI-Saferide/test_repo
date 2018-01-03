@@ -332,15 +332,6 @@ static int vsentry_socket_accept(struct socket *sock,struct socket *newsock)
 }
 #endif // 0
 
-static int vsentry_socket_sock_rcv_skb(struct sock *sk, struct sk_buff *skb)
-{
-	if(hook_filter())
-		return 0;
-
-	//TODO: handle permission for sys call
-	return 0;
-}
-
 static int vsentry_socket_shutdown(struct socket *sock,int how)
 {
 	if(hook_filter())

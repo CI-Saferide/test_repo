@@ -86,6 +86,7 @@ typedef union {
 		SR_U32 	msg_id;
 		SR_U8	payload[8];
 		SR_U8 	payload_len;
+		SR_U8 	dir; //inbound/outbound msg
 #ifdef CONFIG_CAN_ML
 		SR_U64		ts;							/* time stamp of last message, in usec */
 #endif /* CONFIG_CAN_ML */
@@ -119,6 +120,7 @@ SR_32 disp_socket_accept(disp_info_t* info);
 SR_32 disp_incoming_connection(disp_info_t* info);
 SR_32 disp_socket_create(disp_info_t* info);
 SR_32 disp_socket_sendmsg(disp_info_t* info);
+SR_32 disp_can_recvmsg(disp_info_t* info);
 SR_32 disp_ipv4_sendmsg(disp_info_t* info);
 SR_32 disp_ipv4_recvmsg(disp_info_t* info);
 
