@@ -5,7 +5,7 @@
 #include "sr_msg_dispatch.h"
 #include "sr_engine_utils.h"
 
-int sr_cls_canid_add_rule(SR_U32 canid, char *exec, char *user, SR_U32 rulenum)
+int sr_cls_canid_add_rule(SR_U32 canid, char *exec, char *user, SR_U32 rulenum,SR_8 dir)
 {
 	sr_canbus_msg_cls_t *msg;
  	SR_U32 inode;
@@ -24,7 +24,8 @@ int sr_cls_canid_add_rule(SR_U32 canid, char *exec, char *user, SR_U32 rulenum)
 			msg->msg_type = SR_MSG_TYPE_CLS_CANBUS;			
 			msg->sub_msg.msg_type = SR_CLS_CANID_ADD_RULE;			
 			msg->sub_msg.rulenum = rulenum;
-			msg->sub_msg.canid=canid;						
+			msg->sub_msg.canid=canid;	
+			msg->sub_msg.dir=dir;					
 			msg->sub_msg.exec_inode=inode;						
 			msg->sub_msg.uid=uid;						
 			sr_send_msg(ENG2MOD_BUF, sizeof(msg));
@@ -35,7 +36,7 @@ int sr_cls_canid_add_rule(SR_U32 canid, char *exec, char *user, SR_U32 rulenum)
 }
 
 
-int sr_cls_canid_del_rule(SR_U32 canid, char *exec, char *user, SR_U32 rulenum)
+int sr_cls_canid_del_rule(SR_U32 canid, char *exec, char *user, SR_U32 rulenum,SR_8 dir)
 {
 	sr_canbus_msg_cls_t *msg;
  	SR_U32 inode;
@@ -54,7 +55,8 @@ int sr_cls_canid_del_rule(SR_U32 canid, char *exec, char *user, SR_U32 rulenum)
 			msg->msg_type = SR_MSG_TYPE_CLS_CANBUS;			
 			msg->sub_msg.msg_type = SR_CLS_CANID_DEL_RULE;			
 			msg->sub_msg.rulenum = rulenum;
-			msg->sub_msg.canid=canid;						
+			msg->sub_msg.canid=canid;
+			msg->sub_msg.dir=dir;						
 			msg->sub_msg.exec_inode=inode;						
 			msg->sub_msg.uid=uid;						
 			sr_send_msg(ENG2MOD_BUF, sizeof(msg));

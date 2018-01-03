@@ -868,6 +868,7 @@ SR_32 vsentry_socket_sendmsg(struct socket *sock,struct msghdr *msg,SR_32 size)
 			cfd = (struct canfd_frame *)skb->data;
 			disp.can_info.msg_id = (SR_U32)cfd->can_id;
 			disp.can_info.payload_len = cfd->len;
+			disp.can_info.dir = SR_CAN_OUT;
 			for (i = 0; i < cfd->len; i++) {
 				disp.can_info.payload[i] = cfd->data[i];
 			}
@@ -962,6 +963,37 @@ SR_32 vsentry_socket_sendmsg(struct socket *sock,struct msghdr *msg,SR_32 size)
 			break;
 	}
 	
+	return 0;
+}
+
+int vsentry_socket_sock_rcv_skb(struct sock *sk, struct sk_buff *skb)
+{
+	int i;
+	struct canfd_frame *cfd;
+	disp_info_t disp;	
+		
+	/* check vsentry state */
+	CHECK_STATE
+
+	/* check hook filter */
+	HOOK_FILTER
+	
+	memset(&disp, 0, sizeof(disp_info_t));	
+	
+	switch (sk->sk_family) {
+		
+		case PF_CAN:
+			cfd = (struct canfd_frame *)skb->data;
+			disp.can_info.msg_id = (SR_U32)cfd->can_id;
+			disp.can_info.payload_len = cfd->len;
+			disp.can_info.dir = SR_CAN_IN;
+			for (i = 0; i < cfd->len; i++) {
+				disp.can_info.payload[i] = cfd->data[i];
+			}
+			return (disp_can_recvmsg(&disp));
+			break;
+	}
+		
 	return 0;
 }
 
