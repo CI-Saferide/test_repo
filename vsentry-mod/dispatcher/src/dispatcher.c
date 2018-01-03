@@ -231,6 +231,44 @@ SR_32 disp_socket_sendmsg(disp_info_t* info)
 		return -EACCES;	
 }
 
+SR_32 disp_can_recvmsg(disp_info_t* info)
+{
+	SR_32		classifier_rc = -EACCES;
+
+	/* call classifier */
+	//classifier_rc = 0;
+	
+	classifier_rc = sr_classifier_canbus(info);
+	
+	#ifdef DEBUG_DISPATCHER
+	CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,
+			"[%s:HOOK %s] family=af_can, msd_id=%x, payload_len=%d, payload= %02x %02x %02x %02x %02x %02x %02x %02x, pid=%d, gid=%d, tid=%d\n", 
+			module_name, 
+			hook_event_names[info->can_info.id.event].name,
+			info->can_info.msg_id,
+			info->can_info.payload_len,
+			info->can_info.payload[0],
+			info->can_info.payload[1],
+			info->can_info.payload[2],
+			info->can_info.payload[3],
+			info->can_info.payload[4],
+			info->can_info.payload[5],
+			info->can_info.payload[6],
+			info->can_info.payload[7],
+			info->can_info.id.pid,
+			info->can_info.id.gid,
+			info->can_info.id.tid);
+#endif /* DEBUG_DISPATCHER */
+
+		/* send event message to user space */
+	//sr_send_msg(MOD2LOG_BUF, sizeof(CEF_payload));
+	if (classifier_rc == SR_CLS_ACTION_ALLOW) {
+		return 0;
+	} else {
+		return -EACCES;
+	}	
+}
+
 SR_32 disp_file_exec(disp_info_t* info)
 {
 	if (unlikely(sr_classifier_file(info) == SR_CLS_ACTION_DROP)) {
