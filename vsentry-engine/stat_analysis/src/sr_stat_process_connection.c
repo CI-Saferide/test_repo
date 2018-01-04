@@ -440,7 +440,7 @@ SR_32 sr_stat_process_connection_hash_finish_transmit(SR_U32 count)
 	if (system_counters.tx_b_count > system_max.tx_b_count)
 		system_max.tx_b_count = system_counters.tx_b_count;
 
-	if (sr_stat_analysis_learn_mode_get() != SR_STAT_MODE_LEARN)
+	if (sr_stat_analysis_learn_mode_get() == SR_STAT_MODE_PROTECT)
 		sr_stat_learn_rule_create_process_rules();
 
 	return SR_SUCCESS;
