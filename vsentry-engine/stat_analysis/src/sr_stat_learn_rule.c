@@ -262,6 +262,15 @@ static SR_32 update_process_rule_cb(void *hash_data, void *data)
 	return sr_stat_learn_rule_update_rule(learn_rule_item->exec, learn_rule_item->rule_num, &(learn_rule_item->counters));
 }
 
+static SR_32 deploy_process_rule_cb(void *hash_data, void *data)
+{
+	learn_rule_item_t *learn_rule_item = (learn_rule_item_t *)hash_data;
+
+	learn_rule_item->is_updated = SR_FALSE;
+
+	return sr_stat_learn_rule_update_rule(learn_rule_item->exec, learn_rule_item->rule_num, &(learn_rule_item->counters));
+}
+
 SR_32 sr_stat_learn_rule_create_process_rules(void)
 {
 	sr_stat_learn_rule_hash_exec_for_all(update_process_rule_cb);
@@ -290,9 +299,24 @@ static SR_32 delete_process_rule_cb(void *hash_data, void *data)
 	return SR_SUCCESS;
 }
 
-SR_32 sr_stat_learn_rule_cleanup_process_rules(void)
+SR_32 sr_stat_learn_rule_undeploy(void)
 {
 	sr_stat_learn_rule_hash_exec_for_all(delete_process_rule_cb);
+
+	return SR_SUCCESS;
+}
+
+SR_32 sr_stat_learn_rule_deploy(void)
+{
+	sr_stat_learn_rule_hash_exec_for_all(deploy_process_rule_cb);
+
+	return SR_SUCCESS;
+}
+
+
+SR_32 sr_stat_learn_rule_cleanup_process_rules(void)
+{
+	sr_stat_learn_rule_undeploy();
 
 	// Reset rule number 
 	rule_number = START_RULE_NUM;

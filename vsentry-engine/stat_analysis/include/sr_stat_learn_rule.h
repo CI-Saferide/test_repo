@@ -15,6 +15,8 @@ void sr_stat_learn_rule_ut(void);
 void sr_learn_rule_connection_hash_print(void);
 SR_32 sr_stat_learn_rule_create_process_rules(void);
 SR_32 sr_stat_learn_rule_cleanup_process_rules(void);
+SR_32 sr_stat_learn_rule_deploy(void);
+SR_32 sr_stat_learn_rule_undeploy(void);
 
 #endif
 

@@ -114,7 +114,7 @@ static SR_32 handle_command(void)
 		sr_stat_analysis_learn_mode_set(SR_STAT_MODE_OFF);
 		ml_can_set_state(SR_ML_CAN_MODE_HALT);
 		CEF_log_event(SR_CEF_CID_SYSTEM, "state change", SEVERITY_LOW,
-							"state changed to halt mode");
+							"state changed to OFF mode");
 	}
 	if (strstr(fetch->payload, CMD_ENABLE)) {
 		handle_engine_start_stop(SR_TRUE);
