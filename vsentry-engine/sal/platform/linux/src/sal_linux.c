@@ -254,7 +254,5 @@ SR_U32 sal_get_host_info(char *host_info, int size)
 		buffer, tv.tv_usec, info.totalram, info.freeram,
 		cpu_util, info.procs, tx_bytes, rx_bytes);
 
-    printf("%s\n", host_info);
-
 	return SR_SUCCESS;
 }
