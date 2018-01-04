@@ -302,6 +302,7 @@ void ml_can_set_state(sr_ml_can_mode_t state)
 			}
 			break;
 		case SR_ML_CAN_MODE_HALT:
+			learning = 0;
 		default:
 			break;
 	}
