@@ -178,12 +178,12 @@ SR_32 sr_ml_can_handle_message(struct sr_ml_can_msg *msg)
 {
 	disp_info_t info;
 	
-	if (msg->msg_id == 0xffffffff) {
+	if (msg->msg_id == CAN_ML_START_PROTECT) {
 		/* this is an indication for start the protection */
 		protect = SR_TRUE;
 		CEF_log_event(SR_CEF_CID_ML_CAN, "info", SEVERITY_LOW,
 						"can_ml protection started");
-	} if (msg->msg_id == 0xfffffffe) {
+	} else if (msg->msg_id == CAN_ML_STOP_PROTECT) {
 		/* this is an indication for protection stop */
 		if (protect == SR_TRUE) {
 			CEF_log_event(SR_CEF_CID_ML_CAN, "info", SEVERITY_LOW,

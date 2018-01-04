@@ -276,33 +276,46 @@ void ml_can_set_state(sr_ml_can_mode_t state)
 			new_learning = SR_TRUE;
 			sr_ml_can_hash_delete_all();
 			learning = 1;
-			/* sending indication to the kernel */
+			/* sending indication to the kernel - stop protect */
 			msg = (sr_ml_can_msg_t*)sr_get_msg(ENG2MOD_BUF, ENG2MOD_MSG_MAX_SIZE);
 			if (msg) {
 				msg->msg_type = SR_MSG_TYPE_ML_CAN;
-				msg->sub_msg.msg_id = 0xfffffffe;
+				msg->sub_msg.msg_id = CAN_ML_STOP_PROTECT;
 				sr_send_msg(ENG2MOD_BUF, sizeof(msg));
 			} else {
 				CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-							"failed to update can_ml protection stopped");
+							"failed to transfer can_ml stop protect request");
 			}
 			break;
 		case SR_ML_CAN_MODE_PROTECT:
 			learning = 0;
-			/* learnign finished, transmit the info to the kernel */
 			sr_gen_hash_exec_for_each(can_ml_hash, calc_learn_values, NULL);
+			/* learnign finished, transmit the info to the kernel - start protect */
 			msg = (sr_ml_can_msg_t*)sr_get_msg(ENG2MOD_BUF, ENG2MOD_MSG_MAX_SIZE);
 			if (msg) {
 				msg->msg_type = SR_MSG_TYPE_ML_CAN;
-				msg->sub_msg.msg_id = 0xffffffff;
+				msg->sub_msg.msg_id = CAN_ML_START_PROTECT;
 				sr_send_msg(ENG2MOD_BUF, sizeof(msg));
 			} else {
 				CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-							"failed to transfer can_ml leaning info");
+							"failed to transfer can_ml start protect request");
 			}
 			break;
 		case SR_ML_CAN_MODE_HALT:
-			learning = 0;
+			if (learning == 1)
+				learning = 0;
+			else {
+				/* sending indication to the kernel - stop protect */
+				msg = (sr_ml_can_msg_t*)sr_get_msg(ENG2MOD_BUF, ENG2MOD_MSG_MAX_SIZE);
+				if (msg) {
+					msg->msg_type = SR_MSG_TYPE_ML_CAN;
+					msg->sub_msg.msg_id = CAN_ML_STOP_PROTECT;
+					sr_send_msg(ENG2MOD_BUF, sizeof(msg));
+				} else
+					CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+								"failed to transfer can_ml stop protect request");
+			}
+			break;
 		default:
 			break;
 	}
