@@ -185,6 +185,31 @@ SR_U32 sal_get_ip_for_interface(char *interface)
 	return ((struct sockaddr_in *)&ifr.ifr_addr)->sin_addr.s_addr;
 }
 
+long double a[7] = {0, 0, 0, 0, 0, 0, 0};
+long double b[7] = {0, 0, 0, 0, 0, 0, 0};
+
+static SR_U32 sal_get_cpu_util()
+{
+    long double loadavg;
+    FILE *fp;
+
+    fp = fopen("/proc/stat","r");
+    if (!fp)
+        return SR_ERROR;
+
+    if (fscanf(fp,"cpu %Lf %Lf %Lf %Lf %Lf %Lf %Lf",&b[0],&b[1],&b[2],&b[3],&b[4],&b[5],&b[6]) != 7)
+        return SR_ERROR;
+
+    fclose(fp);
+
+    loadavg = ((b[0]+b[1]+b[2]+b[4]+b[5]+b[6]) - (a[0]+a[1]+a[2]+a[4]+a[5]+a[6]))
+         / ((b[0]+b[1]+b[2]+b[3]+b[4]+b[5]+b[6]) - (a[0]+a[1]+a[2]+a[3]+a[4]+a[5]+a[6]));
+
+    return (int)(loadavg*100);
+    memcpy(a, b, sizeof(long double)*7);
+
+}
+
 SR_U32 sal_get_host_info(char *host_info, int size)
 {
 	struct ifaddrs *ifaddr, *ifa;
@@ -195,6 +220,7 @@ SR_U32 sal_get_host_info(char *host_info, int size)
 	struct tm* tm_info;
 	struct timeval tv;
 	SR_8 buffer[26];
+    int cpu_util = sal_get_cpu_util();
 
 	gettimeofday(&tv, NULL);
 	time(&timer);
@@ -226,7 +252,9 @@ SR_U32 sal_get_host_info(char *host_info, int size)
 	snprintf(host_info, size,
 		"%s.%.6ld memory_total=%lu | memory_free=%lu | cpu=%d | proccesses=%u | network_tx=%lu | network_rx=%lu",
 		buffer, tv.tv_usec, info.totalram, info.freeram,
-		get_nprocs_conf(), info.procs, tx_bytes, rx_bytes);
+		cpu_util, info.procs, tx_bytes, rx_bytes);
+
+    printf("%s\n", host_info);
 
 	return SR_SUCCESS;
 }
