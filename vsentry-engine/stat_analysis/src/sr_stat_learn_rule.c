@@ -273,9 +273,6 @@ static SR_32 delete_process_rule_cb(void *hash_data, void *data)
 {
 	learn_rule_item_t *learn_rule_item = (learn_rule_item_t *)hash_data;
 
-	if (!strstr(learn_rule_item->exec, "server"))
-		return SR_SUCCESS;
-
 	CEF_log_event(SR_CEF_CID_STAT_IP, "info", SEVERITY_LOW,"DELETE rule#%d %s ", learn_rule_item->rule_num, learn_rule_item->exec);
 	sr_cls_del_ipv4(0, learn_rule_item->exec, "*", 0, learn_rule_item->rule_num, SR_DIR_SRC);
 	sr_cls_del_ipv4(0, learn_rule_item->exec, "*", 0, learn_rule_item->rule_num, SR_DIR_DST);
