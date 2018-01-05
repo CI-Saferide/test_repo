@@ -145,9 +145,9 @@ SR_32 sr_classifier_network(disp_info_t* info)
 			sprintf(dip, "%02d.%02d.%02d.%02d", (dip_t&0xff000000)>>24, (dip_t&0x00ff0000)>>16, (dip_t&0xff00)>> 8, dip_t&0xff);
 			sprintf(ext, "RuleNumber=%d Action=%s proto=%s sip=%s sport=%d dip=%s dport=%d", rule, actionstring, info->tuple_info.ip_proto == IPPROTO_TCP?"TCP":"UDP", sip, info->tuple_info.sport, dip, info->tuple_info.dport); 
 			if (action & SR_CLS_ACTION_DROP) {
-				CEF_log_event(SR_CEF_CID_NETWORK, "Connection denied by rule" , SEVERITY_HIGH, ext);
+				CEF_log_event(SR_CEF_CID_NETWORK, "Connection drop" , SEVERITY_HIGH, ext);
 			} else {
-				CEF_log_event(SR_CEF_CID_NETWORK, "Connection attempt logged by rule" , SEVERITY_LOW, ext);
+				CEF_log_event(SR_CEF_CID_NETWORK, "Connection allow" , SEVERITY_LOW, ext);
 			}
 		}
 		if (action & SR_CLS_ACTION_DROP)
@@ -233,9 +233,9 @@ SR_32 sr_classifier_file(disp_info_t* info)
 			char ext[64];
 			sprintf(ext, "RuleNumber=%d inode=%d Operation=%s", rule, info->fileinfo.parent_inode?info->fileinfo.parent_inode:info->fileinfo.current_inode,(info->fileinfo.fileop&SR_FILEOPS_WRITE)?"Write":(info->fileinfo.fileop&SR_FILEOPS_READ)?"Read":"Execute"); 
 			if (action & SR_CLS_ACTION_DROP)
-				CEF_log_event(SR_CEF_CID_FILE, "File operation denied by rule" , SEVERITY_HIGH, ext);
+				CEF_log_event(SR_CEF_CID_FILE, "File operation drop" , SEVERITY_HIGH, ext);
 			else
-				CEF_log_event(SR_CEF_CID_FILE, "File operation allowd by rule" , SEVERITY_LOW, ext);
+				CEF_log_event(SR_CEF_CID_FILE, "File operation allow" , SEVERITY_LOW, ext);
 		}
 		if (action & SR_CLS_ACTION_DROP) {
 			return SR_CLS_ACTION_DROP;
@@ -300,15 +300,15 @@ SR_32 sr_classifier_canbus(disp_info_t* info)
 			SR_U8 severity;
 			if (action & SR_CLS_ACTION_DROP) {
 				sprintf(actionstring, "Drop");
-				strncpy(msg, "CAN message dropped by rule", 64);
+				strncpy(msg, "CAN message drop", 64);
 				severity = SEVERITY_HIGH;
 			} else if (action & SR_CLS_ACTION_ALLOW) {
 				sprintf(actionstring, "Allow");
-				strncpy(msg, "CAN message allowed by rule", 64);
+				strncpy(msg, "CAN message allow", 64);
 				severity = SEVERITY_LOW;
 			} else {
 				sprintf(actionstring, "log-only"); // TBD: when adding more terminal actions
-				strncpy(msg, "CAN message logged by rule", 64);
+				strncpy(msg, "CAN message log", 64);
 				severity = SEVERITY_LOW;
 			}
 
