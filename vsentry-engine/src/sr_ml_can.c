@@ -75,8 +75,8 @@ static SR_32 update_learning_info(void *hash_data, void *data)
 	}
 	if (tmp_mean == 0)
 		return SR_SUCCESS; /* no data yet */
-	tmp_min = (SR_U32)(tmp_mean / 4); /* K value */
-	tmp_max = calc_h(tmp_min); /* h value */
+	tmp_min = (SR_U32)(tmp_mean * 0.9823);
+	tmp_max = (SR_U32)(tmp_mean * 1.0212);
 
 	sprintf(buf, "MSGID:0x%x|MIN:%d|MAX:%d;", ptr->msg_id, tmp_min, tmp_max);
 	buf_len = strlen(buf);
