@@ -843,7 +843,7 @@ SR_32 vsentry_socket_sendmsg(struct socket *sock,struct msghdr *msg,SR_32 size)
 	memset(&disp, 0, sizeof(disp_info_t));
 	
 	/* check vsentry state */
-	CHECK_STATE
+	//CHECK_STATE
 
 	/* check hook filter */
 	HOOK_FILTER
@@ -899,6 +899,8 @@ SR_32 vsentry_socket_sendmsg(struct socket *sock,struct msghdr *msg,SR_32 size)
 
 			/* call dispatcher */
 			kfree_skb(skb);
+			/* we are checking state here to deliver the can msg to can_ml even when vsentry is disbaled */
+			CHECK_STATE
 			return (disp_socket_sendmsg(&disp));
 			break;
 		case AF_INET:
