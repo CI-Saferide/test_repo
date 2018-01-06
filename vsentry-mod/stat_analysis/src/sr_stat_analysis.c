@@ -11,6 +11,7 @@
 
 static TASK_DESC *transmit_task;
 static TASK_DESC *garbage_collector_task;
+static TASK_DESC *watchdog_task;
 static TASK_DESC *aged_cleanup_task;
 static SR_BOOL is_run_transmit = SR_FALSE;
 static SR_BOOL is_run_garbage_collector = SR_FALSE;
