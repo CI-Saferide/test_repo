@@ -764,7 +764,7 @@ static void handle_can_policies(sr_session_ctx_t *sess, char *buf, jsmntok_t *t,
 			if (jsoneq(buf, &t[*i], JSON_CAN_MESSAGE_ID) == 0) {
 				(*i)++;
 				json_get_string(&t[*i], buf, str_value);
-				if (!strcmp(str_value, "-1"))
+				if (strcmp(str_value, "-1") == 0 || strcmp(str_value, "null") == 0)
 					strcpy(str_value, "any");
 				sprintf(str_param, "%snum='%d']/%s[id='%d']/%s", CAN_PREFIX, id, TUPLE, 0, "msg_id");
 				if (um_set_value(sess, str_param, str_value) != SR_SUCCESS) {
