@@ -76,25 +76,25 @@ static int get_size_with_last_full_msg(FILE *logfile, int offset, int file_size)
 {
     char buffer[MAX_STR_SIZE];
     int size = 0;
+    int new_offset = offset;
+    int ret = 0;
 
-    //uploader_debug("file_size = %d, offset = %d\n", file_size, offset);
+    /* we assume that each msg in the file will no be longer than 512 bytes */
+    if ((file_size - offset) <= MAX_STR_SIZE)
+        new_offset = offset;
+    else
+        new_offset = (file_size - MAX_STR_SIZE);
 
-    /* we assume that each msg in the file will no be longer than 200 bytes */
-    if (file_size > MAX_STR_SIZE) {
-        if(fseek(logfile, (file_size - MAX_STR_SIZE), SEEK_SET) < 0) {
-            uploader_err("fseek failed: %s\n", strerror(errno));
-            return 0;
-        }
+    if(fseek(logfile, new_offset, SEEK_SET) < 0) {
+        uploader_err("fseek failed: %s\n", strerror(errno));
+        return 0;
     }
 
-    if (fread(buffer, 1, MAX_STR_SIZE, logfile) > 0) {
+    memset(buffer, 0, MAX_STR_SIZE);
+    if ((ret = fread(buffer, 1, MAX_STR_SIZE, logfile)) > 0) {
         char *tmp = strrchr(buffer, '\n');
-        if (tmp) {
-            if (file_size > MAX_STR_SIZE) 
-                size = ((file_size - MAX_STR_SIZE) + (tmp - buffer + 1)) - offset;
-            else
-                size = (file_size + (tmp - buffer + 1)) - offset;
-        }
+        if (tmp)
+            size = (new_offset - offset) + ((tmp - &buffer[0]) + 1);
     }
 
     //uploader_debug("size = %d, actual size = %d\n", size, (file_size - offset));
@@ -127,6 +127,7 @@ static int upload_log_file(char* filename, int offset)
         curl_easy_setopt(upload_curl_handle, CURLOPT_SSL_VERIFYHOST, 0L);
         curl_easy_setopt(upload_curl_handle, CURLOPT_FAILONERROR, 1L);
         curl_easy_setopt(upload_curl_handle, CURLOPT_NOPROGRESS, 1L);
+        curl_easy_setopt(upload_curl_handle, CURLOPT_TIMEOUT, 5L);
         curl_easy_setopt(upload_curl_handle, CURLOPT_URL, "http://saferide-log-collector-staging.eu-west-1.elasticbeanstalk.com/logs");
 
         snprintf(post_vin, 64, "X-VIN: %s", config_params.vin);
@@ -165,6 +166,8 @@ static int upload_log_file(char* filename, int offset)
 
     curl_formadd(&formpost, &lastptr, CURLFORM_COPYNAME, "logs", CURLFORM_FILENAME, filename, CURLFORM_STREAM, &log_file_state, CURLFORM_CONTENTSLENGTH, size, CURLFORM_END);
     curl_easy_setopt(upload_curl_handle, CURLOPT_HTTPPOST, formpost);
+
+    //uploader_debug("uploading %s@%d, size %d\n", filename, offset, size);
 
     res = curl_easy_perform(upload_curl_handle);
 
@@ -222,13 +225,19 @@ static void* log_uploader(void *data)
             continue;
         }
 
-        if (log_file_stat.st_size <= file_offset)
+        if ((tracked_file_index > 0) && (log_file_stat.st_size == file_offset)) {
+            file_offset = 0;
+            tracked_file_index--;
+            continue;
+        }
+
+        if (log_file_stat.st_size < file_offset) {
             /* something happend .. most likely the file was
              * renamed. lets wait for the move event and
              * continue from there */
             continue;
+        }
 
-        //uploader_debug("uploading %s@%lu\n", full_log_files[tracked_file_index], file_offset);
         ret = upload_log_file(full_log_files[tracked_file_index], file_offset);
         if (ret > 0) {
             file_offset += ret;
@@ -428,6 +437,7 @@ static int check_log_events(int fd)
         }
         /* check if this event is related to log file */
         if (strcmp(event->name, log_files[tracked_file_index]) == 0) {
+            //uploader_debug("event name %s, mask = 0x%08X\n", event->name, event->mask);
             if (event->mask == IN_MODIFY) {
                 bool force_upload = false;
 
@@ -437,11 +447,12 @@ static int check_log_events(int fd)
                     continue;
                 }
 
-                if (log_file_stat.st_size < file_offset)
+                if (log_file_stat.st_size < file_offset) {
                     /* something happend .. most likely the file was
                      * renamed. lets wait for the move event and
                      * continue from there */
                     continue;
+                }
 
                 gettimeofday(&current_time, NULL);
                 if ((current_time.tv_sec - last_upload.tv_sec) >= LOG_UPLOAD_INTERVAL)
