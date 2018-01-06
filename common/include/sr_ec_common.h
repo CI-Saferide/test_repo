@@ -53,6 +53,7 @@ struct sr_ec_connection_stat_t{
 	SR_U32 rx_bytes;
 	SR_U32 tx_msgs;
 	SR_U32 tx_bytes;
+	SR_U64 curr_time;
 };
 #pragma pack(pop)
 

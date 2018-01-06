@@ -88,6 +88,7 @@ SR_U32 sr_connection_transmit(void)
 {
 	LRU_container_t *LRU_tmp;
    	SR_U32 i, ind, count = 0;
+	SR_U64 curr_time;
 	struct sr_ec_connection_stat_t con = {};
 	struct sr_ec_connection_transmit_t con_tran;
 
@@ -103,6 +104,7 @@ SR_U32 sr_connection_transmit(void)
 		sal_schedule_timeout(100000);
 	}
 
+	curr_time = get_curr_time_usec();
 	ind = SR_ATOMIC_READ(&(LRU_transmit->ind));
 	// The last item in the array will be NULL in order to be able to stop even if the ind was increaed beyond size of array.
    	for (i = 0; i <= ind && LRU_transmit->objects[i]; i++) { 
@@ -119,6 +121,7 @@ SR_U32 sr_connection_transmit(void)
 		con.rx_bytes= LRU_transmit->objects[i]->rx_bytes;
 		con.tx_msgs= LRU_transmit->objects[i]->tx_msgs;
 		con.tx_bytes= LRU_transmit->objects[i]->tx_bytes;
+		con.curr_time = curr_time;
 		count++;
 		sr_ec_send_event(MOD2STAT_BUF, SR_EVENT_STATS_CONNECTION, &con);
 	}

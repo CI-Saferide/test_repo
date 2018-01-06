@@ -15,6 +15,7 @@ typedef struct sr_stat_con_stats {
 typedef struct sr_stat_connection_info {
 	sr_connection_id_t con_id;
 	SR_U64 time;
+	SR_U64 transmit_time;
 	SR_BOOL is_updated;
 	sr_stat_con_stats_t con_stats;
 	sr_stat_con_stats_t prev_con_stats;
