@@ -8,8 +8,23 @@
 #include "sr_stat_analysis.h"
 
 #define HASH_SIZE 500
+#define NUM_OF_SAMPLES 5
+#define MAX_LEARN 1250000
 
 static struct sr_gen_hash *process_connection_hash;
+
+typedef struct counters {
+	SR_U64 cons_count;
+	SR_U64 rx_p_count;
+	SR_U64 rx_b_count;
+	SR_U64 tx_p_count;
+	SR_U64 tx_b_count;
+} counters_t;
+
+typedef struct traffic_sample {
+	SR_U64 time;
+	counters_t counters;
+} traffic_sample_t;
 
 typedef struct process_connection_data {
 	struct process_connection_data *next;
@@ -19,18 +34,12 @@ typedef struct process_connection_data {
 typedef struct process_connection_item {
 	SR_U32 process_id;
 	sr_stat_process_sample_t process_sample;
+	SR_U32 sample_ind;
+	traffic_sample_t traffic_samples[NUM_OF_SAMPLES];
 	sr_stat_con_stats_t max_con_stats;
 	SR_32 counter;
 	process_connection_data_t *process_connection_list;
 } process_connection_item_t;
-
-typedef struct counters {
-	SR_U64 cons_count;
-	SR_U64 rx_p_count;
-	SR_U64 rx_b_count;
-	SR_U64 tx_p_count;
-	SR_U64 tx_b_count;
-} counters_t;
 
 static SR_U64 cur_time;
 static counters_t system_max;
@@ -94,13 +103,9 @@ static void process_connection_print(void *data_in_hash)
 	sal_get_process_name(process_connection_item->process_id, exe, sizeof(exe));
 
 	CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,
-		"Process :%d exe:%s num_of_connections:%d max_new_conns:%d max_rx_msgs:%d max_rx_bytes:%d max_tx_msgs:%d max_tx_bytes:%d",
+		"Process :%d exe:%s num_of_connections:%d max_new_conns:%d \n",
 			process_connection_item->process_id,  exe, process_connection_item->counter,
-			process_connection_item->process_sample.max_new_cons,
-			process_connection_item->max_con_stats.rx_msgs,
-			process_connection_item->max_con_stats.rx_bytes,
-			process_connection_item->max_con_stats.tx_msgs,
-			process_connection_item->max_con_stats.tx_bytes);
+			process_connection_item->process_sample.max_new_cons);
 
 	for (ptr = process_connection_item->process_connection_list; ptr; ptr = ptr->next) {
 		count++;
@@ -111,12 +116,7 @@ static void process_connection_print(void *data_in_hash)
 			ptr->connection_info.con_id.sport, ptr->connection_info.con_id.dport,
 			ptr->connection_info.con_stats.rx_msgs, ptr->connection_info.con_stats.rx_bytes, ptr->connection_info.con_stats.tx_msgs,
 			ptr->connection_info.con_stats.tx_bytes, cur_time - ptr->connection_info.time);
-		CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,
-		"          max rx p:%d max rx b:%d max tx p:%d max tx b:%d",
-			ptr->connection_info.max_con_stats.rx_msgs,
-			ptr->connection_info.max_con_stats.rx_bytes,
-			ptr->connection_info.max_con_stats.tx_msgs,
-			ptr->connection_info.max_con_stats.tx_bytes);
+
 	}
 	CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,
 		"%d connections in process:%d", count, process_connection_item->process_id);
@@ -174,6 +174,7 @@ static SR_32 update_connection_item(process_connection_item_t *process_connectio
 		(*iter)->connection_info.con_stats.rx_bytes = connection_info->con_stats.rx_bytes;
 		(*iter)->connection_info.con_stats.tx_msgs = connection_info->con_stats.tx_msgs;
 		(*iter)->connection_info.con_stats.tx_bytes = connection_info->con_stats.tx_bytes;
+		(*iter)->connection_info.transmit_time = connection_info->transmit_time;
 		(*iter)->connection_info.is_updated = SR_TRUE;
 	}
 	(*iter)->connection_info.time = sal_get_time();
@@ -315,19 +316,35 @@ static SR_32 sr_stat_learn_process_rule(SR_32 pid, sr_stat_con_stats_t *stats)
 	return SR_SUCCESS;
 }
 
+
+static SR_BOOL is_new_connection(traffic_sample_t traffic_samples[], SR_32 ind) {
+	SR_32 i;
+
+	for (i = ind; i > 0; i--) { 
+		if (traffic_samples[ind].counters.rx_b_count < traffic_samples[i].counters.rx_b_count ||
+		    traffic_samples[ind].counters.tx_b_count < traffic_samples[i].counters.tx_b_count) {
+			return SR_TRUE;
+		}
+	}
+	return SR_FALSE;
+}
+
 static SR_32 finish_transmit(void *hash_data, void *data)
 {
 	process_connection_item_t *process_connection_item = (process_connection_item_t *)hash_data;
 	process_connection_data_t *iter;
-	SR_U32 diff_rx_p, diff_rx_b, diff_tx_p, diff_tx_b;
 	counters_t *system_counters = (counters_t *)data;
-	sr_stat_con_stats_t con_stats = {};
-	SR_BOOL is_process_updated = SR_FALSE;
 	sr_stat_mode_t stat_mode;
-	SR_32 rc = SR_SUCCESS;
+	SR_32 rc = SR_SUCCESS, i;
+	SR_U64 rx_diff, tx_diff;
+	float time_diff = 0;
+
+	if (!process_connection_item->process_id)
+		return SR_SUCCESS;
 
 	stat_mode = sr_stat_analysis_learn_mode_get();
 	if (stat_mode == SR_STAT_MODE_HALT || stat_mode == SR_STAT_MODE_OFF) {
+		process_connection_item->sample_ind = 0;
 		return SR_SUCCESS;
 	}
 
@@ -342,82 +359,89 @@ static SR_32 finish_transmit(void *hash_data, void *data)
 	process_connection_item->process_sample.is_updated = SR_FALSE;
 	process_connection_item->process_sample.new_cons_last_period = 0;
 
+	process_connection_item->traffic_samples[process_connection_item->sample_ind].counters.rx_p_count = 0;
+	process_connection_item->traffic_samples[process_connection_item->sample_ind].counters.rx_b_count = 0;
+	process_connection_item->traffic_samples[process_connection_item->sample_ind].counters.tx_p_count = 0;
+	process_connection_item->traffic_samples[process_connection_item->sample_ind].counters.tx_b_count = 0;
 	for (iter = process_connection_item->process_connection_list; iter; iter = iter->next) {
 		if (!iter->connection_info.is_updated)
 			continue;
-		/* The first learning is ignored. It is sved only in prev*/
-		diff_rx_b = diff_rx_p = diff_tx_b = diff_tx_p = 0;
-		if (iter->connection_info.prev_con_stats.rx_msgs)
-			diff_rx_p = iter->connection_info.con_stats.rx_msgs - iter->connection_info.prev_con_stats.rx_msgs;
-		if (iter->connection_info.prev_con_stats.rx_bytes)
-			diff_rx_b = iter->connection_info.con_stats.rx_bytes - iter->connection_info.prev_con_stats.rx_bytes;
-		if (iter->connection_info.prev_con_stats.tx_msgs)
-			diff_tx_p = iter->connection_info.con_stats.tx_msgs - iter->connection_info.prev_con_stats.tx_msgs;
-		if (iter->connection_info.prev_con_stats.tx_bytes)
-			diff_tx_b = iter->connection_info.con_stats.tx_bytes - iter->connection_info.prev_con_stats.tx_bytes;
+		process_connection_item->traffic_samples[process_connection_item->sample_ind].time = iter->connection_info.transmit_time;
+		process_connection_item->traffic_samples[process_connection_item->sample_ind].counters.rx_p_count += iter->connection_info.con_stats.rx_msgs;
+		process_connection_item->traffic_samples[process_connection_item->sample_ind].counters.rx_b_count += iter->connection_info.con_stats.rx_bytes;
+		process_connection_item->traffic_samples[process_connection_item->sample_ind].counters.tx_p_count += iter->connection_info.con_stats.tx_msgs;
+		process_connection_item->traffic_samples[process_connection_item->sample_ind].counters.tx_b_count += iter->connection_info.con_stats.tx_bytes;
 
 #ifdef SR_STAT_ANALYSIS_DEBUG
 		if (iter->connection_info.con_id.sport == 5001 || iter->connection_info.con_id.dport == 5001) { 
 			CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,
-			"PPPPPPPPPPPPPP state:%s sport:%d dport:%d RX diffs:%d orig:%d prev:%d --------------",
-				stat_mode == SR_STAT_MODE_LEARN ? "Learn" : "Protect",
+			"PPPPPPPPPPPPPP state:%s time:%llu sport:%d dport:%d RX:%d TX:%d --------------",
+				stat_mode == SR_STAT_MODE_LEARN ? "Learn" : "Protect", iter->connection_info.transmit_time,
 				iter->connection_info.con_id.sport, iter->connection_info.con_id.dport,
-             			diff_rx_b, iter->connection_info.con_stats.rx_bytes, iter->connection_info.prev_con_stats.rx_bytes);
-			printf("------------------ TRANSMITTED state:%s sport:%d dport:%d RX diffs:%d orig:%d prev:%d TX diffs:%d orig:%d prev:%d\n",
-				stat_mode == SR_STAT_MODE_LEARN ? "Learn" : "Protect",
+             			 iter->connection_info.con_stats.rx_bytes, iter->connection_info.con_stats.tx_bytes);
+			printf(">>>>>>>------------------------ state:%s time:%llu sport:%d dport:%d RX:%d TX:%d --------------\n",
+				stat_mode == SR_STAT_MODE_LEARN ? "Learn" : "Protect", iter->connection_info.transmit_time,
 				iter->connection_info.con_id.sport, iter->connection_info.con_id.dport,
-             			diff_rx_b, iter->connection_info.con_stats.rx_bytes, iter->connection_info.prev_con_stats.rx_bytes,
-             			diff_tx_b, iter->connection_info.con_stats.tx_bytes, iter->connection_info.prev_con_stats.tx_bytes);
+             			 iter->connection_info.con_stats.rx_bytes, iter->connection_info.con_stats.tx_bytes);
 		}
 #endif
-		con_stats.rx_msgs += diff_rx_p;
-		con_stats.rx_bytes += diff_rx_b;
-		con_stats.tx_msgs += diff_tx_p;
-		con_stats.tx_bytes += diff_tx_b;
-		system_counters->rx_p_count += diff_rx_p;
-		system_counters->rx_b_count += diff_rx_b;
-		system_counters->tx_p_count += diff_tx_p;
-		system_counters->tx_b_count += diff_tx_b;
-		if (diff_rx_p > iter->connection_info.max_con_stats.rx_msgs)
-			iter->connection_info.max_con_stats.rx_msgs = diff_rx_p;
-		if (diff_rx_b > iter->connection_info.max_con_stats.rx_bytes)
-			iter->connection_info.max_con_stats.rx_bytes = diff_rx_b;
-		if (diff_tx_p > iter->connection_info.max_con_stats.tx_msgs)
-			iter->connection_info.max_con_stats.tx_msgs = diff_tx_p;
-		if (diff_tx_b > iter->connection_info.max_con_stats.tx_bytes)
-			iter->connection_info.max_con_stats.tx_bytes = diff_tx_b;
-		iter->connection_info.prev_con_stats = iter->connection_info.con_stats;
 		iter->connection_info.is_updated = SR_FALSE;
 	}
 
-	/* when in protect mode only consider diff with tolerance */
-	if (stat_mode != SR_STAT_MODE_LEARN && 
-		((process_connection_item->max_con_stats.rx_msgs && con_stats.rx_msgs > process_connection_item->max_con_stats.rx_msgs * LEARN_RULE_TOLLERANCE) ||
-			(process_connection_item->max_con_stats.rx_bytes && con_stats.rx_bytes > process_connection_item->max_con_stats.rx_bytes * LEARN_RULE_TOLLERANCE) ||
-			(process_connection_item->max_con_stats.tx_msgs && con_stats.tx_msgs > process_connection_item->max_con_stats.tx_msgs * LEARN_RULE_TOLLERANCE) ||
-			(process_connection_item->max_con_stats.tx_bytes && con_stats.tx_bytes > process_connection_item->max_con_stats.tx_bytes * LEARN_RULE_TOLLERANCE))) {
+	if (process_connection_item->sample_ind && is_new_connection(process_connection_item->traffic_samples, process_connection_item->sample_ind)) { 
+		process_connection_item->traffic_samples[0].counters.rx_b_count = 
+		process_connection_item->traffic_samples[process_connection_item->sample_ind].counters.rx_b_count;
+		process_connection_item->traffic_samples[0].counters.tx_b_count = 
+		process_connection_item->traffic_samples[process_connection_item->sample_ind].counters.tx_b_count;
+		process_connection_item->sample_ind = 1;
 		goto out;
 	}
-	if (con_stats.rx_msgs > process_connection_item->max_con_stats.rx_msgs) {
-		process_connection_item->max_con_stats.rx_msgs = con_stats.rx_msgs;
-		is_process_updated = SR_TRUE;
+
+	/* when in protect mode only consider diff with tolerance */
+	if (process_connection_item->sample_ind < NUM_OF_SAMPLES - 1) {
+		process_connection_item->sample_ind++;
+		goto out;
 	}
-	if (con_stats.rx_bytes > process_connection_item->max_con_stats.rx_bytes) {
-		process_connection_item->max_con_stats.rx_bytes = con_stats.rx_bytes;
-		is_process_updated = SR_TRUE;
-	}
-	if (con_stats.tx_msgs > process_connection_item->max_con_stats.tx_msgs) {
-		process_connection_item->max_con_stats.tx_msgs = con_stats.tx_msgs;
-		is_process_updated = SR_TRUE;
-	}
-	if (con_stats.tx_bytes > process_connection_item->max_con_stats.tx_bytes) {
-		process_connection_item->max_con_stats.tx_bytes = con_stats.tx_bytes;
-		is_process_updated = SR_TRUE;
+	if (stat_mode != SR_STAT_MODE_LEARN) {
+		goto out;
 	}
 
-	if (is_process_updated)
-		sr_stat_learn_process_rule(process_connection_item->process_id, &(process_connection_item->max_con_stats));
+	rx_diff = process_connection_item->traffic_samples[NUM_OF_SAMPLES - 1].counters.rx_b_count - process_connection_item->traffic_samples[1].counters.rx_b_count;  
+	tx_diff = process_connection_item->traffic_samples[NUM_OF_SAMPLES - 1].counters.tx_b_count - process_connection_item->traffic_samples[1].counters.tx_b_count;  
+	time_diff = process_connection_item->traffic_samples[NUM_OF_SAMPLES - 1].time - process_connection_item->traffic_samples[1].time;
+	time_diff /= (float)1000000;
+	process_connection_item->max_con_stats.rx_bytes = rx_diff / time_diff;
+	process_connection_item->max_con_stats.tx_bytes = tx_diff / time_diff;
 
+	/* Protection: If learn more then MAX alter and start over !!!! */
+
+	if (process_connection_item->max_con_stats.rx_bytes > MAX_LEARN || 
+	    process_connection_item->max_con_stats.tx_bytes > MAX_LEARN) { 
+		CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,
+			"\n XXXXXXXXXXXXXXXXX  PROCESS:%d XXXXXXXXXXXXXXXXXXXXXXXXX PROCESS:%d learned to much!!!\n", process_connection_item->process_id);
+		for (i = 0; i < NUM_OF_SAMPLES; i++) {
+			SR_32 b = 0;
+			if (i > 0) {
+				time_diff = (( process_connection_item->traffic_samples[i].time - process_connection_item->traffic_samples[i - 1].time));
+				time_diff /= (float)1000000;
+				b = (process_connection_item->traffic_samples[i].counters.rx_b_count -
+					process_connection_item->traffic_samples[i - 1].counters.rx_b_count) / time_diff;
+			}
+			CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,
+			">>>>>>>>>>>>>>>> i:%d time:%llu rx bytes:%d tx_bytes :%d time:%f b:%d\n", i,  process_connection_item->traffic_samples[i].time,
+			process_connection_item->traffic_samples[i].counters.rx_b_count,
+			process_connection_item->traffic_samples[i].counters.tx_b_count, time_diff, b * 8);
+		
+		}
+		process_connection_item->sample_ind = 0;
+		goto out;
+	}
+
+	/* Fix the array */
+	for (i = 0 ; i < NUM_OF_SAMPLES - 1; i++)
+		process_connection_item->traffic_samples[i] = process_connection_item->traffic_samples[i + 1];
+
+	sr_stat_learn_process_rule(process_connection_item->process_id, &(process_connection_item->max_con_stats));
 out:
 	is_finish_transmit_in_progress = SR_FALSE;
 	return rc;

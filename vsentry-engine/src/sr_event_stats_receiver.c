@@ -28,11 +28,12 @@ void sr_event_stats_receiver(SR_8 *msg_buff, SR_U32 msg_len)
 				connection_info.con_stats.tx_bytes = pConStats->tx_bytes;
 				connection_info.con_stats.rx_msgs = pConStats->rx_msgs;
 				connection_info.con_stats.rx_bytes = pConStats->rx_bytes;
+				connection_info.transmit_time = pConStats->curr_time;
 #ifdef SR_STAT_ANALYSIS_DEBUG
-				if (pConStats->con_id.sport == 7777 || pConStats->con_id.dport == 7777 ||
+				if (pConStats->con_id.sport == 5001 || pConStats->con_id.dport == 5001 ||
 				    pConStats->con_id.sport == 22 || pConStats->con_id.dport == 22) { 
-				CEF_log_debug(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,
-					"CONN DEBUG proto:%d saddr:%x daddr:%x sport:%d dport:%d pid:%d rx_msgs:%d rx_bytes:%d tx_msgs:%d tx_bytes:%d \n",
+				CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,
+					"CCCCCCCCCCCCCCCONN DEBUG proto:%d saddr:%x daddr:%x sport:%d dport:%d pid:%d rx_msgs:%d rx_bytes:%d tx_msgs:%d tx_bytes:%d time:%llu \n",
 					pConStats->con_id.ip_proto, 
 					pConStats->con_id.source_addr.v4addr,
 					pConStats->con_id.remote_addr.v4addr,
@@ -42,7 +43,8 @@ void sr_event_stats_receiver(SR_8 *msg_buff, SR_U32 msg_len)
 					pConStats->rx_msgs,
 					pConStats->rx_bytes,
 					pConStats->tx_msgs,
-					pConStats->tx_bytes);
+					pConStats->tx_bytes,
+					pConStats->curr_time);
 				}
 #endif
 				if ((rc = sr_stat_process_connection_hash_update(pConStats->pid, &connection_info)) != SR_SUCCESS) {
