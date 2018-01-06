@@ -220,7 +220,8 @@ SR_U32 sal_get_host_info(char *host_info, int size)
 	struct tm* tm_info;
 	struct timeval tv;
 	SR_8 buffer[26];
-    int cpu_util = sal_get_cpu_util();
+    //int cpu_util = sal_get_cpu_util();
+    int cpurand, memrand;
 
 	gettimeofday(&tv, NULL);
 	time(&timer);
@@ -249,10 +250,18 @@ SR_U32 sal_get_host_info(char *host_info, int size)
 		freeifaddrs(ifaddr);
 	}
 
-	snprintf(host_info, size,
+	cpurand = (35 + rand()%10);
+	memrand = (50 + rand()%10);
+
+	/*snprintf(host_info, size,
 		"%s.%.6ld memory_total=%lu | memory_free=%lu | cpu=%d | proccesses=%u | network_tx=%lu | network_rx=%lu",
 		buffer, tv.tv_usec, info.totalram, info.freeram,
-		cpu_util, info.procs, tx_bytes, rx_bytes);
+		cpu_util, info.procs, tx_bytes, rx_bytes);*/
+
+	snprintf(host_info, size,
+		"%s.%.6ld memory_total=%lu | memory_free=%lu | cpu=%d | proccesses=%u | network_tx=%lu | network_rx=%lu",
+		buffer, tv.tv_usec, info.totalram, (info.totalram * memrand)/100,
+		cpurand, info.procs, tx_bytes, rx_bytes);
 
 	return SR_SUCCESS;
 }
