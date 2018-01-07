@@ -329,6 +329,33 @@ static SR_BOOL is_new_connection(traffic_sample_t traffic_samples[], SR_32 ind) 
 	return SR_FALSE;
 }
 
+static SR_BOOL is_data_learned_qualified(traffic_sample_t traffic_samples[], SR_32 size)
+{
+	SR_32 i, b, avarage = 0;
+	float time_diff = 0;
+
+	for (i = 1; i < size; i++) {
+		time_diff = (traffic_samples[i].time - traffic_samples[i - 1].time) / (float)1000000;
+		b = (traffic_samples[i].counters.rx_b_count - traffic_samples[i - 1].counters.rx_b_count) / time_diff;
+		avarage += b;
+#ifdef SR_STAT_ANALYSIS_DEBUG
+		CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW, ">>>>>>>>>>>>>>>> i:%d time:%llu rx bytes:%d tx_bytes :%d time:%f b:%d\n", i,  traffic_samples[i].time,
+			traffic_samples[i].counters.rx_b_count,
+			traffic_samples[i].counters.tx_b_count, time_diff, b * 8);
+#endif
+        }
+	avarage /= (size - 1);
+
+	for (i = 1; i < size; i++) {
+		time_diff = (traffic_samples[i].time - traffic_samples[i - 1].time) / (float)1000000;
+		b = (traffic_samples[i].counters.rx_b_count - traffic_samples[i - 1].counters.rx_b_count) / time_diff;
+		if (b > 1.2 * avarage)
+			return SR_FALSE;
+	}
+
+	return SR_TRUE;
+}
+
 static SR_32 finish_transmit(void *hash_data, void *data)
 {
 	process_connection_item_t *process_connection_item = (process_connection_item_t *)hash_data;
@@ -397,12 +424,16 @@ static SR_32 finish_transmit(void *hash_data, void *data)
 		goto out;
 	}
 
-	/* when in protect mode only consider diff with tolerance */
 	if (process_connection_item->sample_ind < NUM_OF_SAMPLES - 1) {
 		process_connection_item->sample_ind++;
 		goto out;
 	}
 	if (stat_mode != SR_STAT_MODE_LEARN) {
+		goto out;
+	}
+	if (!is_data_learned_qualified(process_connection_item->traffic_samples, NUM_OF_SAMPLES)) {
+		// start a anew learning
+		process_connection_item->sample_ind = 0;
 		goto out;
 	}
 
@@ -428,7 +459,7 @@ static SR_32 finish_transmit(void *hash_data, void *data)
 					process_connection_item->traffic_samples[i - 1].counters.rx_b_count) / time_diff;
 			}
 			CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,
-			">>>>>>>>>>>>>>>> i:%d time:%llu rx bytes:%d tx_bytes :%d time:%f b:%d\n", i,  process_connection_item->traffic_samples[i].time,
+			">>>>>>>>>>>>>>>> i:%d time:%llu rx bytes:%llu tx_bytes :%llu time:%f b:%d\n", i,  process_connection_item->traffic_samples[i].time,
 			process_connection_item->traffic_samples[i].counters.rx_b_count,
 			process_connection_item->traffic_samples[i].counters.tx_b_count, time_diff, b * 8);
 		
