@@ -188,6 +188,7 @@ SR_U32 sal_get_ip_for_interface(char *interface)
 long double a[7] = {0, 0, 0, 0, 0, 0, 0};
 long double b[7] = {0, 0, 0, 0, 0, 0, 0};
 
+#if 0 //uncomment it to enable gather cpu info
 static SR_U32 sal_get_cpu_util()
 {
     long double loadavg;
@@ -209,6 +210,7 @@ static SR_U32 sal_get_cpu_util()
 
     return (int)(loadavg*100);
 }
+#endif
 
 SR_U32 sal_get_host_info(char *host_info, int size)
 {

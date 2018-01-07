@@ -145,7 +145,7 @@ int sr_cls_del_ipv4(SR_U32 addr, SR_U32 netmask, int rulenum, SR_8 dir)
 
 	node = rn_lookup((void*)ip, (void*)mask, tree_head);
 	if (!node) { // failed to insert - free memory
-		CEF_log_event(SR_CEF_CID_NETWORK, "error", SEVERITY_HIGH,
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 						"failed to del ipv4 for rule %d, node not found!\n", rulenum);
 		SR_FREE(ip);
 		SR_FREE(mask);
@@ -157,7 +157,7 @@ int sr_cls_del_ipv4(SR_U32 addr, SR_U32 netmask, int rulenum, SR_8 dir)
 		//sal_kernel_print_alert("Cleared last rule from entry, removing entry\n");
 		node = rn_delete((void*)ip, (void*)mask, tree_head);
 		if (!node) { // failed to insert - free memory
-			CEF_log_event(SR_CEF_CID_NETWORK, "error", SEVERITY_HIGH,
+			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 							"failed to del ipv4 for rule %d, node not found!\n", rulenum);
 			SR_FREE(ip);
 			SR_FREE(mask);

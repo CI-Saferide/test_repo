@@ -118,7 +118,7 @@ int sr_cls_port_add_rule(SR_U32 port, SR_U32 rulenum, SR_8 dir, SR_8 proto)
 		if (!ent) {		
 			ent = SR_ZALLOC(sizeof(*ent)); // <-A MINE!!!
 			if (!ent) {
-				CEF_log_event(SR_CEF_CID_NETWORK, "error", SEVERITY_HIGH,
+				CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 								"failed to allocate memory\n");
 				return SR_ERROR;
 			} else {
@@ -138,7 +138,7 @@ int sr_cls_port_del_rule(SR_U32 port, SR_U32 rulenum, SR_8 dir, SR_8 proto)
 	if (port != PORT_ANY) {
 		struct sr_hash_ent_t *ent=sr_hash_lookup((dir==SR_DIR_DST)?sr_cls_dport_table[SR_PROTO_SELECTOR(proto)]:sr_cls_sport_table[SR_PROTO_SELECTOR(proto)], port);
 		if (!ent) {
-			CEF_log_event(SR_CEF_CID_NETWORK, "error", SEVERITY_HIGH,
+			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 							"cannot del rule# %u on PORT:%u - rule not found\n", rulenum, port);
 			return SR_ERROR;
 		}
@@ -159,15 +159,15 @@ void print_table(struct sr_hash_table_t *table)
 	struct sr_hash_ent_t *curr, *next;
 	
 	if (table != NULL) {
-		CEF_log_event(SR_CEF_CID_NETWORK, "error", SEVERITY_HIGH,
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 						"printing PORT elements!\n");
 		for(i = 0; i < HT_PORT_SIZE; i++) {
 			if (table->buckets[i].head != NULL){
-				CEF_log_event(SR_CEF_CID_NETWORK, "error", SEVERITY_HIGH,
+				CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 								"hash_index[%d]\n",i);
 				curr = table->buckets[i].head;				
 				while (curr != NULL){
-					CEF_log_event(SR_CEF_CID_NETWORK, "error", SEVERITY_HIGH,
+					CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 									"port: %u\n",curr->key);
 					sr_cls_print_port_rules(curr->key, SR_DIR_DST, IPPROTO_TCP); // TODO: needed ?
 					next = curr->next;
@@ -189,7 +189,7 @@ struct sr_hash_ent_t *sr_cls_port_find(SR_U32 port, SR_8 dir, SR_8 proto)
 {
 	struct sr_hash_ent_t *ent=sr_hash_lookup((dir==SR_DIR_DST)?sr_cls_dport_table[SR_PROTO_SELECTOR(proto)]:sr_cls_sport_table[SR_PROTO_SELECTOR(proto)], port);
 	if (!ent) {
-		CEF_log_event(SR_CEF_CID_NETWORK, "error", SEVERITY_HIGH,
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 						"port %u not found\n",port);
 		return NULL;
 	}
@@ -205,7 +205,7 @@ void sr_cls_print_port_rules(SR_U32 port, SR_8 dir, SR_8 proto)
 
 	sal_memset(&rules, 0, sizeof(rules));;
 	if (!ent) {
-		CEF_log_event(SR_CEF_CID_NETWORK, "error", SEVERITY_HIGH,
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 						"port %u rule not found\n",port);
 		return;
 	}

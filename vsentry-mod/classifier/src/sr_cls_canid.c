@@ -126,7 +126,7 @@ int sr_cls_canid_add_rule(SR_32 canid, SR_U32 rulenum, SR_8 dir)
 		if (!ent) {             
 			ent = SR_ZALLOC(sizeof(*ent)); // <-A MINE!!!
 			if (!ent) {
-				CEF_log_event(SR_CEF_CID_CAN, "error", SEVERITY_HIGH,
+				CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 					"Error: Failed to allocate memory\n");
 				return SR_ERROR;
 			} else {
@@ -151,7 +151,7 @@ int sr_cls_canid_del_rule(SR_32 canid, SR_U32 rulenum, SR_8 dir)
 	if(canid != MSGID_ANY) { 
 		struct sr_hash_ent_t *ent=sr_hash_lookup((dir==SR_CAN_OUT)?sr_cls_out_canid_table:sr_cls_in_canid_table, canid);         
 		if (!ent) {
-			CEF_log_event(SR_CEF_CID_CAN, "error", SEVERITY_HIGH,
+			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 				"Error can't del rule# %u on CAN MsgID:%x dir: %s - rule not found\n",rulenum,canid,(dir==SR_CAN_OUT)? "OUT" : "IN");
 			return SR_ERROR;
 		}
@@ -199,7 +199,7 @@ struct sr_hash_ent_t *sr_cls_canid_find(SR_32 canid, SR_8 dir)
 {
 	struct sr_hash_ent_t *ent=sr_hash_lookup((dir==SR_CAN_OUT)?sr_cls_out_canid_table:sr_cls_in_canid_table, canid);
 	if (!ent) {
-		CEF_log_event(SR_CEF_CID_CAN, "error", SEVERITY_HIGH,
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 			"Error:%x CAN MsgID not found\n",canid);
 		return NULL;
 	}
@@ -215,7 +215,7 @@ void sr_cls_print_canid_rules(SR_32 canid, SR_8 dir)
 	sal_memset(&rules, 0, sizeof(rules));
 
 	if (!ent) {
-		CEF_log_event(SR_CEF_CID_CAN, "error", SEVERITY_HIGH,
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 			"Error:%x CAN MsgID rule not found\n",canid);
 		return;
 	}
