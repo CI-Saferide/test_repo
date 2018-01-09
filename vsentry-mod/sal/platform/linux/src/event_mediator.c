@@ -904,6 +904,7 @@ SR_32 vsentry_socket_sendmsg(struct socket *sock,struct msghdr *msg,SR_32 size)
 			return (disp_socket_sendmsg(&disp));
 			break;
 		case AF_INET:
+			CHECK_STATE
 			if (!sock->sk)
 				return 0;
 #ifdef CONFIG_STAT_ANALYSIS
