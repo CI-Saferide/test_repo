@@ -99,6 +99,8 @@ SR_32 sr_gen_hash_delete_all(struct sr_gen_hash *hash)
 		for (iter = hash->table[i]; iter; ) {
 			if (hash->hash_ops.free)
 				hash->hash_ops.free(iter->data);
+			else if (iter->data)
+				SR_Free(iter->data);
 			help = iter->next;
 			SR_Free(iter);
 			iter = help;
