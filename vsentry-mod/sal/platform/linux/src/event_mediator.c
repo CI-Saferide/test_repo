@@ -858,11 +858,18 @@ SR_32 vsentry_socket_sendmsg(struct socket *sock,struct msghdr *msg,SR_32 size)
 			skb = sock_alloc_send_skb(copy_sock.sk, size + sizeof(struct can_skb_priv),
 						  copy_msg.msg_flags & MSG_DONTWAIT, &err);
 						  
+			if (!skb) {
+				CEF_log_event(SR_CEF_CID_SYSTEM, "Error", SEVERITY_HIGH,
+								"fail to allocate skb for can message");
+				/* we cannot handle this message */
+				return 0;
+			}
 			err = memcpy_from_msg(skb_put(skb, size), &copy_msg, size);
 			if (err < 0) {
 				CEF_log_event(SR_CEF_CID_SYSTEM, "Error", SEVERITY_HIGH,
-								"fail to copy can msg from user!\n");
+								"fail to copy can msg from user");
 				/* we cannot handle this message */
+				kfree_skb(skb);
 				return 0;
 			}
 			cfd = (struct canfd_frame *)skb->data;
@@ -872,15 +879,6 @@ SR_32 vsentry_socket_sendmsg(struct socket *sock,struct msghdr *msg,SR_32 size)
 			for (i = 0; i < cfd->len; i++) {
 				disp.can_info.payload[i] = cfd->data[i];
 			}
-			/* TODO: remove it!!! this is only for the demo purposes */
-                        /*if (cfd->len > 7 && disp.can_info.payload[1] == 0 && 
-                        	disp.can_info.payload[2] == 0 && 
-                        	disp.can_info.payload[3] == 0 && 
-                        	disp.can_info.payload[4] == 0 && 
-                        	disp.can_info.payload[5] == 0 && 
-                        	disp.can_info.payload[6] == 0) {
-							return 0;
-                        }*/
 			CEF_log_debug(SR_CEF_CID_SYSTEM, "Event Mediator" , SEVERITY_LOW,
 							"[HOOK %s] family=af_can msd_id=%x payload_len=%d payload= %02x %02x %02x %02x %02x %02x %02x %02x pid=%d, uid=%d\n", 
 							hook_event_names[HOOK_SOCK_MSG_SEND].name,
@@ -896,11 +894,10 @@ SR_32 vsentry_socket_sendmsg(struct socket *sock,struct msghdr *msg,SR_32 size)
 							disp.can_info.payload[7],
 							disp.fileinfo.id.pid,
 							disp.fileinfo.id.uid);
-
-			/* call dispatcher */
 			kfree_skb(skb);
 			/* we are checking state here to deliver the can msg to can_ml even when vsentry is disbaled */
 			CHECK_STATE
+			/* call dispatcher */
 			return (disp_socket_sendmsg(&disp));
 			break;
 		case AF_INET:
