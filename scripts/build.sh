@@ -1,40 +1,66 @@
 #!/bin/bash
+TOPDIR=$PWD
+REDBLACK=1
+YANG=1
+PROTOBUF=1
+PROTOBUF_C=1
+SYSREPO=1
 
-script_dir=`cd $(dirname $0); pwd`
-build_dir=$script_dir/../kernel-mod/files/tools
+sudo apt-get install -y git cmake build-essential libcurl4-openssl-dev libpcre3-dev libev-dev autoconf unzip libtool
 
-cd $build_dir/sr-log
+if [ $REDBLACK == '1' ]
+then
+               git clone https://github.com/sysrepo/libredblack.git && \
+               cd libredblack && \
+               ./configure --prefix=/usr && \
+               make && \
+               sudo make install && \
+               sudo ldconfig && \
+               cd $TOPDIR
+fi
 
-#echo $build_dir/vs-log
-echo -n "***vSentry build tool***"
-echo -e ""
-
-while true; do
-	read -p "yes for building no for cleaning:" yn
-		case $yn in
-			[Yy]* )
-				make clean
-				make
-				gcc main.c -static -L/$build_dir/sr-log -lsr_log -o main
-					while true; do
-						read -p "Do you wish to run the program?" yn
-							case $yn in
-								[Yy]* )
-									./main
-									break;;
-								[Nn]* ) break;;
-								* ) echo "Answer yes or no.";;
-							esac
-					done
-				break;;
-			[Nn]* ) 
-				make clean
-				break;;
-			* ) echo "Answer yes or no.";;
-		esac
-done
+if [ $YANG == '1' ]
+then
+               git clone https://github.com/CESNET/libyang.git && \
+               cd libyang && git checkout v0.13-r2 && mkdir build && cd build && \
+               cmake -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_BUILD_TYPE:String="Release" .. && \
+               make && \
+               sudo make install && \
+               sudo ldconfig && \
+               cd $TOPDIR
+fi
 
 
-#gcc ../../files/src/main.c -static -L.  -lsr_log -o ../../tools/sr-log/main
+if [ $PROTOBUF == '1' ]
+then
+               git clone https://github.com/google/protobuf.git && \
+               cd protobuf && ./autogen.sh && ./configure && \
+               make && \
+               sudo make install && \
+               sudo ldconfig && \
+               cd $TOPDIR
+fi
 
+if [ $PROTOBUF_C == '1' ]
+then
+               git clone https://github.com/protobuf-c/protobuf-c.git && \
+               cd protobuf-c && ./autogen.sh && ./configure --prefix=/usr && \
+               make && \
+               sudo make install && \
+               sudo ldconfig && \
+               cd $TOPDIR
+fi
+
+if [ $SYSREPO == '1' ]
+then
+               git clone https://github.com/sysrepo/sysrepo.git && \
+               cd sysrepo && \
+               git checkout v0.7.0 && \
+               mkdir build && cd build && \
+               cmake -DCMAKE_INSTALL_PREFIX=/usr -DBUILD_CPP_EXAMPLES:BOOL=FALSE -DCMAKE_BUILD_TYPE:String="Release" -DREPOSITORY_LOC:PATH=/etc/sysrepo .. && \
+               make && \
+               sudo make install && \
+               sudo ldconfig && \
+               cd $TOPDIR
+fi
 
