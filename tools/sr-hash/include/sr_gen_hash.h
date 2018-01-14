@@ -3,9 +3,9 @@
 
 #include <sr_sal_common.h>
 
-#define SR_GEN_HASH_READ_LOCK (1 << 0) 
-#define SR_GEN_HASH_WRITE_LOCK (1 << 1) 
-#define SR_GEN_HASH_SLOW_DELETE (1 << 2) 
+#define SR_GEN_HASH_READ_LOCK (1 << 0)
+#define SR_GEN_HASH_WRITE_LOCK (1 << 1)
+#define SR_GEN_HASH_SLOW_DELETE (1 << 2)
 
 typedef struct hash_ops {
         SR_U32 (*create_key)(void *key);
