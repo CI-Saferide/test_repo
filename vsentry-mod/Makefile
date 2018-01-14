@@ -51,6 +51,7 @@ $(TARGET)-objs := sal/platform/linux/src/module_init.o \
 				  classifier/src/sr_cls_port.o \
 				  classifier/src/sr_cls_uid.o \
 				  classifier/src/sr_cls_canid.o \
+				  classifier/src/sr_cls_sk_process.o \
 				  stat_analysis/src/sr_special_hash.o \
 				  stat_analysis/src/sr_stat_connection.o \
 				  stat_analysis/src/sr_stat_analysis.o \

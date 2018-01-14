@@ -77,7 +77,7 @@ SR_32 sr_stat_learn_rule_hash_init(void)
 #ifdef SR_STAT_ANALYSIS_DEBUG
         hash_ops.print = learn_rule_print;
 #endif
-        if (!(learn_rule_hash = sr_gen_hash_new(HASH_SIZE, hash_ops))) {
+        if (!(learn_rule_hash = sr_gen_hash_new(HASH_SIZE, hash_ops, 0))) {
                 CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,"file_hash_init: sr_gen_hash_new failed");
                 return SR_ERROR;
         }

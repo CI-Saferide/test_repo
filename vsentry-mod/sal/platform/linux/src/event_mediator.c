@@ -19,6 +19,7 @@
 #ifdef CONFIG_STAT_ANALYSIS
 #include "sr_stat_analysis.h"
 #endif
+#include "sr_cls_sk_process.h"
 
 //#define DEBUG_EVENT_MEDIATOR
 /* Protocol families, same as address families */
@@ -839,6 +840,7 @@ SR_32 vsentry_socket_sendmsg(struct socket *sock,struct msghdr *msg,SR_32 size)
 	disp_info_t disp = {};
 	struct task_struct *ts = current;
 	const struct cred *rcred= ts->real_cred;
+	sk_process_info_t process_info;
 	
 	memset(&disp, 0, sizeof(disp_info_t));
 	
@@ -933,15 +935,14 @@ SR_32 vsentry_socket_sendmsg(struct socket *sock,struct msghdr *msg,SR_32 size)
 			/* Hook is relevant only for UDP */
 			if (sock->sk->sk_protocol != IPPROTO_UDP)
 				return 0;
-			/* gather metadata */
-			disp.tuple_info.id.uid = (int)rcred->uid.val;
-			disp.tuple_info.id.pid = current->pid;
-			disp.tuple_info.saddr.v4addr.s_addr = ntohl(sock->sk->sk_rcv_saddr);
-			disp.tuple_info.daddr.v4addr.s_addr = ntohl(sock->sk->sk_daddr);
-   			disp.tuple_info.dport = sock->sk->sk_num;
-			disp.tuple_info.sport = ntohs(sock->sk->sk_dport);
-			disp.tuple_info.ip_proto = sock->sk->sk_protocol;
-			disp.tuple_info.size = size;
+			process_info.pid = current->tgid;
+			process_info.uid = (int)rcred->uid.val;
+			if (sr_cls_sk_process_hash_update(sock->sk, &process_info) != SR_SUCCESS) {
+                		CEF_log_event(SR_CEF_CID_SYSTEM, "Error", SEVERITY_HIGH,
+				"ERROR failed sr_cls_sk_process_hash_update\n");
+                		return 0;
+			}
+
 #ifdef DEBUG_EVENT_MEDIATOR
         		CEF_log_event(SR_CEF_CID_SYSTEM, "Info" , SEVERITY_LOW,
 								"vsentry_socket_connect=%lx[%d] -> %lx[%d]\n",
@@ -951,12 +952,6 @@ SR_32 vsentry_socket_sendmsg(struct socket *sock,struct msghdr *msg,SR_32 size)
                         		disp.tuple_info.dport);
 #endif /* DEBUG_EVENT_MEDIATOR */
 
-			/* call dispatcher */
-			if (disp_ipv4_sendmsg(&disp) == SR_CLS_ACTION_ALLOW) {
-				return 0;
-			} else {
-				return -EACCES;
-			}
 			break;
 		default:
 			/* we are not interested in the message */

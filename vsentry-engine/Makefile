@@ -50,6 +50,7 @@ SRCS 		:=  main.c \
 				sr_static_policy.c \
 				sr_command.c \
 				sr_stat_analysis.c \
+				sr_cyclic_array.c \
 				sr_info_gather.c \
 				sr_db_ip.c \
 				sr_db_file.c \

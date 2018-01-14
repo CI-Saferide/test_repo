@@ -16,6 +16,7 @@
 #include "sr_stat_connection.h"
 #include "sr_stat_port.h"
 #endif
+#include "sr_cls_sk_process.h"
 
 #ifdef CONFIG_NETFILTER
 
@@ -124,7 +125,46 @@ unsigned int sr_netfilter_hook_fn(void *priv,
 	return NF_ACCEPT;
 }
 
+unsigned int sr_netfilter_out_hook_fn(void *priv,
+                    struct sk_buff *skb,          
+                    const struct nf_hook_state *state)
+{
+	struct iphdr *ip_header;
+	struct udphdr *udp_header;
+	disp_info_t disp = {};
+	sk_process_item_t *process_info_p;
+
+	if (SR_FALSE == vsentry_get_state()) 
+		return NF_ACCEPT;
+
+	if (!skb)
+		return NF_ACCEPT;
+
+	ip_header = (struct iphdr *)skb_network_header(skb);
+
+	if (!ip_header || !ip_header->daddr || !ip_header->saddr)
+		return NF_ACCEPT;
+	if (ip_header->protocol == IPPROTO_UDP) {
+		udp_header = (struct udphdr *)skb_transport_header(skb);
+		disp.tuple_info.daddr.v4addr.s_addr = ntohl(ip_header->daddr);
+		disp.tuple_info.saddr.v4addr.s_addr = ntohl(ip_header->saddr);
+		disp.tuple_info.sport = ntohs(udp_header->source);
+		disp.tuple_info.dport = ntohs(udp_header->dest);
+		disp.tuple_info.ip_proto = IPPROTO_UDP;
+		disp.tuple_info.size = ntohs(udp_header->len) - UDP_HLEN;
+		if ((process_info_p = sr_cls_sk_process_hash_get(skb->sk))) {
+			disp.tuple_info.id.pid = process_info_p->process_info.pid;
+			disp.tuple_info.id.uid = process_info_p->process_info.uid;
+		}
+		if (disp_ipv4_sendmsg(&disp) != SR_CLS_ACTION_ALLOW)
+			return NF_DROP;
+	}
+
+	return NF_ACCEPT;
+}
+
 struct nf_hook_ops nfho;
+struct nf_hook_ops nfh_tx;
 
 int sr_netfilter_init(void)
 {
@@ -134,6 +174,12 @@ int sr_netfilter_init(void)
 	nfho.priority = NF_IP_PRI_FIRST;    
 	nf_register_hook(&nfho);         // Register the hook
 
+	nfh_tx.hook = sr_netfilter_out_hook_fn;
+	nfh_tx.hooknum = NF_INET_LOCAL_OUT;
+	nfh_tx.pf = PF_INET;     
+	nfh_tx.priority = NF_IP_PRI_FIRST;    
+	nf_register_hook(&nfh_tx);         // Register the hook
+
     sal_kernel_print_info("Registering netfilter hooks!\n");
     return 0;
 }
@@ -141,6 +187,7 @@ int sr_netfilter_init(void)
 void sr_netfilter_uninit(void)
 {
 	nf_unregister_hook(&nfho);
+	nf_unregister_hook(&nfh_tx);
     sal_kernel_print_info("Unregistering netfilter hooks!\n");
 }
 

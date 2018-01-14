@@ -6,8 +6,9 @@
 #include "sr_sal_common.h"
 #include "sr_config_parse.h"
 #include "engine_sal.h"
+#include "sal_linux.h"
 
-SR_LOCK cef_lock = SR_MUTEX_INIT; //for locking the cef wirte to file function
+SR_MUTEX cef_lock = SR_MUTEX_INIT_VALUE; //for locking the cef wirte to file function
 
 extern struct config_params_t config_params;
 
@@ -84,9 +85,9 @@ void log_print_cef_msg(CEF_payload *cef)
 			VSENTRY_VER_MAJOR,VSENTRY_VER_MINOR,
 			cef->class,cef->name, cef->sev, cef->confidence, cef->extension);
 			
-	SR_Lock(&cef_lock);
+	SR_MUTEX_LOCK(&cef_lock);
 	log_cef_msg(cef_buffer);
-	SR_Unlock(&cef_lock);
+	SR_MUTEX_UNLOCK(&cef_lock);
 }
 
 

@@ -56,6 +56,12 @@ SR_U32 sal_get_os(sal_os_t *os);
 #define DEFAULT_CAN3_INTERFACE "vcan3"	/* default virtual can interface, in case no config file detected */
 #define DEFAULT_CAN4_INTERFACE "vcan4"	/* default virtual can interface, in case no config file detected */
 
+#define SR_MUTEX pthread_mutex_t
+#define SR_MUTEX_INIT(l) pthread_mutex_init(l, NULL)
+#define SR_MUTEX_LOCK(l) pthread_mutex_lock(l)
+#define SR_MUTEX_UNLOCK(l) pthread_mutex_unlock(l)
+#define SR_MUTEX_INIT_VALUE PTHREAD_MUTEX_INITIALIZER
+
 SR_U64 sal_get_time(void);
 SR_32 sal_get_process_name(SR_U32 pid, char *exe, SR_U32 size);
 SR_U32 sal_get_ip_for_interface(char *interface);

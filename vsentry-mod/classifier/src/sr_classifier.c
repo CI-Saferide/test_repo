@@ -6,6 +6,7 @@
 #include "sr_sal_common.h"
 #include "sr_cls_network_common.h"
 #include "sr_actions_common.h"
+#include "sr_cls_sk_process.h"
 
 SR_32 sr_classifier_init(void)
 {
@@ -17,21 +18,24 @@ SR_32 sr_classifier_init(void)
 	sr_cls_uid_init();
 	sr_cls_exec_file_init();
 	sr_cls_process_init();
+	sr_cls_sk_process_hash_init();
 
 #ifdef UNIT_TEST
 	sr_cls_network_ut();
 	sr_cls_port_ut();
 	sr_cls_canid_ut();
 #endif
+	sr_cls_sl_process_hash_ut();
+
 	return 0;
 }
 
 void sr_classifier_uninit(void)
 {
+	sr_cls_sk_process_hash_uninit();
 	sr_cls_network_uninit();
 	sr_cls_fs_uninit();
 	sr_cls_port_uninit();
-
 	sr_cls_canid_uninit();	
 	sr_cls_exec_file_uninit();
 	sr_cls_process_uninit();
@@ -104,9 +108,6 @@ SR_32 sr_classifier_network(disp_info_t* info)
 		return SR_CLS_ACTION_ALLOW;
 	}
 	if (info->tuple_info.id.pid) {  // Zero PID is an indication that we are not in process context
-
-// XXX TODO uid can NOT be implemented from netfilter
-#if 0
 		// UID
 		if (info->tuple_info.id.uid != UID_ANY) {
 			ptr = sr_cls_match_uid(SR_NET_RULES, info->tuple_info.id.uid);
@@ -121,7 +122,6 @@ SR_32 sr_classifier_network(disp_info_t* info)
 		if (array_is_clear(ba_res)) {
 			return SR_CLS_ACTION_ALLOW;
 		}
-#endif
 		//PID
 		ptr = sr_cls_process_match(SR_NET_RULES, info->tuple_info.id.pid);
 		if (ptr) {

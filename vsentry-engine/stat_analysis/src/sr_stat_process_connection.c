@@ -136,7 +136,7 @@ SR_32 sr_stat_process_connection_hash_init(void)
         hash_ops.comp = process_connection_comp;
         hash_ops.free = process_connection_free;
         hash_ops.print = process_connection_print;
-        if (!(process_connection_hash = sr_gen_hash_new(HASH_SIZE, hash_ops))) {
+        if (!(process_connection_hash = sr_gen_hash_new(HASH_SIZE, hash_ops, 0))) {
                 CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
                 "file_hash_init: sr_gen_hash_new failed");
                 return SR_ERROR;
