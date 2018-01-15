@@ -5,6 +5,36 @@
 #include "sal_linux.h"
 #include "sr_tasks.h"
 #include "sr_sal_common.h"
+#include <linux/netdevice.h>
+#include <linux/inetdevice.h>
+
+SR_32 sal_get_local_ips(SR_U32 local_ips[], SR_U32 *count, SR_U32 max)
+{
+	struct net_device *dev;
+	struct in_device *in_dev;
+
+	*count = 0;
+	read_lock(&dev_base_lock);
+	dev = first_net_device(&init_net);
+	while (dev && *count < max) {
+		rcu_read_lock();
+		in_dev = __in_dev_get_rcu(dev);
+		if (!in_dev) {
+			rcu_read_unlock();
+			return SR_ERROR;
+		}
+		for_primary_ifa(in_dev) {
+			local_ips[*count] = ntohl(ifa->ifa_local);
+			(*count)++;
+		} endfor_ifa(in_dev);
+
+		rcu_read_unlock(); 
+		dev = next_net_device(dev);
+	}
+	read_unlock(&dev_base_lock);
+
+	return SR_SUCCESS;
+}
 
 SR_32 sal_task_stop(void *data)
 {

@@ -9,9 +9,6 @@
 #include "sal_linux.h"
 #endif
 
-/* XXX TODO interface shoul dbe taken in a generic way */
-#define SR_MAIN_INTERFACE "enp3s0"
-
 void *sal_memcpy(void *dest, void *src, SR_32 len);
 void *sal_memset(void *dest, SR_8 ch, SR_32 len);
 SR_8 *sal_strcpy(SR_8 *dest, SR_8 *src);

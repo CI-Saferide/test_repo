@@ -68,11 +68,15 @@ SR_32 sr_classifier_network(disp_info_t* info)
 
 	// Match 5-tuple
 	// Src IP
-	ptr = sr_cls_match_ip(htonl(info->tuple_info.saddr.v4addr.s_addr), SR_DIR_SRC);
-	if (ptr) {
-		sal_or_op_arrays(ptr, src_cls_network_any_src(), &ba_res);
-	} else { // take only src/any
-		sal_or_self_op_arrays(&ba_res, src_cls_network_any_src());
+	if (cr_cls_is_ip_address_local(info->tuple_info.saddr.v4addr)) 
+		sal_or_op_arrays(src_cls_network_local_src(), src_cls_network_any_src(), &ba_res);
+	else {
+		ptr = sr_cls_match_ip(htonl(info->tuple_info.saddr.v4addr.s_addr), SR_DIR_SRC);
+		if (ptr) {
+			sal_or_op_arrays(ptr, src_cls_network_any_src(), &ba_res);
+		} else { // take only src/any
+			sal_or_self_op_arrays(&ba_res, src_cls_network_any_src());
+		}
 	}
 	if (array_is_clear(ba_res)) {
 		return SR_CLS_ACTION_ALLOW;
@@ -88,11 +92,15 @@ SR_32 sr_classifier_network(disp_info_t* info)
 		return SR_CLS_ACTION_ALLOW;
 	}
 	// Dst IP 
-	ptr = sr_cls_match_ip(htonl(info->tuple_info.daddr.v4addr.s_addr), SR_DIR_DST);
-	if (ptr) {
-		sal_and_self_op_two_arrays(&ba_res, ptr, src_cls_network_any_dst());
-	} else { // take only dst/any
-		sal_and_self_op_arrays(&ba_res, src_cls_network_any_dst());
+	if (cr_cls_is_ip_address_local(info->tuple_info.daddr.v4addr)) 
+		sal_and_self_op_two_arrays(&ba_res, src_cls_network_local_dst(), src_cls_network_any_dst());
+	else {
+		ptr = sr_cls_match_ip(htonl(info->tuple_info.daddr.v4addr.s_addr), SR_DIR_DST);
+		if (ptr) {
+			sal_and_self_op_two_arrays(&ba_res, ptr, src_cls_network_any_dst());
+		} else { // take only dst/any
+			sal_and_self_op_arrays(&ba_res, src_cls_network_any_dst());
+		}
 	}
 	if (array_is_clear(ba_res)) {
 		return SR_CLS_ACTION_ALLOW;
