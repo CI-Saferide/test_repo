@@ -7,6 +7,7 @@
 #include "sr_cls_network_common.h"
 #include "sr_actions_common.h"
 #include "sr_cls_sk_process.h"
+#include "sr_cls_housekeeping.h"
 
 SR_32 sr_classifier_init(void)
 {
@@ -19,19 +20,22 @@ SR_32 sr_classifier_init(void)
 	sr_cls_exec_file_init();
 	sr_cls_process_init();
 	sr_cls_sk_process_hash_init();
+	sr_cls_housekeeping_init();
+		
 
 #ifdef UNIT_TEST
 	sr_cls_network_ut();
 	sr_cls_port_ut();
 	sr_cls_canid_ut();
-#endif
 	sr_cls_sl_process_hash_ut();
+#endif
 
 	return 0;
 }
 
 void sr_classifier_uninit(void)
 {
+	sr_cls_housekeeping_uninit();
 	sr_cls_sk_process_hash_uninit();
 	sr_cls_network_uninit();
 	sr_cls_fs_uninit();

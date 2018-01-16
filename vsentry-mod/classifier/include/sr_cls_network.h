@@ -20,5 +20,6 @@ bit_array *src_cls_network_any_dst(void);
 bit_array *src_cls_network_local_src(void);
 bit_array *src_cls_network_local_dst(void);
 SR_BOOL cr_cls_is_ip_address_local(struct in_addr addr);
+SR_32 local_ips_array_init(void);
 
 #endif /* SR_CLS_NETWORK_H */
