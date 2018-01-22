@@ -1,6 +1,5 @@
 #include <sysrepo_mng.h>
 #include <sysrepo.h>
-#include "sr_sal_common.h"
 #include "sr_cls_network_common.h"
 #include "sr_msg.h"
 #include "sentry.h"
@@ -9,7 +8,13 @@
 #include "file_rule.h"
 #include "can_rule.h"
 #include "jsmn.h"
+#include <string.h>
 #include <ctype.h>
+#ifdef NO_CEF
+#define CEF_log_event(f1, f2, f3, ...) printf(__VA_ARGS__)
+#else
+#include "sr_log.h"
+#endif
 
 #define ACT_PREFIX   "/saferide:config/sr_actions/list_actions["
 #define CAN_PREFIX   "/saferide:config/net/can/rule["
@@ -310,7 +315,7 @@ static SR_32 um_set_value(sr_session_ctx_t *sess, char *str_param, char *str_val
 
 	rc = sr_get_item(sess, str_param, &value);
 	if (rc != SR_ERR_OK) {
-		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, " ERROR sr_get_item %s:", str_param, sr_strerror(rc));
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, " ERROR str_param:%s sr_get_item %s:", str_param, sr_strerror(rc));
 		return rc;
 	}
 	memset(&new_val, 0, sizeof(sr_val_t));
@@ -780,9 +785,8 @@ SR_32 sysrepo_mng_parse_json(sysrepo_mng_handler_t *handler, char *buf, SR_U32 *
 				*version = (SR_U32)json_get_int(&t[i], buf);
 				if (*version == old_version)
 					goto out;
+				CEF_log_event(SR_CEF_CID_SYSTEM, "info", SEVERITY_LOW, "New version :%d version:%d buf:%s:\n", *version, old_version, buf);
 			}
-			CEF_log_event(SR_CEF_CID_SYSTEM, "info", SEVERITY_LOW, "New version :%d version:%d buf:%s:\n", *version, old_version, buf);
-			printf("New version :%d version:%d buf:%s:\n", *version, old_version, buf);
 			rc = sr_delete_item(sess, "/saferide:config", SR_EDIT_DEFAULT);
 			if (SR_ERR_OK != rc) {
 				CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, "sr_delete_item: %s\n", sr_strerror(rc));

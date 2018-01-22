@@ -21,6 +21,7 @@ OBJS 		:= $(addprefix $(OBJDIR)/,$(SRCS:.c=.o))
 DEPS 		:= $(OBJS:.o=.d)
 
 CFLAGS += -MMD -Wall -g
+CFLAGS += $(if $(NO_CEF),-DNO_CEF)
 
 all: $(TARGET)
 
