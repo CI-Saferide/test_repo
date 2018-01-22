@@ -68,6 +68,7 @@ INCLUDES 	:=  -I../common/include \
 				-I../tools/sr-log/include \
 				-I../tools/sr-hash/include \
 				-I../tools/json \
+				-I../tools/sysrepo_mng/include \
 				-I../vsentry-lib/include \
 				-I../common/stat_analysis/include \
 				-Istat_analysis/include \
@@ -77,7 +78,7 @@ OBJS		:=  $(addprefix $(OBJDIR)/,$(SRCS:.c=.o))
 DEPS		:=  $(OBJS:.o=.d)
 
 # libs to link with
-LIBS		:= -lpthread -lsr_log -lsr_hash -ljsmn -lsentry -lsysrepo -lcurl -larchive -lcrypto
+LIBS		:= -lpthread -lsr_log -lsr_hash -lsysrepo_mng -ljsmn -lsentry -lsysrepo -lcurl -larchive -lcrypto
 # and where to search them 
 LIB_PATH 	:= -L$(LIBDIR) -L../vsentry-lib/lib
 
@@ -103,7 +104,7 @@ all: $(TARGET)
 build_ver:
 	@echo "static const char SR_GIT_BUILD[] = \"`git log --pretty=format:'%h' -n 1`\"; " > $(TOP_DIR)/../common/include/sr_build_ver.h
 
-$(TARGET): build_ver $(OBJDIR) $(OBJS) libsr_log libsr_hash libjsmn
+$(TARGET): build_ver $(OBJDIR) $(OBJS) libsr_log libsr_hash libjsmn libsysrepo_mng
 	@echo "linking $(notdir $@)"
 	@$(CC) $(LDFLAGS) $(OBJS) -o $(BINDIR)/$(TARGET) $(LIB_PATH) $(LIBS)
 
@@ -120,6 +121,9 @@ libsr_hash:
 
 libjsmn:
 	@$(MAKE) -s -C ../tools/json TOP_DIR=$(TOP_DIR)
+
+libsysrepo_mng:
+	@$(MAKE) -s -C ../tools/sysrepo_mng TOP_DIR=$(TOP_DIR)
 
 $(OBJDIR)/%.o: %.c
 	@echo "compiling $(notdir $<)"
