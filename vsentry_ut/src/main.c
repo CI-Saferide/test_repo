@@ -48,8 +48,6 @@ int main(int argc, char **argv)
 	if (!*json_buf) 
 		return -1;
 
-	printf("buf:%s: \n", json_buf);
-
 	if (sysrepo_mng_session_start(&handler)) {
 		printf("sysrepo_mng_session_start failed \n");
 		rc = -1;
