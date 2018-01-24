@@ -1,6 +1,6 @@
 #!/bin/sh
 
-export TEST_AREA='/home/arik/arik/test_area'
+export TEST_AREA=${HOME}/test_area
 
 #Setup preparation
 rm -rf $TEST_AREA
