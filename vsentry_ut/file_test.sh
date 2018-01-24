@@ -234,7 +234,6 @@ if [ $status -eq 0 ]; then
    echo "Error test${test_count}"
    err_count=$((err_count+1))
 fi
-rm -f ${TEST_AREA}/file_new
 
 echo "***************** Hard link of a non protected file into a write proteced directory"
 test_count=$((test_count+1))
@@ -245,6 +244,7 @@ if [ $status -eq 0 ]; then
    echo "Error test${test_count}"
    err_count=$((err_count+1))
 fi
+rm -f ${TEST_AREA}/file_new
 
 echo "***************** Rm a write protected file"
 python create_rule.py -a drop -t file -n 1 -f ${TEST_AREA}/filewp -p 2 2 > json_tmp_file
