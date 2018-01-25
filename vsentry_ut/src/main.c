@@ -7,7 +7,7 @@
 
 #define FIXED_PART_START "{\"canVersion\": 238, \"ipVersion\": 238, \"systemVersion\": 238, \"actionVersion\": 238, \"actions\": [{\"log\": false, \"drop\": false, \"id\": 1111, \"allow\": true, \"name\": \"allow\"}, {\"log\": true, \"drop\": false, \"id\": 1112, \"allow\": true, \"name\": \"allow_log\"}, {\"log\": true, \"drop\": true, \"id\": 1113, \"allow\": false, \"name\": \"drop\"}]"
 
-#define CHANGED_PART_FILE ", \"systemPolicies\": [{\"priority\": \"%d\", \"id\": 11, \"fileName\": \"%s\", \"permissions\": \"%d\", \"execProgram\": \"*\", \"user\": \"*\", \"actionName\": \"%s\"}], \"canPolicies\": [], \"ipPolicies\": []"
+#define CHANGED_PART_FILE ", \"systemPolicies\": [{\"priority\": \"%d\", \"id\": 11, \"fileName\": \"%s\", \"permissions\": \"%d\", \"execProgram\": \"%s\", \"user\": \"%s\", \"actionName\": \"%s\"}], \"canPolicies\": [], \"ipPolicies\": []"
 
 #define FIXED_PART_END "}"
 
@@ -16,11 +16,28 @@ static int is_verbose;
 
 int stam;
 
-static char *get_json(int rule_id, char *file_name, int perm, char *exec_prog, char *user, char *action)
+static char *get_cmd_output(void *cmd)
+{
+  FILE *fp;
+  static char buf[1024];
+
+  if (!(fp = popen(cmd, "r")))
+        return NULL;
+
+  if (!fgets(buf, sizeof(buf)-1, fp))
+	return NULL;
+  buf[strlen(buf) - 1] = 0;
+
+  pclose(fp);
+
+  return buf;
+}
+
+static char *get_json(int rule_id, char *file_name, int perm, char *user, char *exec_prog, char *action)
 {
 	static char json_str[10000];
 
-	sprintf(json_str,FIXED_PART_START CHANGED_PART_FILE FIXED_PART_END, rule_id, file_name, perm, action);
+	sprintf(json_str,FIXED_PART_START CHANGED_PART_FILE FIXED_PART_END, rule_id, file_name, perm, exec_prog, user, action);
 
 	return json_str;
 }
@@ -87,6 +104,8 @@ static int create_file_setup(void)
 	rc = system(cmd);
 	sprintf(cmd, "echo AAAAAA > %s/filerp1", test_area);
 	rc = system(cmd);
+	sprintf(cmd, "echo AAAAAA > %s/filerp2", test_area);
+	rc = system(cmd);
 	sprintf(cmd, "echo AAAAAA > %s/filewp", test_area);
 	rc = system(cmd);
 	sprintf(cmd, "echo AAAAAA > %s/file", test_area);
@@ -101,7 +120,7 @@ static int create_file_setup(void)
 
 static int handle_file(sysrepo_mng_handler_t *handler)
 {
-	char cmd[MAX_STR_SIZE];
+	char cmd[MAX_STR_SIZE], *cat_prog;
 	int rc = 0, err_count = 0, test_count = 0;
 
 	sprintf(test_area, "%s/test_area", home);
@@ -223,6 +242,16 @@ static int handle_file(sysrepo_mng_handler_t *handler)
 	/* >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> EXECUTE an EXE protected file  */
 	sprintf(cmd, "%s/filexp", test_area);
 	file_test_case(handler, "filexp", 11, 1, "*", "*", "drop", cmd , &test_count, &err_count, 0, "EXECUTE an EXE protected file");
+
+	if ((cat_prog = get_cmd_output("which cat"))) {
+		/* >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> READ a protected file with exec prog*/
+		sprintf(cmd, "cat %s/filerp2 > /dev/null", test_area);
+		file_test_case(handler, "filerp2", 11, 4, "*", cat_prog , "drop", cmd , &test_count, &err_count, 0, "READ a protected file with exec prog");
+		/* >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> ACCESSING a read protected file with exec prog of cat with different executable*/
+		sprintf(cmd, "cp %s/filerp2 %s/filerp2_c", test_area, test_area);
+		file_test_case(handler, "filerp2", 11, 4, "*", cat_prog, "drop", cmd , &test_count, &err_count, 1,
+			"ACCESSING a read protected file with exec prog of cat with different executable");
+	}
 
 	/* Delete all rules */
 	sysrepo_mng_parse_json(handler, FIXED_PART_START FIXED_PART_END, NULL, 0);
