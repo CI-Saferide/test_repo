@@ -114,13 +114,24 @@ static int create_file_setup(void)
 	rc = system(cmd);
 	sprintf(cmd, "chmod +x  %s/filexp", test_area);
 	rc = system(cmd);
+	rc = system("sudo useradd -p `mkpasswd unix11` -m -g users test_user");
 
 	return rc;
 }
 
+static void cleanup_file_setup(void)
+{
+	char cmd[MAX_STR_SIZE];
+	int rc;
+
+	rc = system("sudo deluser test_user");
+	sprintf(cmd, "rm -rf %s", test_area);
+	rc = system(cmd);
+}
+
 static int handle_file(sysrepo_mng_handler_t *handler)
 {
-	char cmd[MAX_STR_SIZE], *cat_prog;
+	char cmd[MAX_STR_SIZE], *cat_prog, *user;
 	int rc = 0, err_count = 0, test_count = 0;
 
 	sprintf(test_area, "%s/test_area", home);
@@ -253,8 +264,20 @@ static int handle_file(sysrepo_mng_handler_t *handler)
 			"ACCESSING a read protected file with exec prog of cat with different executable");
 	}
 
+	if ((user = getenv("USER"))) {
+		/* >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> READ a protected file with user match*/
+		sprintf(cmd, "cat %s/filerp2 > /dev/null", test_area);
+		file_test_case(handler, "filerp2", 11, 4, user, "*", "drop", cmd , &test_count, &err_count, 0, "READ a protected file with user match");
+		/* >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> READ a protected file with user NON match*/
+		sprintf(cmd, "cat %s/filerp2 > /dev/null", test_area);
+		file_test_case(handler, "filerp2", 11, 4, "test_user", "*", "drop", cmd , &test_count, &err_count, 1, "READ a protected file with user NON match");
+	}
+	
+
 	/* Delete all rules */
 	sysrepo_mng_parse_json(handler, FIXED_PART_START FIXED_PART_END, NULL, 0);
+
+	cleanup_file_setup();
 
 	printf("\n\n=========================== FILE PROTECT TESTS REPROT ==============================\n");
 
