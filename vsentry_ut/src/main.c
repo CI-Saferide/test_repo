@@ -2,19 +2,69 @@
 #include <string.h>
 #include <unistd.h>
 #include "sysrepo_mng.h"
-
-#define MAX_STR_SIZE 512
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <pthread.h>
+#include <arpa/inet.h>
+#include <netdb.h>
+#include <ifaddrs.h>
 
 #define FIXED_PART_START "{\"canVersion\": 238, \"ipVersion\": 238, \"systemVersion\": 238, \"actionVersion\": 238, \"actions\": [{\"log\": false, \"drop\": false, \"id\": 1111, \"allow\": true, \"name\": \"allow\"}, {\"log\": true, \"drop\": false, \"id\": 1112, \"allow\": true, \"name\": \"allow_log\"}, {\"log\": true, \"drop\": true, \"id\": 1113, \"allow\": false, \"name\": \"drop\"}]"
 
 #define CHANGED_PART_FILE ", \"systemPolicies\": [{\"priority\": \"%d\", \"id\": 11, \"fileName\": \"%s\", \"permissions\": \"%d\", \"execProgram\": \"%s\", \"user\": \"%s\", \"actionName\": \"%s\"}], \"canPolicies\": [], \"ipPolicies\": []"
 
+#define CHANGED_PART_IP ", \"ipPolicies\": [{\"priority\": \"%d\", \"id\": 11, \"srcIp\": \"%s\", \"dstIp\": \"%s\", \"srcNetmask\": \"%s\", \"dstNetmask\": \"%s\", \"srcPort\":%d, \"dstPort\":%d, \"protocol\": \"%s\", \"execProgram\": \"%s\", \"user\": \"%s\", \"actionName\": \"%s\"}], \"canPolicies\": [], \"systemPolicies\": []"
+
 #define FIXED_PART_END "}"
+
+#define TEST_PORT 7788
+#define VSENTRY_LOG "/var/log/vsentry0.log"
+#define MAX_STR_SIZE 512
+#define MAX_LOG_LINE 512
+#define MAX_USER_SIZE 64
 
 static char *home, test_area[MAX_STR_SIZE];
 static int is_verbose;
+FILE *flog;
 
-int stam;
+int get_ip_address(char ip[])
+{
+	FILE *f;
+	char line[100] , *interface , *dest;
+	struct ifaddrs *ifaddr, *ifa;
+     
+	f = fopen("/proc/net/route" , "r");
+     
+	while(fgets(line , 100 , f)) {
+		interface = strtok(line , " \t");
+		dest = strtok(NULL , " \t");
+         
+        	if(interface && dest && !strcmp(dest, "00000000"))
+            		break;
+        }
+
+	if (getifaddrs(&ifaddr) == -1) { 
+		perror("getifaddrs");
+		return -1;
+	}
+ 
+	for (ifa = ifaddr; ifa != NULL; ifa = ifa->ifa_next)  {
+		if (!ifa->ifa_addr)
+			continue;
+		if (ifa->ifa_addr->sa_family != AF_INET)
+			continue;
+        	if (strcmp(ifa->ifa_name , interface) != 0)
+			continue;
+                if (getnameinfo(ifa->ifa_addr, sizeof(struct sockaddr_in), ip, NI_MAXHOST , NULL , 0 , NI_NUMERICHOST)) {
+			perror("getnameinfo");
+			return -1;
+		}
+        }
+
+	freeifaddrs(ifaddr);
+
+	return 0;
+}
 
 static char *get_cmd_output(void *cmd)
 {
@@ -33,11 +83,20 @@ static char *get_cmd_output(void *cmd)
   return buf;
 }
 
-static char *get_json(int rule_id, char *file_name, int perm, char *user, char *exec_prog, char *action)
+static char *get_file_json(int rule_id, char *file_name, int perm, char *user, char *exec_prog, char *action)
 {
 	static char json_str[10000];
 
 	sprintf(json_str,FIXED_PART_START CHANGED_PART_FILE FIXED_PART_END, rule_id, file_name, perm, exec_prog, user, action);
+
+	return json_str;
+}
+
+static char *get_ip_json(int rule_id, char *src_addr, char *src_netmask, char *dst_addr, char *dst_netmask, char *protocol, int src_port, int  dst_port, char *user, char *exec_prog, char *action)
+{
+	static char json_str[10000];
+
+	sprintf(json_str,FIXED_PART_START CHANGED_PART_IP FIXED_PART_END, rule_id, src_addr, dst_addr, src_netmask, dst_netmask, src_port, dst_port, protocol, exec_prog, user, action);
 
 	return json_str;
 }
@@ -59,7 +118,7 @@ static void file_test_case(sysrepo_mng_handler_t *handler, char *file_name, int 
 	if (is_verbose)
 		printf(">>>>> T#%d >>>>>>>>>>>>>>>>>>>>>> %s cmd:%s\n", *test_count, desc, cmd);
 	sprintf(file, "%s/%s", test_area, file_name);
-	sysrepo_mng_parse_json(handler, get_json(rule_id, file, perm, user, exec_prog, action), NULL, 0);
+	sysrepo_mng_parse_json(handler, get_file_json(rule_id, file, perm, user, exec_prog, action), NULL, 0);
 	sleep(1);
 	check_test(system(cmd), is_success, *test_count, err_count);
 }
@@ -75,7 +134,7 @@ static void open_file_test_case(sysrepo_mng_handler_t *handler, char *file_name,
 		printf(">>>>> T#%d >>>>>>>>>>>>>>>>>>>>>> %s \n", *test_count, desc);
 	sprintf(file, "%s/%s", test_area, file_name);
 	if (rule_id > -1)
-		sysrepo_mng_parse_json(handler, get_json(rule_id, file, perm, user, exec_prog, action), NULL, 0);
+		sysrepo_mng_parse_json(handler, get_file_json(rule_id, file, perm, user, exec_prog, action), NULL, 0);
 	else
 		sysrepo_mng_parse_json(handler, FIXED_PART_START FIXED_PART_END, NULL, 0);
 	sleep(1);
@@ -291,6 +350,112 @@ static int handle_file(sysrepo_mng_handler_t *handler)
 	return rc;
 }
 
+static FILE *log_init(void)
+{
+	FILE *flog;
+
+        if (!(flog = fopen(VSENTRY_LOG, "r")))
+                return NULL;
+	fseek(flog, 0, SEEK_END);
+
+	return flog;
+}
+
+static void log_deinit(FILE *flog)
+{
+	fclose(flog);
+}
+
+static int log_is_string_exists(FILE *flog, char *str)
+{
+        char buf[MAX_LOG_LINE];
+	int is_found = 0;
+        
+	while (fgets(buf, MAX_LOG_LINE, flog))  {
+		if (strstr(buf, str))
+			is_found = 1;
+	}
+
+	return is_found;
+}
+
+static int test_ip_rule(sysrepo_mng_handler_t *handler, int fd, int rule_id, char *cmd, char *src_addr, char *src_netmask, char *dst_addr, char *dst_netmask, char *protocol,
+		int src_port, int dst_port, char *user, char *exec, char *action, int *test_count, int *err_count)
+{
+	struct sockaddr_in remote = {};
+	char log_search_string[100];
+
+	(*test_count)++;
+	sysrepo_mng_parse_json(handler, FIXED_PART_START FIXED_PART_END, NULL, 0);
+	sleep(1);
+	sysrepo_mng_parse_json(handler, get_ip_json(rule_id, src_addr, src_netmask, dst_addr, dst_netmask, protocol, src_port, dst_port, user, exec, action), NULL, 0);
+	sleep(1);
+	sendto(fd, cmd, strlen(cmd), 0, (struct sockaddr *)&remote, sizeof(remote));
+	sleep(2);
+	if (is_verbose)
+		printf(">>>>> T#%d >>>>>>>>>>>>>>>>>>>>>> %s \n", *test_count, cmd);
+	/* Check the log */
+	sprintf(log_search_string, "RuleNumber=%d Action=", rule_id);
+	if (!log_is_string_exists(flog, log_search_string)) {
+		printf("%s FAILED !!!!!\n", cmd);
+		(*err_count)++;
+	}
+
+	return 0;
+}
+
+static int handle_ip(sysrepo_mng_handler_t *handler)
+{
+	struct sockaddr_in remote = {};
+	int rc = 0, fd, err_count = 0, test_count = 0;
+	char *server_addr, cmd[MAX_STR_SIZE], user[MAX_USER_SIZE], local_ip[64];
+
+	if (!(server_addr = getenv("TEST_SERVER_ADDR"))) {
+		printf("No test server address defined. TEST_SERVER_ADDR\n");
+		return -1;
+	}
+
+	if (!(flog = log_init())) 
+		return -1;
+
+	get_ip_address(local_ip);
+
+	inet_aton(server_addr, &remote.sin_addr);
+	remote.sin_port = htons(TEST_PORT);
+	remote.sin_family = AF_INET;
+	if ((fd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
+		perror("socket");
+		return -1;
+	}
+	if (connect(fd, (struct sockaddr *)&remote, sizeof(remote)) < 0) {
+		perror("connect");
+		return -1;
+	}
+
+	sprintf(cmd, "IPERF_UDP,%s,8888", local_ip);
+	test_ip_rule(handler, fd, 10, cmd, server_addr, "255.255.255.255", "0.0.0.0", "255.255.255.255", "UDP",
+		0, 8888, "*", "*", "drop", &test_count, &err_count);
+
+	getlogin_r(user, MAX_USER_SIZE);
+	sprintf(cmd, "SSH,%s,%s", local_ip, user);
+	test_ip_rule(handler, fd, 10, cmd, server_addr, "255.255.255.255", "0.0.0.0", "255.255.255.255", "TCP",
+		0, 22, "*", "*", "drop", &test_count, &err_count);
+
+	/* Delete rule */
+	sysrepo_mng_parse_json(handler, FIXED_PART_START FIXED_PART_END, NULL, 0);
+
+	if (!err_count) {
+		printf("\n******************************* SUCESSES ******************** \n Number of tests:%d\n", test_count);
+	} else {
+		printf("\n******************************* FAILED ********************** \n Number erros:%d/ Out of %d tests\n", err_count, test_count);
+		rc = -1;
+	}
+
+	log_deinit(flog);
+		
+	return rc;
+}
+
 int main(int argc, char **argv)
 {
 	sysrepo_mng_handler_t handler;
@@ -327,6 +492,10 @@ int main(int argc, char **argv)
 
 	if (!strcmp(type, "file")) {
 		rc = handle_file(&handler);
+		goto cleanup;
+	}
+	if (!strcmp(type, "ip")) {
+		rc = handle_ip(&handler);
 		goto cleanup;
 	}
 
