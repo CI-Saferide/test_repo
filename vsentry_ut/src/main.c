@@ -15,6 +15,8 @@
 
 #define CHANGED_PART_IP ", \"ipPolicies\": [{\"priority\": \"%d\", \"id\": 11, \"srcIp\": \"%s\", \"dstIp\": \"%s\", \"srcNetmask\": \"%s\", \"dstNetmask\": \"%s\", \"srcPort\":%d, \"dstPort\":%d, \"protocol\": \"%s\", \"execProgram\": \"%s\", \"user\": \"%s\", \"actionName\": \"%s\"}], \"canPolicies\": [], \"systemPolicies\": []"
 
+#define CHANGED_PART_CAN ", \"canPolicies\": [{\"priority\": \"%d\", \"id\": 11, \"msgId\": \"%s\", \"canDirection\": \"%s\", \"execProgram\": \"%s\", \"user\": \"%s\", \"actionName\": \"%s\"}], \"ipPolicies\": [], \"systemPolicies\": []"
+
 #define FIXED_PART_END "}"
 
 #define TEST_PORT 7788
@@ -97,6 +99,15 @@ static char *get_ip_json(int rule_id, char *src_addr, char *src_netmask, char *d
 	static char json_str[10000];
 
 	sprintf(json_str,FIXED_PART_START CHANGED_PART_IP FIXED_PART_END, rule_id, src_addr, dst_addr, src_netmask, dst_netmask, src_port, dst_port, protocol, exec_prog, user, action);
+
+	return json_str;
+}
+
+static char *get_can_json(int rule_id, char *msg_id, char *dir, char *user, char *exec_prog, char *action)
+{
+	static char json_str[10000];
+
+	sprintf(json_str,FIXED_PART_START CHANGED_PART_CAN FIXED_PART_END, rule_id, msg_id, dir, exec_prog, user, action);
 
 	return json_str;
 }
@@ -451,6 +462,60 @@ static int handle_ip(sysrepo_mng_handler_t *handler)
 		rc = -1;
 	}
 
+	close(fd);
+
+	log_deinit(flog);
+		
+	return rc;
+}
+
+static int test_can_rule(sysrepo_mng_handler_t *handler, int rule_id, char *cmd, char *msg_id, char *dir,
+		char *user, char *exec, char *action, int *test_count, int *err_count)
+{
+	int rc;
+	char log_search_string[MAX_STR_SIZE];
+
+	(*test_count)++;
+	sysrepo_mng_parse_json(handler, FIXED_PART_START FIXED_PART_END, NULL, 0);
+	sleep(1);
+	sysrepo_mng_parse_json(handler, get_can_json(rule_id, msg_id, dir, user, exec, action), NULL, 0);
+	sleep(1);
+	rc = system(cmd);
+	if (is_verbose)
+		printf(">>>>> T#%d >>>>>>>>>>>>>>>>>>>>>> %s \n", *test_count, cmd);
+	/* Check the log */
+	sprintf(log_search_string, "RuleNumber=%d Action=", rule_id);
+	if (!log_is_string_exists(flog, log_search_string)) {
+		printf("%s FAILED !!!!!\n", cmd);
+		(*err_count)++;
+	}
+	
+	return 0;
+}
+
+static int handle_can(sysrepo_mng_handler_t *handler)
+{
+	int rc = 0, err_count = 0, test_count = 0;
+
+	if (!(flog = log_init())) 
+		return -1;
+
+	test_can_rule(handler, 10, "cansend vcan0 123#", "123", "OUT", "*", "*", "drop", &test_count, &err_count);
+
+	test_can_rule(handler, 10, "cansend vcan0 125#", "any", "OUT", "*", "*", "drop", &test_count, &err_count);
+
+	test_can_rule(handler, 10, "cansend vcan0 126#", "126", "IN", "*", "*", "drop", &test_count, &err_count);
+
+	/* Delete rule */
+	sysrepo_mng_parse_json(handler, FIXED_PART_START FIXED_PART_END, NULL, 0);
+
+	if (!err_count) {
+		printf("\n******************************* SUCESSES ******************** \n Number of tests:%d\n", test_count);
+	} else {
+		printf("\n******************************* FAILED ********************** \n Number erros:%d/ Out of %d tests\n", err_count, test_count);
+		rc = -1;
+	}
+
 	log_deinit(flog);
 		
 	return rc;
@@ -496,6 +561,10 @@ int main(int argc, char **argv)
 	}
 	if (!strcmp(type, "ip")) {
 		rc = handle_ip(&handler);
+		goto cleanup;
+	}
+	if (!strcmp(type, "can")) {
+		rc = handle_can(&handler);
 		goto cleanup;
 	}
 
