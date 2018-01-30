@@ -158,7 +158,7 @@ static void open_file_test_case(sysrepo_mng_handler_t *handler, char *file_name,
 static int create_file_setup(void)
 {
 	char cmd[MAX_STR_SIZE];
-	int rc;
+	int rc __attribute__((unused));
 
 	sprintf(cmd, "rm -rf %s", test_area);
 	rc = system(cmd);
@@ -192,6 +192,7 @@ static int create_file_setup(void)
 static void cleanup_file_setup(void)
 {
 	char cmd[MAX_STR_SIZE];
+	int rc __attribute__((unused));
 
 	system("sudo deluser test_user");
 	sprintf(cmd, "rm -rf %s", test_area);
@@ -394,6 +395,7 @@ static int test_ip_rule(sysrepo_mng_handler_t *handler, int fd, int rule_id, cha
 {
 	struct sockaddr_in remote = {};
 	char log_search_string[100];
+	int rc __attribute__((unused));
 
 	(*test_count)++;
 	sysrepo_mng_parse_json(handler, FIXED_PART_START FIXED_PART_END, NULL, 0);
@@ -403,7 +405,7 @@ static int test_ip_rule(sysrepo_mng_handler_t *handler, int fd, int rule_id, cha
 	if (fd > -1)
 		sendto(fd, cmd, strlen(cmd), 0, (struct sockaddr *)&remote, sizeof(remote));
 	else
-		system(cmd);
+		rc = system(cmd);
 	sleep(2);
 	if (is_verbose)
 		printf(">>>>> T#%d >>>>>>>>>>>>>>>>>>>>>> %s \n", *test_count, cmd);
@@ -478,6 +480,7 @@ static int handle_ip(sysrepo_mng_handler_t *handler)
 static int test_can_rule(sysrepo_mng_handler_t *handler, int rule_id, char *cmd, char *msg_id, char *dir,
 		char *user, char *exec, char *action, int *test_count, int *err_count)
 {
+	int rc __attribute__((unused));
 	char log_search_string[MAX_STR_SIZE];
 
 	(*test_count)++;
