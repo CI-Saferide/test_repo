@@ -490,6 +490,7 @@ static int test_can_rule(sysrepo_mng_handler_t *handler, int rule_id, char *cmd,
 	rc = system(cmd);
 	if (is_verbose)
 		printf(">>>>> T#%d >>>>>>>>>>>>>>>>>>>>>> %s \n", *test_count, cmd);
+	sleep(1);
 	/* Check the log */
 	sprintf(log_search_string, "RuleNumber=%d Action=", rule_id);
 	if (!log_is_string_exists(flog, log_search_string)) {
@@ -511,7 +512,7 @@ static int handle_can(sysrepo_mng_handler_t *handler)
 
 	test_can_rule(handler, 10, "cansend vcan0 125#", "any", "OUT", "*", "*", "drop", &test_count, &err_count);
 
-	test_can_rule(handler, 10, "cansend vcan0 126#", "126", "IN", "*", "*", "drop", &test_count, &err_count);
+	//test_can_rule(handler, 10, "cansend vcan0 126#", "126", "IN", "*", "*", "drop", &test_count, &err_count);
 
 	/* Delete rule */
 	sysrepo_mng_parse_json(handler, FIXED_PART_START FIXED_PART_END, NULL, 0);
