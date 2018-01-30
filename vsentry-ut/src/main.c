@@ -184,7 +184,7 @@ static int create_file_setup(void)
 	rc = system(cmd);
 	sprintf(cmd, "chmod +x  %s/filexp", test_area);
 	rc = system(cmd);
-	rc = system("sudo useradd -p `mkpasswd unix11` -m -g users test_user");
+	rc = system("sudo useradd -m -g users test_user");
 
 	return rc;
 }
@@ -400,7 +400,10 @@ static int test_ip_rule(sysrepo_mng_handler_t *handler, int fd, int rule_id, cha
 	sleep(1);
 	sysrepo_mng_parse_json(handler, get_ip_json(rule_id, src_addr, src_netmask, dst_addr, dst_netmask, protocol, src_port, dst_port, user, exec, action), NULL, 0);
 	sleep(1);
-	sendto(fd, cmd, strlen(cmd), 0, (struct sockaddr *)&remote, sizeof(remote));
+	if (fd > -1)
+		sendto(fd, cmd, strlen(cmd), 0, (struct sockaddr *)&remote, sizeof(remote));
+	else
+		system(cmd);
 	sleep(2);
 	if (is_verbose)
 		printf(">>>>> T#%d >>>>>>>>>>>>>>>>>>>>>> %s \n", *test_count, cmd);
@@ -446,6 +449,10 @@ static int handle_ip(sysrepo_mng_handler_t *handler)
 	test_ip_rule(handler, fd, 10, cmd, server_addr, "255.255.255.255", "0.0.0.0", "255.255.255.255", "UDP",
 		0, 8888, "*", "*", "drop", &test_count, &err_count);
 
+	sprintf(cmd, "iperf -u -c %s -p 8888 -t 1", server_addr);
+	test_ip_rule(handler, -1, 10, cmd, "0.0.0.0", "255.255.255.255", server_addr, "255.255.255.255", "UDP",
+		0, 8888, "*", "*", "drop", &test_count, &err_count);
+
 	getlogin_r(user, MAX_USER_SIZE);
 	sprintf(cmd, "SSH,%s,%s", local_ip, user);
 	test_ip_rule(handler, fd, 10, cmd, server_addr, "255.255.255.255", "0.0.0.0", "255.255.255.255", "TCP",
@@ -481,6 +488,7 @@ static int test_can_rule(sysrepo_mng_handler_t *handler, int rule_id, char *cmd,
 	system(cmd);
 	if (is_verbose)
 		printf(">>>>> T#%d >>>>>>>>>>>>>>>>>>>>>> %s \n", *test_count, cmd);
+	sleep(1);
 	/* Check the log */
 	sprintf(log_search_string, "RuleNumber=%d Action=", rule_id);
 	if (!log_is_string_exists(flog, log_search_string)) {
@@ -502,7 +510,7 @@ static int handle_can(sysrepo_mng_handler_t *handler)
 
 	test_can_rule(handler, 10, "cansend vcan0 125#", "any", "OUT", "*", "*", "drop", &test_count, &err_count);
 
-	test_can_rule(handler, 10, "cansend vcan0 126#", "126", "IN", "*", "*", "drop", &test_count, &err_count);
+	//test_can_rule(handler, 10, "cansend vcan0 126#", "126", "IN", "*", "*", "drop", &test_count, &err_count);
 
 	/* Delete rule */
 	sysrepo_mng_parse_json(handler, FIXED_PART_START FIXED_PART_END, NULL, 0);
