@@ -485,13 +485,13 @@ static int test_can_rule(sysrepo_mng_handler_t *handler, int rule_id, char *cmd,
 
 	(*test_count)++;
 	sysrepo_mng_parse_json(handler, FIXED_PART_START FIXED_PART_END, NULL, 0);
-	sleep(1);
+	rc = sleep(1);
 	sysrepo_mng_parse_json(handler, get_can_json(rule_id, msg_id, dir, user, exec, action), NULL, 0);
-	sleep(1);
+	rc = sleep(1);
 	rc = system(cmd);
 	if (is_verbose)
 		printf(">>>>> T#%d >>>>>>>>>>>>>>>>>>>>>> %s \n", *test_count, cmd);
-	sleep(1);
+	rc = sleep(1);
 	/* Check the log */
 	sprintf(log_search_string, "RuleNumber=%d Action=", rule_id);
 	if (!log_is_string_exists(flog, log_search_string)) {
