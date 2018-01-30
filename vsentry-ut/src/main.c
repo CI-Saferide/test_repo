@@ -192,11 +192,10 @@ static int create_file_setup(void)
 static void cleanup_file_setup(void)
 {
 	char cmd[MAX_STR_SIZE];
-	int rc;
 
-	rc = system("sudo deluser test_user");
+	system("sudo deluser test_user");
 	sprintf(cmd, "rm -rf %s", test_area);
-	rc = system(cmd);
+	system(cmd);
 }
 
 static int handle_file(sysrepo_mng_handler_t *handler)
@@ -472,7 +471,6 @@ static int handle_ip(sysrepo_mng_handler_t *handler)
 static int test_can_rule(sysrepo_mng_handler_t *handler, int rule_id, char *cmd, char *msg_id, char *dir,
 		char *user, char *exec, char *action, int *test_count, int *err_count)
 {
-	int rc;
 	char log_search_string[MAX_STR_SIZE];
 
 	(*test_count)++;
@@ -480,7 +478,7 @@ static int test_can_rule(sysrepo_mng_handler_t *handler, int rule_id, char *cmd,
 	sleep(1);
 	sysrepo_mng_parse_json(handler, get_can_json(rule_id, msg_id, dir, user, exec, action), NULL, 0);
 	sleep(1);
-	rc = system(cmd);
+	system(cmd);
 	if (is_verbose)
 		printf(">>>>> T#%d >>>>>>>>>>>>>>>>>>>>>> %s \n", *test_count, cmd);
 	/* Check the log */
