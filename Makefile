@@ -14,9 +14,14 @@ KERNEL_SRC  ?= /lib/modules/$(shell uname -r)/build
 #  SR_STAT_ANALYSIS_DEBUG=y - set stat analysis debug flag
 
 all:
+	@echo "***** enter vsentry-mod *****"
 	@$(MAKE) -C vsentry-mod KERNEL_SRC=${KERNEL_SRC}
+	@echo "***** enter vsentry-engine *****"
 	@$(MAKE) -s -C vsentry-engine
+	@echo "***** enter vsentry-ut *****"
+	@$(MAKE) -s -C vsentry-ut
 
 clean:
 	@$(MAKE) -C vsentry-mod clean
 	@$(MAKE) -s -C vsentry-engine clean
+	@$(MAKE) -s -C vsentry-ut clean

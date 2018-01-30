@@ -7,13 +7,43 @@
 #include "sr_cls_network_common.h"
 #include "sr_radix.h"
 
+#define MAX_NUM_OF_LOCAL_IPS 10
+
 struct radix_head *sr_cls_src_ipv4;
 bit_array sr_cls_network_src_any_rules;
 struct radix_head *sr_cls_dst_ipv4;
 bit_array sr_cls_network_dst_any_rules;
+bit_array sr_cls_network_src_local_rules;
+bit_array sr_cls_network_dst_local_rules;
 
 int sr_cls_walker_addrule(struct radix_node *node, void *rulenum);
 int sr_cls_walker_delrule(struct radix_node *node, void *rulenum);
+
+static SR_U32 local_ips[MAX_NUM_OF_LOCAL_IPS];
+
+SR_32 local_ips_array_init(void)
+{
+	SR_32 count;
+
+	if (sal_get_local_ips(local_ips, &count, MAX_NUM_OF_LOCAL_IPS)) {
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, "sal_get_local_ips failed");
+		return SR_ERROR;
+	}
+
+	return SR_SUCCESS;
+}
+
+SR_BOOL cr_cls_is_ip_address_local(struct in_addr addr)
+{
+	SR_U32 i;
+
+	for (i = 0; i < MAX_NUM_OF_LOCAL_IPS && local_ips[i]; i++) {
+		if (addr.s_addr == local_ips[i])
+			return SR_TRUE;
+	}
+
+	return SR_FALSE;
+}
 
 void sr_cls_network_init(void)
 {
@@ -31,6 +61,8 @@ void sr_cls_network_init(void)
 			sal_kernel_print_info("Successfully Initialized radix tree\n");
 		}
 	}
+
+	local_ips_array_init();
 }
 
 void sr_cls_network_uninit(void)
@@ -54,6 +86,15 @@ bit_array *src_cls_network_any_dst(void)
 	return &sr_cls_network_dst_any_rules; 
 }
 
+bit_array *src_cls_network_local_src(void) 
+{ 
+	return &sr_cls_network_src_local_rules; 
+}
+bit_array *src_cls_network_local_dst(void) 
+{ 
+	return &sr_cls_network_dst_local_rules; 
+}
+
 int sr_cls_add_ipv4(SR_U32 addr, SR_U32 netmask, int rulenum, SR_8 dir)
 {
 	struct radix_node *node = NULL;
@@ -61,7 +102,7 @@ int sr_cls_add_ipv4(SR_U32 addr, SR_U32 netmask, int rulenum, SR_8 dir)
 	struct sockaddr_in *ip=NULL, *mask=NULL, *mask2=NULL;
 	struct radix_head *tree_head = NULL;
 
-	if (likely(netmask)) { // Not an "any" rule
+	if (likely(netmask && addr)) { // Not an "any" rule
 		treenodes = SR_ZALLOC(2*sizeof(struct radix_node));
 		ip = SR_ZALLOC(sizeof(struct sockaddr_in));
 		mask = SR_ZALLOC(sizeof(struct sockaddr_in));
@@ -111,6 +152,8 @@ int sr_cls_add_ipv4(SR_U32 addr, SR_U32 netmask, int rulenum, SR_8 dir)
 
 		rn_walktree_from(tree_head, ip, mask2, sr_cls_walker_addrule, (void*)(long)rulenum);
 		SR_FREE(mask2);
+	} else if (netmask) {
+		sal_set_bit_array((SR_U32)(long)rulenum, (dir==SR_DIR_SRC)?&sr_cls_network_src_local_rules:&sr_cls_network_dst_local_rules);
 	} else { // "any" = /0
 		sal_set_bit_array((SR_U32)(long)rulenum, (dir==SR_DIR_SRC)?&sr_cls_network_src_any_rules:&sr_cls_network_dst_any_rules);
 	}
@@ -125,7 +168,7 @@ int sr_cls_del_ipv4(SR_U32 addr, SR_U32 netmask, int rulenum, SR_8 dir)
 	struct sockaddr_in *ip=NULL, *mask=NULL;
 	struct radix_head *tree_head=(dir==SR_DIR_SRC)?sr_cls_src_ipv4:sr_cls_dst_ipv4;
 
-	if (likely(netmask)) { // regular subnet - not "ANY"
+	if (likely(netmask && addr)) { // regular subnet - not "ANY"
 	ip = SR_ZALLOC(sizeof(struct sockaddr_in));
 	mask = SR_ZALLOC(sizeof(struct sockaddr_in));
 
@@ -168,6 +211,8 @@ int sr_cls_del_ipv4(SR_U32 addr, SR_U32 netmask, int rulenum, SR_8 dir)
 	//sal_kernel_print_alert("sr_cls_del_ipv4: node to be deleted has address %lx\n", (unsigned long)node);
 	SR_FREE(ip);
 	SR_FREE(mask);
+	} else if (netmask) {
+		sal_set_bit_array((SR_U32)(long)rulenum, (dir==SR_DIR_SRC)?&sr_cls_network_src_local_rules:&sr_cls_network_dst_local_rules);
 	} else { // "ANY" rule
 		sal_clear_bit_array((SR_U32)(long)rulenum, (dir==SR_DIR_SRC)?&sr_cls_network_src_any_rules:&sr_cls_network_dst_any_rules);
 	}

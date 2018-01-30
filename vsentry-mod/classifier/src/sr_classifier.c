@@ -6,6 +6,8 @@
 #include "sr_sal_common.h"
 #include "sr_cls_network_common.h"
 #include "sr_actions_common.h"
+#include "sr_cls_sk_process.h"
+#include "sr_cls_housekeeping.h"
 
 SR_32 sr_classifier_init(void)
 {
@@ -17,21 +19,27 @@ SR_32 sr_classifier_init(void)
 	sr_cls_uid_init();
 	sr_cls_exec_file_init();
 	sr_cls_process_init();
+	sr_cls_sk_process_hash_init();
+	sr_cls_housekeeping_init();
+		
 
 #ifdef UNIT_TEST
 	sr_cls_network_ut();
 	sr_cls_port_ut();
 	sr_cls_canid_ut();
+	sr_cls_sl_process_hash_ut();
 #endif
+
 	return 0;
 }
 
 void sr_classifier_uninit(void)
 {
+	sr_cls_housekeeping_uninit();
+	sr_cls_sk_process_hash_uninit();
 	sr_cls_network_uninit();
 	sr_cls_fs_uninit();
 	sr_cls_port_uninit();
-
 	sr_cls_canid_uninit();	
 	sr_cls_exec_file_uninit();
 	sr_cls_process_uninit();
@@ -64,11 +72,15 @@ SR_32 sr_classifier_network(disp_info_t* info)
 
 	// Match 5-tuple
 	// Src IP
-	ptr = sr_cls_match_ip(htonl(info->tuple_info.saddr.v4addr.s_addr), SR_DIR_SRC);
-	if (ptr) {
-		sal_or_op_arrays(ptr, src_cls_network_any_src(), &ba_res);
-	} else { // take only src/any
-		sal_or_self_op_arrays(&ba_res, src_cls_network_any_src());
+	if (cr_cls_is_ip_address_local(info->tuple_info.saddr.v4addr)) 
+		sal_or_op_arrays(src_cls_network_local_src(), src_cls_network_any_src(), &ba_res);
+	else {
+		ptr = sr_cls_match_ip(htonl(info->tuple_info.saddr.v4addr.s_addr), SR_DIR_SRC);
+		if (ptr) {
+			sal_or_op_arrays(ptr, src_cls_network_any_src(), &ba_res);
+		} else { // take only src/any
+			sal_or_self_op_arrays(&ba_res, src_cls_network_any_src());
+		}
 	}
 	if (array_is_clear(ba_res)) {
 		return SR_CLS_ACTION_ALLOW;
@@ -84,11 +96,15 @@ SR_32 sr_classifier_network(disp_info_t* info)
 		return SR_CLS_ACTION_ALLOW;
 	}
 	// Dst IP 
-	ptr = sr_cls_match_ip(htonl(info->tuple_info.daddr.v4addr.s_addr), SR_DIR_DST);
-	if (ptr) {
-		sal_and_self_op_two_arrays(&ba_res, ptr, src_cls_network_any_dst());
-	} else { // take only dst/any
-		sal_and_self_op_arrays(&ba_res, src_cls_network_any_dst());
+	if (cr_cls_is_ip_address_local(info->tuple_info.daddr.v4addr)) 
+		sal_and_self_op_two_arrays(&ba_res, src_cls_network_local_dst(), src_cls_network_any_dst());
+	else {
+		ptr = sr_cls_match_ip(htonl(info->tuple_info.daddr.v4addr.s_addr), SR_DIR_DST);
+		if (ptr) {
+			sal_and_self_op_two_arrays(&ba_res, ptr, src_cls_network_any_dst());
+		} else { // take only dst/any
+			sal_and_self_op_arrays(&ba_res, src_cls_network_any_dst());
+		}
 	}
 	if (array_is_clear(ba_res)) {
 		return SR_CLS_ACTION_ALLOW;
@@ -104,9 +120,6 @@ SR_32 sr_classifier_network(disp_info_t* info)
 		return SR_CLS_ACTION_ALLOW;
 	}
 	if (info->tuple_info.id.pid) {  // Zero PID is an indication that we are not in process context
-
-// XXX TODO uid can NOT be implemented from netfilter
-#if 0
 		// UID
 		if (info->tuple_info.id.uid != UID_ANY) {
 			ptr = sr_cls_match_uid(SR_NET_RULES, info->tuple_info.id.uid);
@@ -121,7 +134,6 @@ SR_32 sr_classifier_network(disp_info_t* info)
 		if (array_is_clear(ba_res)) {
 			return SR_CLS_ACTION_ALLOW;
 		}
-#endif
 		//PID
 		ptr = sr_cls_process_match(SR_NET_RULES, info->tuple_info.id.pid);
 		if (ptr) {

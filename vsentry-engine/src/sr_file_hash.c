@@ -83,7 +83,7 @@ SR_32 sr_file_hash_init(void)
 	hash_ops.comp = file_comp;
 	hash_ops.free = file_free;
 	hash_ops.print = file_print;
-	if (!(file_hash = sr_gen_hash_new(HASH_SIZE, hash_ops))) {
+	if (!(file_hash = sr_gen_hash_new(HASH_SIZE, hash_ops, 0))) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 						"failed to gen new hash table for file");
 		return SR_ERROR;

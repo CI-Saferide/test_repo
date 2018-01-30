@@ -179,7 +179,7 @@ SR_32 sr_ml_can_hash_init(void)
 	can_ml_hash_ops.create_key = can_ml_create_key;
 	can_ml_hash_ops.comp = can_ml_comp;
 	can_ml_hash_ops.print = can_ml_print;
-	if (!(can_ml_hash = sr_gen_hash_new(ML_CAN_HASH_SIZE, can_ml_hash_ops))) {
+	if (!(can_ml_hash = sr_gen_hash_new(ML_CAN_HASH_SIZE, can_ml_hash_ops, 0))) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 						"failed to gen new hash table for can_ml");
 		return SR_ERROR;

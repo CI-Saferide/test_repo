@@ -96,6 +96,7 @@ SR_U32 sal_get_curr_time_nsec(void);
 void sal_update_time_counter(SR_TIME_COUNT *time_count);
 SR_32 sal_elapsed_time_secs(SR_TIME_COUNT time_count);
 SR_U64 get_curr_time_usec(void);
+SR_32 sal_get_local_ips(SR_U32 local_ips[], SR_U32 *count, SR_U32 max);
 
 // Process functions
 SR_U32 sal_get_exec_inode(SR_32 pid);
