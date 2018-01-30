@@ -401,7 +401,10 @@ static int test_ip_rule(sysrepo_mng_handler_t *handler, int fd, int rule_id, cha
 	sleep(1);
 	sysrepo_mng_parse_json(handler, get_ip_json(rule_id, src_addr, src_netmask, dst_addr, dst_netmask, protocol, src_port, dst_port, user, exec, action), NULL, 0);
 	sleep(1);
-	sendto(fd, cmd, strlen(cmd), 0, (struct sockaddr *)&remote, sizeof(remote));
+	if (fd > -1)
+		sendto(fd, cmd, strlen(cmd), 0, (struct sockaddr *)&remote, sizeof(remote));
+	else
+		system(cmd);
 	sleep(2);
 	if (is_verbose)
 		printf(">>>>> T#%d >>>>>>>>>>>>>>>>>>>>>> %s \n", *test_count, cmd);
@@ -445,6 +448,10 @@ static int handle_ip(sysrepo_mng_handler_t *handler)
 
 	sprintf(cmd, "IPERF_UDP,%s,8888", local_ip);
 	test_ip_rule(handler, fd, 10, cmd, server_addr, "255.255.255.255", "0.0.0.0", "255.255.255.255", "UDP",
+		0, 8888, "*", "*", "drop", &test_count, &err_count);
+
+	sprintf(cmd, "iperf -u -c %s -p 8888 -t 1", server_addr);
+	test_ip_rule(handler, -1, 10, cmd, "0.0.0.0", "255.255.255.255", server_addr, "255.255.255.255", "UDP",
 		0, 8888, "*", "*", "drop", &test_count, &err_count);
 
 	getlogin_r(user, MAX_USER_SIZE);
