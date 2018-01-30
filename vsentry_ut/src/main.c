@@ -184,7 +184,7 @@ static int create_file_setup(void)
 	rc = system(cmd);
 	sprintf(cmd, "chmod +x  %s/filexp", test_area);
 	rc = system(cmd);
-	rc = system("sudo useradd -p `mkpasswd unix11` -m -g users test_user");
+	rc = system("sudo useradd -m -g users test_user");
 
 	return rc;
 }
