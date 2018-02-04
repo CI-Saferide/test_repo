@@ -17,7 +17,12 @@ INCLUDES	:= -I$(shell pwd)/include \
 OBJS 		:= $(addprefix $(OBJDIR)/,$(SRCS:.c=.o))
 DEPS 		:= $(OBJS:.o=.d)
 
-CFLAGS += -MMD -Wall -g
+CFLAGS += -MMD -Wall
+ifdef DEBUG
+CFLAGS += -g -O0
+else
+CFLAGS += -O2
+endif
 
 all: $(TARGET)
 
