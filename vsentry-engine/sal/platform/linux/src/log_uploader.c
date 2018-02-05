@@ -180,6 +180,9 @@ static int upload_log_file(char* filename, int offset)
     ret = size;
 
 out:
+   if (chunk)
+        curl_slist_free_all(chunk);
+
     if (logfile)
         fclose(logfile);
 
@@ -364,6 +367,9 @@ static void can_log_upload(void)
         }
         curl_easy_cleanup(curl);
     }
+
+    if (chunk)
+         curl_slist_free_all(chunk);
 
     fclose(fd);
 }

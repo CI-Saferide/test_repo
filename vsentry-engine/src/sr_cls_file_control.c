@@ -69,7 +69,7 @@ int sr_cls_file_add_rule(char *filename, char *exec, char *user, SR_U32 rulenum,
 		// Now iterate subtree
 		DIR * dir;
 		long name_max;
-		struct dirent * buf, * de;
+		struct dirent * buf = NULL , * de;
 
 		if ((dir = opendir(filename))
 				&& (name_max = pathconf(filename, _PC_NAME_MAX)) > 0
@@ -85,6 +85,9 @@ int sr_cls_file_add_rule(char *filename, char *exec, char *user, SR_U32 rulenum,
 				snprintf(fullpath, SR_MAX_PATH, "%s/%s", filename, de->d_name);
 				sr_cls_file_add_rule(fullpath, exec, user, rulenum, 0);
 			}
+
+			if (buf)
+				free(buf);
 		}
 	}
 	if (S_ISLNK(buf.st_mode))  {
@@ -162,7 +165,7 @@ int sr_cls_file_del_rule(char *filename, char *exec, char *user, SR_U32 rulenum,
 		// Now iterate subtree
 		DIR * dir;
 		long name_max;
-		struct dirent * buf, * de;
+		struct dirent * buf = NULL, * de;
 
 		if ((dir = opendir(filename))
 				&& (name_max = pathconf(filename, _PC_NAME_MAX)) > 0
@@ -178,6 +181,9 @@ int sr_cls_file_del_rule(char *filename, char *exec, char *user, SR_U32 rulenum,
 				snprintf(fullpath, SR_MAX_PATH, "%s/%s", filename, de->d_name);
 				sr_cls_file_del_rule(fullpath, exec, user, rulenum, 0);
 			}
+
+			if (buf)
+				free(buf);
 		}
 	}
 	if (S_ISLNK(buf.st_mode))  {

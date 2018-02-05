@@ -87,6 +87,7 @@ static void process_connection_free(void *data_in_hash)
 		SR_Free(ptr);
 		ptr = help;
 	}
+	SR_Free(process_connection_item);
 }
 
 static void process_connection_print(void *data_in_hash)

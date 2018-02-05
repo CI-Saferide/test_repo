@@ -130,6 +130,8 @@ static SR_32 handle_command(void)
 	}
 
 out:
+	if (chunk)
+		curl_slist_free_all(chunk);
 	SR_CURL_DEINIT(curl);
         if (fetch->payload)
                 free(fetch->payload);

@@ -129,6 +129,9 @@ static SR_32 notify_learning(char *exec, sr_stat_con_stats_t *stats)
 	curl_easy_cleanup(curl);
 
 out:
+	if (chunk)
+		curl_slist_free_all(chunk);
+
 	curl_global_cleanup();
 
 	return rc;

@@ -139,6 +139,8 @@ SR_32 can_ml_learn_info_task(void *data)
 			usleep(1000000);
 		}
 	}
+	if (chunk)
+		curl_slist_free_all(chunk);
 	curl_easy_cleanup(curl);
 	curl_global_cleanup();
 	return SR_SUCCESS;
