@@ -124,6 +124,8 @@ static SR_32 get_server_db(sysrepo_mng_handler_t *handler)
 out:
 	if (chunk)
                 curl_slist_free_all(chunk);
+	if (post)
+		curl_formfree(post);
 	SR_CURL_DEINIT(curl);
 	if (fetch->payload)
 		free(fetch->payload);
