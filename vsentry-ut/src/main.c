@@ -194,9 +194,9 @@ static void cleanup_file_setup(void)
 	char cmd[MAX_STR_SIZE];
 	int rc __attribute__((unused));
 
-	system("sudo deluser test_user");
+	rc = system("sudo deluser test_user");
 	sprintf(cmd, "rm -rf %s", test_area);
-	system(cmd);
+	rc = system(cmd);
 }
 
 static int handle_file(sysrepo_mng_handler_t *handler)
@@ -488,7 +488,7 @@ static int test_can_rule(sysrepo_mng_handler_t *handler, int rule_id, char *cmd,
 	sleep(1);
 	sysrepo_mng_parse_json(handler, get_can_json(rule_id, msg_id, dir, user, exec, action), NULL, 0);
 	sleep(1);
-	system(cmd);
+	rc = system(cmd);
 	if (is_verbose)
 		printf(">>>>> T#%d >>>>>>>>>>>>>>>>>>>>>> %s \n", *test_count, cmd);
 	sleep(1);
