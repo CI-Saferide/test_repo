@@ -180,8 +180,6 @@ static int upload_log_file(char* filename, int offset)
     ret = size;
 
 out:
-   if (chunk)
-        curl_slist_free_all(chunk);
    if (formpost)
 	curl_formfree(formpost);
 
