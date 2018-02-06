@@ -1,7 +1,6 @@
 #ifndef SR_LOG_H
 #define SR_LOG_H
 #include "sr_sal_common.h"
-#include "sr_ver.h"
 
 #define CEF_VER_MAJOR	1
 #define CEF_VER_MINOR	0

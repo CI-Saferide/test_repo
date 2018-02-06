@@ -7,6 +7,7 @@
 #include "sr_config_parse.h"
 #include "engine_sal.h"
 #include "sal_linux.h"
+#include "sr_ver.h"
 
 SR_MUTEX cef_lock = SR_MUTEX_INIT_VALUE; //for locking the cef wirte to file function
 
