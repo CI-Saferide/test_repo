@@ -264,5 +264,6 @@ SR_32 sr_engine_start(void)
 	sr_file_hash_deinit();
 	sr_db_deinit();
 	sr_log_uploader_deinit();
+	sr_log_deinit();
 	return 0;
 }

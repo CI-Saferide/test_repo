@@ -86,9 +86,14 @@ void log_print_cef_msg(CEF_payload *cef)
 			VSENTRY_VER_MAJOR,VSENTRY_VER_MINOR,
 			cef->class,cef->name, cef->sev, cef->confidence, cef->extension);
 			
-	SR_MUTEX_LOCK(&cef_lock);
-	log_cef_msg(cef_buffer);
-	SR_MUTEX_UNLOCK(&cef_lock);
+	if (config_params.log_type & LOG_TYPE_CURL) {
+		SR_MUTEX_LOCK(&cef_lock);
+		log_cef_msg(cef_buffer);
+		SR_MUTEX_UNLOCK(&cef_lock);
+	}
+
+	if (config_params.log_type & LOG_TYPE_SYSLOG)
+		sal_log (cef_buffer);
 }
 
 
@@ -126,7 +131,16 @@ SR_32 sr_log_init (const SR_8* app_name, SR_32 flags)
 	sal_strcpy(g_app_name, (SR_8*)app_name);
 
 	MB = 1024*1024*config_params.cef_file_size;
+	
+	if (config_params.log_type & LOG_TYPE_SYSLOG)
+		sal_openlog();
+
 	printf("Starting LOG module!\n");
 	return SR_SUCCESS;
 }
 
+void sr_log_deinit(void)
+{
+	if (config_params.log_type & LOG_TYPE_SYSLOG)
+		sal_closelog();
+}

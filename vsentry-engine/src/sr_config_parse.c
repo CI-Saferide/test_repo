@@ -24,6 +24,7 @@ void config_defaults(void)
 	config_params.cef_file_cycling = 10; /*amount of cef files*/
 	strcpy(config_params.CEF_log_path, "/var/log/");
 	config_params.cef_max_rate = 2;
+	config_params.log_type = 0;
 }
 
 #define CONFIG_LINE_BUFFER_SIZE 100
@@ -34,6 +35,7 @@ SR_8 read_vsentry_config(char* config_filename, struct config_params_t config)
     SR_8 			buf[CONFIG_LINE_BUFFER_SIZE];
     SR_8			*position;
     SR_8 			*n __attribute__((unused));
+    char            *param, *value;
 
     if ((fp=fopen(config_filename, "r")) == NULL) {
         CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
@@ -119,6 +121,19 @@ SR_8 read_vsentry_config(char* config_filename, struct config_params_t config)
         if (position) {
             config_params.cef_max_rate =  atoi(position + (strlen("CEF_MAX_RATE ")));
         }
+        position = strstr(buf, "LOG_TYPE ");
+	param = strtok(buf, " ");
+	if (!param)
+		continue;
+	value = strtok(NULL, " ");
+	if (!value)
+		continue;
+	if (!strcmp(param, "LOG_TYPE")) {
+		if (!memcmp(value, "CURL", strlen("CURL")))
+			config_params.log_type |= LOG_TYPE_CURL;
+		if (!memcmp(value, "SYSLOG", strlen("SYSLOG")))
+			config_params.log_type |= LOG_TYPE_SYSLOG;
+	}
     }
     fclose(fp);
     return SR_SUCCESS;

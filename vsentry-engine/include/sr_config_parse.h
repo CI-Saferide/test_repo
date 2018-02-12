@@ -5,6 +5,9 @@
 
 #define PATH_BUFF 	128
 #define CAN_NAME 	16
+#define LOG_TYPE_CURL (1 << 0)
+#define LOG_TYPE_SYSLOG (1 << 1)
+
 
 struct config_params_t {
 	/* vin paramas */
@@ -31,6 +34,7 @@ struct config_params_t {
 	
 	/* config params */
 	SR_U8	cef_max_rate;						/* max allowed cef message rate per second for classifier and ml algorithms */	
+	SR_U8   log_type;
 	
 };
 

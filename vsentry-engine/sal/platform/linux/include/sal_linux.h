@@ -67,4 +67,8 @@ SR_32 sal_get_process_name(SR_U32 pid, char *exe, SR_U32 size);
 SR_U32 sal_get_ip_for_interface(char *interface);
 SR_U32 sal_get_host_info(char *host_info, int size);
 
+void sal_openlog(void);
+void sal_closelog(void);
+void sal_log(char *cef_buffer);
+
 #endif /* SAL_LINUX_ENGINE_H*/
