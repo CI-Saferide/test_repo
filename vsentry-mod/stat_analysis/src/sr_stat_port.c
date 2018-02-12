@@ -96,25 +96,3 @@ void sr_stat_port_uninit(void)
 	sal_kernel_print_info("[%s]: Successfully removed stat portr hash!\n", MODULE_NAME);
 }
 
-#ifdef UNIT_TEST
-void sr_stat_port_ut(void)
-{
-	int st;
-
-	if ((st = sr_stat_port_update(7777, 1234)) != SR_SUCCESS) {
- 	    sal_kernel_print_err("*** Error update port!!\n");
-	    return;
-	}
-        sal_kernel_print_info("The pid of the port expect:1234 :%d \n", sr_stat_port_find_pid(7777));
-	if ((st = sr_stat_port_update(7788, 4567)) != SR_SUCCESS) {
- 	    sal_kernel_print_err("*** Error update port!!\n");
-	    return;
-	}
-        sal_kernel_print_info("The pid expect:4567 :%d \n", sr_stat_port_find_pid(7788));
-	if ((st = sr_stat_port_update(7777, 2424)) != SR_SUCCESS) {
- 	    sal_kernel_print_err("*** Error update port!!\n");
-	    return;
-	}
-        sal_kernel_print_info("The pid of the port expect:2424 :%d \n", sr_stat_port_find_pid(7777));
-}
-#endif /* UNIT_TEST */

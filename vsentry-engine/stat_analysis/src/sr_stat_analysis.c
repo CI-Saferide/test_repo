@@ -43,13 +43,6 @@ void sr_stat_analysis_dump(void)
 	sr_stat_process_connection_hash_print();
 }
 
-#ifdef UNIT_TEST
-void sr_stat_analysis_ut(void)
-{
-	sr_stat_process_connection_ut();
-}
-#endif /* UNIT_TEST */
-
 SR_32 sr_stat_analysis_send_msg(SR_U8 msg_type, sr_stat_connection_info_t *connection_info)
 {
 	sr_stat_analysis_msg_t *msg;

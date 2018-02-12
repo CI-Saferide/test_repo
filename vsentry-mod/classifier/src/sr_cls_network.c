@@ -283,36 +283,6 @@ int sr_cls_walker_delrule(struct radix_node *node, void *rulenum)
 	return 0;
 }
 
-#ifdef UNIT_TEST
-void sr_cls_network_ut(void)
-{
-	//sr_cls_add_ipv4(htonl(0x23232323), htonl(0xffffffff),10);
-	//sr_cls_find_ipv4(htonl(0x23232323));
-	sr_cls_add_ipv4(htonl(0x12345600), htonl(0xffffff00),3000, SR_DIR_SRC);
-	sr_cls_find_ipv4(htonl(0x12345678), SR_DIR_SRC);
-	sr_cls_add_ipv4(htonl(0x12345670), htonl(0xfffffff0),999, SR_DIR_SRC);
-	sr_cls_find_ipv4(htonl(0x12345678), SR_DIR_SRC);
-	sr_cls_add_ipv4(htonl(0x12345600), htonl(0xffffff00),30, SR_DIR_SRC);
-	sr_cls_find_ipv4(htonl(0x12345678), SR_DIR_SRC);
-	sr_cls_add_ipv4(htonl(0x12340000), htonl(0xffff0000),20, SR_DIR_SRC);
-	sr_cls_find_ipv4(htonl(0x12345678), SR_DIR_SRC);
-	sr_cls_add_ipv4(htonl(0x12345678), htonl(0xffffffff),40, SR_DIR_SRC);
-	sr_cls_find_ipv4(htonl(0x12345678), SR_DIR_SRC);
-	sr_cls_find_ipv4(htonl(0x12345677), SR_DIR_SRC);
-	sr_cls_find_ipv4(htonl(0x12345679), SR_DIR_SRC);
-	sr_cls_del_ipv4(htonl(0x12340000), htonl(0xffff0000), 20, SR_DIR_SRC); // 20
-	sr_cls_find_ipv4(htonl(0x12345678), SR_DIR_SRC);
-	sr_cls_del_ipv4(htonl(0x12345600), htonl(0xffffff00), 30, SR_DIR_SRC); // 30&3000
-	sr_cls_find_ipv4(htonl(0x12345678), SR_DIR_SRC);
-	sr_cls_del_ipv4(htonl(0x12345600), htonl(0xffffff00), 3000, SR_DIR_SRC); // 30&3000
-	sr_cls_find_ipv4(htonl(0x12345678), SR_DIR_SRC);
-	sr_cls_del_ipv4(htonl(0x12345670), htonl(0xfffffff0),999, SR_DIR_SRC);
-	sr_cls_find_ipv4(htonl(0x12345678), SR_DIR_SRC);
-	sr_cls_del_ipv4(htonl(0x12345678), htonl(0xffffffff),40, SR_DIR_SRC);
-	sr_cls_find_ipv4(htonl(0x12345678), SR_DIR_SRC);
-	sal_kernel_print_info("run network classifier UTs\n");
-}
-#endif /* UNIT_TEST */
 SR_8 sr_cls_network_msg_dispatch(struct sr_cls_network_msg *msg)
 {
 	int st;

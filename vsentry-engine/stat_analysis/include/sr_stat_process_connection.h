@@ -41,7 +41,5 @@ SR_32 sr_stat_process_connection_hash_finish_transmit(SR_U32 count);
 SR_32 st_stats_process_connection_protect(void);
 SR_32 st_stats_process_connection_learn(void);
 void sr_stat_process_connection_ut(void);
-#ifdef UNIT_TEST
-#endif
 
 #endif

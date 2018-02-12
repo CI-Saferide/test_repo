@@ -64,7 +64,6 @@ $(TARGET)-objs := sal/platform/linux/src/module_init.o \
 				  sal/platform/linux/src/sal_linux.o \
 				  sal/platform/linux/src/sal_bitops_linux.o \
 				  sal/src/sal_bitops.o \
-				  sal/test/sal_bitops_test.o \
 				  main/src/main_loop.o \
 				  ../common/src/sr_ring_buf.o \
 				  ../common/src/sr_cyclic_array.o \
