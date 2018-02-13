@@ -10,7 +10,6 @@
 
 static SR_BOOL is_run_db_mng = SR_TRUE;
 static SR_U32 static_policy_version;
-extern struct config_params_t config_params;
 
 #define STATIC_POLICY_URL "http://saferide-policies.eu-west-1.elasticbeanstalk.com/policy/static/sync"
 #define STATIC_POLICY_VERSION_FILE "/etc/sentry/version"
@@ -65,8 +64,11 @@ static SR_32 get_server_db(sysrepo_mng_handler_t *handler)
 	char post_buf[64];
 	char state_name[32];
 	char host_info[512];
+	struct config_params_t *config_params;
 
 	sal_get_host_info(host_info, 512);
+
+	config_params = sr_config_get_param();
 
 	SR_CURL_INIT(STATIC_POLICY_URL);
 	
@@ -81,7 +83,7 @@ static SR_32 get_server_db(sysrepo_mng_handler_t *handler)
 		host_info, CURLFORM_BUFFERLENGTH, strlen(host_info), CURLFORM_END);
 	curl_easy_setopt(curl, CURLOPT_HTTPPOST, post);
 	//curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
-	snprintf(post_buf, 64, "X-VIN: %s", config_params.vin);
+	snprintf(post_buf, 64, "X-VIN: %s", config_params->vin);
 	chunk = curl_slist_append(chunk, post_buf);
 	sr_command_get_state_str(state_name, 32);
 	snprintf(post_buf, 64, "X-STATE: %s", state_name);

@@ -20,8 +20,6 @@
 
 #define SR_DYNAMIC_POLICY_URL "http://saferide-policies.eu-west-1.elasticbeanstalk.com/policy/ip/dynamic"
 
-extern struct config_params_t config_params;
-
 static SR_U16 rule_number = START_RULE_NUM;
 
 static struct sr_gen_hash *learn_rule_hash;
@@ -97,6 +95,9 @@ static SR_32 notify_learning(char *exec, sr_stat_con_stats_t *stats)
 	struct curl_slist *chunk = NULL;
 	char buf[SR_MAX_PATH_SIZE + 200], post_vin[64];
 	SR_32 rc = SR_SUCCESS;
+	struct config_params_t *config_params;
+
+	config_params = sr_config_get_param();
 
 	sprintf(buf, "PROCESS:%s|TX:%llu|RX:%llu;", exec, 8 * stats->tx_bytes, 8 * stats->rx_bytes);
 	CEF_log_event(SR_CEF_CID_STAT_IP, "info", SEVERITY_LOW, "LERAN RULE: %s", buf);
@@ -114,7 +115,7 @@ static SR_32 notify_learning(char *exec, sr_stat_con_stats_t *stats)
 	//curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
 	chunk = curl_slist_append(chunk, "application/x-www-form-urlencoded");
 	curl_easy_setopt(curl, CURLOPT_HTTPHEADER, chunk);
-	snprintf(post_vin, 64, "X-VIN: %s", config_params.vin);
+	snprintf(post_vin, 64, "X-VIN: %s", config_params->vin);
 	chunk = curl_slist_append(chunk, post_vin);
 	curl_easy_setopt(curl, CURLOPT_HTTPHEADER, chunk);
 

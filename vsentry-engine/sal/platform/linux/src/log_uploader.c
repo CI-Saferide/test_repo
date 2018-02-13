@@ -29,8 +29,6 @@
     fprintf(stderr, "DEBUG: %s(): " fmt, __func__, ##args)
     //CEF_log_event(SR_CEF_CID_SYSTEM, "debug", SEVERITY_LOW, "%s(): " fmt, __func__, ##args)
 
-
-extern struct config_params_t config_params;
 extern const char *cef_prefix;
 extern const char *cef_postfix;
 
@@ -113,6 +111,9 @@ static int upload_log_file(char* filename, int offset)
     struct curl_httppost *lastptr = NULL;
     struct curl_slist *chunk = NULL;
     struct file_state log_file_state;
+    struct config_params_t *config_params;
+
+    config_params = sr_config_get_param();
 
     if (!upload_curl_handle) {
         upload_curl_handle = curl_easy_init();
@@ -130,7 +131,7 @@ static int upload_log_file(char* filename, int offset)
         curl_easy_setopt(upload_curl_handle, CURLOPT_TIMEOUT, 5L);
         curl_easy_setopt(upload_curl_handle, CURLOPT_URL, "http://saferide-log-collector-staging.eu-west-1.elasticbeanstalk.com/logs");
 
-        snprintf(post_vin, 64, "X-VIN: %s", config_params.vin);
+        snprintf(post_vin, 64, "X-VIN: %s", config_params->vin);
         chunk = curl_slist_append(chunk, post_vin);
         curl_easy_setopt(upload_curl_handle, CURLOPT_HTTPHEADER, chunk);
 
@@ -320,6 +321,9 @@ static void can_log_upload(void)
     struct curl_httppost* post = NULL;
     struct curl_httppost* last = NULL;
     char post_vin[64];
+    struct config_params_t *config_params;
+
+    config_params = sr_config_get_param();
 
     fd = fopen(candump_file_name_tgz, "rb");
     if(!fd) {
@@ -352,7 +356,7 @@ static void can_log_upload(void)
         curl_formadd(&post, &last, CURLFORM_COPYNAME, "can",
               CURLFORM_FILE, candump_file_name_tgz, CURLFORM_END);
         curl_easy_setopt(curl, CURLOPT_HTTPPOST, post);
-        snprintf(post_vin, 64, "X-VIN: %s", config_params.vin);
+        snprintf(post_vin, 64, "X-VIN: %s", config_params->vin);
         chunk = curl_slist_append(chunk, post_vin);
         curl_easy_setopt(curl, CURLOPT_HTTPHEADER, chunk);
         chunk = curl_slist_append(chunk, md5_hdr);
@@ -414,6 +418,9 @@ static int check_log_events(int fd)
     char *ptr = NULL;
     struct stat log_file_stat;
     struct timeval current_time;
+    struct config_params_t *config_params;
+
+    config_params = sr_config_get_param();
 
     memset(buf, 0, sizeof(buf));
     len = read(fd, buf, sizeof(buf));
@@ -431,14 +438,14 @@ static int check_log_events(int fd)
             continue;
 
         /* check if this event is related to candump log file */
-        if (strncmp(event->name, config_params.vin, strlen(config_params.vin)) == 0) {
+        if (strncmp(event->name, config_params->vin, strlen(config_params->vin)) == 0) {
             if (strcmp(event->name, basename(candump_file_name_tgz)) == 0)
                 continue;
 
             if (event->mask == IN_MOVED_TO) {
                 //uploader_debug("event name %s\n", event->name);
                 snprintf(candump_file_name, CANDUMP_FILE_NAME_LEN, "%s%s",
-                    config_params.log_path, event->name);
+                    config_params->log_path, event->name);
                 sem_post(&sem_can_log_uploader);
                 continue;
             }
@@ -481,7 +488,7 @@ static int check_log_events(int fd)
 
         if (event->mask == IN_MOVED_TO) {
             if (was_moved) {
-                if (tracked_file_index < (config_params.cef_file_cycling-1))
+                if (tracked_file_index < (config_params->cef_file_cycling-1))
                     tracked_file_index++;
                 uploader_debug("to %s\n", log_files[tracked_file_index]);
                 was_moved = false;
@@ -500,6 +507,9 @@ static void* monitor_file(void *data)
     unsigned int notify_mask = (IN_MODIFY | IN_MOVED_FROM | IN_MOVED_TO | IN_CLOSE_WRITE);
     pthread_t thread_id;
     bool run = true;
+    struct config_params_t *config_params;
+
+    config_params = sr_config_get_param();
 
     /* create the file descriptor for accessing the inotify API */
     fd = inotify_init1(IN_NONBLOCK);
@@ -508,18 +518,18 @@ static void* monitor_file(void *data)
         return NULL;
     }
 
-    uploader_debug("watching %s\n", config_params.CEF_log_path);
+    uploader_debug("watching %s\n", config_params->CEF_log_path);
     /* start watching events on the log files */
-    wd = inotify_add_watch(fd, config_params.CEF_log_path, notify_mask);
+    wd = inotify_add_watch(fd, config_params->CEF_log_path, notify_mask);
     if (wd == -1) {
-        uploader_err("Cannot watch %s: %s\n", config_params.CEF_log_path, strerror(errno));
+        uploader_err("Cannot watch %s: %s\n", config_params->CEF_log_path, strerror(errno));
         return NULL;
     }
 
-    uploader_debug("watching %s\n", config_params.log_path);
-    wd = inotify_add_watch(fd, config_params.log_path, notify_mask);
+    uploader_debug("watching %s\n", config_params->log_path);
+    wd = inotify_add_watch(fd, config_params->log_path, notify_mask);
     if (wd == -1) {
-        uploader_err("Cannot watch %s: %s\n", config_params.log_path, strerror(errno));
+        uploader_err("Cannot watch %s: %s\n", config_params->log_path, strerror(errno));
         return NULL;
     }
 
@@ -580,13 +590,16 @@ int sr_log_uploader_init(void)
     int i;
     struct stat log_file_stat;
     pthread_t thread_id;
+    struct config_params_t *config_params;
 
-    if (config_params.cef_file_cycling <= 0) {
-        uploader_err("wrong cycling number: %d\n", config_params.cef_file_cycling);
+    config_params = sr_config_get_param();
+
+    if (config_params->cef_file_cycling <= 0) {
+        uploader_err("wrong cycling number: %d\n", config_params->cef_file_cycling);
         return SR_ERROR;
     }
 
-    if (strlen(config_params.CEF_log_path) <= 0) {
+    if (strlen(config_params->CEF_log_path) <= 0) {
         uploader_err("log file directory was not set\n");
         return SR_ERROR;
     }
@@ -596,10 +609,10 @@ int sr_log_uploader_init(void)
         exit(1);
     }
 
-    log_files = malloc(config_params.cef_file_cycling * sizeof(char*));
-    full_log_files = malloc(config_params.cef_file_cycling * sizeof(char*));
+    log_files = malloc(config_params->cef_file_cycling * sizeof(char*));
+    full_log_files = malloc(config_params->cef_file_cycling * sizeof(char*));
     
-    for (i = 0; i < config_params.cef_file_cycling; i++) {
+    for (i = 0; i < config_params->cef_file_cycling; i++) {
         log_files[i] = malloc(PATH_BUFF);
         if (!log_files[i]) {
             uploader_err("log_files[%d] malloc failed\n", i);
@@ -612,7 +625,7 @@ int sr_log_uploader_init(void)
             uploader_err("full_log_files[%d] malloc failed\n", i);
             return SR_ERROR;
         }
-        sprintf(full_log_files[i], "%s%s%d%s",config_params.CEF_log_path, cef_prefix, i, cef_postfix);
+        sprintf(full_log_files[i], "%s%s%d%s",config_params->CEF_log_path, cef_prefix, i, cef_postfix);
     }
 
     tracked_file_index = 0;
@@ -643,13 +656,16 @@ int sr_log_uploader_init(void)
 int sr_log_uploader_deinit(void)
 {
     int i;
+    struct config_params_t *config_params;
+
+    config_params = sr_config_get_param();
 
     if (write(pipe_fds[1], "STOP", 4) < 0)
         uploader_err("failed writing to pipe: %s\n", strerror(errno));
 
     remote_update_deinit();
 
-    for (i=0; i<config_params.cef_file_cycling; i++) {
+    for (i=0; i<config_params->cef_file_cycling; i++) {
         free(log_files[i]);
         free(full_log_files[i]);
     }

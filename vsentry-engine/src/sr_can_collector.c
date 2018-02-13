@@ -4,8 +4,6 @@
 
 struct canTaskParams can_args = {.can_interface = DEFAULT_CAN0_INTERFACE, .can_print = SR_FALSE};
 
-extern struct config_params_t config_params;
-
 #define FILE_QUEUE 	99999
 #define MAX_BUFF	256
 const SR_8* disk = "/";
@@ -28,8 +26,11 @@ void log_it(char* str)
 {
     char mv_from[MAX_BUFF];
     char mv_to[MAX_BUFF];
+    struct config_params_t *config_params;
     
     char* n __attribute__((unused));
+
+    config_params = sr_config_get_param();
 
     if(!log_arr[curr].log_fp)
     {
@@ -48,13 +49,13 @@ void log_it(char* str)
             memset(mv_from, 0, MAX_BUFF);
             memset(mv_to, 0, MAX_BUFF);
           
-			sprintf (mv_from, "%s%s%05d%s", config_params.temp_log_path, file_candidate, curr, postfix);	
-			sprintf (mv_to, "%s%s%05d%s", config_params.log_path, file_candidate, curr, postfix);
+			sprintf (mv_from, "%s%s%05d%s", config_params->temp_log_path, file_candidate, curr, postfix);	
+			sprintf (mv_to, "%s%s%05d%s", config_params->log_path, file_candidate, curr, postfix);
      			
 			if((sal_gets_space("/")< SAVE_SPACE))
 			{
 				CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_LOW,
-					"DISK SPACE TRESHOLD LIMIT REACHED %d -> CAN collector stopped\n",config_params.disk_space_treshold);
+					"DISK SPACE TRESHOLD LIMIT REACHED %d -> CAN collector stopped\n",config_params->disk_space_treshold);
 				sr_stop_task(SR_CAN_COLLECT_TASK);
 			}
      		sal_rename(mv_from, mv_to);
@@ -77,8 +78,11 @@ void log_it(char* str)
 
 SR_32 can_collector_init(void *data)
 {
+	struct config_params_t *config_params;
 
 	int n __attribute__((unused));
+
+	config_params = sr_config_get_param();
 
 	if ((can_args.can_fd = init_can_socket(can_args.can_interface)) < 0) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_LOW,
@@ -93,11 +97,11 @@ SR_32 can_collector_init(void *data)
 			tm.tm_hour, tm.tm_min, tm.tm_sec);
 					
    	memset(file_candidate, 0, MAX_BUFF);
-   	sprintf(prefix, "%s%s_",config_params.temp_log_path ,config_params.vin);
-   	sprintf(file_candidate, "%s_%s",config_params.vin, buffer_TS);
+   	sprintf(prefix, "%s%s_",config_params->temp_log_path ,config_params->vin);
+   	sprintf(file_candidate, "%s_%s",config_params->vin, buffer_TS);
    	
-   	MAX_LOG_SIZE = 1024*1024*config_params.collector_file_size;
-   	SAVE_SPACE = (config_params.disk_space_treshold/100.0)*(sal_gets_space("/"));
+   	MAX_LOG_SIZE = 1024*1024*config_params->collector_file_size;
+   	SAVE_SPACE = (config_params->disk_space_treshold/100.0)*(sal_gets_space("/"));
 	
 	can_collector_task(&can_args);
 	

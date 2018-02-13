@@ -3,7 +3,12 @@
 #include "sr_config_parse.h"
 #include "sr_sal_common.h"
 
-struct config_params_t config_params;
+static struct config_params_t config_params;
+
+struct config_params_t *sr_config_get_param(void)
+{
+		return &config_params;
+}
 
 void config_defaults(void)
 {
@@ -29,7 +34,7 @@ void config_defaults(void)
 
 #define CONFIG_LINE_BUFFER_SIZE 100
 
-SR_8 read_vsentry_config(char* config_filename, struct config_params_t config) 
+SR_8 read_vsentry_config(char* config_filename)
 {
     FILE 			*fp;
     SR_8 			buf[CONFIG_LINE_BUFFER_SIZE];
