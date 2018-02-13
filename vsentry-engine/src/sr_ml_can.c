@@ -16,8 +16,6 @@ static SR_BOOL 	learning = 0;
 static SR_U64 	ts_start = 0;
 static SR_BOOL	new_learning = SR_TRUE;
 
-extern struct config_params_t config_params;
-
 #define ML_CAN_HASH_SIZE 500
 
 static struct sr_gen_hash 	*can_ml_hash;
@@ -110,6 +108,9 @@ SR_32 can_ml_learn_info_task(void *data)
 	CURL *curl;
 	SR_8 post_vin[64];
 	struct curl_slist *chunk = NULL;
+	struct config_params_t *config_params;
+
+	config_params = sr_config_get_param();
 
 	curl_global_init(CURL_GLOBAL_DEFAULT);
 	curl = curl_easy_init();
@@ -118,7 +119,7 @@ SR_32 can_ml_learn_info_task(void *data)
 		//curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
 		chunk = curl_slist_append(chunk, "application/x-www-form-urlencoded");
 		curl_easy_setopt(curl, CURLOPT_HTTPHEADER, chunk);
-		snprintf(post_vin, 64, "X-VIN: %s", config_params.vin);
+		snprintf(post_vin, 64, "X-VIN: %s", config_params->vin);
 		chunk = curl_slist_append(chunk, post_vin);
 	} else {
 		/* fail to init the curl */

@@ -1,7 +1,6 @@
 #ifndef SR_LOG_H
 #define SR_LOG_H
 #include "sr_sal_common.h"
-#include "sr_ver.h"
 
 #define CEF_VER_MAJOR	1
 #define CEF_VER_MINOR	0
@@ -58,6 +57,7 @@ typedef struct CEF_payload
 
 
 int sr_log_init (const char* app_name, int flags);
+void sr_log_deinit (void);
 #if 0
 int __sr_print (enum SR_CEF_SEVERITY severity, int line, const char *file, const char *fmt, ...);
 #define sr_print(severity, ...) __sr_print(severity, __LINE__, __FILE__, __VA_ARGS__)

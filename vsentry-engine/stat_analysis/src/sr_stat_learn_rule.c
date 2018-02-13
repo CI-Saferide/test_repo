@@ -20,8 +20,6 @@
 
 #define SR_DYNAMIC_POLICY_URL "http://saferide-policies.eu-west-1.elasticbeanstalk.com/policy/ip/dynamic"
 
-extern struct config_params_t config_params;
-
 static SR_U16 rule_number = START_RULE_NUM;
 
 static struct sr_gen_hash *learn_rule_hash;
@@ -97,6 +95,9 @@ static SR_32 notify_learning(char *exec, sr_stat_con_stats_t *stats)
 	struct curl_slist *chunk = NULL;
 	char buf[SR_MAX_PATH_SIZE + 200], post_vin[64];
 	SR_32 rc = SR_SUCCESS;
+	struct config_params_t *config_params;
+
+	config_params = sr_config_get_param();
 
 	sprintf(buf, "PROCESS:%s|TX:%llu|RX:%llu;", exec, 8 * stats->tx_bytes, 8 * stats->rx_bytes);
 	CEF_log_event(SR_CEF_CID_STAT_IP, "info", SEVERITY_LOW, "LERAN RULE: %s", buf);
@@ -114,7 +115,7 @@ static SR_32 notify_learning(char *exec, sr_stat_con_stats_t *stats)
 	//curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
 	chunk = curl_slist_append(chunk, "application/x-www-form-urlencoded");
 	curl_easy_setopt(curl, CURLOPT_HTTPHEADER, chunk);
-	snprintf(post_vin, 64, "X-VIN: %s", config_params.vin);
+	snprintf(post_vin, 64, "X-VIN: %s", config_params->vin);
 	chunk = curl_slist_append(chunk, post_vin);
 	curl_easy_setopt(curl, CURLOPT_HTTPHEADER, chunk);
 
@@ -326,63 +327,3 @@ SR_32 sr_stat_learn_rule_cleanup_process_rules(void)
 
 	return SR_SUCCESS;
 }
-
-#ifdef UNIT_TEST
-static SR_32 ut_cb(void *hash_data, void *data)
-{
-	learn_rule_item_t *learn_rule_item = (learn_rule_item_t *)hash_data;
-
-	CEF_log_event(SR_CEF_CID_STAT_IP, "info", SEVERITY_LOW,"Leran rule ---- %s RX p:%d b:%d TX p:%d b:%d", 
-		learn_rule_item->exec, learn_rule_item->counters.rx_msgs, learn_rule_item->counters.rx_bytes, 
-		learn_rule_item->counters.tx_msgs, learn_rule_item->counters.tx_bytes);
-	
-	return SR_SUCCESS;
-}
-
-void sr_stat_learn_rule_ut(void)
-{
-	SR_32 rc;
-	sr_stat_con_stats_t con_stats;
-	
-	printf("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX sr_stat_process_connection_ut started");
-
-	con_stats.rx_bytes = 500;
-	con_stats.rx_msgs = 5;
-	con_stats.tx_bytes = 600;
-	con_stats.tx_msgs = 6;
-	if ((rc = sr_stat_learn_rule_hash_update("/home/arik/arik/client_tcp_inf", &con_stats)) != SR_SUCCESS) {
-		CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,"sr_stat_process_connection_hash_update_process FAILED !!!");
-		return;
-	}
-	sr_stat_learn_rule_hash_exec_for_all(ut_cb);
-
-	/* Update counters for the same exec "*/
-	con_stats.rx_bytes = 501;
-	con_stats.rx_msgs = 6;
-	con_stats.tx_bytes = 601;
-	con_stats.tx_msgs = 7;
-	if ((rc = sr_stat_learn_rule_hash_update("/home/arik/arik/client_tcp_inf", &con_stats)) != SR_SUCCESS) {
-		CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,"sr_stat_process_connection_hash_update_process FAILED !!!");
-		return;
-	}
-	CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,"--------------------------- Next :");
-	sr_stat_learn_rule_hash_exec_for_all(ut_cb);
-
-	/* Add anorther process "*/
-	con_stats.rx_bytes = 800000;
-	con_stats.rx_msgs = 800;
-	con_stats.tx_bytes = 800;
-	con_stats.tx_msgs = 8;
-	if ((rc = sr_stat_learn_rule_hash_update("/usr/bin/iperf", &con_stats)) != SR_SUCCESS) {
-		CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,"sr_stat_process_connection_hash_update_process FAILED !!!");
-		return;
-	}
-	CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,"--------------------------- Next :");
-	sr_stat_learn_rule_hash_exec_for_all(ut_cb);
-
-	sr_stat_learn_rule_hash_delete("/usr/bin/iperf");
-	CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,"--------------------------- After delete of iperf :");
-	sr_stat_learn_rule_hash_exec_for_all(ut_cb);
-}
-#endif
-

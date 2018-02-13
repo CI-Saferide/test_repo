@@ -67,7 +67,7 @@ int sr_cls_file_add_rule(char *filename, char *exec, char *user, SR_U32 rulenum,
 			sr_send_msg(ENG2MOD_BUF, sizeof(msg));
 		}
 		// Now iterate subtree
-		DIR * dir;
+		DIR * dir = NULL;
 		long name_max;
 		struct dirent * buf = NULL , * de;
 
@@ -89,6 +89,8 @@ int sr_cls_file_add_rule(char *filename, char *exec, char *user, SR_U32 rulenum,
 			if (buf)
 				free(buf);
 		}
+		if (dir)
+			closedir(dir);
 	}
 	if (S_ISLNK(buf.st_mode))  {
 		// first update the link itself
@@ -163,7 +165,7 @@ int sr_cls_file_del_rule(char *filename, char *exec, char *user, SR_U32 rulenum,
 			sr_send_msg(ENG2MOD_BUF, sizeof(msg));
 		}
 		// Now iterate subtree
-		DIR * dir;
+		DIR * dir = NULL;
 		long name_max;
 		struct dirent * buf = NULL, * de;
 
@@ -185,6 +187,8 @@ int sr_cls_file_del_rule(char *filename, char *exec, char *user, SR_U32 rulenum,
 			if (buf)
 				free(buf);
 		}
+		if (dir)
+			closedir(dir);
 	}
 	if (S_ISLNK(buf.st_mode))  {
 		// first update the link itself
@@ -290,7 +294,7 @@ void sr_cls_file_delete(char *filename)
 			sr_send_msg(ENG2MOD_BUF, sizeof(msg));
 		}
 		// Now iterate subtree
-		DIR * dir;
+		DIR * dir = NULL;
 		long name_max;
 		struct dirent * buf, * de;
 
@@ -309,6 +313,8 @@ void sr_cls_file_delete(char *filename)
 				sr_cls_file_delete(fullpath);
 			}
 		}
+		if (dir)
+			closedir(dir);
 	}
 }
 

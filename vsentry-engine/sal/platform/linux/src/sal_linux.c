@@ -2,6 +2,9 @@
 #include "sal_linux.h"
 #include "sr_tasks.h"
 #include "engine_sal.h"
+#include <syslog.h>
+
+#define SAFERIDE_PREFIX "saferide"
 
 SR_32 sal_task_stop(void *data)
 {
@@ -266,4 +269,40 @@ SR_U32 sal_get_host_info(char *host_info, int size)
 		cpurand, info.procs, tx_bytes, rx_bytes);
 
 	return SR_SUCCESS;
+}
+
+void sal_openlog(void)
+{
+	setlogmask(LOG_UPTO (LOG_NOTICE));
+	openlog(SAFERIDE_PREFIX, LOG_CONS | LOG_PID | LOG_NDELAY, LOG_LOCAL1);
+}
+
+void sal_closelog(void)
+{
+	closelog();
+}
+
+void sal_log(char *cef_buffer, SR_32 severity)
+{
+	int syslog_severity;
+
+	switch (severity) {
+		case SEVERITY_LOW:
+			syslog_severity = LOG_INFO;
+			break;
+		case SEVERITY_MEDIUM:
+			syslog_severity = LOG_WARNING;
+			break;
+		case SEVERITY_HIGH:
+			syslog_severity = LOG_ERR;
+			break;
+		case SEVERITY_VERY_HIGH:
+			syslog_severity = LOG_CRIT;
+			break;
+		default:
+			syslog_severity = LOG_NOTICE;
+			break;
+	}
+
+	syslog(syslog_severity, "%s", cef_buffer);
 }

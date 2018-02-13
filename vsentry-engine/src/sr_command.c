@@ -11,7 +11,6 @@
 #endif /* __SR_ML_CAN__ */
 
 static SR_BOOL is_run_cmd  = SR_TRUE;
-extern struct config_params_t config_params;
 
 #define GET_CMD_URL "http://saferide-policies.eu-west-1.elasticbeanstalk.com/commands/sync"
 #define CMD_LEARN "StateLearn"
@@ -71,9 +70,12 @@ static SR_32 handle_command(void)
 	CURLcode res;
 	struct curl_slist *chunk = NULL;
 	char post_buf[64];
+	struct config_params_t *config_params;
 
 	struct curl_fetch_st curl_fetch;
 	struct curl_fetch_st *fetch = &curl_fetch;
+
+	config_params = sr_config_get_param();
 
 	SR_CURL_INIT(GET_CMD_URL);
 	curl_easy_setopt(curl, CURLOPT_URL, GET_CMD_URL);
@@ -83,7 +85,7 @@ static SR_32 handle_command(void)
 	fetch->size = 0;
 
 	//curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
-	snprintf(post_buf, 64, "X-VIN: %s", config_params.vin);
+	snprintf(post_buf, 64, "X-VIN: %s", config_params->vin);
 	chunk = curl_slist_append(chunk,  post_buf);
 	curl_easy_setopt(curl, CURLOPT_HTTPHEADER, chunk);
 	curl_easy_setopt(curl, CURLOPT_NOSIGNAL, 1);
