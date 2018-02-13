@@ -66,25 +66,6 @@ bit_array *sr_cls_process_match(enum sr_rule_type type, SR_32 pid)
 	return &(ent->rules[type]);
 }
 
-#ifdef UNIT_TEST
-void sr_cls_process_ut(void)
-{
-	int st;
-
-	if ((st = sr_cls_process_add(3084)) != SR_SUCCESS) {
- 	    sal_kernel_print_err("Error adding pid!!\n");
-	    return;
-	}
-        sal_kernel_print_info("The inode :%d \n", sr_cls_process_find_inode(3084));
-	if ((st = sr_cls_process_add(3084)) != SR_SUCCESS) {
- 	    sal_kernel_print_err("Error adding pid!!\n");
-	    return;
-	}
-        printk("The inode :%d \n", sr_cls_process_find_inode(3084));
-
-}
-#endif /* UNIT_TEST */
-
 int sr_cls_process_init(void)
 {
 	sr_cls_process_table = sr_hash_new_table(PROCESS_HASH_TABLE_SIZE);

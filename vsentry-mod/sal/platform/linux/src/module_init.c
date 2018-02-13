@@ -31,10 +31,6 @@
 #include "ml_can.h"
 #endif /* CONFIG_CAN_ML */
 
-#ifdef UNIT_TEST
-#include "sal_bitops_test.h"
-#endif /* UNIT_TEST */
-
 MODULE_LICENSE("GPL");
 MODULE_DESCRIPTION("vSentry Kernel Module");
 
@@ -322,19 +318,6 @@ static int __init vsentry_init(void)
 
 	//sr_cls_rule_add(SR_NET_RULES, 60, SR_CLS_ACTION_DROP, 0, 0, SR_CLS_ACTION_DROP, 0, 0, 0, 0);
 	
-#ifdef UNIT_TEST
-#ifdef CONFIG_STAT_ANALYSIS
-	sr_stat_port_ut();
-	sr_stat_connection_ut();
-#endif
-	sal_bitops_test (0);
-	sr_cls_port_ut();
-	sr_cls_uid_ut();
-	sr_cls_canid_ut();
-	sr_cls_exec_file_ut();
-	sr_cls_process_ut();
-#endif /* UNIT_TEST */
-
 #if 0
 	tx_thread = kthread_run(dummy_tx_thread_loop, NULL, "vsentry dummy tx thread");
 #endif

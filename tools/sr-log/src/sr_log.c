@@ -7,10 +7,9 @@
 #include "sr_config_parse.h"
 #include "engine_sal.h"
 #include "sal_linux.h"
+#include "sr_ver.h"
 
 SR_MUTEX cef_lock = SR_MUTEX_INIT_VALUE; //for locking the cef wirte to file function
-
-extern struct config_params_t config_params;
 
 // FORMAT: Date Time CEF:Version|Device Vendor|Device Product|Device Version|Device Event Class ID|Name|Severity|Confidence|[Extension]
 // Severity is a string or integer and reflectsthe importance of the event. The valid string values are Unknown, Low, Medium, High, and Very-High. The valid integer values are 0-3=Low, 4-6=Medium, 7- 8=High, and 9-10=Very-High.
@@ -27,11 +26,13 @@ cef_str cef_postfix = ".log";
 void log_cef_msg(cef_str str)
 {
     SR_8 file1[FILENAME_MAX], file2[FILENAME_MAX];
+    struct config_params_t *config_params;
 
+    config_params = sr_config_get_param();
 
     if(!log_fp){
 		memset(file1, 0, FILENAME_MAX);	
-		sprintf(file1,"%s%s%d%s",config_params.CEF_log_path,cef_prefix,0,cef_postfix);
+		sprintf(file1,"%s%s%d%s",config_params->CEF_log_path,cef_prefix,0,cef_postfix);
 		log_fp = fopen(file1,"a");
     }
 
@@ -43,17 +44,17 @@ void log_cef_msg(cef_str str)
             
             SR_32 i_log = 0;
 
-            for(i_log = (config_params.cef_file_cycling-1);i_log >= 0;i_log--){
+            for(i_log = (config_params->cef_file_cycling-1);i_log >= 0;i_log--){
 				
 				memset(file1, 0, FILENAME_MAX);
 				memset(file2, 0, FILENAME_MAX);
-				sprintf(file1,"%s%s%d%s",config_params.CEF_log_path,cef_prefix,i_log,cef_postfix );
-				sprintf(file2,"%s%s%d%s",config_params.CEF_log_path,cef_prefix, i_log+1,cef_postfix );
+				sprintf(file1,"%s%s%d%s",config_params->CEF_log_path,cef_prefix,i_log,cef_postfix );
+				sprintf(file2,"%s%s%d%s",config_params->CEF_log_path,cef_prefix, i_log+1,cef_postfix );
 				sal_rename(file1, file2);
 			}
 			
 			memset(file1, 0, FILENAME_MAX);
-            sprintf(file1,"%s%s%d%s",config_params.CEF_log_path,cef_prefix,0,cef_postfix);
+            sprintf(file1,"%s%s%d%s",config_params->CEF_log_path,cef_prefix,0,cef_postfix);
             log_fp = fopen(file1, "a");
             
         }
@@ -70,6 +71,9 @@ void log_print_cef_msg(CEF_payload *cef)
     SR_8 buffer[26]; //for time
     struct tm* tm_info;
     struct timeval tv;
+    struct config_params_t *config_params;
+
+    config_params = sr_config_get_param();
 
     gettimeofday(&tv, NULL); 
     time(&timer);
@@ -85,9 +89,14 @@ void log_print_cef_msg(CEF_payload *cef)
 			VSENTRY_VER_MAJOR,VSENTRY_VER_MINOR,
 			cef->class,cef->name, cef->sev, cef->confidence, cef->extension);
 			
-	SR_MUTEX_LOCK(&cef_lock);
-	log_cef_msg(cef_buffer);
-	SR_MUTEX_UNLOCK(&cef_lock);
+	if (config_params->log_type & LOG_TYPE_CURL) {
+		SR_MUTEX_LOCK(&cef_lock);
+		log_cef_msg(cef_buffer);
+		SR_MUTEX_UNLOCK(&cef_lock);
+	}
+
+	if (config_params->log_type & LOG_TYPE_SYSLOG)
+		sal_log (cef_buffer, cef->sev);
 }
 
 
@@ -123,9 +132,25 @@ void CEF_log_event(const SR_U32 class, const char *event_name, enum SR_CEF_SEVER
 SR_32 sr_log_init (const SR_8* app_name, SR_32 flags)
 {
 	sal_strcpy(g_app_name, (SR_8*)app_name);
+	struct config_params_t *config_params;
 
-	MB = 1024*1024*config_params.cef_file_size;
+	config_params = sr_config_get_param();
+
+	MB = 1024*1024*config_params->cef_file_size;
+	
+	if (config_params->log_type & LOG_TYPE_SYSLOG)
+		sal_openlog();
+
 	printf("Starting LOG module!\n");
 	return SR_SUCCESS;
 }
 
+void sr_log_deinit(void)
+{
+	struct config_params_t *config_params;
+
+	config_params = sr_config_get_param();
+
+	if (config_params->log_type & LOG_TYPE_SYSLOG)
+		sal_closelog();
+}

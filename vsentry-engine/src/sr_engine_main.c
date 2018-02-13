@@ -37,7 +37,6 @@
 #include "sr_config_common.h"
 
 extern struct canTaskParams can_args;
-extern struct config_params_t config_params;
 
 extern SR_8* disk;
 
@@ -101,8 +100,11 @@ SR_32 sr_engine_start(void)
 	SR_U8 run = 1;
 	FILE *f;
 	sr_config_msg_t *msg;
+	struct config_params_t *config_params;
 	
-	read_vsentry_config("/etc/sentry/sr_config", config_params);
+	read_vsentry_config("/etc/sentry/sr_config");
+
+	config_params = sr_config_get_param();
 
 	ret = sr_log_init("[vsentry]", 0);
 	if (ret != SR_SUCCESS){
@@ -187,12 +189,8 @@ SR_32 sr_engine_start(void)
 
 	sr_get_command_start();
 
-#ifdef UNIT_TEST
-	config_ut();
-#endif
-
-	can_args.can_interface = config_params.can0_interface;
-	if(config_params.collector_enable){
+	can_args.can_interface = config_params->can0_interface;
+	if(config_params->collector_enable){
 		ret = sr_start_task(SR_CAN_COLLECT_TASK, can_collector_init);
 		if (ret != SR_SUCCESS) {
 			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
@@ -214,7 +212,7 @@ SR_32 sr_engine_start(void)
     msg = (sr_config_msg_t*)sr_get_msg(ENG2MOD_BUF, ENG2MOD_MSG_MAX_SIZE);
 	if (msg) {
 		msg->msg_type = SR_MSG_TYPE_CONFIG;
-		msg->sub_msg.cef_max_rate = config_params.cef_max_rate; 
+		msg->sub_msg.cef_max_rate = config_params->cef_max_rate; 
 		sr_send_msg(ENG2MOD_BUF, sizeof(msg));
 	} else
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
@@ -264,5 +262,6 @@ SR_32 sr_engine_start(void)
 	sr_file_hash_deinit();
 	sr_db_deinit();
 	sr_log_uploader_deinit();
+	sr_log_deinit();
 	return 0;
 }

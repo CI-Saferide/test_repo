@@ -79,11 +79,14 @@ file_rule_t *sr_db_file_rule_get(file_rule_t *file_rule)
 SR_32 sr_db_file_rule_delete(file_rule_t *file_rule)
 {
 	node_t *node;
+	void *data;
 
 	if (!(node = list_search_node(&file_rules_list, file_rule)))
 		return SR_NOT_FOUND;
-	if (!list_remove_node(&file_rules_list, node))
+	if (!(data = list_remove_node(&file_rules_list, node)))
 		return SR_ERROR;
+	SR_Free(data);
+
 	return SR_SUCCESS;
 }
 

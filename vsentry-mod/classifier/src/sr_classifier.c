@@ -23,13 +23,6 @@ SR_32 sr_classifier_init(void)
 	sr_cls_housekeeping_init();
 		
 
-#ifdef UNIT_TEST
-	sr_cls_network_ut();
-	sr_cls_port_ut();
-	sr_cls_canid_ut();
-	sr_cls_sl_process_hash_ut();
-#endif
-
 	return 0;
 }
 
