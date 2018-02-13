@@ -282,8 +282,27 @@ void sal_closelog(void)
 	closelog();
 }
 
-void sal_log(char *cef_buffer)
+void sal_log(char *cef_buffer, SR_32 severity)
 {
-	syslog(LOG_WARNING, "%s", cef_buffer);
-}
+	int syslog_severity;
 
+	switch (severity) {
+		case SEVERITY_LOW:
+			syslog_severity = LOG_INFO;
+			break;
+		case SEVERITY_MEDIUM:
+			syslog_severity = LOG_WARNING;
+			break;
+		case SEVERITY_HIGH:
+			syslog_severity = LOG_ERR;
+			break;
+		case SEVERITY_VERY_HIGH:
+			syslog_severity = LOG_CRIT;
+			break;
+		default:
+			syslog_severity = LOG_NOTICE;
+			break;
+	}
+
+	syslog(syslog_severity, "%s", cef_buffer);
+}

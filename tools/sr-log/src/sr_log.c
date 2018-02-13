@@ -96,7 +96,7 @@ void log_print_cef_msg(CEF_payload *cef)
 	}
 
 	if (config_params->log_type & LOG_TYPE_SYSLOG)
-		sal_log (cef_buffer);
+		sal_log (cef_buffer, cef->sev);
 }
 
 
