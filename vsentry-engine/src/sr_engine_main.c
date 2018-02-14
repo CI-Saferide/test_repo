@@ -35,8 +35,7 @@
 //#include "sr_conio.h"
 #include "sr_command.h"
 #include "sr_config_common.h"
-
-extern SR_8* disk;
+#include "sr_can_collector.h"
 
 SR_32 engine_main_loop(void *data)
 {
@@ -237,7 +236,7 @@ SR_32 sr_engine_start(void)
 				break;
 #endif						
 			case 'v':
-					printf("\navailable space under %s is: %lld bytes\n",disk,sal_gets_space(disk));
+					printf("\navailable space under %s is: %lld bytes\n",CAN_COLLECTOR_DISK,sal_gets_space(CAN_COLLECTOR_DISK));
 				break;
 #ifdef CONFIG_CAN_ML
 			case 'd':

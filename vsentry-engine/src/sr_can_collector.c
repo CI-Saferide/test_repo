@@ -6,7 +6,6 @@ static struct canTaskParams can_args = {.can_interface = DEFAULT_CAN0_INTERFACE,
 
 #define FILE_QUEUE 	99999
 #define MAX_BUFF	256
-const SR_8* disk = "/";
 long long SAVE_SPACE;
 long MAX_LOG_SIZE;
 

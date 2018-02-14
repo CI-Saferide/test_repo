@@ -5,6 +5,8 @@
 #include "sr_tasks.h"
 #include "sr_sal_common.h"
 
+#define CAN_COLLECTOR_DISK "/"
+
 struct canTaskParams {
     SR_8 *can_interface;		/* can interface name */
     SR_32 can_fd;				/* fd of the opened socket */
