@@ -29,9 +29,6 @@
     fprintf(stderr, "DEBUG: %s(): " fmt, __func__, ##args)
     //CEF_log_event(SR_CEF_CID_SYSTEM, "debug", SEVERITY_LOW, "%s(): " fmt, __func__, ##args)
 
-extern const char *cef_prefix;
-extern const char *cef_postfix;
-
 static void remote_update_init(void)
 {
     curl_global_init(CURL_GLOBAL_DEFAULT);
@@ -648,14 +645,14 @@ int sr_log_uploader_init(void)
             uploader_err("log_files[%d] malloc failed\n", i);
             return SR_ERROR;
         }
-        snprintf(log_files[i], PATH_BUFF, "%s%d%s", cef_prefix, i, cef_postfix);
+        snprintf(log_files[i], PATH_BUFF, "%s%d%s", LOG_CEF_PREFIX, i, LOG_CEF_SUFFIX);
 
         full_log_files[i] = malloc(PATH_BUFF);
         if (!full_log_files) {
             uploader_err("full_log_files[%d] malloc failed\n", i);
             return SR_ERROR;
         }
-        sprintf(full_log_files[i], "%s%s%d%s",config_params->CEF_log_path, cef_prefix, i, cef_postfix);
+        sprintf(full_log_files[i], "%s%s%d%s",config_params->CEF_log_path, LOG_CEF_PREFIX, i, LOG_CEF_SUFFIX);
     }
 
     tracked_file_index = 0;

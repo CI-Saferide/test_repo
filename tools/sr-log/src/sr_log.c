@@ -20,8 +20,6 @@ static SR_8 g_app_name[20];
 typedef const SR_8* cef_str;
 FILE* log_fp = 0;
 SR_U32 MB; // 1MB
-cef_str cef_prefix = "vsentry";
-cef_str cef_postfix = ".log";
 
 void log_cef_msg(cef_str str)
 {
@@ -32,7 +30,7 @@ void log_cef_msg(cef_str str)
 
     if(!log_fp){
 		memset(file1, 0, FILENAME_MAX);	
-		sprintf(file1,"%s%s%d%s",config_params->CEF_log_path,cef_prefix,0,cef_postfix);
+		sprintf(file1,"%s%s%d%s",config_params->CEF_log_path,LOG_CEF_PREFIX,0,LOG_CEF_SUFFIX);
 		log_fp = fopen(file1,"a");
     }
 
@@ -48,13 +46,13 @@ void log_cef_msg(cef_str str)
 				
 				memset(file1, 0, FILENAME_MAX);
 				memset(file2, 0, FILENAME_MAX);
-				sprintf(file1,"%s%s%d%s",config_params->CEF_log_path,cef_prefix,i_log,cef_postfix );
-				sprintf(file2,"%s%s%d%s",config_params->CEF_log_path,cef_prefix, i_log+1,cef_postfix );
+				sprintf(file1,"%s%s%d%s",config_params->CEF_log_path,LOG_CEF_PREFIX,i_log,LOG_CEF_SUFFIX );
+				sprintf(file2,"%s%s%d%s",config_params->CEF_log_path,LOG_CEF_PREFIX, i_log+1,LOG_CEF_SUFFIX );
 				sal_rename(file1, file2);
 			}
 			
 			memset(file1, 0, FILENAME_MAX);
-            sprintf(file1,"%s%s%d%s",config_params->CEF_log_path,cef_prefix,0,cef_postfix);
+            sprintf(file1,"%s%s%d%s",config_params->CEF_log_path,LOG_CEF_PREFIX,0,LOG_CEF_SUFFIX);
             log_fp = fopen(file1, "a");
             
         }

@@ -35,6 +35,9 @@ enum SR_CEF_CLASS_ID {
 
 #define MAX_PAYLOAD 2024 /* maximum payload size*/
 
+#define LOG_CEF_PREFIX "vsentry"
+#define LOG_CEF_SUFFIX ".log"
+
 /*
 cef example:
 
