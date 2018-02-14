@@ -27,4 +27,6 @@ SR_32 can_collector_task(void *data);
 
 SR_32 can_collector_init(void *data);
 
+struct canTaskParams *sr_can_collector_args(void);
+
 #endif /* __SR_CAN_COLLECTOR__ */

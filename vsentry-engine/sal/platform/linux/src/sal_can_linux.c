@@ -4,7 +4,6 @@
 #ifdef CONFIG_CAN_ML
 #include "sr_ml_can.h"
 #endif /* CONFIG_CAN_ML */
-extern struct canTaskParams can_args;
 
 const int timestamp_on = 1;
 static __u32 dropcnt;
@@ -16,6 +15,7 @@ SR_32 can_collector_task(void *data)
     time_t currtime;
     int nbytes;
     struct tm now;
+    struct canTaskParams *can_args;
 
     char buffer[128];
     char buffer_TS[64];
@@ -31,6 +31,8 @@ SR_32 can_collector_task(void *data)
     int ret;
 
     struct timeval tv;
+
+    can_args = sr_can_collector_args();
 	
     localtime_r(&currtime,&now);
 
@@ -55,17 +57,17 @@ SR_32 can_collector_task(void *data)
     frame.data[6] = 0xbe;
     frame.data[7] = 0xef;
     
-    nbytes = write(can_args.can_fd, &frame, CAN_MTU);
+    nbytes = write(can_args->can_fd, &frame, CAN_MTU);
 	
 	while (!sr_task_should_stop(SR_CAN_COLLECT_TASK)) {
 	
-		FD_SET(can_args.can_fd,&rdfs);
+		FD_SET(can_args->can_fd,&rdfs);
 
-        if ((ret = select(can_args.can_fd + 1, &rdfs, NULL, NULL, timeout_current)) <= 0) {
+        if ((ret = select(can_args->can_fd + 1, &rdfs, NULL, NULL, timeout_current)) <= 0) {
             sleep(1);
             continue;
         }
-        if (FD_ISSET(can_args.can_fd,&rdfs)) {
+        if (FD_ISSET(can_args->can_fd,&rdfs)) {
             int i;
 
             /* these settings may be modified by recvmsg() */
@@ -74,7 +76,7 @@ SR_32 can_collector_task(void *data)
             msg.msg_controllen = sizeof(ctrlmsg);
             msg.msg_flags = 0;
 
-            nbytes = recvmsg(can_args.can_fd, &msg, 0);
+            nbytes = recvmsg(can_args->can_fd, &msg, 0);
             if(nbytes < 0) return SR_ERROR;
 
             for (cmsg = CMSG_FIRSTHDR(&msg); cmsg && (cmsg->cmsg_level == SOL_SOCKET); cmsg = CMSG_NXTHDR(&msg, cmsg)) 
@@ -109,12 +111,12 @@ SR_32 can_collector_task(void *data)
 
             log_it(buffer);
 #ifdef SR_CAN_DEBUG_PRINT
-            if(can_args.can_print)
+            if(can_args->can_print)
 				printf("%s",buffer);
 #endif
 		}	
 	}
-    close(can_args.can_fd);
+    close(can_args->can_fd);
 	CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,
 		"CAN collector ended\n");
 

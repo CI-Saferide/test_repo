@@ -36,8 +36,6 @@
 #include "sr_command.h"
 #include "sr_config_common.h"
 
-extern struct canTaskParams can_args;
-
 extern SR_8* disk;
 
 SR_32 engine_main_loop(void *data)
@@ -101,10 +99,12 @@ SR_32 sr_engine_start(void)
 	FILE *f;
 	sr_config_msg_t *msg;
 	struct config_params_t *config_params;
+	struct canTaskParams *can_args;
 	
 	read_vsentry_config("/etc/sentry/sr_config");
 
 	config_params = sr_config_get_param();
+	can_args = sr_can_collector_args();
 
 	ret = sr_log_init("[vsentry]", 0);
 	if (ret != SR_SUCCESS){
@@ -189,7 +189,7 @@ SR_32 sr_engine_start(void)
 
 	sr_get_command_start();
 
-	can_args.can_interface = config_params->can0_interface;
+	can_args->can_interface = config_params->can0_interface;
 	if(config_params->collector_enable){
 		ret = sr_start_task(SR_CAN_COLLECT_TASK, can_collector_init);
 		if (ret != SR_SUCCESS) {
@@ -232,8 +232,8 @@ SR_32 sr_engine_start(void)
 				break;
 #ifdef SR_CAN_DEBUG_PRINT			
 			case 'p':
-				can_args.can_print = !can_args.can_print;
-				printf("\rcan-bus %s prints - %s\n", can_args.can_interface, (can_args.can_print)? "enabled" : "disabled");
+				can_args->can_print = !can_args->can_print;
+				printf("\rcan-bus %s prints - %s\n", can_args->can_interface, (can_args->can_print)? "enabled" : "disabled");
 				break;
 #endif						
 			case 'v':
