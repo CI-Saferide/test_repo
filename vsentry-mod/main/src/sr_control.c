@@ -5,8 +5,12 @@
 #endif
 
 static SR_BOOL vsentry_state = SR_TRUE;
-struct config_params_t config_params;
+static struct config_params_t config_params;
 
+struct config_params_t *sr_control_config_params(void)
+{
+	return &config_params;
+}
 
 void vsentry_set_state (SR_BOOL state)
 {

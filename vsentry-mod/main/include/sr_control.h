@@ -13,5 +13,6 @@ void 	vsentry_set_state (SR_BOOL state);
 SR_BOOL vsentry_get_state(void);
 SR_8 	sr_control_msg_dispatch(struct sr_control_msg *msg);
 SR_32   sr_config_handle_message(struct sr_config_msg *msg);
+struct config_params_t *sr_control_config_params(void);
 
 #endif /* __SR_CONTROL__ */
