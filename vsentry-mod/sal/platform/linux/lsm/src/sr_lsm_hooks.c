@@ -5,14 +5,13 @@
 #include "dispatcher.h"
 #include "sr_sal_common.h"
 #include "event_mediator.h"
-
-extern int sr_vsentryd_pid;
+#include "sr_control.h"
 
 /*implement filter for our sr-engine */
 int hook_filter(void)
 {
 	/*if the statement is true in means the SYS_CALL invoked by sr-engine */
-	if ((sr_vsentryd_pid) == (current->pid)-1)
+	if ((vsentry_get_pid()) == (current->pid)-1)
 		return SR_TRUE;
 
 	return SR_FALSE;

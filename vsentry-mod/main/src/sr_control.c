@@ -6,6 +6,7 @@
 
 static SR_BOOL vsentry_state = SR_TRUE;
 static struct config_params_t config_params;
+static SR_32 sr_vsentryd_pid;
 
 struct config_params_t *sr_control_config_params(void)
 {
@@ -19,6 +20,16 @@ void vsentry_set_state (SR_BOOL state)
 SR_BOOL vsentry_get_state(void)
 {
 	return (vsentry_state);
+}
+
+void vsentry_set_pid(SR_32 pid)
+{
+	sr_vsentryd_pid = pid;
+}
+	
+SR_32 vsentry_get_pid()
+{
+	return sr_vsentryd_pid;
 }
 
 SR_8 sr_control_msg_dispatch(struct sr_control_msg *msg)
