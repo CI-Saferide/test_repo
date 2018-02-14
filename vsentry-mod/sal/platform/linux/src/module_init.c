@@ -38,8 +38,8 @@ MODULE_DESCRIPTION("vSentry Kernel Module");
 static dev_t vsentry_dev;
 static struct cdev *cdev_p;
 
-extern int sr_netfilter_init(void);
-extern void sr_netfilter_uninit(void);
+int sr_netfilter_init(void);
+void sr_netfilter_uninit(void);
 
 #if 0
 static struct task_struct *tx_thread;
