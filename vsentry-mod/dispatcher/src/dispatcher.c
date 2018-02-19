@@ -7,6 +7,7 @@
 #include "sr_sal_common.h"
 #include "sr_classifier.h"
 #include "sr_event_collector.h"
+#include "event_mediator.h"
 
 #ifdef CONFIG_CAN_ML
 #include "ml_can.h"
@@ -15,7 +16,6 @@
 
 #ifdef DEBUG_DISPATCHER
 static SR_8 module_name[] = "dispatcher"; /* module_name used only when DEBUG_DISPATCHER is enabled */
-extern const event_name hook_event_names[MAX_HOOK];
 #endif /* DEBUG_DISPATCHER */
 
 /*
@@ -191,6 +191,7 @@ SR_32 disp_socket_sendmsg(disp_info_t* info)
 {
 	SR_32		classifier_rc = -EACCES;
 	SR_U8		ml_rc = SR_ML_ALLOW;
+	const event_name *hook_event_names;
 	
 	/* call classifier */
 	classifier_rc = sr_classifier_canbus(info);
@@ -198,6 +199,8 @@ SR_32 disp_socket_sendmsg(disp_info_t* info)
 	if (get_can_ml_state() == SR_TRUE)
 		ml_rc = test_can_msg(info);
 #endif /* CONFIG_CAN_ML */
+
+	hook_event_names = event_mediator_hooks_event_names();
 
 	/* create event message */
 
@@ -234,6 +237,9 @@ SR_32 disp_socket_sendmsg(disp_info_t* info)
 SR_32 disp_can_recvmsg(disp_info_t* info)
 {
 	SR_32		classifier_rc = -EACCES;
+	const event_name *hook_event_names;
+
+	hook_event_names = event_mediator_hooks_event_names();
 
 	/* call classifier */
 	//classifier_rc = 0;

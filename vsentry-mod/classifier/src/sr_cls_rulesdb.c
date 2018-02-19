@@ -8,8 +8,6 @@
 #include "sr_actions_common.h"
 #include "sr_control.h"
 
-extern struct config_params_t config_params;
-
 struct cls_rule_action_t sr_rules_db[SR_RULES_TYPE_MAX][SR_MAX_RULES];
 
 void sr_cls_rules_init(void)
@@ -43,6 +41,10 @@ void sr_cls_rule_del(SR_32 rule_type, SR_U16 rulenum)
 void sr_cls_rule_add(SR_32 rule_type, SR_U16 rulenum, SR_U16 actions, SR_8 file_ops, sr_rate_type_t rate_type, SR_U32 rl_max_rate, SR_U16 rl_exceed_action,
 		SR_U16 log_target, SR_U16 email_id, SR_U16 phone_id, SR_U16 skip_rulenum)
 {
+	struct config_params_t *config_params;
+
+	config_params = sr_control_config_params();
+
 	if (unlikely(rulenum>=SR_MAX_RULES)){
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 						"failed to add rule, invalid rule id (%u)", rulenum);
@@ -76,7 +78,7 @@ void sr_cls_rule_add(SR_32 rule_type, SR_U16 rulenum, SR_U16 actions, SR_8 file_
 		sr_rules_db[rule_type][rulenum].skip_rulenum = skip_rulenum;
 	}
 	sr_cls_rl_init(&sr_rules_db[rule_type][rulenum].log_rate);
-	sr_rules_db[rule_type][rulenum].log_rate.max_rate = config_params.cef_max_rate;
+	sr_rules_db[rule_type][rulenum].log_rate.max_rate = config_params->cef_max_rate;
 	sr_rules_db[rule_type][rulenum].log_rate.rate_type = SR_RATE_TYPE_EVENT;
 }
 

@@ -288,7 +288,7 @@ void sal_log(char *cef_buffer, SR_32 severity)
 
 	switch (severity) {
 		case SEVERITY_LOW:
-			syslog_severity = LOG_INFO;
+			syslog_severity = LOG_NOTICE;
 			break;
 		case SEVERITY_MEDIUM:
 			syslog_severity = LOG_WARNING;

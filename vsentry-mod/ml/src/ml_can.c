@@ -7,7 +7,6 @@
 #include "sr_control.h"
 #include "sr_control.h"
 
-extern struct config_params_t config_params;
 static SR_BOOL	protect = SR_FALSE;
 
 #define ML_CAN_HASH_SIZE 500
@@ -70,13 +69,16 @@ static SR_32 sr_ml_can_hash_delete_all(void)
 
 static SR_BOOL rate_limit(ml_can_item_t* item)
 {
+	struct config_params_t *config_params;
+	
+	config_params = sr_control_config_params();
 	/* check if we are in disable state */
 	/* we need the info to the algorithm even when the state is disbled */
 	if(SR_FALSE == vsentry_get_state())
 		return (SR_FALSE);
 	
 	if ((item->ts - item->last_cef_ts) < 1000000) {
-		if (item->cef_msg_cnt < (config_params.cef_max_rate-1)) {
+		if (item->cef_msg_cnt < (config_params->cef_max_rate-1)) {
 			item->cef_msg_cnt++;
 			return (SR_TRUE);
 		}

@@ -29,9 +29,6 @@
     fprintf(stderr, "DEBUG: %s(): " fmt, __func__, ##args)
     //CEF_log_event(SR_CEF_CID_SYSTEM, "debug", SEVERITY_LOW, "%s(): " fmt, __func__, ##args)
 
-extern const char *cef_prefix;
-extern const char *cef_postfix;
-
 static void remote_update_init(void)
 {
     curl_global_init(CURL_GLOBAL_DEFAULT);
@@ -304,7 +301,7 @@ void write_archive(const char *outname, char *filename)
     archive_write_free(a);
 }
 
-static void can_log_upload(void)
+static int can_log_upload(void)
 {
     unsigned char c[MD5_DIGEST_LENGTH];
     MD5_CTX mdContext;
@@ -322,20 +319,25 @@ static void can_log_upload(void)
     struct curl_httppost* last = NULL;
     char post_vin[64];
     struct config_params_t *config_params;
+    int rc = 0;
 
     config_params = sr_config_get_param();
+
+#ifdef CAN_UPLOAD_DEBUG
+	printf("can_log_upload loading :%s:\n", candump_file_name_tgz);
+#endif
 
     fd = fopen(candump_file_name_tgz, "rb");
     if(!fd) {
         uploader_err("%s fopen failed: %s\n", candump_file_name_tgz, strerror(errno));
-        return;
+        return -1;
     }
 
     /* to get the file size */
     if(fstat(fileno(fd), &file_info) != 0) {
         uploader_err("%s fstat failed: %s\n", candump_file_name_tgz, strerror(errno));
         fclose(fd);
-        return;
+        return -1;
     }
 
     MD5_Init (&mdContext);
@@ -368,6 +370,7 @@ static void can_log_upload(void)
             int http_code;
             curl_easy_getinfo (curl, CURLINFO_RESPONSE_CODE, &http_code);
             uploader_err("curl_easy_perform failed: %s (%d)\n", curl_easy_strerror(res), http_code);
+			rc = -1;
         }
         curl_easy_cleanup(curl);
     }
@@ -378,11 +381,19 @@ static void can_log_upload(void)
          curl_formfree(post);
 
     fclose(fd);
+
+    return rc;
 }
 
 static void* can_log_uploader(void *data)
 {
     bool *run = (bool*)data;
+    int rc;
+    struct config_params_t *config_params;
+    DIR *dir;
+    struct dirent *ent;
+
+    config_params = sr_config_get_param();
 
     while (*run) {
         sem_wait(&sem_can_log_uploader);
@@ -392,15 +403,31 @@ static void* can_log_uploader(void *data)
             break;
         }
 
+	/* First look at previous files that were not sent */ 
+	if (!(dir = opendir (config_params->log_path))) {
+            uploader_debug("can_log_uploader Failed opening log path directory\n");
+            break;
+	}
+ 	while ((ent = readdir (dir)) != NULL) {
+		if (strstr(ent->d_name, ".tgz")) {
+			sprintf(candump_file_name_tgz, "%s/%s", config_params->log_path, ent->d_name);
+			rc = can_log_upload();
+			if (rc == 0)
+        			unlink(candump_file_name_tgz);
+		}
+  	}
+  	closedir (dir);
+
         snprintf(candump_file_name_tgz, CANDUMP_FILE_NAME_LEN, "%s.tgz", candump_file_name);
         /* compress the file */
         write_archive(candump_file_name_tgz, candump_file_name);
 
         /* upload the file */
-        can_log_upload();
-        /* delete the files */
-        unlink(candump_file_name_tgz);
+        rc = can_log_upload();
+        /* delete the files, the ziped files is deleted upon succesfful transmit */
         unlink(candump_file_name);
+	if (rc == 0)
+		unlink(candump_file_name_tgz);
     }
 
     pthread_detach(pthread_self());
@@ -618,14 +645,14 @@ int sr_log_uploader_init(void)
             uploader_err("log_files[%d] malloc failed\n", i);
             return SR_ERROR;
         }
-        snprintf(log_files[i], PATH_BUFF, "%s%d%s", cef_prefix, i, cef_postfix);
+        snprintf(log_files[i], PATH_BUFF, "%s%d%s", LOG_CEF_PREFIX, i, LOG_CEF_SUFFIX);
 
         full_log_files[i] = malloc(PATH_BUFF);
         if (!full_log_files) {
             uploader_err("full_log_files[%d] malloc failed\n", i);
             return SR_ERROR;
         }
-        sprintf(full_log_files[i], "%s%s%d%s",config_params->CEF_log_path, cef_prefix, i, cef_postfix);
+        sprintf(full_log_files[i], "%s%s%d%s",config_params->CEF_log_path, LOG_CEF_PREFIX, i, LOG_CEF_SUFFIX);
     }
 
     tracked_file_index = 0;

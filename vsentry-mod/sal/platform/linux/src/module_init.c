@@ -26,6 +26,7 @@
 #include "main_loop.h"
 #include "sr_scanner_det.h"
 #include "sr_ver.h"
+#include "sr_control.h"
 
 #ifdef CONFIG_CAN_ML
 #include "ml_can.h"
@@ -37,10 +38,8 @@ MODULE_DESCRIPTION("vSentry Kernel Module");
 static dev_t vsentry_dev;
 static struct cdev *cdev_p;
 
-extern int sr_netfilter_init(void);
-extern void sr_netfilter_uninit(void);
-
-int sr_vsentryd_pid = 0;
+int sr_netfilter_init(void);
+void sr_netfilter_uninit(void);
 
 #if 0
 static struct task_struct *tx_thread;
@@ -55,10 +54,10 @@ static int vsentry_drv_mmap(struct file *file, struct vm_area_struct *vma)
 	int type;
 	struct task_struct *thread = NULL;
 
-	if (!sr_vsentryd_pid)
-		sr_vsentryd_pid = current->pid;
+	if (!vsentry_get_pid())
+		vsentry_set_pid(current->pid);
 		
-	pr_info("vsentry PID = %d\n",sr_vsentryd_pid);
+	pr_info("vsentry PID = %d\n", vsentry_get_pid());
 	pr_info("vsentry_drv_mmap length = %ld, vm_start 0x%p\n", length, (void *) vma->vm_start);
 
 	switch (vma->vm_pgoff) {
@@ -138,7 +137,7 @@ int vsentry_drv_release (struct inode *inode, struct file *file)
 			sr_msg_free_buf(i);
 	}
 
-	sr_vsentryd_pid = 0;
+	vsentry_set_pid(0);
 
 	return 0;
 }

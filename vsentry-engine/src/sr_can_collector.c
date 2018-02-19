@@ -2,11 +2,10 @@
 #include "sr_config_parse.h"
 #include "engine_sal.h"
 
-struct canTaskParams can_args = {.can_interface = DEFAULT_CAN0_INTERFACE, .can_print = SR_FALSE};
+static struct canTaskParams can_args = {.can_interface = DEFAULT_CAN0_INTERFACE, .can_print = SR_FALSE};
 
 #define FILE_QUEUE 	99999
 #define MAX_BUFF	256
-const SR_8* disk = "/";
 long long SAVE_SPACE;
 long MAX_LOG_SIZE;
 
@@ -21,6 +20,11 @@ char current_file[MAX_BUFF];
 char buffer_TS[64];
 time_t t;
 struct tm tm;
+
+struct canTaskParams *sr_can_collector_args(void)
+{
+	return &can_args;
+}
 
 void log_it(char* str)
 {

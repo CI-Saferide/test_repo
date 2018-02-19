@@ -74,4 +74,7 @@ SR_32 vsentry_bprm_check_security(struct linux_binprm *bprm);
 void vsentry_task_free(struct task_struct *task);
 void vsentry_inet_conn_established(struct sock *sk, struct sk_buff *skb);
 int vsentry_inet_conn_request(struct sock *sk, struct sk_buff *skb, struct request_sock *req);
+
+const event_name *event_mediator_hooks_event_names(void);
+
 #endif /* _EVENT_MEDIATOR_H */

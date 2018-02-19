@@ -91,7 +91,7 @@ static SR_8 get_path(struct dentry *dentry, SR_8 *buffer, SR_32 len)
 	return SR_SUCCESS;
 }
 
-const event_name hook_event_names[MAX_HOOK] = {
+static const event_name hook_event_names[MAX_HOOK] = {
 	{HOOK_MKDIR,			"mkdir"},
 	{HOOK_UNLINK,			"unlink"},
 	{HOOK_SYMLINK,			"symlink"},
@@ -105,13 +105,17 @@ const event_name hook_event_names[MAX_HOOK] = {
 	{HOOK_SOCK_MSG_SEND,	"sock_send_msg"},
 };
 
+const event_name *event_mediator_hooks_event_names(void)
+{
+	return hook_event_names;
+}
 
-extern SR_32 sr_vsentryd_pid; //TODO: get sr_engine pid from chdrv open fops
 #define HOOK_FILTER		if(hook_filter()) return 0;
 /* TODO: design robust hook filter */
 static SR_32 hook_filter(void)
 {
-	if ((sr_vsentryd_pid) == (current->pid)-1)
+	//TODO: get sr_engine pid from chdrv open fops
+	if ((vsentry_get_pid()) == (current->pid)-1)
 		return SR_TRUE;
 		
 	return SR_FALSE;
