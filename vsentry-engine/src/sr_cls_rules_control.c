@@ -35,7 +35,7 @@ void sr_cls_rule_add(SR_32 rule_type,
 			msg->sub_msg.phone_id = phone_id;	
 			msg->sub_msg.skip_rulenum = skip_rulenum;
 			
-			sr_send_msg(ENG2MOD_BUF, sizeof(msg));
+			sr_send_msg(ENG2MOD_BUF, (SR_32)sizeof(msg));
 		}
 }
 

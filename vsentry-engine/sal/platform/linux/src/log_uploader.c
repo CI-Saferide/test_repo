@@ -31,7 +31,7 @@
 
 static void remote_update_init(void)
 {
-    curl_global_init(CURL_GLOBAL_DEFAULT);
+    (void)curl_global_init(CURL_GLOBAL_DEFAULT);
 }
 
 static void remote_update_deinit(void)
@@ -39,7 +39,7 @@ static void remote_update_deinit(void)
     curl_global_cleanup(); 
 }
 
-CURL *upload_curl_handle = NULL;
+CURL *upload_curl_handle;
 
 struct file_state{
     FILE *file;
@@ -86,7 +86,7 @@ static int get_size_with_last_full_msg(FILE *logfile, int offset, int file_size)
     }
 
     memset(buffer, 0, MAX_STR_SIZE);
-    if ((ret = fread(buffer, 1, MAX_STR_SIZE, logfile)) > 0) {
+    if ((ret = (int)fread(buffer, 1, MAX_STR_SIZE, logfile)) > 0) {
         char *tmp = strrchr(buffer, '\n');
         if (tmp)
             size = (new_offset - offset) + ((tmp - &buffer[0]) + 1);

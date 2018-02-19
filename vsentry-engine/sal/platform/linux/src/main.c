@@ -2,8 +2,6 @@
 
 int main (int argc, char *argv[])
 {
-	sr_engine_start();
-
-	return 0;
+	return sr_engine_start();
 }
 

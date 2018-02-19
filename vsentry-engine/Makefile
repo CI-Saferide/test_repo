@@ -132,8 +132,9 @@ $(OBJDIR)/%.o: %.c
 clean:
 	@rm -fr $(BUILD_DIR)
 
+SPLINT_FLAGS += -warnposix -paramuse -unrecog -retvalint
 splint_analysis:
-	@$(foreach SRC,$(shell find . -name "*.c"),splint $(INCLUDES) $(SRC);)
+	@$(foreach SRC,$(shell find . -name "*.c"),splint $(SPLINT_FLAGS) $(INCLUDES) $(SRC);)
 
 -include $(DEPS)
 

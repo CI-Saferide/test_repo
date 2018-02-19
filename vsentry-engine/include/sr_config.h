@@ -68,7 +68,9 @@ struct sr_file_record{
 	SR_U16						filename_size;					/* filename size in bytes */
 	SR_8*						process;						/* process name */
 	/* next feild should be calculated according to the real size of process feild */
-	//SR_8*	  					filename;						/* filename/path. max path is 4096 on unix systems */
+#if 0
+	SR_8*	  					filename;						/* filename/path. max path is 4096 on unix systems */
+#endif
 };
 
 struct sr_file_entry{

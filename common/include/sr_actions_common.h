@@ -19,10 +19,10 @@ typedef enum {
         SR_RATE_TYPE_BYTES,
 } sr_rate_type_t;
 
-enum {
+typedef enum {
 	SR_CLS_RULES_DEL = 0,
 	SR_CLS_RULES_ADD,
-};
+} sr_rule_verb_t;
 
 // rules actions are a bitmap - some rules are not mutually exclusive - e.g. drop + SMS...
 // enum defines actions as bits. 
@@ -42,7 +42,7 @@ enum cls_actions{
 };
 
 struct sr_cls_rules_msg {
-	SR_U8 	msg_type;
+	sr_rule_verb_t msg_type;
 	SR_32 rule_type; 
 	SR_U16 rulenum; 
 	SR_U16 actions;
