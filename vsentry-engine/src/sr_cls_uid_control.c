@@ -15,7 +15,7 @@ int sr_cls_uid_add_rule(enum sr_rule_type rule_type, SR_U32 uid, SR_U32 rulenum)
 			msg->sub_msg.rulenum = rulenum;
 			msg->sub_msg.rule_type = rule_type;
 			msg->sub_msg.uid=uid;						
-			sr_send_msg(ENG2MOD_BUF, sizeof(msg));
+			sr_send_msg(ENG2MOD_BUF, (SR_32)sizeof(msg));
 		}
 
 
@@ -34,7 +34,7 @@ int sr_cls_uid_del_rule(enum sr_rule_type rule_type, SR_U32 uid, SR_U32 rulenum)
 			msg->sub_msg.rulenum = rulenum;
 			msg->sub_msg.rule_type = rule_type;
 			msg->sub_msg.uid=uid;						
-			sr_send_msg(ENG2MOD_BUF, sizeof(msg));
+			sr_send_msg(ENG2MOD_BUF, (SR_32)sizeof(msg));
 		}
 
 

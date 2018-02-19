@@ -50,7 +50,7 @@ void sr_cls_rule_del(SR_32 rule_type, SR_U16 rulenum)
 			msg->sub_msg.msg_type = SR_CLS_RULES_DEL;			
 			msg->sub_msg.rule_type = rule_type;
 			msg->sub_msg.rulenum = rulenum;						
-			sr_send_msg(ENG2MOD_BUF, sizeof(msg));
+			sr_send_msg(ENG2MOD_BUF, (SR_32)sizeof(msg));
 		}
 
 

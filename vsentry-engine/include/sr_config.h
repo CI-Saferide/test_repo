@@ -143,7 +143,7 @@ SR_BOOL write_config_record (void* ptr, enum sr_header_type rec_type);
 SR_BOOL read_config_file (void);
 SR_BOOL read_config_db (void);
 void start_cli(void);
-SR_U32 sr_create_filter_paths(void);
+SR_32 sr_create_filter_paths(void);
 void sr_config_vsentry_db_cb(int type, int op, void *entry);
 
 #endif /* SR_CONFIG_H */

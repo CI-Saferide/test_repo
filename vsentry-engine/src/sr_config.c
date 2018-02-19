@@ -736,7 +736,7 @@ SR_BOOL read_config_file (void)
 	return SR_TRUE;
 }
 
-SR_U32 sr_create_filter_paths(void)
+SR_32 sr_create_filter_paths(void)
 {
 	sal_os_t os;
 	

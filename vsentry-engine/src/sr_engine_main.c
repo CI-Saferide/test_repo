@@ -55,7 +55,7 @@ SR_32 engine_main_loop(void *data)
 	while (!sr_task_should_stop(SR_ENGINE_TASK)) {
 		msg = sr_read_msg(MOD2ENG_BUF, &ret);
 		if (ret > 0) {
-			sr_event_receiver(msg, ret);
+			sr_event_receiver(msg, (SR_U32)ret);
 			sr_free_msg(MOD2ENG_BUF);
 		}
 
@@ -203,7 +203,11 @@ SR_32 sr_engine_start(void)
 						"can-bus collector - disabled!\n");
 	}
 	/* indicate VPI that we are running */
-	f = fopen("/tmp/sec_state", "w");
+	if (!(f = fopen("/tmp/sec_state", "w"))) {
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+						"failed to open file /tmp/sec_state\n");
+		return SR_ERROR;	
+	}
 	fprintf(f, "on");
 	fclose(f);
 	
@@ -212,12 +216,12 @@ SR_32 sr_engine_start(void)
 	if (msg) {
 		msg->msg_type = SR_MSG_TYPE_CONFIG;
 		msg->sub_msg.cef_max_rate = config_params->cef_max_rate; 
-		sr_send_msg(ENG2MOD_BUF, sizeof(msg));
+		sr_send_msg(ENG2MOD_BUF, (SR_32)sizeof(msg));
 	} else
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 						"failed to transfer config info to kernel");
 	while (run) {
-		SR_8 input = getchar();
+		SR_32 input = getchar();
 
 		switch (input) {
 			case 'b':
@@ -242,8 +246,8 @@ SR_32 sr_engine_start(void)
 			case 'd':
 					printf ("printing debug info for ml_can\n");
 					sr_ml_can_print_hash();
-#endif /* CONFIG_CAN_ML */
 				break;
+#endif /* CONFIG_CAN_ML */
 		}
 	}
 	sr_get_command_stop();
