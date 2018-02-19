@@ -132,6 +132,9 @@ $(OBJDIR)/%.o: %.c
 clean:
 	@rm -fr $(BUILD_DIR)
 
+splint_analysis:
+	@$(foreach SRC,$(shell find . -name "*.c"),splint $(INCLUDES) $(SRC);)
+
 -include $(DEPS)
 
 
