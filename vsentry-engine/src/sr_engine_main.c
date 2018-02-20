@@ -75,7 +75,7 @@ static SR_32 engine_main_loop(void *data)
 static void eng2mod_test(void)
 {
 	sr_file_msg_cls_t *msg;
-	SR_U8 count = 0;
+	SR_U32 count = 0;
 
 	while (count < 32) {
 		msg = (sr_file_msg_cls_t*)sr_get_msg(ENG2MOD_BUF, ENG2MOD_MSG_MAX_SIZE);
@@ -94,7 +94,7 @@ static void eng2mod_test(void)
 SR_32 sr_engine_start(void)
 {
 	SR_32 ret;
-	SR_U8 run = 1;
+	SR_BOOL run = SR_TRUE;
 	FILE *f;
 	sr_config_msg_t *msg;
 	struct config_params_t *config_params;

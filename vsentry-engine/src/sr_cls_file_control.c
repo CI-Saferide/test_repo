@@ -17,7 +17,7 @@
 // treetop: 1 for the first call, 0 for recursive calls further down.
 int sr_cls_file_add_rule(char *filename, char *exec, char *user, SR_U32 rulenum, SR_U8 treetop)
 {
-	struct stat buf;
+	struct stat buf = {};
 	sr_file_msg_cls_t *msg;
 	SR_U32 exec_inode;
 	SR_32 uid, st;

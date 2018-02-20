@@ -11,8 +11,8 @@
 #define SR_32 		int
 #define SR_64 		long long
 #define SR_BOOL 	SR_U8
-#define SR_TRUE		1
-#define SR_FALSE 	0
+#define SR_TRUE		(SR_BOOL)1
+#define SR_FALSE 	(SR_BOOL)0
 #define SR_SUCCESS 	0
 #define SR_NOT_FOUND	1	
 #define SR_ERROR 	-1

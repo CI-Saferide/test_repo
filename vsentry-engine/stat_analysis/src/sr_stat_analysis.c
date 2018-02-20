@@ -45,19 +45,23 @@ void sr_stat_analysis_dump(void)
 
 SR_32 sr_stat_analysis_send_msg(SR_U8 msg_type, sr_stat_connection_info_t *connection_info)
 {
-	sr_stat_analysis_msg_t *msg;
+	sr_stat_analysis_msg_t *msg = NULL;
 
         msg = (sr_stat_analysis_msg_t*)sr_get_msg(ENG2MOD_BUF, ENG2MOD_MSG_MAX_SIZE);
-        if (msg) {
-                msg->msg_type = SR_MSG_TYPE_STAT_ANALYSIS;
-                msg->sub_msg.msg_type = msg_type;
-		msg->sub_msg.con_id.saddr = connection_info->con_id.saddr;
-		msg->sub_msg.con_id.daddr = connection_info->con_id.daddr;
-		msg->sub_msg.con_id.ip_proto = connection_info->con_id.ip_proto;
-		msg->sub_msg.con_id.sport = connection_info->con_id.sport;
-		msg->sub_msg.con_id.dport = connection_info->con_id.dport;
-                sr_send_msg(ENG2MOD_BUF, sizeof(msg));
-        }
+	if (!msg) {
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+						"stat analysis at sr_stat_analysis_send_msg");
+        	return SR_ERROR;
+	}
+		
+	msg->msg_type = SR_MSG_TYPE_STAT_ANALYSIS;
+	msg->sub_msg.msg_type = msg_type;
+	msg->sub_msg.con_id.saddr = connection_info->con_id.saddr;
+	msg->sub_msg.con_id.daddr = connection_info->con_id.daddr;
+	msg->sub_msg.con_id.ip_proto = connection_info->con_id.ip_proto;
+	msg->sub_msg.con_id.sport = connection_info->con_id.sport;
+	msg->sub_msg.con_id.dport = connection_info->con_id.dport;
+	sr_send_msg(ENG2MOD_BUF, sizeof(msg));
 
         return SR_SUCCESS;
 }

@@ -20,7 +20,7 @@ SR_32 sr_control_set_state(SR_BOOL state)
 	return SR_SUCCESS;
 }
 	
-SR_32 sr_control_util(SR_U8 control_type)
+SR_32 sr_control_util(sr_control_verb_t control_type)
 {
 	sr_control_msg_t *msg;
 
