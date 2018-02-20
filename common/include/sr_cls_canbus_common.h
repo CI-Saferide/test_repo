@@ -8,13 +8,13 @@
 #define SR_CAN_OUT 1
 #define SR_CAN_BOTH 2
 
-enum {
+typedef enum {
 	SR_CLS_CANID_DEL_RULE = 0,
 	SR_CLS_CANID_ADD_RULE,
-};
+} sr_canbus_verb_t;
 
 struct sr_cls_canbus_msg {
-	SR_U8 	msg_type;
+	sr_canbus_verb_t  msg_type;
 	SR_U32	rulenum;
 	SR_32  canid;
 	SR_U8   dir; // SR_CAN_IN/SR_CAN_OUT

@@ -4,17 +4,17 @@
 
 #define INODE_ANY 0
 
-enum {
+typedef enum {
 	SR_CLS_INODE_INHERIT=0,
 	SR_CLS_INODE_DEL_RULE,
 	SR_CLS_INODE_ADD_RULE,
 	SR_CLS_INODE_REMOVE,
 	SR_CLS_INODE_MAX = SR_CLS_INODE_REMOVE,
 	SR_CLS_INODE_TOTAL = (SR_CLS_INODE_MAX + 1),
-};
+} sr_file_verb_t;
 
 struct sr_cls_file_msg {
-	SR_U8 	msg_type;
+	sr_file_verb_t msg_type;
 	SR_U32	rulenum;
 	SR_U32  inode1;
 	SR_U32  inode2;

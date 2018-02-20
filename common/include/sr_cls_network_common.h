@@ -6,14 +6,14 @@
 #define SR_DIR_DST 1
 #define PORT_ANY 0
 
-enum {
+typedef enum {
 	SR_CLS_IPV4_DEL_RULE = 0,
 	SR_CLS_IPV4_ADD_RULE,
 	SR_CLS_IPV6_DEL_RULE,
 	SR_CLS_IPV6_ADD_RULE,
 	SR_CLS_NETWORK_MAX = SR_CLS_IPV6_ADD_RULE,
 	SR_CLS_NETOWRK_TOTAL = (SR_CLS_NETWORK_MAX + 1),
-};
+} sr_network_verb_t;
 
 enum {
 	SR_PROTO_TCP = 6,
@@ -21,7 +21,7 @@ enum {
 };
 
 struct sr_cls_network_msg {
-	SR_U8 	msg_type;
+	sr_network_verb_t  msg_type;
 	SR_U8   dir; // SR_DIR_SRC/DST
 	SR_U16	rulenum;
 	SR_U32	addr;

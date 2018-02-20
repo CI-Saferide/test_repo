@@ -41,67 +41,67 @@ typedef enum {
 
 #pragma pack(push, 1)
 typedef struct {
-	SR_8 msg_type;
+	sr_msg_dispatch_type msg_type;
 	SR_8 msg_payload[1];
 } sr_msg_dispatch_hdr_t;
 #pragma pack(pop)
 #pragma pack(push, 1)
 typedef struct {
-	SR_8 msg_type;
+	sr_msg_dispatch_type msg_type;
 	struct sr_cls_rules_msg sub_msg;
 } sr_rules_msg_cls_t;
 
 typedef struct {
-	SR_8 msg_type;
+	sr_msg_dispatch_type msg_type;
 	struct sr_cls_file_msg sub_msg;
 } sr_file_msg_cls_t;
 
 typedef struct {
-	SR_8 msg_type;
+	sr_msg_dispatch_type msg_type;
 	struct sr_cls_filter_path_msg sub_msg;
 } sr_filter_path_msg_cls_t;
 
 typedef struct {
-	SR_8 msg_type;
+	sr_msg_dispatch_type msg_type;
 	struct sr_cls_uid_msg sub_msg;
 } sr_uid_msg_cls_t;
 
 typedef struct {
-	SR_8 msg_type;
+	sr_msg_dispatch_type msg_type;
 	struct sr_cls_canbus_msg sub_msg;
 } sr_canbus_msg_cls_t;
 
 typedef struct {
-	SR_8 msg_type;
+	sr_msg_dispatch_type msg_type;
 	struct sr_cls_network_msg sub_msg;
 } sr_network_msg_cls_t;
 
 typedef struct {
-	SR_8 msg_type;
+	sr_msg_dispatch_type msg_type;
 	struct sr_cls_port_msg sub_msg;
 } sr_port_msg_cls_t;
 
 typedef struct {
-	SR_8 msg_type;
+	sr_msg_dispatch_type msg_type;
 	struct sr_control_msg sub_msg;
 } sr_control_msg_t;
 
 #ifdef CONFIG_STAT_ANALYSIS
 typedef struct {
-	SR_8 msg_type;
+	sr_msg_dispatch_type msg_type;
 	struct sr_stat_analysis_msg sub_msg;
 } sr_stat_analysis_msg_t;
 #endif /* CONFIG_STAT_ANALYSIS */
 
 #ifdef CONFIG_CAN_ML
 typedef struct {
-	SR_8 msg_type;
+	sr_msg_dispatch_type msg_type;
 	struct sr_ml_can_msg sub_msg;
 } sr_ml_can_msg_t;
 #endif /* CONFIG_CAN_ML */
 
 typedef struct {
-	SR_8 msg_type;
+	sr_msg_dispatch_type msg_type;
 	struct sr_config_msg sub_msg;
 } sr_config_msg_t;
 
