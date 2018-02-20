@@ -23,13 +23,13 @@ int sr_cls_port_add_rule(SR_U32 port, char *exec, char *user, SR_U32 rulenum, SR
 		if (msg) {
 			msg->msg_type = SR_MSG_TYPE_CLS_PORT;			
 			msg->sub_msg.msg_type = SR_CLS_PORT_ADD_RULE;			
-			msg->sub_msg.rulenum = rulenum;
+			msg->sub_msg.rulenum = (SR_U16)rulenum;
 			msg->sub_msg.port=port;
 			msg->sub_msg.dir=dir;
 			msg->sub_msg.proto=proto;								
 			msg->sub_msg.exec_inode = inode;
 			msg->sub_msg.uid = uid;
-			sr_send_msg(ENG2MOD_BUF, sizeof(msg));
+			sr_send_msg(ENG2MOD_BUF, (SR_32)sizeof(msg));
 		}
 
 	return SR_SUCCESS;
@@ -52,13 +52,13 @@ int sr_cls_port_del_rule(SR_U32 port, char *exec, char *user, SR_U32 rulenum, SR
 	if (msg) {
 		msg->msg_type = SR_MSG_TYPE_CLS_PORT;			
 		msg->sub_msg.msg_type = SR_CLS_PORT_DEL_RULE;			
-		msg->sub_msg.rulenum = rulenum;
+		msg->sub_msg.rulenum = (SR_U16)rulenum;
 		msg->sub_msg.port=port;
 		msg->sub_msg.dir=dir;
 		msg->sub_msg.proto=proto;								
 		msg->sub_msg.exec_inode = inode;
 		msg->sub_msg.uid = uid;
-		sr_send_msg(ENG2MOD_BUF, sizeof(msg));
+		sr_send_msg(ENG2MOD_BUF, (SR_32)sizeof(msg));
 	}
 
 	return SR_SUCCESS;

@@ -7,7 +7,7 @@
 static struct termios old, new;
 
 /* Initialize new terminal i/o settings */
-void initTermios(int echo) 
+static void initTermios(int echo) 
 {
   tcgetattr(0, &old); /* grab old terminal i/o settings */
   new = old; /* make new settings same as old settings */
@@ -17,13 +17,13 @@ void initTermios(int echo)
 }
 
 /* Restore old terminal i/o settings */
-void resetTermios(void) 
+static void resetTermios(void) 
 {
   tcsetattr(0, TCSANOW, &old);
 }
 
 /* Read 1 character - echo defines echo mode */
-char getch_(int echo) 
+static char getch_(int echo) 
 {
   char ch;
   initTermios(echo);

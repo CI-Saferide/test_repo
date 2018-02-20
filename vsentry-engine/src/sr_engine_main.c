@@ -37,7 +37,7 @@
 #include "sr_config_common.h"
 #include "sr_can_collector.h"
 
-SR_32 engine_main_loop(void *data)
+static SR_32 engine_main_loop(void *data)
 {
 	SR_32 ret;
 	SR_8 *msg;
