@@ -43,7 +43,7 @@ void sr_ml_conngraph_event( struct sr_ec_new_connection_t *pNewConnection)
 
 	node = rn_lookup((void*)ip, NULL, sr_ml_conngraph_table);
 	
-	switch (sr_ml_mode) {
+	switch (get_sr_ml_mode()) {
 		case ML_MODE_LEARN:
 			if (node) {
 				free(ip);

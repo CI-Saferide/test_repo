@@ -5,7 +5,7 @@
 #include "sr_msg_dispatch.h"
 #include "sr_engine_utils.h"
 	
-int sr_cls_port_add_rule(SR_U32 port, char *exec, char *user, SR_U32 rulenum, SR_8 dir, SR_8 proto)
+int sr_cls_port_add_rule(SR_U32 port, char *exec, char *user, SR_U32 rulenum, SR_U8 dir, SR_U8 proto)
 {
 	sr_port_msg_cls_t *msg;
 	SR_U32 inode;
@@ -34,7 +34,7 @@ int sr_cls_port_add_rule(SR_U32 port, char *exec, char *user, SR_U32 rulenum, SR
 
 	return SR_SUCCESS;
 }
-int sr_cls_port_del_rule(SR_U32 port, char *exec, char *user, SR_U32 rulenum, SR_8 dir, SR_8 proto)
+int sr_cls_port_del_rule(SR_U32 port, char *exec, char *user, SR_U32 rulenum, SR_U8 dir, SR_U8 proto)
 {
 	sr_port_msg_cls_t *msg;
 	SR_U32 inode;

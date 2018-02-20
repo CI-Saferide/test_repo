@@ -17,6 +17,8 @@
 #define SR_NOT_FOUND	1	
 #define SR_ERROR 	-1
 #define SR_MAX_PATH 1024
+#define SR_DIR_SRC (SR_U8)0
+#define SR_DIR_DST (SR_U8)1
 
 #define MAX(X, Y) ((X) >= (Y) ? (X) : (Y))
 #define MIN(X, Y) ((X) <= (Y) ? (X) : (Y))

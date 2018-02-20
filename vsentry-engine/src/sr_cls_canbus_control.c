@@ -5,7 +5,7 @@
 #include "sr_msg_dispatch.h"
 #include "sr_engine_utils.h"
 
-int sr_cls_canid_add_rule(SR_U32 canid, char *exec, char *user, SR_U32 rulenum,SR_8 dir)
+int sr_cls_canid_add_rule(SR_U32 canid, char *exec, char *user, SR_U32 rulenum,SR_U8 dir)
 {
 	sr_canbus_msg_cls_t *msg;
  	SR_U32 inode;
@@ -36,7 +36,7 @@ int sr_cls_canid_add_rule(SR_U32 canid, char *exec, char *user, SR_U32 rulenum,S
 }
 
 
-int sr_cls_canid_del_rule(SR_U32 canid, char *exec, char *user, SR_U32 rulenum,SR_8 dir)
+int sr_cls_canid_del_rule(SR_U32 canid, char *exec, char *user, SR_U32 rulenum,SR_U8 dir)
 {
 	sr_canbus_msg_cls_t *msg;
  	SR_U32 inode;

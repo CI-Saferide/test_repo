@@ -27,7 +27,7 @@ static char getch_(int echo)
 {
   char ch;
   initTermios(echo);
-  ch = getchar();
+  ch = (char)getchar();
   resetTermios();
   return ch;
 }

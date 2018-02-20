@@ -2,8 +2,6 @@
 #define SR_CLS_NETWORK_COMMON_H
 #include "sr_types.h"
 
-#define SR_DIR_SRC 0
-#define SR_DIR_DST 1
 #define PORT_ANY 0
 
 typedef enum {

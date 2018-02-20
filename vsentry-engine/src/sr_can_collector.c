@@ -2,7 +2,7 @@
 #include "sr_config_parse.h"
 #include "engine_sal.h"
 
-static struct canTaskParams can_args = {.can_interface = DEFAULT_CAN0_INTERFACE, .can_print = SR_FALSE};
+static struct canTaskParams can_args = {};
 
 #define FILE_QUEUE 	99999
 #define MAX_BUFF	256
@@ -83,7 +83,6 @@ void log_it(char* str)
 SR_32 can_collector_init(void *data)
 {
 	struct config_params_t *config_params;
-
 	int n __attribute__((unused));
 
 	config_params = sr_config_get_param();

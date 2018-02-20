@@ -36,6 +36,7 @@
 #include "sr_command.h"
 #include "sr_config_common.h"
 #include "sr_can_collector.h"
+#include "sr_config_parse.h"
 
 static SR_32 engine_main_loop(void *data)
 {
@@ -188,7 +189,7 @@ SR_32 sr_engine_start(void)
 
 	sr_get_command_start();
 
-	can_args->can_interface = config_params->can0_interface;
+	strncpy(can_args->can_interface, config_params->can0_interface, CAN_NAME);
 	if(config_params->collector_enable){
 		ret = sr_start_task(SR_CAN_COLLECT_TASK, can_collector_init);
 		if (ret != SR_SUCCESS) {
@@ -225,7 +226,7 @@ SR_32 sr_engine_start(void)
 
 		switch (input) {
 			case 'b':
-				run = 0;
+				run = SR_FALSE;
 				break;
 			case 's':
 				sr_msg_print_stat();

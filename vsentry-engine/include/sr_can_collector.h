@@ -4,15 +4,15 @@
 #include "sr_types.h"
 #include "sr_tasks.h"
 #include "sr_sal_common.h"
+#include "sr_config_parse.h"
 
 #define CAN_COLLECTOR_DISK "/"
 
 struct canTaskParams {
-    SR_8 *can_interface;		/* can interface name */
+    SR_8 can_interface[CAN_NAME];		/* can interface name */
     SR_32 can_fd;				/* fd of the opened socket */
     SR_BOOL can_print;			/* DEBUG: when true prints the candump to stdout */
 };
-
 
 struct candump_log
 {
