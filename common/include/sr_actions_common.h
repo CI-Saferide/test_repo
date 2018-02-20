@@ -3,9 +3,9 @@
 
 #include "sr_types.h"
 
-#define SR_FILEOPS_READ  (1<<0)
-#define SR_FILEOPS_WRITE (1<<1)
-#define SR_FILEOPS_EXEC  (1<<2)
+#define SR_FILEOPS_READ  (SR_U8)(1<<0)
+#define SR_FILEOPS_WRITE (SR_U8)(1<<1)
+#define SR_FILEOPS_EXEC  (SR_U8)(1<<2)
 
 enum sr_rule_type{
         SR_NET_RULES = 0,
@@ -46,7 +46,7 @@ struct sr_cls_rules_msg {
 	SR_32 rule_type; 
 	SR_U16 rulenum; 
 	SR_U16 actions;
-	SR_8 file_ops;
+	SR_U8 file_ops;
 	sr_rate_type_t rate_type;
 	SR_U32 rl_max_rate;
 	SR_U16 rl_exceed_action;

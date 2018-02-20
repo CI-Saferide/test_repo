@@ -251,9 +251,9 @@ static void convert_permissions(char *permissions, SR_U8 *premisions_bitmaps)
         if (!permissions)
                 return;
 	
-	perms = atoi(permissions + 2);
+	perms = (SR_U8)atoi(permissions + 2);
 
-	*premisions_bitmaps = 0;
+	*premisions_bitmaps ^= *premisions_bitmaps;
  	if (perms & PERM_X)
  		*premisions_bitmaps |= SR_FILEOPS_EXEC;
 	if (perms & PERM_W)
@@ -265,7 +265,7 @@ static void convert_permissions(char *permissions, SR_U8 *premisions_bitmaps)
 static SR_32 add_file_rule(file_rule_t *rule)
 {
 	SR_U16 actions_bitmap = 0;
-	SR_U8 permissions = 0;
+	SR_U8 permissions = (SR_U8)0;
 	char *user, *program;
 
 	user = *(rule->tuple.user) ? rule->tuple.user : "*";
@@ -282,7 +282,7 @@ static SR_32 add_file_rule(file_rule_t *rule)
 	}
 
 	convert_permissions(rule->tuple.permission, &permissions);
-	sr_cls_file_add_rule(rule->tuple.filename, program, user, rule->rulenum, 1);
+	sr_cls_file_add_rule(rule->tuple.filename, program, user, rule->rulenum, (SR_U8)1);
 	sr_cls_rule_add(SR_FILE_RULES, rule->rulenum, actions_bitmap, permissions, SR_RATE_TYPE_BYTES, rule->tuple.max_rate, /* net_rule.rate_action */ 0 ,
                          /* net_ruole.action.log_target */ 0 , /* net_rule.tuple.action.email_id */ 0 , /* net_rule.tuple.action.phone_id */ 0 , /* net_rule.action.skip_rulenum */ 0);
 
@@ -292,7 +292,7 @@ static SR_32 add_file_rule(file_rule_t *rule)
 static SR_32 update_file_rule(file_rule_t *rule)
 {
 	SR_U16 actions_bitmap = 0;
-	SR_U8 permissions = 0;
+	SR_U8 permissions = (SR_U8)0;
 	file_rule_t *old_rule;
 	char *user, *program, *old_user, *old_program;
 
@@ -305,7 +305,7 @@ static SR_32 update_file_rule(file_rule_t *rule)
 	old_user = *(old_rule->tuple.user) ? old_rule->tuple.user : "*";
 	old_program = *(old_rule->tuple.program) ? old_rule->tuple.program : "*";
 
-	sr_cls_file_del_rule(old_rule->tuple.filename, old_program, old_user, rule->rulenum, 1);
+	sr_cls_file_del_rule(old_rule->tuple.filename, old_program, old_user, rule->rulenum, (SR_U8)1);
 	if (strncmp(rule->action_name, old_rule->action_name, ACTION_STR_SIZE) != 0 || 	
 		strncmp(rule->tuple.permission, old_rule->tuple.permission, 4) != 0) {
 		convert_permissions(rule->tuple.permission, &permissions);
@@ -322,7 +322,7 @@ static SR_32 update_file_rule(file_rule_t *rule)
 	strncpy(old_rule->tuple.filename, rule->tuple.filename, FILE_NAME_SIZE);
 	strncpy(old_rule->tuple.program, rule->tuple.program, PROG_NAME_SIZE);
 	strncpy(old_rule->tuple.user, rule->tuple.user, USER_NAME_SIZE);
-	sr_cls_file_add_rule(rule->tuple.filename, program, user, rule->rulenum, 1);
+	sr_cls_file_add_rule(rule->tuple.filename, program, user, rule->rulenum, (SR_U8)1);
 
 	return SR_SUCCESS;
 }
@@ -337,7 +337,7 @@ static SR_32 delete_file_rule(file_rule_t *rule)
 	}
 
 	sr_cls_file_del_rule(old_rule->tuple.filename, *(old_rule->tuple.program) ? old_rule->tuple.program : "*",
-		*(old_rule->tuple.user) ? old_rule->tuple.user : "*", old_rule->rulenum, 1);
+		*(old_rule->tuple.user) ? old_rule->tuple.user : "*", old_rule->rulenum, (SR_U8)1);
 	sr_db_file_rule_delete(rule);
 
 	return SR_SUCCESS;
@@ -356,7 +356,7 @@ static SR_U8 convert_can_dir(SR_U8 dir)
 			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, "Invalid CAN direction:%d", dir);
 			break;
 	}
-	return SENTRY_DIR_BOTH;
+	return SR_CAN_BOTH;
 }
 
 static SR_32 add_can_rule(can_rule_t *rule)
@@ -378,8 +378,9 @@ static SR_32 add_can_rule(can_rule_t *rule)
 	}
 
 	sr_cls_canid_add_rule(rule->tuple.msg_id, program, user, rule->rulenum, convert_can_dir(rule->tuple.direction));
-	sr_cls_rule_add(SR_CAN_RULES, rule->rulenum, actions_bitmap, 0, SR_RATE_TYPE_BYTES, rule->tuple.max_rate, /* net_rule.rate_action */ 0 ,
-                         /* net_ruole.action.log_target */ 0 , /* net_rule.tuple.action.email_id */ 0 , /* net_rule.tuple.action.phone_id */ 0 , /* net_rule.action.skip_rulenum */ 0);
+	sr_cls_rule_add(SR_CAN_RULES, rule->rulenum, actions_bitmap, SR_FILEOPS_READ, SR_RATE_TYPE_EVENT, rule->tuple.max_rate, /* net_rule.rate_action */ (SR_U16)0 ,
+                         /* net_ruole.action.log_target */ (SR_U16)0 , /* net_rule.tuple.action.email_id */ (SR_U16)0 , /* net_rule.tuple.action.phone_id */ (SR_U16)0 ,
+				/* net_rule.action.skip_rulenum */ (SR_U16)0);
 
 	return SR_SUCCESS;
 }
@@ -405,8 +406,9 @@ static SR_32 update_can_rule(can_rule_t *rule)
 			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, "update can rule: convert_action failed");
 			return SR_ERROR;
 		}
-		sr_cls_rule_add(SR_CAN_RULES, rule->rulenum, actions_bitmap, 0, SR_RATE_TYPE_EVENT, rule->tuple.max_rate, /* net_rule.rate_action */ 0 ,
-                         /* net_ruole.action.log_target */ 0 , /* net_rule.tuple.action.email_id */ 0 , /* net_rule.tuple.action.phone_id */ 0 , /* net_rule.action.skip_rulenum */ 0);
+		sr_cls_rule_add(SR_CAN_RULES, rule->rulenum, actions_bitmap, SR_FILEOPS_READ, SR_RATE_TYPE_EVENT, rule->tuple.max_rate, /* net_rule.rate_action */ (SR_U16)0 ,
+                         /* net_ruole.action.log_target */ (SR_U16)0 , /* net_rule.tuple.action.email_id */ (SR_U16)0 , /* net_rule.tuple.action.phone_id */ (SR_U16)0 ,
+			 /* net_rule.action.skip_rulenum */ (SR_U16)0);
 		strncpy(old_rule->action_name, rule->action_name, ACTION_STR_SIZE);
 	}
 
@@ -643,7 +645,7 @@ SR_BOOL read_config_file (void)
 				fclose (conf_file);
 				return SR_FALSE;
 			}
-			sr_cls_file_add_rule(filename, process, "*", file_rec.rulenum, 1);
+			sr_cls_file_add_rule(filename, process, "*", file_rec.rulenum, (SR_U8)1);
 			sr_cls_rule_add(SR_FILE_RULES, file_rec.rulenum, file_rec.action.actions_bitmap, SR_FILEOPS_READ, SR_RATE_TYPE_EVENT, file_rec.max_rate,
 				file_rec.rate_action, file_rec.action.log_target, file_rec.action.email_id, file_rec.action.phone_id, file_rec.action.skip_rulenum);
 			break;
