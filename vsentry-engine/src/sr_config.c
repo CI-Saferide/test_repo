@@ -521,7 +521,7 @@ SR_BOOL write_config_record (void* ptr, enum sr_header_type rec_type)
 		net_entry = (struct sr_net_entry*)ptr;
 		fwrite(&rec_type, 1, sizeof(rec_type),conf_file);
 		fwrite(&net_rec, 1, sizeof(net_rec),conf_file);
-		fwrite(net_entry->process, net_entry->process_size, sizeof(SR_8),conf_file);
+		fwrite(net_entry->process, (size_t)net_entry->process_size, sizeof(SR_8),conf_file);
 		break;
 		}
 	case CONFIG_FILE_RULE: {
@@ -531,8 +531,8 @@ SR_BOOL write_config_record (void* ptr, enum sr_header_type rec_type)
 		file_entry = (struct sr_file_entry*)ptr;
 		fwrite(&rec_type, 1, sizeof(rec_type),conf_file);
 		fwrite(&file_rec, 1, sizeof(file_rec),conf_file);
-		fwrite(file_entry->process, file_entry->process_size, sizeof(SR_8),conf_file);
-		fwrite(file_entry->filename, file_entry->filename_size, sizeof(SR_8),conf_file);
+		fwrite(file_entry->process, (size_t)file_entry->process_size, sizeof(SR_8),conf_file);
+		fwrite(file_entry->filename, (size_t)file_entry->filename_size, sizeof(SR_8),conf_file);
 		break;
 		}
 	case CONFIG_CAN_RULE: {
@@ -542,7 +542,7 @@ SR_BOOL write_config_record (void* ptr, enum sr_header_type rec_type)
 		can_entry = (struct sr_can_entry*)ptr;
 		fwrite(&rec_type, 1, sizeof(rec_type),conf_file);
 		fwrite(&can_rec, 1, sizeof(can_rec),conf_file);
-		fwrite(can_entry->process, can_entry->process_size, sizeof(SR_8),conf_file);
+		fwrite(can_entry->process, (size_t)can_entry->process_size, sizeof(SR_8),conf_file);
 		break;
 		}
 	case CONFIG_PHONE_ENTRY: {
@@ -559,7 +559,7 @@ SR_BOOL write_config_record (void* ptr, enum sr_header_type rec_type)
 		email_entry = (struct sr_email_entry*)ptr;
 		fwrite(&rec_type, 1, sizeof(rec_type),conf_file);
 		fwrite(&email_rec, 1, sizeof(email_rec),conf_file);
-		fwrite(email_entry->email, email_entry->email_size, sizeof(SR_8),conf_file);
+		fwrite(email_entry->email, (size_t)email_entry->email_size, sizeof(SR_8),conf_file);
 		break;
 		}
 	case CONFIG_LOG_TARGET: {
@@ -569,13 +569,12 @@ SR_BOOL write_config_record (void* ptr, enum sr_header_type rec_type)
 		log_entry = (struct sr_log_entry*)ptr;
 		fwrite(&rec_type, 1, sizeof(rec_type),conf_file);
 		fwrite(&log_rec, 1, sizeof(log_rec),conf_file);
-		fwrite(log_entry->log_target, log_entry->log_size, sizeof(SR_8),conf_file);
+		fwrite(log_entry->log_target, (size_t)log_entry->log_size, sizeof(SR_8),conf_file);
 		break;
 		}
 	default:
 		fclose (conf_file);
 		return SR_FALSE;
-		break;
 	};
 	
 	fclose (conf_file);
@@ -600,7 +599,7 @@ SR_BOOL read_config_file (void)
 			}
 		switch (rec_type) {
 		case CONFIG_NET_RULE: {
-			struct sr_net_record	net_rec;
+			struct sr_net_record	net_rec = {};
 			if (1 != fread(&net_rec, sizeof(net_rec), 1, conf_file)) {
 				CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 					"fail to read from config file, line %d\n", __LINE__);

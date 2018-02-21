@@ -133,7 +133,7 @@ clean:
 	@rm -fr $(BUILD_DIR)
 
 SPLINT_FLAGS += -warnposix -paramuse -unrecog -retvalint -boolops -predboolothers -mustfreefresh -retvalother
-SPLINT_FLAGS += -mustfreeonly -predboolint -nullpass -infloops
+SPLINT_FLAGS += -mustfreeonly -predboolint -nullpass -infloops -compmempass -immediatetrans
 splint_analysis:
 	@$(foreach SRC,$(shell find . -name "*.c"),splint $(SPLINT_FLAGS) $(INCLUDES) $(SRC);)
 

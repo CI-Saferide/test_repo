@@ -13,7 +13,7 @@ struct config_params_t *sr_config_get_param(void)
 void config_defaults(void)
 {
 	strcpy(config_params.vin, "NA");
-	config_params.num_of_can_interface = 1;
+	config_params.num_of_can_interface = (SR_U8)1;
 	strcpy(config_params.can0_interface, DEFAULT_CAN0_INTERFACE);
 	strcpy(config_params.can1_interface, DEFAULT_CAN1_INTERFACE);
 	strcpy(config_params.can2_interface, DEFAULT_CAN2_INTERFACE);
@@ -28,17 +28,17 @@ void config_defaults(void)
 	config_params.cef_file_size = 1; /* in MB */
 	config_params.cef_file_cycling = 10; /*amount of cef files*/
 	strcpy(config_params.CEF_log_path, "/var/log/");
-	config_params.cef_max_rate = 2;
-	config_params.log_type = 0;
+	config_params.cef_max_rate = (SR_U8)2;
+	config_params.log_type = (SR_U8)0;
 }
 
 #define CONFIG_LINE_BUFFER_SIZE 100
 
-SR_8 read_vsentry_config(char* config_filename)
+SR_32 read_vsentry_config(char* config_filename)
 {
     FILE 			*fp;
     SR_8 			buf[CONFIG_LINE_BUFFER_SIZE];
-    SR_8			*position;
+    char			*position;
     SR_8 			*n __attribute__((unused));
     char            *param, *value;
 
@@ -59,7 +59,7 @@ SR_8 read_vsentry_config(char* config_filename)
         }
         position = strstr(buf, "NUM_OF_CAN_IF ");
         if (position) {	
-            config_params.num_of_can_interface =  atoi(position + (strlen("NUM_OF_CAN_IF ")));
+            config_params.num_of_can_interface = (SR_U8)atoi(position + (strlen("NUM_OF_CAN_IF ")));
         }
         position = strstr(buf, "CAN0_IF ");
         if (position) {	
@@ -88,15 +88,15 @@ SR_8 read_vsentry_config(char* config_filename)
         }
         position = strstr(buf, "COLLECT_ENABLE ");
         if (position) {	
-            config_params.collector_enable =  atoi(position + (strlen("COLLECT_ENABLE ")));
+            config_params.collector_enable = (SR_BOOL)atoi(position + (strlen("COLLECT_ENABLE ")));
         }
         position = strstr(buf, "COLLECT_FILE_SIZE_MB ");
         if (position) {	
-            config_params.collector_file_size =  atoi(position + (strlen("COLLECT_FILE_SIZE_MB ")));
+            config_params.collector_file_size = (SR_U16)atoi(position + (strlen("COLLECT_FILE_SIZE_MB ")));
         }
         position = strstr(buf, "DISK_SPACE_TRESHOLD_PERCENT ");
         if (position) {	
-            config_params.disk_space_treshold =  atoi(position + (strlen("DISK_SPACE_TRESHOLD_PERCENT ")));
+            config_params.disk_space_treshold = (SR_U16)atoi(position + (strlen("DISK_SPACE_TRESHOLD_PERCENT ")));
         }
         position = strstr(buf, "LOG_PATH ");
         if (position) {	
@@ -111,11 +111,11 @@ SR_8 read_vsentry_config(char* config_filename)
         
         position = strstr(buf, "CEF_CYCLING ");
         if (position) {	
-            config_params.cef_file_cycling =  atoi(position + (strlen("CEF_CYCLING ")));
+            config_params.cef_file_cycling = (SR_U16)atoi(position + (strlen("CEF_CYCLING ")));
         }
         position = strstr(buf, "CEF_FILE_LOG_SIZE_MB ");
         if (position) {	
-            config_params.cef_file_size =  atoi(position + (strlen("CEF_FILE_LOG_SIZE_MB ")));
+            config_params.cef_file_size = (SR_U16)atoi(position + (strlen("CEF_FILE_LOG_SIZE_MB ")));
         }
 		position = strstr(buf, "CEF_PATH_TEMP ");
         if (position) {	
@@ -124,7 +124,7 @@ SR_8 read_vsentry_config(char* config_filename)
         }
         position = strstr(buf, "CEF_MAX_RATE ");
         if (position) {
-            config_params.cef_max_rate =  atoi(position + (strlen("CEF_MAX_RATE ")));
+            config_params.cef_max_rate = (SR_U8)atoi(position + (strlen("CEF_MAX_RATE ")));
         }
         position = strstr(buf, "LOG_TYPE ");
 	param = strtok(buf, " ");
