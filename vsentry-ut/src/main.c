@@ -478,9 +478,9 @@ static int handle_ip(sysrepo_mng_handler_t *handler)
 }
 
 static int test_can_rule(sysrepo_mng_handler_t *handler, int rule_id, char *cmd, char *msg_id, char *dir,
-		char *user, char *exec, char *action, int *test_count, int *err_count)
+		char *user, char *exec, char *action, int *test_count, int *err_count, int is_success)
 {
-	int rc __attribute__((unused));
+	int rc __attribute__((unused)), is_string_exists;
 	char log_search_string[MAX_STR_SIZE];
 
 	(*test_count)++;
@@ -494,7 +494,8 @@ static int test_can_rule(sysrepo_mng_handler_t *handler, int rule_id, char *cmd,
 	rc = sleep(1);
 	/* Check the log */
 	sprintf(log_search_string, "RuleNumber=%d Action=", rule_id);
-	if (!log_is_string_exists(flog, log_search_string)) {
+	is_string_exists = log_is_string_exists(flog, log_search_string);
+	if ((is_string_exists && is_success) || (!is_string_exists && !is_success)) {
 		printf("%s FAILED !!!!!\n", cmd);
 		(*err_count)++;
 	}
@@ -505,15 +506,31 @@ static int test_can_rule(sysrepo_mng_handler_t *handler, int rule_id, char *cmd,
 static int handle_can(sysrepo_mng_handler_t *handler)
 {
 	int rc = 0, err_count = 0, test_count = 0;
+	char *user, *can_prog, cmd[1000];
 
+	system("sudo useradd -m -g users test_user");
 	if (!(flog = log_init())) 
 		return -1;
 
-	test_can_rule(handler, 10, "cansend vcan0 123#", "123", "OUT", "*", "*", "drop", &test_count, &err_count);
+	test_can_rule(handler, 10, "cansend vcan0 123#", "123", "OUT", "*", "*", "drop", &test_count, &err_count, 0);
 
-	test_can_rule(handler, 10, "cansend vcan0 125#", "any", "OUT", "*", "*", "drop", &test_count, &err_count);
+	test_can_rule(handler, 10, "cansend vcan0 124#", "123", "OUT", "*", "*", "drop", &test_count, &err_count, 1);
 
-	//test_can_rule(handler, 10, "cansend vcan0 126#", "126", "IN", "*", "*", "drop", &test_count, &err_count);
+	test_can_rule(handler, 10, "cansend vcan0 125#", "any", "OUT", "*", "*", "drop", &test_count, &err_count, 0);
+
+	//test_can_rule(handler, 10, "cansend vcan0 126#", "126", "IN", "*", "*", "drop", &test_count, &err_count, 0);
+
+	if ((can_prog = get_cmd_output("which cansend"))) {
+		test_can_rule(handler, 10, "cansend vcan0 123#", "123", "OUT", "*", can_prog, "drop", &test_count, &err_count, 0);
+		sprintf(cmd,"sudo cp %s %s1\n", can_prog, can_prog);
+		system(cmd);
+		test_can_rule(handler, 10, "cansend1 vcan0 123#", "123", "OUT", "*", can_prog, "drop", &test_count, &err_count, 1);
+	}
+
+	if ((user = getenv("USER"))) {
+		test_can_rule(handler, 10, "cansend vcan0 123#", "123", "OUT", "user", "*", "drop", &test_count, &err_count, 0);
+		test_can_rule(handler, 10, "cansend vcan0 123#", "123", "OUT", "test_user", "*", "drop", &test_count, &err_count, 1);
+	}
 
 	/* Delete rule */
 	sysrepo_mng_parse_json(handler, FIXED_PART_START FIXED_PART_END, NULL, 0);
@@ -526,6 +543,7 @@ static int handle_can(sysrepo_mng_handler_t *handler)
 	}
 
 	log_deinit(flog);
+	rc = system("sudo deluser test_user > /dev/null");
 		
 	return rc;
 }
