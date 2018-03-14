@@ -30,6 +30,11 @@ SR_BOOL sal_test_and_clear_bit (SR_U8 bit, void *addr)
 	return (test_and_clear_bit(bit, (unsigned long*)addr));
 }
 
+SR_BOOL sal_test_bit (SR_U8 bit, void *addr)
+{
+	return (test_bit(bit, (unsigned long*)addr));
+}
+
 /* function:     sal_fls64
  * description:  find last set bit in word
  * return value: -1 if word is zero, last set bit number otherwise

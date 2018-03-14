@@ -9,6 +9,9 @@
 #include <linux/utsname.h>
 #include <linux/kthread.h>
 
+#ifdef SYSFS_SUPPORT
+#include "sysfs_support.h"
+#endif
 #include "sr_lsm_hooks.h"
 #include "sal_linux.h"
 #include "dispatcher.h"
@@ -44,6 +47,11 @@ void sr_netfilter_uninit(void);
 #if 0
 static struct task_struct *tx_thread;
 #endif
+
+int get_vsentry_pid(void)
+{
+	return vsentry_get_pid();
+}
 
 /* mmap fops callback */
 static int vsentry_drv_mmap(struct file *file, struct vm_area_struct *vma)
@@ -310,6 +318,14 @@ static int __init vsentry_init(void)
 
 	sr_netfilter_init();
 	
+#ifdef SYSFS_SUPPORT
+	rc = sysfs_init();
+		if (rc) {
+		pr_debug("Cannot create sysfs 'vsentry'!\n");
+		return rc;
+	}
+#endif	
+	
 	//sr_cls_add_ipv4(htonl(0x0a0a0a00), htonl(0xFFFFFF00), 60, SR_DIR_SRC);
 	//sr_cls_add_ipv4(htonl(0x0a0a0a00), htonl(0xFFFFFF00), 60, SR_DIR_DST);
 	//sr_cls_port_add_rule(0, 60, SR_DIR_SRC, IPPROTO_TCP);
@@ -348,6 +364,9 @@ static void __exit vsentry_cleanup(void)
 
 	cdev_del(cdev_p);
 	unregister_chrdev_region(vsentry_dev, 1);
+#ifdef SYSFS_SUPPORT
+	sysfs_deinit();
+#endif
 	pr_info("[%s]: module released!\n", MODULE_NAME);
 }
 

@@ -97,6 +97,16 @@ void sr_cls_canid_uninit(void)
 	}
 }
 
+struct sr_hash_table_t * get_cls_in_can_table(void){
+	
+	return sr_cls_in_canid_table;
+}
+
+struct sr_hash_table_t * get_cls_out_can_table(void){
+	
+	return sr_cls_out_canid_table;
+}
+
 bit_array *src_cls_out_canid_any(void)
 {
 	return &sr_cls_out_canid_any_rules;

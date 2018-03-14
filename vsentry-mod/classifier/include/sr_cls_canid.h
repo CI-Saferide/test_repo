@@ -34,4 +34,7 @@ bit_array *src_cls_in_canid_any(void);
 
 SR_8 sr_cls_canid_msg_dispatch(struct sr_cls_canbus_msg *msg);
 
+struct sr_hash_table_t * get_cls_in_can_table(void);
+struct sr_hash_table_t * get_cls_out_can_table(void);
+
 #endif

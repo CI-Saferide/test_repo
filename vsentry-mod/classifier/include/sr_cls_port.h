@@ -30,5 +30,6 @@ bit_array *sr_cls_match_port(SR_U32 port, SR_8 dir, SR_U8 proto);
 bit_array *src_cls_port_any_src(void);
 bit_array *src_cls_port_any_dst(void);
 SR_8 sr_cls_port_msg_dispatch(struct sr_cls_port_msg *msg);
+struct sr_hash_table_t *get_cls_port_table(SR_U8 dir);
 
 #endif

@@ -79,6 +79,11 @@ int sr_cls_exec_inode_del_rule(enum sr_rule_type type, SR_U32 exec_inode, SR_U32
 	return SR_SUCCESS;
 }
 
+struct sr_hash_table_t * get_cls_exec_file_table(void){
+	
+	return sr_cls_exec_file_table;
+}
+
 bit_array *sr_cls_match_exec_inode(enum sr_rule_type type, SR_U32 exec_inode)
 {
         struct sr_hash_ent_multy_t *ent=(struct sr_hash_ent_multy_t *)sr_hash_lookup(sr_cls_exec_file_table, exec_inode);

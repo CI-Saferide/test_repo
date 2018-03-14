@@ -45,6 +45,10 @@ struct cls_rule_action_t{
 	SR_U16 phone_id;   // store an index to a list of phone numbers for sms actions
 };
 
+struct rule_database{
+	struct cls_rule_action_t sr_rules_db[SR_RULES_TYPE_MAX][SR_MAX_RULES];
+};
+
 // Rate Limits related functions
 void sr_cls_rl_init(struct sr_rl_t *rl);
 enum cls_actions sr_cls_rl_check(struct sr_rl_t *rl, SR_U32 timestamp, SR_U32 size);
@@ -55,5 +59,6 @@ enum cls_actions sr_cls_file_rule_match(SR_8 fileop, SR_U16 rulenum);
 enum cls_actions sr_cls_can_rule_match(SR_U16 rulenum);
 SR_8 sr_cls_rules_msg_dispatch(struct sr_cls_rules_msg *msg);
 void sr_classifier_empty_tables(SR_BOOL is_lock);
+struct rule_database* get_sr_rules_db(void); // Fetching the rule database
 
 #endif

@@ -99,6 +99,10 @@ static void sr_cls_filter_path_deinit(void)
 	filter_path_list = NULL;
 }
 
+struct sr_hash_table_t * get_cls_file_table(void){
+	
+	return sr_cls_file_table;
+}
 
 bit_array *sr_cls_file_any(void)
 {

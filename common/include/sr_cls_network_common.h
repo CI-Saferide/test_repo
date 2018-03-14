@@ -14,6 +14,13 @@ typedef enum {
 } sr_network_verb_t;
 
 enum {
+	SR_SRC_TCP = 0,
+	SR_SRC_UDP = 1,
+	SR_DST_TCP = 2,
+	SR_DST_UDP = 3,
+};
+
+enum {
 	SR_PROTO_TCP = 6,
 	SR_PROTO_UDP = 17,
 };

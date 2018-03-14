@@ -18,5 +18,6 @@ SR_8 sr_cls_file_msg_dispatch(struct sr_cls_file_msg *msg);
 SR_32 sr_cls_file_filter_path_msg_dispatch(struct sr_cls_filter_path_msg *msg);
 bit_array *sr_cls_file_find(SR_U32 inode);
 SR_BOOL sr_cls_filter_path_is_match(char *path);
+struct sr_hash_table_t * get_cls_file_table(void);
 
 #endif /* SR_CLS_FILE_H */

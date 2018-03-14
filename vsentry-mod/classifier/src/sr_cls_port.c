@@ -94,6 +94,23 @@ void sr_cls_port_uninit(void)
 	sal_kernel_print_info("[%s]: Successfully removed PORT classifier!\n", MODULE_NAME);
 }
 
+struct sr_hash_table_t *get_cls_port_table(SR_U8 dir){
+	
+	switch(dir){
+		case SR_SRC_TCP:
+			return sr_cls_sport_table[0];
+		case SR_SRC_UDP:
+			return sr_cls_sport_table[1];
+		case SR_DST_TCP:
+			return sr_cls_dport_table[0];
+		case SR_DST_UDP:
+			return sr_cls_dport_table[1];
+		default:
+			sal_kernel_print_err("[%s]: Failed to GET PORT table!\n", MODULE_NAME);	
+	}
+	return NULL;
+}
+
 bit_array *src_cls_port_any_src(void)
 {
         return &sr_cls_port_src_any_rules;

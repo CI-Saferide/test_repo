@@ -27,5 +27,6 @@ struct sr_hash_ent_multy_t *sr_cls_exec_inode_find(enum sr_rule_type type, SR_U3
 bit_array *sr_cls_match_exec_inode(enum sr_rule_type type, SR_U32 exec_inode);
 bit_array *sr_cls_exec_file_any(enum sr_rule_type type);
 int sr_cls_exec_inode_inherit(enum sr_rule_type type, SR_U32 from, SR_U32 to);
+struct sr_hash_table_t * get_cls_exec_file_table(void);
 
 #endif
