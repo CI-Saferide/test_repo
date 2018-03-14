@@ -23,17 +23,21 @@ static SR_BOOL last_is_enabled = SR_TRUE;
 
 static SR_32 handle_engine_start_stop(SR_BOOL is_on)
 {
-    FILE *f;
+	FILE *f;
+	SR_32 rc;
 
-    usleep(500000);
-	sr_control_set_state(is_on);
-    if (!(f = fopen("/tmp/sec_state", "w"))) {
+	usleep(500000);
+	if ((rc = sr_control_set_state(is_on)) != SR_SUCCESS) {
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,  "failed sr_control_set_state");
+		return SR_ERROR;
+	}
+	if (!(f = fopen("/tmp/sec_state", "w"))) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,  "failed opening file /tmp/sec_state");
 		return SR_ERROR;
 	}
 		
-	fprintf(f, is_on ? "on" : "off");
-   	fclose(f);
+	fprintf(f, "%s", is_on ? "on" : "off");
+	fclose(f);
 
 	return SR_SUCCESS;
 }
@@ -42,16 +46,16 @@ void sr_command_get_ml_state_str(char *state, SR_U32 size)
 {
 	switch (sr_stat_analysis_learn_mode_get()) {
 		case SR_STAT_MODE_LEARN:
-			strncpy(state, CMD_LEARN, size);
+			strncpy(state, CMD_LEARN, (size_t)size);
 			break;
 		case SR_STAT_MODE_PROTECT:
-			strncpy(state, CMD_PROTECT, size);
+			strncpy(state, CMD_PROTECT, (size_t)size);
 			break;
 		case SR_STAT_MODE_OFF:
-			strncpy(state, CMD_OFF, size);
+			strncpy(state, CMD_OFF, (size_t)size);
 			break;
 		default:
-			strncpy(state, "ERROR", size);
+			strncpy(state, "ERROR", (size_t)size);
 			break;
 	}
 }
@@ -59,9 +63,9 @@ void sr_command_get_ml_state_str(char *state, SR_U32 size)
 void sr_command_get_state_str(char *state, SR_U32 size)
 {
 	if (last_is_enabled)
-		strncpy(state, CMD_ENABLE, size);
+		strncpy(state, CMD_ENABLE, (size_t)size);
 	else 
-		strncpy(state, CMD_DISABLE, size);
+		strncpy(state, CMD_DISABLE, (size_t)size);
 }
 
 static SR_32 handle_command(void)
@@ -141,7 +145,7 @@ out:
 	return SR_SUCCESS;
 }
 
-SR_32 command_management(void *p)
+static SR_32 command_management(void *p)
 {
 	while (is_run_cmd) { 
 		if (handle_command() != SR_SUCCESS) {

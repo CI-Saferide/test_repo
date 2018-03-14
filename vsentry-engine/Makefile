@@ -102,7 +102,7 @@ endif
 all: $(TARGET)
 
 build_ver:
-	@echo "static const char SR_GIT_BUILD[] = \"`git log --pretty=format:'%h' -n 1`\"; " > $(TOP_DIR)/../common/include/sr_build_ver.h
+	@echo "/*@unused@*/ static const char SR_GIT_BUILD[] = \"`git log --pretty=format:'%h' -n 1`\"; " > $(TOP_DIR)/../common/include/sr_build_ver.h
 
 $(TARGET): build_ver $(OBJDIR) $(OBJS) libsr_log libsr_hash libjsmn libsysrepo_mng
 	@echo "linking $(notdir $@)"
@@ -132,8 +132,10 @@ $(OBJDIR)/%.o: %.c
 clean:
 	@rm -fr $(BUILD_DIR)
 
+SPLINT_FLAGS += -warnposix -paramuse -unrecog -retvalint -boolops -predboolothers -mustfreefresh -retvalother
+SPLINT_FLAGS += -mustfreeonly -predboolint -nullpass -infloops -compmempass -immediatetrans
 splint_analysis:
-	@$(foreach SRC,$(shell find . -name "*.c"),splint $(INCLUDES) $(SRC);)
+	@$(foreach SRC,$(shell find . -name "*.c"),splint $(SPLINT_FLAGS) $(INCLUDES) $(SRC);)
 
 -include $(DEPS)
 

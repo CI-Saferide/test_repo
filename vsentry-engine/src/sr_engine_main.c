@@ -36,8 +36,9 @@
 #include "sr_command.h"
 #include "sr_config_common.h"
 #include "sr_can_collector.h"
+#include "sr_config_parse.h"
 
-SR_32 engine_main_loop(void *data)
+static SR_32 engine_main_loop(void *data)
 {
 	SR_32 ret;
 	SR_8 *msg;
@@ -55,7 +56,7 @@ SR_32 engine_main_loop(void *data)
 	while (!sr_task_should_stop(SR_ENGINE_TASK)) {
 		msg = sr_read_msg(MOD2ENG_BUF, &ret);
 		if (ret > 0) {
-			sr_event_receiver(msg, ret);
+			sr_event_receiver(msg, (SR_U32)ret);
 			sr_free_msg(MOD2ENG_BUF);
 		}
 
@@ -75,7 +76,7 @@ SR_32 engine_main_loop(void *data)
 static void eng2mod_test(void)
 {
 	sr_file_msg_cls_t *msg;
-	SR_U8 count = 0;
+	SR_U32 count = 0;
 
 	while (count < 32) {
 		msg = (sr_file_msg_cls_t*)sr_get_msg(ENG2MOD_BUF, ENG2MOD_MSG_MAX_SIZE);
@@ -94,7 +95,7 @@ static void eng2mod_test(void)
 SR_32 sr_engine_start(void)
 {
 	SR_32 ret;
-	SR_U8 run = 1;
+	SR_BOOL run = SR_TRUE;
 	FILE *f;
 	sr_config_msg_t *msg;
 	struct config_params_t *config_params;
@@ -188,7 +189,7 @@ SR_32 sr_engine_start(void)
 
 	sr_get_command_start();
 
-	can_args->can_interface = config_params->can0_interface;
+	strncpy(can_args->can_interface, config_params->can0_interface, CAN_NAME);
 	if(config_params->collector_enable){
 		ret = sr_start_task(SR_CAN_COLLECT_TASK, can_collector_init);
 		if (ret != SR_SUCCESS) {
@@ -203,7 +204,11 @@ SR_32 sr_engine_start(void)
 						"can-bus collector - disabled!\n");
 	}
 	/* indicate VPI that we are running */
-	f = fopen("/tmp/sec_state", "w");
+	if (!(f = fopen("/tmp/sec_state", "w"))) {
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+						"failed to open file /tmp/sec_state\n");
+		return SR_ERROR;	
+	}
 	fprintf(f, "on");
 	fclose(f);
 	
@@ -212,16 +217,16 @@ SR_32 sr_engine_start(void)
 	if (msg) {
 		msg->msg_type = SR_MSG_TYPE_CONFIG;
 		msg->sub_msg.cef_max_rate = config_params->cef_max_rate; 
-		sr_send_msg(ENG2MOD_BUF, sizeof(msg));
+		sr_send_msg(ENG2MOD_BUF, (SR_32)sizeof(msg));
 	} else
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 						"failed to transfer config info to kernel");
 	while (run) {
-		SR_8 input = getchar();
+		SR_32 input = getchar();
 
 		switch (input) {
 			case 'b':
-				run = 0;
+				run = SR_FALSE;
 				break;
 			case 's':
 				sr_msg_print_stat();
@@ -242,8 +247,8 @@ SR_32 sr_engine_start(void)
 			case 'd':
 					printf ("printing debug info for ml_can\n");
 					sr_ml_can_print_hash();
-#endif /* CONFIG_CAN_ML */
 				break;
+#endif /* CONFIG_CAN_ML */
 		}
 	}
 	sr_get_command_stop();

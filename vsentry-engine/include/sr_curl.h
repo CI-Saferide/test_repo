@@ -45,7 +45,7 @@ static inline size_t curl_callback (void *contents, size_t size, size_t nmemb, v
     p->size += realsize;
 
     /* ensure null termination */
-    p->payload[p->size] = 0;
+    p->payload[p->size] = '\0';
 
     /* return size */
     return realsize;

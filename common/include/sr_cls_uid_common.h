@@ -5,13 +5,13 @@
 
 #define UID_ANY -1
 
-enum {
+typedef enum {
 	SR_CLS_UID_DEL_RULE = 0,
 	SR_CLS_UID_ADD_RULE,
-};
+} sr_uid_verb_t;
 
 struct sr_cls_uid_msg {
-	SR_U8 	msg_type;
+	sr_uid_verb_t msg_type;
 	SR_U32	rulenum;
 	enum sr_rule_type rule_type;
 	SR_U32  uid;

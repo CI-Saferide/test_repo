@@ -38,7 +38,7 @@ struct config_params_t {
 	
 };
 
-SR_8 read_vsentry_config(char* config_filename);
+SR_32 read_vsentry_config(char* config_filename);
 
 struct config_params_t *sr_config_get_param(void);
 

@@ -5,7 +5,7 @@
 #include "sr_msg_dispatch.h"
 #include "sr_engine_utils.h"
 	
-SR_8 sr_control_set_state(SR_BOOL state)
+SR_32 sr_control_set_state(SR_BOOL state)
 {
 	sr_control_msg_t *msg;
 
@@ -14,13 +14,13 @@ SR_8 sr_control_set_state(SR_BOOL state)
 			msg->msg_type = SR_MSG_TYPE_CONTROL;			
 			msg->sub_msg.msg_type = SR_CONTROL_SET_STATE;			
 			msg->sub_msg.state = state;
-			sr_send_msg(ENG2MOD_BUF, sizeof(msg));
+			sr_send_msg(ENG2MOD_BUF, (SR_32)sizeof(msg));
 		}
 
 	return SR_SUCCESS;
 }
 	
-SR_8 sr_control_util(SR_U8 control_type)
+SR_32 sr_control_util(sr_control_verb_t control_type)
 {
 	sr_control_msg_t *msg;
 
@@ -28,7 +28,7 @@ SR_8 sr_control_util(SR_U8 control_type)
 	if (msg) {
 		msg->msg_type = SR_MSG_TYPE_CONTROL;			
 		msg->sub_msg.msg_type = control_type;			
-		sr_send_msg(ENG2MOD_BUF, sizeof(msg));
+		sr_send_msg(ENG2MOD_BUF, (SR_32)sizeof(msg));
 	}
 
 	return SR_SUCCESS;

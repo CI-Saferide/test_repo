@@ -17,18 +17,17 @@
 // treetop: 1 for the first call, 0 for recursive calls further down.
 int sr_cls_file_add_rule(char *filename, char *exec, char *user, SR_U32 rulenum, SR_U8 treetop)
 {
-	struct stat buf;
+	struct stat buf = {};
 	sr_file_msg_cls_t *msg;
 	SR_U32 exec_inode;
-	SR_32  uid;
-        int st;
+	SR_32 uid, st;
 
 	if(lstat(filename, &buf)) { // Error
 		perror("lstat");
 		return SR_ERROR;
 	}
 
-	if ((st = sr_get_inode(exec, 0, &exec_inode)) != SR_SUCCESS) {
+	if ((st = sr_get_inode(exec, &exec_inode)) != SR_SUCCESS) {
 	    CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 			"Error file add rule failed getting inode \n");
 	    return st;
@@ -51,7 +50,7 @@ int sr_cls_file_add_rule(char *filename, char *exec, char *user, SR_U32 rulenum,
 			msg->sub_msg.inode1=buf.st_ino;
 			msg->sub_msg.exec_inode= exec_inode;
 			msg->sub_msg.uid= uid;
-			sr_send_msg(ENG2MOD_BUF, sizeof(msg));
+			sr_send_msg(ENG2MOD_BUF, (SR_32)sizeof(msg));
 		}
 	}
 	if (S_ISDIR(buf.st_mode))  {
@@ -64,7 +63,7 @@ int sr_cls_file_add_rule(char *filename, char *exec, char *user, SR_U32 rulenum,
 			msg->sub_msg.inode1=buf.st_ino;
 			msg->sub_msg.exec_inode=exec_inode;
 			msg->sub_msg.uid=uid;
-			sr_send_msg(ENG2MOD_BUF, sizeof(msg));
+			sr_send_msg(ENG2MOD_BUF, (SR_32)sizeof(msg));
 		}
 		// Now iterate subtree
 		DIR * dir = NULL;
@@ -103,7 +102,7 @@ int sr_cls_file_add_rule(char *filename, char *exec, char *user, SR_U32 rulenum,
 			msg->sub_msg.inode1=buf.st_ino;
 			msg->sub_msg.exec_inode=exec_inode;
 			msg->sub_msg.uid=uid;
-			sr_send_msg(ENG2MOD_BUF, sizeof(msg));
+			sr_send_msg(ENG2MOD_BUF, (SR_32)sizeof(msg));
 		}
 		//TODO: Do I need to update the destination file as well ???
 		//Can use realpath() to resolve target filename.
@@ -127,7 +126,7 @@ int sr_cls_file_del_rule(char *filename, char *exec, char *user, SR_U32 rulenum,
 		return SR_ERROR;
 	}
 
-	if ((st = sr_get_inode(exec, 0, &exec_inode)) != SR_SUCCESS) {
+	if ((st = sr_get_inode(exec, &exec_inode)) != SR_SUCCESS) {
 	    CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_LOW,
 			"Error: %s failed getting inode \n", __FUNCTION__);
 	   return st;
@@ -149,7 +148,7 @@ int sr_cls_file_del_rule(char *filename, char *exec, char *user, SR_U32 rulenum,
 			msg->sub_msg.inode1=buf.st_ino;
 			msg->sub_msg.exec_inode=exec_inode;
 			msg->sub_msg.uid=uid;
-			sr_send_msg(ENG2MOD_BUF, sizeof(msg));
+			sr_send_msg(ENG2MOD_BUF, (SR_32)sizeof(msg));
 		}
 	}
 	if (S_ISDIR(buf.st_mode))  {
@@ -162,7 +161,7 @@ int sr_cls_file_del_rule(char *filename, char *exec, char *user, SR_U32 rulenum,
 			msg->sub_msg.inode1=buf.st_ino;
 			msg->sub_msg.exec_inode=exec_inode;
 			msg->sub_msg.uid=uid;
-			sr_send_msg(ENG2MOD_BUF, sizeof(msg));
+			sr_send_msg(ENG2MOD_BUF, (SR_32)sizeof(msg));
 		}
 		// Now iterate subtree
 		DIR * dir = NULL;
@@ -198,7 +197,7 @@ int sr_cls_file_del_rule(char *filename, char *exec, char *user, SR_U32 rulenum,
 			msg->sub_msg.msg_type = SR_CLS_INODE_DEL_RULE;
 			msg->sub_msg.rulenum = rulenum;
 			msg->sub_msg.inode1=buf.st_ino;
-			sr_send_msg(ENG2MOD_BUF, sizeof(msg));
+			sr_send_msg(ENG2MOD_BUF, (SR_32)sizeof(msg));
 		}
 		//Can use realpath() to resolve target filename.
 		//I believe we should not modify the target file in this case.
@@ -259,7 +258,7 @@ int sr_cls_file_create(char *filename)
 			msg->sub_msg.msg_type = SR_CLS_INODE_INHERIT;
 			msg->sub_msg.inode1=buf2.st_ino;
 			msg->sub_msg.inode2=buf.st_ino;
-			sr_send_msg(ENG2MOD_BUF, sizeof(msg));
+			sr_send_msg(ENG2MOD_BUF, (SR_32)sizeof(msg));
 		}
 	}
 	
@@ -281,7 +280,7 @@ void sr_cls_file_delete(char *filename)
 			msg->msg_type = SR_MSG_TYPE_CLS_FILE;
 			msg->sub_msg.msg_type = SR_CLS_INODE_REMOVE;
 			msg->sub_msg.inode1=buf.st_ino;
-			sr_send_msg(ENG2MOD_BUF, sizeof(msg));
+			sr_send_msg(ENG2MOD_BUF, (SR_32)sizeof(msg));
 		}
 	}
 	if (S_ISDIR(buf.st_mode)) {
@@ -291,7 +290,7 @@ void sr_cls_file_delete(char *filename)
 			msg->msg_type = SR_MSG_TYPE_CLS_FILE;
 			msg->sub_msg.msg_type = SR_CLS_INODE_REMOVE;
 			msg->sub_msg.inode1=buf.st_ino;
-			sr_send_msg(ENG2MOD_BUF, sizeof(msg));
+			sr_send_msg(ENG2MOD_BUF, (SR_32)sizeof(msg));
 		}
 		// Now iterate subtree
 		DIR * dir = NULL;
@@ -327,7 +326,7 @@ int sr_cls_file_add_remove_filter_path(char *path, SR_BOOL is_add)
 		msg->msg_type = SR_MSG_TYPE_CLS_FILTER_PATH;
 		msg->sub_msg.msg_type = is_add ? SR_CLS_FILTER_PATH_ADD: SR_CLS_FILTER_PATH_REMOVE;
 		strncpy(msg->sub_msg.path, path, SR_MAX_PATH_SIZE);
-		sr_send_msg(ENG2MOD_BUF, sizeof(msg));
+		sr_send_msg(ENG2MOD_BUF, (SR_32)sizeof(msg));
 	}
 
 	return SR_SUCCESS;

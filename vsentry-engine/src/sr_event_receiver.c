@@ -11,8 +11,13 @@
 #include "sr_stat_process_connection.h"
 #endif
 
-SR_32 sr_ml_mode = ML_MODE_LEARN;
+static SR_32 sr_ml_mode = ML_MODE_LEARN;
 // TODO: load profile at startup, determine default loading state
+
+SR_32 get_sr_ml_mode(void)
+{
+	return sr_ml_mode;
+}
 
 void sr_ml_changemode(SR_32 mode)
 {
@@ -37,9 +42,12 @@ void sr_event_receiver(SR_8 *msg_buff, SR_U32 msg_len)
 {
 	struct sr_ec_new_connection_t *pNewConnection;
 	struct sr_ec_file_t *pNewFile;
+#ifdef CONFIG_STAT_ANALYSIS
 	struct sr_ec_process_died_t *pProcessDied;
-	SR_U32 offset = 0, rc;
 	SR_32 spid;
+#endif
+	SR_U32 offset = 0;
+	SR_32 rc;
 
 	while (offset < msg_len) {
 		switch  (msg_buff[offset++]) {

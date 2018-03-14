@@ -104,12 +104,12 @@ bit_array *src_cls_port_any_dst(void)
 }
 
 
-void sr_cls_port_remove(SR_U32 port, SR_8 dir, SR_8 proto)
+void sr_cls_port_remove(SR_U32 port, SR_8 dir, SR_U8 proto)
 { 
 	sr_hash_delete((dir==SR_DIR_DST)?sr_cls_dport_table[SR_PROTO_SELECTOR(proto)]:sr_cls_sport_table[SR_PROTO_SELECTOR(proto)], port);
 }
 
-int sr_cls_port_add_rule(SR_U32 port, SR_U32 rulenum, SR_8 dir, SR_8 proto)
+int sr_cls_port_add_rule(SR_U32 port, SR_U32 rulenum, SR_8 dir, SR_U8 proto)
 {
 	struct sr_hash_ent_t *ent;
 	
@@ -133,7 +133,7 @@ int sr_cls_port_add_rule(SR_U32 port, SR_U32 rulenum, SR_8 dir, SR_8 proto)
 	}
 	return SR_SUCCESS;
 }
-int sr_cls_port_del_rule(SR_U32 port, SR_U32 rulenum, SR_8 dir, SR_8 proto)
+int sr_cls_port_del_rule(SR_U32 port, SR_U32 rulenum, SR_8 dir, SR_U8 proto)
 {
 	if (port != PORT_ANY) {
 		struct sr_hash_ent_t *ent=sr_hash_lookup((dir==SR_DIR_DST)?sr_cls_dport_table[SR_PROTO_SELECTOR(proto)]:sr_cls_sport_table[SR_PROTO_SELECTOR(proto)], port);
@@ -185,7 +185,7 @@ void print_table(struct sr_hash_table_t *table)
 }
 
 
-struct sr_hash_ent_t *sr_cls_port_find(SR_U32 port, SR_8 dir, SR_8 proto)
+struct sr_hash_ent_t *sr_cls_port_find(SR_U32 port, SR_8 dir, SR_U8 proto)
 {
 	struct sr_hash_ent_t *ent=sr_hash_lookup((dir==SR_DIR_DST)?sr_cls_dport_table[SR_PROTO_SELECTOR(proto)]:sr_cls_sport_table[SR_PROTO_SELECTOR(proto)], port);
 	if (!ent) {
@@ -197,7 +197,7 @@ struct sr_hash_ent_t *sr_cls_port_find(SR_U32 port, SR_8 dir, SR_8 proto)
 	return ent;
 }
 
-void sr_cls_print_port_rules(SR_U32 port, SR_8 dir, SR_8 proto)
+void sr_cls_print_port_rules(SR_U32 port, SR_8 dir, SR_U8 proto)
 {
 	struct sr_hash_ent_t *ent=sr_hash_lookup((dir==SR_DIR_DST)?sr_cls_dport_table[SR_PROTO_SELECTOR(proto)]:sr_cls_sport_table[SR_PROTO_SELECTOR(proto)], port);
 	bit_array rules;
@@ -216,7 +216,7 @@ void sr_cls_print_port_rules(SR_U32 port, SR_8 dir, SR_8 proto)
 	}
 }
 
-bit_array *sr_cls_match_port(SR_U32 port, SR_8 dir, SR_8 proto)
+bit_array *sr_cls_match_port(SR_U32 port, SR_8 dir, SR_U8 proto)
 {
 	struct sr_hash_ent_t *ent=sr_hash_lookup((dir==SR_DIR_DST)?sr_cls_dport_table[SR_PROTO_SELECTOR(proto)]:sr_cls_sport_table[SR_PROTO_SELECTOR(proto)], port);
 

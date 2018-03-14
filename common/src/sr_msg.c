@@ -23,14 +23,14 @@ static SR_32 buf_msg_sizes[TOTAL_BUFS] = {
 	[MOD2STAT_BUF] = MOD2STAT_MSG_MAX_SIZE, 
 };
 
-SR_U32 sr_msg_get_buffer_msg_size(SR_U8 type)
+SR_U32 sr_msg_get_buffer_msg_size(sr_buf_type type)
 {
 	if (type >= TOTAL_BUFS)
 		return 0;
 	return buf_msg_sizes[type];
 }
 
-SR_32 sr_msg_alloc_buf(SR_U8 type, SR_32 length)
+SR_32 sr_msg_alloc_buf(sr_buf_type type, SR_32 length)
 {
 	SR_32 num_of_buffers;
 	SR_32 each_buf_size;
@@ -97,7 +97,7 @@ SR_32 sr_msg_alloc_buf(SR_U8 type, SR_32 length)
 	return SR_SUCCESS;
 }
 
-SR_32 sr_msg_free_buf(SR_U8 type)
+SR_32 sr_msg_free_buf(sr_buf_type type)
 {
 	if (type > MAX_BUF_TYPE) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "allocation freeing", SEVERITY_HIGH,
@@ -119,7 +119,7 @@ SR_32 sr_msg_free_buf(SR_U8 type)
 
 }
 
-SR_8 *sr_read_msg(SR_U8 type, SR_32 *length)
+SR_8 *sr_read_msg(sr_buf_type type, SR_32 *length)
 {
 	sr_ring_buffer *rb;
 
@@ -139,7 +139,7 @@ SR_8 *sr_read_msg(SR_U8 type, SR_32 *length)
 	return sr_read_buf(rb, length);
 }
 
-SR_32 sr_free_msg(SR_U8 type)
+SR_32 sr_free_msg(sr_buf_type type)
 {
 	sr_ring_buffer *rb;
 
@@ -163,7 +163,7 @@ SR_32 sr_free_msg(SR_U8 type)
 	return SR_SUCCESS;
 }
 
-SR_8 *sr_get_msg(SR_U8 type, SR_32 size)
+SR_8 *sr_get_msg(sr_buf_type type, SR_32 size)
 {
 	sr_ring_buffer *rb;
 
@@ -185,7 +185,7 @@ SR_8 *sr_get_msg(SR_U8 type, SR_32 size)
 	return sr_get_buf(rb, size);
 }
 
-SR_32 sr_send_msg(SR_U8 type, SR_32 length)
+SR_32 sr_send_msg(sr_buf_type type, SR_32 length)
 {
 	sr_ring_buffer *rb;
 
@@ -207,7 +207,7 @@ SR_32 sr_send_msg(SR_U8 type, SR_32 length)
 	return sr_write_buf(rb, length);
 }
 
-sr_shmem* sr_msg_get_buf(SR_U8 type)
+sr_shmem* sr_msg_get_buf(sr_buf_type type)
 {
 	if (type > MAX_BUF_TYPE) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "sr_msg_get_buf", SEVERITY_HIGH,

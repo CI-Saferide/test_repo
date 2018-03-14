@@ -7,7 +7,7 @@
 void sr_cls_rule_add(SR_32 rule_type,
 						SR_U16 rulenum,
 						SR_U16 actions,
-						SR_8 file_ops,
+						SR_U8 file_ops,
 						sr_rate_type_t rate_type,
 						SR_U32 rl_max_rate,
 						SR_U16 rl_exceed_action,
@@ -35,7 +35,7 @@ void sr_cls_rule_add(SR_32 rule_type,
 			msg->sub_msg.phone_id = phone_id;	
 			msg->sub_msg.skip_rulenum = skip_rulenum;
 			
-			sr_send_msg(ENG2MOD_BUF, sizeof(msg));
+			sr_send_msg(ENG2MOD_BUF, (SR_32)sizeof(msg));
 		}
 }
 
@@ -50,7 +50,7 @@ void sr_cls_rule_del(SR_32 rule_type, SR_U16 rulenum)
 			msg->sub_msg.msg_type = SR_CLS_RULES_DEL;			
 			msg->sub_msg.rule_type = rule_type;
 			msg->sub_msg.rulenum = rulenum;						
-			sr_send_msg(ENG2MOD_BUF, sizeof(msg));
+			sr_send_msg(ENG2MOD_BUF, (SR_32)sizeof(msg));
 		}
 
 
