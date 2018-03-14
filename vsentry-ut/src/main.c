@@ -505,10 +505,11 @@ static int test_can_rule(sysrepo_mng_handler_t *handler, int rule_id, char *cmd,
 
 static int handle_can(sysrepo_mng_handler_t *handler)
 {
-	int rc = 0, err_count = 0, test_count = 0;
+	int rc __attribute__((unused));
+	int err_count = 0, test_count = 0;
 	char *user, *can_prog, cmd[1000];
 
-	system("sudo useradd -m -g users test_user");
+	rc = system("sudo useradd -m -g users test_user");
 	if (!(flog = log_init())) 
 		return -1;
 
@@ -523,7 +524,7 @@ static int handle_can(sysrepo_mng_handler_t *handler)
 	if ((can_prog = get_cmd_output("which cansend"))) {
 		test_can_rule(handler, 10, "cansend vcan0 123#", "123", "OUT", "*", can_prog, "drop", &test_count, &err_count, 0);
 		sprintf(cmd,"sudo cp %s %s1\n", can_prog, can_prog);
-		system(cmd);
+		rc = system(cmd);
 		test_can_rule(handler, 10, "cansend1 vcan0 123#", "123", "OUT", "*", can_prog, "drop", &test_count, &err_count, 1);
 	}
 
