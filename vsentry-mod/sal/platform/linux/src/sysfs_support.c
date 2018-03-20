@@ -1,7 +1,7 @@
 /* file: sysfs_support.c
  * purpose: this file initialize the kernel module
 */
-
+#ifdef SYSFS_SUPPORT
 #include "sysfs_support.h"
 
 static struct kobject *vsentry;
@@ -83,18 +83,13 @@ done:
 
 static ssize_t state_show(struct kobject *kobj, struct kobj_attribute *attr, char *buf)
 {
-	return sprintf(buf, "%s\n", (0 != get_vsentry_pid()? "enabled" : "disabled"));
-}
-
-static ssize_t state_store(struct kobject *kobj, struct kobj_attribute *attr, const char *buf, size_t count)
-{
-	return count;
+	return sprintf(buf, "%s\n", (0 != vsentry_get_pid()? "enabled" : "disabled"));
 }
 
 static struct kobj_attribute CLS_file = 		__ATTR_RW(cls_file);
 static struct kobj_attribute CLS_can = 			__ATTR_RW(cls_can);
 static struct kobj_attribute CLS_ipv4 =			__ATTR_RW(cls_ipv4);
-static struct kobj_attribute STATE =			__ATTR_RW(state);
+static struct kobj_attribute STATE =			__ATTR_RO(state);
 
 int sysfs_init(void){
 	
@@ -130,3 +125,4 @@ int sysfs_init(void){
 void sysfs_deinit(){
 	kobject_put(vsentry);	
 }
+#endif

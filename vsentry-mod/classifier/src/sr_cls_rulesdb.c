@@ -8,7 +8,7 @@
 #include "sr_actions_common.h"
 #include "sr_control.h"
 
-struct rule_database sr_db;
+static struct rule_database sr_db;
 
 struct rule_database* get_sr_rules_db(void)
 {
@@ -116,6 +116,7 @@ enum cls_actions sr_cls_network_rule_match(SR_U16 rulenum, SR_U32 size)
 	} else {
 		action = sr_db.sr_rules_db[SR_NET_RULES][rulenum].actions;
 	}
+	
 	// if action is drop - set log implicitly
 	if (action&(SR_CLS_ACTION_LOG|SR_CLS_ACTION_DROP)) {
 		should_log = (SR_CLS_ACTION_ALLOW == sr_cls_rl_check(&sr_db.sr_rules_db[SR_NET_RULES][rulenum].log_rate, jiffies/HZ, 1));

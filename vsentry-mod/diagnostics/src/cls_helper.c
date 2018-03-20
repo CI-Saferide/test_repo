@@ -1,6 +1,8 @@
 /* file: cls_helper.c
  * purpose: this file is used by all sysfs subjects for vsentry classifier
 */
+#ifdef SYSFS_SUPPORT
+
 #include "cls_helper.h"
 
 SR_U32 get_exec_for_rule(struct sr_hash_table_t *table,SR_16 rule,SR_32 table_size,enum sr_rule_type type)
@@ -59,3 +61,4 @@ SR_U32 get_uid_for_rule(struct sr_hash_table_t *table,SR_16 rule,SR_32 table_siz
 	
 	return -1;
 }
+#endif

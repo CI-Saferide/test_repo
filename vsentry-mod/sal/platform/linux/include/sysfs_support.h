@@ -9,6 +9,7 @@
 
 #include "sr_types.h"
 #include "sal_linux.h"
+#include "sr_control.h"
 #include "sysfs_cls_can.h"
 #include "sysfs_cls_file.h"
 #include "sysfs_cls_ipv4.h"
@@ -17,7 +18,5 @@
 
 int sysfs_init(void);
 void sysfs_deinit(void);
-
-int get_vsentry_pid(void);
 
 #endif /* SYSFS_SUPPORT_H*/

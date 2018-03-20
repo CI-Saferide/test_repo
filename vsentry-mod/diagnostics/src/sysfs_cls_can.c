@@ -1,6 +1,7 @@
 /* file: sysfs_cls_can.c
  * purpose: this file used as a getter/setter to the sysfs variables
 */
+#ifdef SYSFS_SUPPORT
 
 #include "cls_helper.h"
 #include "sysfs_cls_can.h"
@@ -231,4 +232,4 @@ void dump_can_rule(SR_16 rule)
 	fetch_cls_can();
 	store_rule(rule);
 }
-
+#endif

@@ -1,6 +1,7 @@
 /* file: sysfs_cls_file.c
  * purpose: this file used as a getter/setter to the sysfs variables
 */
+#ifdef SYSFS_SUPPORT
 
 #include "cls_helper.h"
 #include "sysfs_cls_file.h"
@@ -254,4 +255,4 @@ void dump_file_rule(SR_16 rule)
 	fetch_cls_file();	
 	store_rule(sr_cls_file_table,rule);
 }
-
+#endif

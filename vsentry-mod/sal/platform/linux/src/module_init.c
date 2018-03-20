@@ -48,11 +48,6 @@ void sr_netfilter_uninit(void);
 static struct task_struct *tx_thread;
 #endif
 
-int get_vsentry_pid(void)
-{
-	return vsentry_get_pid();
-}
-
 /* mmap fops callback */
 static int vsentry_drv_mmap(struct file *file, struct vm_area_struct *vma)
 {
