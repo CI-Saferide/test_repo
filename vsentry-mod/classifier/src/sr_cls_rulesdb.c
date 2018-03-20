@@ -8,7 +8,7 @@
 #include "sr_actions_common.h"
 #include "sr_control.h"
 
-struct rule_database sr_db;
+static struct rule_database sr_db;
 
 struct rule_database* get_sr_rules_db(void)
 {
