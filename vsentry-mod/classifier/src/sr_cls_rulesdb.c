@@ -52,14 +52,14 @@ void sr_cls_rule_add(SR_32 rule_type, SR_U16 rulenum, SR_U16 actions, SR_8 file_
 
 	if (unlikely(rulenum>=SR_MAX_RULES)){
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-						"failed to add rule, invalid rule id (%u)", rulenum);
+						"reason=failed to add rule, invalid rule id (%u)", rulenum);
 		return;
 	}
 	sr_db.sr_rules_db[rule_type][rulenum].actions = actions;
 	if (rule_type == SR_FILE_RULES) {
 		if (file_ops > 7) {
 			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-							"failed to add rule, invalid rule id (%u)", rulenum);
+							"reason=failed to add rule, invalid rule id (%u)", rulenum);
 			return;
 		}
 		sr_db.sr_rules_db[rule_type][rulenum].file_ops = file_ops;
@@ -109,7 +109,7 @@ enum cls_actions sr_cls_rl_check(struct sr_rl_t *rl, SR_U32 timestamp, SR_U32 si
 
 enum cls_actions sr_cls_network_rule_match(SR_U16 rulenum, SR_U32 size)
 {
-	SR_U16 action = 0, should_log;
+	SR_U16 action = 0;
 
 	if (sr_db.sr_rules_db[SR_NET_RULES][rulenum].actions & SR_CLS_ACTION_RATE) { 
 		action = sr_cls_rl_check(&sr_db.sr_rules_db[SR_NET_RULES][rulenum].rate, jiffies / HZ, size);
@@ -118,6 +118,8 @@ enum cls_actions sr_cls_network_rule_match(SR_U16 rulenum, SR_U32 size)
 	}
 	
 	// if action is drop - set log implicitly
+#ifdef RL_SUPPORT
+	SR_U16 should_log;
 	if (action&(SR_CLS_ACTION_LOG|SR_CLS_ACTION_DROP)) {
 		should_log = (SR_CLS_ACTION_ALLOW == sr_cls_rl_check(&sr_db.sr_rules_db[SR_NET_RULES][rulenum].log_rate, jiffies/HZ, 1));
 		if (should_log) { // set or clear the log bit accordingly
@@ -126,17 +128,18 @@ enum cls_actions sr_cls_network_rule_match(SR_U16 rulenum, SR_U32 size)
 			action &= (~SR_CLS_ACTION_LOG);
 		}
 	}
+#endif
 	// Log action must be handled by caller, since all of the event metadata exists only there.
 	return action;
 }
 
 enum cls_actions sr_cls_file_rule_match(SR_8 fileop, SR_U16 rulenum)
 {
-	SR_U16 action, should_log;
+	SR_U16 action;
 
 	if (!(fileop & (SR_FILEOPS_READ | SR_FILEOPS_WRITE | SR_FILEOPS_EXEC))) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-						"failed to match rule, invalid file op");
+						"reason=failed to match rule, invalid file op");
 		return SR_CLS_ACTION_NOOP;
 	}
 	if (!(sr_db.sr_rules_db[SR_FILE_RULES][rulenum].file_ops & fileop)) { // not really a match
@@ -148,6 +151,8 @@ enum cls_actions sr_cls_file_rule_match(SR_8 fileop, SR_U16 rulenum)
 		action = sr_db.sr_rules_db[SR_FILE_RULES][rulenum].actions;
 	}
 	// if action is drop - set log implicitly
+#ifdef RL_SUPPORT
+	SR_U16 should_log;
 	if (action&(SR_CLS_ACTION_LOG|SR_CLS_ACTION_DROP)) {
 		should_log = (SR_CLS_ACTION_ALLOW == sr_cls_rl_check(&sr_db.sr_rules_db[SR_NET_RULES][rulenum].log_rate, jiffies/HZ, 1));
 		if (should_log) { // set or clear the log bit accordingly
@@ -156,13 +161,14 @@ enum cls_actions sr_cls_file_rule_match(SR_8 fileop, SR_U16 rulenum)
 			action &= (~SR_CLS_ACTION_LOG);
 		}
 	}
+#endif
 	// Log action must be handled by caller, since all of the event metadata exists only there.
 	return action;
 }
 
 enum cls_actions sr_cls_can_rule_match(SR_U16 rulenum)
 {
-	SR_U16 action, should_log;
+	SR_U16 action;
 
 	if (sr_db.sr_rules_db[SR_CAN_RULES][rulenum].actions & SR_CLS_ACTION_RATE) { 
 		action = sr_cls_rl_check(&sr_db.sr_rules_db[SR_CAN_RULES][rulenum].rate, jiffies, 1);
@@ -170,6 +176,8 @@ enum cls_actions sr_cls_can_rule_match(SR_U16 rulenum)
 		action = sr_db.sr_rules_db[SR_CAN_RULES][rulenum].actions;
 	}
 	// if action is drop - set log implicitly
+#ifdef RL_SUPPORT
+	SR_U16 should_log;
 	if (action&(SR_CLS_ACTION_LOG|SR_CLS_ACTION_DROP)) {
 		should_log = (SR_CLS_ACTION_ALLOW == sr_cls_rl_check(&sr_db.sr_rules_db[SR_NET_RULES][rulenum].log_rate, jiffies/HZ, 1));
 		if (should_log) { // set or clear the log bit accordingly
@@ -178,6 +186,7 @@ enum cls_actions sr_cls_can_rule_match(SR_U16 rulenum)
 			action &= (~SR_CLS_ACTION_LOG);
 		}
 	}
+#endif
 	// Log action must be handled by caller, since all of the event metadata exists only there.
 	return action;
 }
@@ -188,7 +197,7 @@ SR_8 sr_cls_rules_msg_dispatch(struct sr_cls_rules_msg *msg)
 	switch (msg->msg_type) {
 		case SR_CLS_RULES_DEL:
 			CEF_log_debug(SR_CEF_CID_SYSTEM, "info", SEVERITY_LOW,
-							"del rule on ruledc");
+							"del rule on ruledb");
 			sr_cls_rule_del(msg->rule_type, msg->rulenum);
 			break;
 		case SR_CLS_RULES_ADD:
