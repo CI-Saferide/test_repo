@@ -232,4 +232,4 @@ void dump_can_rule(SR_16 rule)
 	fetch_cls_can();
 	store_rule(rule);
 }
-#endif
+#endif /* SYSFS_SUPPORT */
