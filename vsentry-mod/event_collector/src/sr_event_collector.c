@@ -111,7 +111,7 @@ void sr_ec_append_event(SR_U8 buf_type, SR_U8 event_type, void *sample_data, SR_
 	if ( (!sr_ec_buffer[buf_type]) && (sr_ec_allocate_buffer(buf_type) == SR_ERROR)) {
 		goto out;
 	}
-	if ( sr_ec_offset[buf_type] && ((sr_ec_offset[buf_type]+data_length > size) || // buffer full
+	if ( sr_ec_offset[buf_type] && ((sr_ec_offset[buf_type]+data_length+1 > size) || // buffer full
 			(sr_ec_sample_period_exceeded(buf_type, now_sec, now_nsec))) ) { // time based constraint
 		// send old buffer and allocate a new one
 		sr_send_msg(buf_type, sr_ec_offset[buf_type]);
