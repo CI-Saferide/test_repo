@@ -255,4 +255,4 @@ void dump_file_rule(SR_16 rule)
 	fetch_cls_file();	
 	store_rule(sr_cls_file_table,rule);
 }
-#endif
+#endif /* SYSFS_SUPPORT */
