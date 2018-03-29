@@ -237,4 +237,4 @@ void dump_ipv4_rule(SR_16 rule)
 	fetch_cls_ipv4();
 	store_rule(sr_cls_ipv4_table,rule);
 }
-#endif
+#endif /* SYSFS_SUPPORT */
