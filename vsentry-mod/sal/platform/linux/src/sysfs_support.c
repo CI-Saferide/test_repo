@@ -123,6 +123,7 @@ int sysfs_init(void){
 }
 
 void sysfs_deinit(){
-	kobject_put(vsentry);	
+	if (vsentry)
+		kobject_put(vsentry);	
 }
-#endif
+#endif /* SYSFS_SUPPORT */
