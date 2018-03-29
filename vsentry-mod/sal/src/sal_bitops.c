@@ -148,6 +148,16 @@ void sal_and_self_op_two_arrays (bit_array *base, bit_array *A, bit_array *B)
 		}
 	}
 }
+
+SR_BOOL sal_test_bit_array(SR_U16 bit, bit_array *arr)
+{
+	SR_U8		pos_in_summary;
+	if (bit > 4095)
+		return (-1);
+	pos_in_summary = (bit/64);
+	return (SR_BOOL)(sal_test_bit((bit%64), &arr->level2[pos_in_summary]));
+}
+
 void sal_print_bit_array(bit_array *arr)
  {
  	bit_array tmp;

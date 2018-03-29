@@ -17,5 +17,6 @@ struct sr_hash_ent_t *sr_cls_uid_find(enum sr_rule_type type, SR_32 uid);
 bit_array *sr_cls_match_uid(enum sr_rule_type type, SR_32 uid);
 bit_array *sr_cls_uid_any(enum sr_rule_type type);
 SR_8 sr_cls_uid_msg_dispatch(struct sr_cls_uid_msg *msg);
+struct sr_hash_table_t * get_cls_uid_table(enum sr_rule_type type);
 
 #endif

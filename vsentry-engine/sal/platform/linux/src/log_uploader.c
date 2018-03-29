@@ -318,6 +318,7 @@ static int can_log_upload(void)
     struct curl_httppost* post = NULL;
     struct curl_httppost* last = NULL;
     char post_vin[64];
+	char post_ter[9];
     struct config_params_t *config_params;
     int rc = 0;
 
@@ -358,8 +359,12 @@ static int can_log_upload(void)
         curl_formadd(&post, &last, CURLFORM_COPYNAME, "can",
               CURLFORM_FILE, candump_file_name_tgz, CURLFORM_END);
         curl_easy_setopt(curl, CURLOPT_HTTPPOST, post);
+        
         snprintf(post_vin, 64, "X-VIN: %s", config_params->vin);
         chunk = curl_slist_append(chunk, post_vin);
+        snprintf(post_ter, 9, "X-TER: %d",0);
+        chunk = curl_slist_append(chunk, post_ter);
+        
         curl_easy_setopt(curl, CURLOPT_HTTPHEADER, chunk);
         chunk = curl_slist_append(chunk, md5_hdr);
         curl_easy_setopt(curl, CURLOPT_HTTPHEADER, chunk);

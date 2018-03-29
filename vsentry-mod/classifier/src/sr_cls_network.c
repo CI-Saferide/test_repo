@@ -77,6 +77,16 @@ void sr_cls_network_uninit(void)
 	}
 }
 
+struct radix_head* get_cls_src_ipv4_table(void)
+{
+	return sr_cls_src_ipv4;
+}
+
+struct radix_head* get_cls_dst_ipv4_table(void)
+{
+	return sr_cls_dst_ipv4;
+}
+
 bit_array *src_cls_network_any_src(void) 
 { 
 	return &sr_cls_network_src_any_rules; 

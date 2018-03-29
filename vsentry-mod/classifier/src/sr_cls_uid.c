@@ -64,7 +64,12 @@ void sr_cls_uid_empty_table(SR_BOOL is_lock)
         	memset(&sr_cls_uid_any_rules[i], 0, sizeof(bit_array));
         	sr_hash_empty_table(sr_cls_uid_table[i], is_lock);
 	}
-}      
+}  
+
+struct sr_hash_table_t * get_cls_uid_table(enum sr_rule_type type){
+	
+	return sr_cls_uid_table[type];
+}    
 
 bit_array *sr_cls_uid_any(enum sr_rule_type type)
 {

@@ -19,6 +19,7 @@ void sal_set_bit (SR_U8 bit, void *addr);
 void sal_clear_bit (SR_U8 bit, void *addr);
 SR_BOOL sal_test_and_set_bit (SR_U8 bit, void *addr);
 SR_BOOL sal_test_and_clear_bit (SR_U8 bit, void *addr);
+SR_BOOL sal_test_bit (SR_U8 bit, void *addr);
 
 typedef struct __bit_array {
    SR_U64		summary;
@@ -30,6 +31,7 @@ typedef struct __bit_array {
 
 void sal_set_bit_array (SR_U16 bit, bit_array *arr);
 void sal_clear_bit_array (SR_U16 bit, bit_array *arr);
+SR_BOOL sal_test_bit_array(SR_U16 bit, bit_array *arr);
 SR_16 sal_ffs_array (bit_array *arr);
 SR_16 sal_ffs_and_clear_array (bit_array *arr);
 SR_16 sal_ffs_and_clear_bitmask (SR_U64 *bitmask);
