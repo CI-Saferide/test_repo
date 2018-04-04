@@ -89,7 +89,7 @@ SR_32 sr_gen_hash_insert(struct sr_gen_hash *hash, void *key, void *data)
 	}
 	if (*iter) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-			"hash_insert error, key exists");
+			"%s=hash_insert error, key exists",REASON);
 		rc = SR_ERROR;
 		goto out;
 	}
@@ -241,7 +241,8 @@ void sr_gen_hash_print(struct sr_gen_hash *hash)
 		}
 	}
 	CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,
-		"GEN HASH table print count:%d \n", count);
+		"%s=GEN HASH table print count:%d",MESSAGE,
+		count);
 }
 
 void *sr_gen_hash_get(struct sr_gen_hash *hash, void *key)

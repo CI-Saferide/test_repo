@@ -36,7 +36,8 @@ void can_ml_print(void *data_in_hash)
 {
 	ml_can_item_t* ptr = (ml_can_item_t*)data_in_hash;
 	CEF_log_event(SR_CEF_CID_SYSTEM, "info", SEVERITY_LOW,
-					"can_ml msg_id: 0x%x, K = %d, h = %d", ptr->msg_id, ptr->K, ptr->h);
+		"%s=can_ml msg_id: 0x%x, K %d, h %d",MESSAGE,
+		ptr->msg_id, ptr->K, ptr->h);
 }
 
 SR_32 sr_ml_can_hash_init(void)
@@ -48,7 +49,7 @@ SR_32 sr_ml_can_hash_init(void)
 	can_ml_hash_ops.print = can_ml_print;
 	if (!(can_ml_hash = sr_gen_hash_new(ML_CAN_HASH_SIZE, can_ml_hash_ops, 0))) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-						"failed to gen new hash table for can_ml enforce");
+			"%s=failed to gen new hash table for can_ml enforce",REASON);
 		return SR_ERROR;
 	}
 
@@ -106,14 +107,16 @@ static SR_BOOL can_ml_test(ml_can_item_t* item)
 
 		if (rate_limit(item) == SR_TRUE)
 			CEF_log_event(SR_CEF_CID_ML_CAN, "CAN msg dropped", SEVERITY_HIGH,
-							"msg 0x%x dropped by learning machine, IAT too high", item->msg_id);
+				"%s=msg 0x%x dropped by learning machine, IAT too high",MESSAGE,
+				item->msg_id);
 		return SR_ML_DROP;
 	} else if (item->calc_sigma_minus > item->h) {
 		item->calc_sigma_plus = 0;
 		item->calc_sigma_minus = 0;
 		if (rate_limit(item) == SR_TRUE)
 			CEF_log_event(SR_CEF_CID_ML_CAN, "CAN msg dropped", SEVERITY_HIGH,
-							"msg 0x%x dropped by learning machine, IAT too low", item->msg_id);
+				"%s=msg 0x%x dropped by learning machine, IAT too low",MESSAGE,
+				item->msg_id);
 		return SR_ML_DROP;
 	}
 	return SR_ML_ALLOW;
@@ -129,7 +132,8 @@ static SR_32 update_can_item(disp_info_t* info, struct sr_ml_can_msg *msg)
 			SR_Zalloc(can_ml_item, ml_can_item_t *, sizeof(ml_can_item_t));
 			if (!can_ml_item) {
 				CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-								"failed to allocate buffer for can_ml enforce table (msg_id 0x%x)", info->can_info.msg_id);
+					"%s=failed to allocate buffer for can_ml enforce table (msg_id 0x%x)",REASON,
+					info->can_info.msg_id);
 				/* we cannot decide about this msg, so we allow it */
 				return SR_ML_ALLOW;
 			}
@@ -147,7 +151,8 @@ static SR_32 update_can_item(disp_info_t* info, struct sr_ml_can_msg *msg)
 			}
 			if ((sr_gen_hash_insert(can_ml_hash, (void *)(long)info->can_info.msg_id , can_ml_item)) != SR_SUCCESS) {
 					CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-									"failed to insert mid 0x%x to can_ml enforce table", can_ml_item->msg_id);
+						"%s=failed to insert mid 0x%x to can_ml enforce table",REASON,
+						can_ml_item->msg_id);
 					/* we cannot decide about this msg, so we allow it */
 					return SR_ML_ALLOW;
 			}
@@ -190,12 +195,12 @@ SR_32 sr_ml_can_handle_message(struct sr_ml_can_msg *msg)
 		/* this is an indication for start the protection */
 		protect = SR_TRUE;
 		CEF_log_event(SR_CEF_CID_ML_CAN, "info", SEVERITY_LOW,
-						"can_ml protection started");
+			"%s=can_ml protection started",MESSAGE);
 	} else if (msg->msg_id == CAN_ML_STOP_PROTECT) {
 		/* this is an indication for protection stop */
 		if (protect == SR_TRUE) {
 			CEF_log_event(SR_CEF_CID_ML_CAN, "info", SEVERITY_LOW,
-						"can_ml protection stopped");
+				"%s=can_ml protection stopped",MESSAGE);
 		}
 		protect = SR_FALSE;
 		sr_ml_can_hash_delete_all();

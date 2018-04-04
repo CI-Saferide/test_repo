@@ -54,7 +54,9 @@ SR_32 scanner_suspicious_conn(void *skb)
 				sprintf(sip, "source=%02d.%02d.%02d.%02d",
 					(src_ip&0xff000000)>>24, (src_ip&0x00ff0000)>>16, (src_ip&0xff00)>> 8, src_ip&0xff);
 			}
-			CEF_log_event(SR_CEF_CID_NETWORK, "port scan detected. initiating counter-measures", SEVERITY_HIGH, sip);
+			CEF_log_event(SR_CEF_CID_NETWORK, "port scan detected",SEVERITY_HIGH,
+			"%s=port scan detected. initiating counter-measures %s=%s ",MESSAGE,
+			DEVICE_SRC_IP,sip);
 			scan_detected = 1;
 		}
 	}
