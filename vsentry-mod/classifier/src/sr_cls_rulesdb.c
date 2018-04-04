@@ -197,12 +197,12 @@ SR_8 sr_cls_rules_msg_dispatch(struct sr_cls_rules_msg *msg)
 	switch (msg->msg_type) {
 		case SR_CLS_RULES_DEL:
 			CEF_log_debug(SR_CEF_CID_SYSTEM, "info", SEVERITY_LOW,
-							"del rule on ruledb");
+							"msg=del rule on ruledb");
 			sr_cls_rule_del(msg->rule_type, msg->rulenum);
 			break;
 		case SR_CLS_RULES_ADD:
 			CEF_log_debug(SR_CEF_CID_SYSTEM, "info", SEVERITY_LOW,
-							"add rule on ruledb");
+							"msg=add rule on ruledb");
 			sr_cls_rule_add(msg->rule_type,
 			msg->rulenum,
 			msg->actions,

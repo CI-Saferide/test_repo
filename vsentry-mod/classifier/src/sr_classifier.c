@@ -148,7 +148,15 @@ SR_32 sr_classifier_network(disp_info_t* info)
 			sprintf(actionstring, "Allow");
 			sprintf(sip, "%02d.%02d.%02d.%02d", (sip_t&0xff000000)>>24, (sip_t&0x00ff0000)>>16, (sip_t&0xff00)>> 8, sip_t&0xff);
 			sprintf(dip, "%02d.%02d.%02d.%02d", (dip_t&0xff000000)>>24, (dip_t&0x00ff0000)>>16, (dip_t&0xff00)>> 8, dip_t&0xff);
-			sprintf(ext, "cs1=%d act=%s proto=%s src=%s spt=%d dst=%s dpt=%d", rule, actionstring, info->tuple_info.ip_proto == IPPROTO_TCP?"TCP":"UDP", sip, info->tuple_info.sport, dip, info->tuple_info.dport); 
+			sprintf(ext, "%s=%d act=%s proto=%s src=%s spt=%d dst=%s dpt=%d",
+			RULE_NUM_KEY, //CEF extension KEY
+			rule,
+			actionstring,
+			info->tuple_info.ip_proto == IPPROTO_TCP?"TCP":"UDP",
+			sip,
+			info->tuple_info.sport,
+			dip,
+			info->tuple_info.dport); 
 			if (action & SR_CLS_ACTION_DROP) {
 				CEF_log_event(SR_CEF_CID_NETWORK, "Connection drop" , SEVERITY_HIGH, ext);
 			} else {
@@ -220,7 +228,7 @@ SR_32 sr_classifier_file(disp_info_t* info)
 	// PID
 	if ((st = sr_cls_process_add(info->fileinfo.id.pid)) != SR_SUCCESS) {
 	    CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-						"error adding process \n");
+						"reason=error adding process");
 	}
 	ptr = sr_cls_process_match(SR_FILE_RULES, info->fileinfo.id.pid);
 	if (ptr) {
@@ -236,7 +244,8 @@ SR_32 sr_classifier_file(disp_info_t* info)
 		action = sr_cls_file_rule_match(info->fileinfo.fileop, rule);
 		if (action & SR_CLS_ACTION_LOG) {
 			char ext[64];
-			sprintf(ext, "cs1=%d fileHash=%d filePermission=%s",
+			sprintf(ext, "%s=%d fileHash=%d filePermission=%s",
+			RULE_NUM_KEY, //CEF extension KEY
 			rule,
 			info->fileinfo.parent_inode?info->fileinfo.parent_inode:info->fileinfo.current_inode,
 			(info->fileinfo.fileop&SR_FILEOPS_WRITE)?"Write":(info->fileinfo.fileop&SR_FILEOPS_READ)?"Read":"Execute"); 
@@ -276,7 +285,7 @@ SR_32 sr_classifier_canbus(disp_info_t* info)
 	if (info->can_info.id.pid) { 
 	    if ((st = sr_cls_process_add(info->can_info.id.pid)) != SR_SUCCESS) {
 	        CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-							"reason=error adding process\n");
+							"reason=error adding process");
 	    }
 	    ptr = sr_cls_process_match(SR_CAN_RULES, info->can_info.id.pid);
 	    if (ptr) {
@@ -321,7 +330,8 @@ SR_32 sr_classifier_canbus(disp_info_t* info)
 			}
 
 			CEF_log_event(SR_CEF_CID_CAN, msg , severity, 
-							"cs1=%d act=%s CanID=%x deviceDirection=%d",
+							"%s=%d act=%s CanID=%x deviceDirection=%d",
+							RULE_NUM_KEY, //CEF extension KEY
 							rule,
 							actionstring,
 							info->can_info.msg_id,

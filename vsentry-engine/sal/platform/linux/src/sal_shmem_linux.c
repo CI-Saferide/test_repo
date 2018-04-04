@@ -8,13 +8,13 @@ SR_32 sal_shmem_free(sr_shmem *sr_shmem_ptr)
 {
     if (!sr_shmem_ptr || !sr_shmem_ptr->buffer) {
         CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_LOW,
-			"sal_shmem_alloc: wrong params: 0x%p, %p\n",
+			"reason=sal_shmem_alloc: wrong params: 0x%p, %p",
 			sr_shmem_ptr, sr_shmem_ptr->buffer);
         return SR_ERROR;
     }
 
 	CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,
-		"sal_shmem_free: freeing 0x%p:%d is\n",
+		"msg=sal_shmem_free: freeing 0x%p:%d is",
 		sr_shmem_ptr->buffer, sr_shmem_ptr->buffer_size);
 
 	munmap(sr_shmem_ptr->buffer, sr_shmem_ptr->buffer_size);
@@ -31,7 +31,7 @@ SR_32 sal_shmem_alloc(sr_shmem *sr_shmem_ptr, SR_32 length, SR_32 type)
 
     if (!sr_shmem_ptr || (length <= 0) || (length > MAX_BUFFER_SIZE)) {
         CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_LOW,
-			"sal_shmem_alloc: wrong params: 0x%p, %d\n", sr_shmem_ptr, length);
+			"reason=sal_shmem_alloc: wrong params: 0x%p, %d", sr_shmem_ptr, length);
         return -EIO;
     }
 
@@ -53,7 +53,7 @@ SR_32 sal_shmem_alloc(sr_shmem *sr_shmem_ptr, SR_32 length, SR_32 type)
 			break;
 		default:
 			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_LOW,
-				"sal_shmem_alloc: wrong buf type %d\n", type);
+				"reason=sal_shmem_alloc: wrong buf type %d", type);
 			return SR_ERROR;
 	}
 
@@ -61,7 +61,7 @@ SR_32 sal_shmem_alloc(sr_shmem *sr_shmem_ptr, SR_32 length, SR_32 type)
 		fd = open(VS_FILE_NAME, O_RDWR|O_SYNC);
 		if (fd < 0) {
 			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_LOW,
-				"sal_shmem_alloc: faield to open %s\n", VS_FILE_NAME);
+				"reason=sal_shmem_alloc: faield to open %s", VS_FILE_NAME);
 			return SR_ERROR;
 		}
 	}
@@ -71,14 +71,14 @@ SR_32 sal_shmem_alloc(sr_shmem *sr_shmem_ptr, SR_32 length, SR_32 type)
 	if (sr_shmem_ptr->buffer == (void*)(-1)) {
 		perror("");
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_LOW,
-			"sal_shmem_alloc: failed to mmap type %d %d\n", type, length);
+			"reason=sal_shmem_alloc: failed to mmap type %d %d", type, length);
 		return SR_ERROR;
 	}
 
 	sr_shmem_ptr->buffer_size = length;
 
 	CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,
-		"sal_shmem_alloc: allocated 0x%p size 0x%08x\n",
+		"msg=sal_shmem_alloc: allocated 0x%p size 0x%08x",
 		sr_shmem_ptr->buffer, sr_shmem_ptr->buffer_size);
 
 	return SR_SUCCESS;

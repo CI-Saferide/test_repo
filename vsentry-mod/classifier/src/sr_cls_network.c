@@ -26,7 +26,7 @@ SR_32 local_ips_array_init(void)
 	SR_32 count;
 
 	if (sal_get_local_ips(local_ips, &count, MAX_NUM_OF_LOCAL_IPS)) {
-		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, "sal_get_local_ips failed");
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, "reason=sal_get_local_ips failed");
 		return SR_ERROR;
 	}
 
@@ -199,7 +199,7 @@ int sr_cls_del_ipv4(SR_U32 addr, SR_U32 netmask, int rulenum, SR_8 dir)
 	node = rn_lookup((void*)ip, (void*)mask, tree_head);
 	if (!node) { // failed to insert - free memory
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-						"failed to del ipv4 for rule %d, node not found!\n", rulenum);
+			"reason=failed to del ipv4 for rule %d, node not found!", rulenum);
 		SR_FREE(ip);
 		SR_FREE(mask);
 		return SR_ERROR;
@@ -211,7 +211,7 @@ int sr_cls_del_ipv4(SR_U32 addr, SR_U32 netmask, int rulenum, SR_8 dir)
 		node = rn_delete((void*)ip, (void*)mask, tree_head);
 		if (!node) { // failed to insert - free memory
 			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-							"failed to del ipv4 for rule %d, node not found!\n", rulenum);
+				"reason=failed to del ipv4 for rule %d, node not found!", rulenum);
 			SR_FREE(ip);
 			SR_FREE(mask);
 			return SR_ERROR;
@@ -254,7 +254,7 @@ int sr_cls_find_ipv4(SR_U32 addr, SR_8 dir)
 		cp = (char *)node->rn_key + 4;
 		sal_kernel_print_info("Node key is %x.%x.%x.%x\n", cp[0], cp[1], cp[2], cp[3]);
 		while ((rule = sal_ffs_and_clear_array (&matched_rules)) != -1) {
-			sal_kernel_print_info("Rule #%d\n", rule);
+			sal_kernel_print_info("Rule %d\n", rule);
 		}
 	}
 #endif
@@ -300,8 +300,8 @@ SR_8 sr_cls_network_msg_dispatch(struct sr_cls_network_msg *msg)
 	switch (msg->msg_type) {
 		case SR_CLS_IPV4_DEL_RULE:
 			CEF_log_debug(SR_CEF_CID_NETWORK, "info", SEVERITY_LOW,
-							"[del_ipv4] addr=0x%x, netmask=0x%x, rulenum=%d\n",
-							msg->addr, msg->netmask, msg->rulenum);	
+				"msg=del_ipv4 addr 0x%x, netmask 0x%x, rulenum %d",
+				msg->addr, msg->netmask, msg->rulenum);	
 			if ((st = sr_cls_del_ipv4(msg->addr, msg->netmask, msg->rulenum, msg->dir)) != SR_SUCCESS)
 			    return st;
 			if ((st = sr_cls_exec_inode_del_rule(SR_NET_RULES, msg->exec_inode, msg->rulenum)) != SR_SUCCESS)
@@ -310,7 +310,7 @@ SR_8 sr_cls_network_msg_dispatch(struct sr_cls_network_msg *msg)
 			break;
 		case SR_CLS_IPV4_ADD_RULE:
 			CEF_log_debug(SR_CEF_CID_NETWORK, "info", SEVERITY_LOW,
-							"[add_ipv4] addr=%x, netmask=%x, rulenum=%d\n",
+							"msg=add_ipv4 addr %x, netmask %x, rulenum %d",
 							msg->addr, msg->netmask, msg->rulenum);
 			if ((st = sr_cls_add_ipv4(msg->addr, msg->netmask, msg->rulenum, msg->dir)) != SR_SUCCESS)
 			    return st;

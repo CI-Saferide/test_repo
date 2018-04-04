@@ -42,6 +42,9 @@ enum SR_CEF_CLASS_ID {
 #define LOG_FROM_ENGINE "engine"
 #define LOG_FROM_KERNEL "kernel"
 
+/*Special CEF mappings*/
+#define RULE_NUM_KEY "cs1" //cs1 is a deviceCustomString1 that means Rule Number in firewalls
+
 
 /*
 cef example:

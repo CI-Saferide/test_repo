@@ -19,28 +19,28 @@ SR_32 sr_stop_task(sr_task_type task_id)
 {
 	if (task_id > SR_MAX_TASK) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-			"sal_stop_task: invalid task_id %d\n", task_id);
+			"reason=sal_stop_task: invalid task_id %d", task_id);
 		return SR_ERROR;
 	}
 
 	if (!sr_tasks_array[task_id].run) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-			"sr_stop_task: task %s already stopped\n", task_names[task_id]);
+			"reason=sr_stop_task: task %s already stopped", task_names[task_id]);
 		return SR_SUCCESS;
 	}
 
 	CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-		"sr_stop_task: stopping task %s\n", task_names[task_id]);
+		"reason=sr_stop_task: stopping task %s", task_names[task_id]);
 	sr_tasks_array[task_id].run = 0;
 
 	if (sal_task_stop(sr_tasks_array[task_id].data) != SR_SUCCESS) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-			"sal_stop_task: failed to stop task %s\n", task_names[task_id]);
+			"reason=sal_stop_task: failed to stop task %s", task_names[task_id]);
 		return SR_ERROR;
 	}
 
 	CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,
-		"sr_stop_task: task %s stopped\n", task_names[task_id]);
+		"msg=sr_stop_task: task %s stopped", task_names[task_id]);
 
 	return SR_SUCCESS;
 }
@@ -49,29 +49,29 @@ SR_32 sr_start_task(sr_task_type task_id,SR_32 (*task_func)(void *data))
 {
 	if (task_id > SR_MAX_TASK) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,
-			"sal_stop_task: invalid task_id %d\n", task_id);
+			"msg=sal_stop_task: invalid task_id %d", task_id);
 		return SR_ERROR;
 	}
 
 	if (sr_tasks_array[task_id].run) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-			"sr_stop_task: task %s already running\n", task_names[task_id]);
+			"reason=sr_stop_task: task %s already running", task_names[task_id]);
 		return SR_SUCCESS;
 	}
 
 	CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,
-		"sal_start_task: starting task %s\n", task_names[task_id]);
+		"msg=sal_start_task: starting task %s", task_names[task_id]);
 	sr_tasks_array[task_id].run = SR_TRUE;
 
 	if (sal_task_start(&sr_tasks_array[task_id].data, task_func) != SR_SUCCESS) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "Error", SEVERITY_HIGH,
-			"sal_start_task: failed to create thread for %s\n", task_names[task_id]);
+			"reason=sal_start_task: failed to create thread for %s", task_names[task_id]);
 		sr_tasks_array[task_id].run = SR_FALSE;
 		return SR_ERROR;
 	}
 
 	CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,
-		"sal_start_task: task %s started. data 0x%p\n", task_names[task_id], sr_tasks_array[task_id].data);
+		"msg=sal_start_task: task %s started. data 0x%p", task_names[task_id], sr_tasks_array[task_id].data);
 
 	return SR_SUCCESS;
 }
@@ -80,7 +80,7 @@ SR_BOOL sr_task_should_stop(sr_task_type task_id)
 {
 	if (task_id > SR_MAX_TASK) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-			"sr_task_should_stop: invalid task_id %d\n", task_id);
+			"reason=sr_task_should_stop: invalid task_id %d", task_id);
 		return SR_FALSE;
 	}
 
@@ -91,7 +91,7 @@ SR_8* sr_task_get_name(sr_task_type task_id)
 {
 	if (task_id > SR_MAX_TASK) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-			"sr_task_get_name: invalid task_id %d\n", task_id);
+			"reason=sr_task_get_name: invalid task_id %d", task_id);
 		return SR_FALSE;
 	}
 
@@ -102,7 +102,7 @@ void* sr_task_get_data(sr_task_type task_id)
 {
 	if (task_id > SR_MAX_TASK) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-			"sr_task_get_data: invalid task_id %d\n", task_id);
+			"reason=sr_task_get_data: invalid task_id %d", task_id);
 		return 0;
 	}
 
