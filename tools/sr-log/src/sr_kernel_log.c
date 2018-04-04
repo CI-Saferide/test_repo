@@ -5,7 +5,9 @@
 #include "sr_sal_common.h"
 #include "sr_log.h"
 
-//Severity is a string or integer and reflectsthe importance of the event. The valid string values are Unknown, Low, Medium, High, and Very-High. The valid integer values are 0-3=Low, 4-6=Medium, 7- 8=High, and 9-10=Very-High.
+//Severity is a string or integer and reflectsthe importance of the event.
+//The valid string values are Unknown, Low, Medium, High, and Very-High. 
+//The valid integer values are 0-3=Low, 4-6=Medium, 7- 8=High, and 9-10=Very-High.
 SR_8 severity_strings[SEVERITY_MAX][10] = { "Unknown", "Low", "Medium", "High", "Very-High"};
 
 void CEF_log_event(const SR_U32 class, const char *event_name,enum SR_CEF_SEVERITY severity, const char *fmt, ...)
@@ -28,11 +30,11 @@ void CEF_log_event(const SR_U32 class, const char *event_name,enum SR_CEF_SEVERI
 		sal_strcpy(payload->extension,msg);
 		sr_send_msg(MOD2LOG_BUF, sizeof(payload));
 	}else{
-		sal_kernel_print_err ("Failed to CEF log: %s|%s|deviceExternalId=%s deviceFacility=%s %s\n",
+		sal_kernel_print_err ("Failed to CEF log: %s|%s|%s=%s %s=%s %s\n",
 			(char*)event_name,
 			severity_strings[severity],
-			"N/A", 			//this is only available to sr_engine atm...
-			LOG_FROM_KERNEL,
+			DEVICE_EXTERNAL_ID,"N/A", 			//this is only available to sr_engine atm...
+			DEVICE_FACILITY,LOG_FROM_KERNEL,
 			msg );	
 	}
 	

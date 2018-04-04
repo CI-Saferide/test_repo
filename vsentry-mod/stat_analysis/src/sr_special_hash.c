@@ -53,7 +53,7 @@ SR_32 sr_special_hash_insert(sr_special_hash_table_t *table, void *key, void *da
 	ent = SR_KZALLOC_ATOMIC_SUPPORT(is_atomic, sr_special_hash_ent_t);
         if (!ent) {
             CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-				"Error: Failed to allocate memory\n");
+				"%s=Failed to allocate memory",REASON);
             return SR_ERROR;
 	}
 

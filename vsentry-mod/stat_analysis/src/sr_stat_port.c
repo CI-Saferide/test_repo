@@ -21,7 +21,7 @@ SR_32 sr_stat_port_update(SR_U16 port, SR_U32 pid)
         ent = SR_ZALLOC(sizeof(*ent));
 	if (!ent) {
 	    CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-							"failed to update stat port, memory allocation fail");
+			"%s=failed to update stat port, memory allocation fail",REASON);
 	    return SR_ERROR;
         }
 

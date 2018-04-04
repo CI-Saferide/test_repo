@@ -27,7 +27,7 @@ void sk_process_print(void *data_in_hash)
 	sk_process_item_t* ptr = (sk_process_item_t*)data_in_hash;
 
 	CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-		"reason=sk proces sk:%p pid:%d uid:%d",
+		"%s=sk proces sk %p pid %d uid %d",REASON,
 		ptr->sk, ptr->process_info.pid, ptr->process_info.uid);
 }
 
@@ -40,7 +40,7 @@ static SR_BOOL check_aged_cb(void *hash_data)
 #ifdef SR_DEBUG
 	if (sk_process_item->process_info.pid == 67333) { 
 	CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, 
-		"reason= Arik in sk aged cb sk:%p pid:%d uid:%d elpsed rime:%d", 
+		"%s= Arik in sk aged cb sk:%p pid:%d uid:%d elpsed rime:%d", REASON,
 		sk_process_item->sk, 
 		sk_process_item->process_info.pid, 
 		sk_process_item->process_info.uid, 
@@ -65,7 +65,7 @@ SR_32 sr_cls_sk_process_hash_init(void)
 	sk_process_hash_ops.print = sk_process_print;
 	if (!(sk_process_hash = sr_gen_hash_new(SK_PROCESS_HASH_SIZE, sk_process_hash_ops, SR_GEN_HASH_WRITE_LOCK | SR_GEN_HASH_SLOW_DELETE))) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-		"reason=failed to gen new hash table for sk process");
+		"%s=failed to gen new hash table for sk process",REASON);
 		return SR_ERROR;
 	}
 
@@ -90,7 +90,7 @@ SR_32 sr_cls_sk_process_hash_update(void *sk, sk_process_info_t *process_info)
 		SR_Zalloc(sk_process_item, sk_process_item_t *, sizeof(sk_process_item_t));
 		if (!sk_process_item) {
 			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-					"reason=failed to allocate buffer for sk process item enforce ");
+				"%s=failed to allocate buffer for sk process item enforce",REASON);
 			return SR_ERROR;
 		}
 		sk_process_item->sk = sk;
@@ -99,7 +99,7 @@ SR_32 sr_cls_sk_process_hash_update(void *sk, sk_process_info_t *process_info)
 		sal_update_time_counter(&(sk_process_item->process_info.time_stamp));
 		if ((sr_gen_hash_insert(sk_process_hash, sk , sk_process_item)) != SR_SUCCESS) {
 			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-				"reason=failed to insert mid to sk_process enforce table");
+				"%s=failed to insert mid to sk_process enforce table",REASON);
 				return SR_ERROR;
 		}
 	} else {
@@ -126,7 +126,7 @@ SR_32 ut_cb(void *hash_data, void *data)
 	sk_process_item_t *sk_process_item = (sk_process_item_t *)data;
 	
 	CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-		"reason=sk:%p pid:%d uid:%d",
+		"%s=sk %p pid %d uid %d",REASON,
 		sk_process_item->sk, 
 		sk_process_item->process_info.pid, 
 		sk_process_item->process_info.uid);

@@ -79,17 +79,16 @@ void log_print_cef_msg(CEF_payload *cef)
     tm_info = localtime(&timer);
     strftime(buffer, 26, "%Y-%m-%d %H:%M:%S", tm_info);
 
-	sprintf(cef_buffer,"CEF:%d|%s|%s|%d.%d|%d|%s|%d|rt=%s.%.6ld deviceExternalId=%s deviceFacility=%s %s\n",
+	sprintf(cef_buffer,"CEF:%d|%s|%s|%d.%d|%d|%s|%d|%s=%s.%.6ld %s=%s %s=%s %s\n",
 			CEF_VER_MAJOR,
 			VENDOR_NAME,PRODUCT_NAME,
 			VSENTRY_VER_MAJOR,VSENTRY_VER_MINOR,
 			cef->class,
 			cef->name,
 			cef->sev,
-			buffer,
-            tv.tv_usec,
-			config_params->vin, // the vin would be in the beginning of the extension filed.
-			LOG_FROM_ENGINE,
+			DEVIC_RECEIPT_TIME,buffer,tv.tv_usec,
+			DEVICE_EXTERNAL_ID,config_params->vin, // the vin would be in the beginning of the extension filed.
+			DEVICE_FACILITY,LOG_FROM_ENGINE,
 			cef->extension);
 			
 	if (config_params->log_type & LOG_TYPE_CURL) {

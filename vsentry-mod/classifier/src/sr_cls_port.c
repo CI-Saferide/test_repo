@@ -136,7 +136,7 @@ int sr_cls_port_add_rule(SR_U32 port, SR_U32 rulenum, SR_8 dir, SR_U8 proto)
 			ent = SR_ZALLOC(sizeof(*ent)); // <-A MINE!!!
 			if (!ent) {
 				CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-								"reason=failed to allocate memory");
+								"%s=failed to allocate memory",REASON);
 				return SR_ERROR;
 			} else {
 				ent->ent_type = DST_PORT;
@@ -156,7 +156,8 @@ int sr_cls_port_del_rule(SR_U32 port, SR_U32 rulenum, SR_8 dir, SR_U8 proto)
 		struct sr_hash_ent_t *ent=sr_hash_lookup((dir==SR_DIR_DST)?sr_cls_dport_table[SR_PROTO_SELECTOR(proto)]:sr_cls_sport_table[SR_PROTO_SELECTOR(proto)], port);
 		if (!ent) {
 			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-							"reason=cannot del rule %u on PORT %u - rule not found", rulenum, port);
+							"%s=cannot del rule %u on PORT %u - rule not found",REASON,
+							rulenum, port);
 			return SR_ERROR;
 		}
 		sal_clear_bit_array(rulenum, &ent->rules);
@@ -177,15 +178,15 @@ void print_table(struct sr_hash_table_t *table)
 	
 	if (table != NULL) {
 		CEF_log_debug(SR_CEF_CID_SYSTEM, "info", SEVERITY_HIGH,
-						"msg=printing PORT elements!");
+						"%s=printing PORT elements!",MESSAGE);
 		for(i = 0; i < HT_PORT_SIZE; i++) {
 			if (table->buckets[i].head != NULL){
 				CEF_log_debug(SR_CEF_CID_SYSTEM, "info", SEVERITY_HIGH,
-								"msg=hash_index[%d]",i);
+								"%s=hash_index[%d]",MESSAGE,i);
 				curr = table->buckets[i].head;				
 				while (curr != NULL){
 					CEF_log_debug(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-									"msg=port %u",curr->key);
+									"%s=port %u",MESSAGE,curr->key);
 					sr_cls_print_port_rules(curr->key, SR_DIR_DST, IPPROTO_TCP); // TODO: needed ?
 					next = curr->next;
 					curr= next;
@@ -194,10 +195,11 @@ void print_table(struct sr_hash_table_t *table)
 		}		
 		if(table->buckets != NULL){
 			CEF_log_debug(SR_CEF_CID_NETWORK, "info", SEVERITY_LOW,
-							"msg=printed PORT table->bucket");
+				"%s=printed PORT table->bucket",MESSAGE);
 		}
 		CEF_log_debug(SR_CEF_CID_NETWORK, "info", SEVERITY_LOW,
-						"msg=printed PORT table that orig size was: %u",table->size);
+			"%s=printed PORT table that orig size was: %u",MESSAGE,
+			table->size);
 	}	
 }
 
@@ -207,10 +209,10 @@ struct sr_hash_ent_t *sr_cls_port_find(SR_U32 port, SR_8 dir, SR_U8 proto)
 	struct sr_hash_ent_t *ent=sr_hash_lookup((dir==SR_DIR_DST)?sr_cls_dport_table[SR_PROTO_SELECTOR(proto)]:sr_cls_sport_table[SR_PROTO_SELECTOR(proto)], port);
 	if (!ent) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-						"reason=port %u not found",port);
+		"%s=port %u not found",REASON,
+		port);
 		return NULL;
 	}
-	//CEF_log_event(SR_CEF_CID_NETWORK, "info", SEVERITY_LOW,"%lu Port found with rule:%lu\n",ent->key,ent->rule);
 	return ent;
 }
 
@@ -223,13 +225,14 @@ void sr_cls_print_port_rules(SR_U32 port, SR_8 dir, SR_U8 proto)
 	sal_memset(&rules, 0, sizeof(rules));;
 	if (!ent) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-						"reason=port %u rule not found",port);
+			"%s=port %u rule not found",REASON,
+			port);
 		return;
 	}
 	sal_or_self_op_arrays(&rules, &ent->rules);
 	while ((rule = sal_ffs_and_clear_array (&rules)) != -1) {
 		CEF_log_event(SR_CEF_CID_NETWORK, "info", SEVERITY_LOW,
-						"msg=rule %d", rule);
+			"%s=rule %d",MESSAGE,rule);
 	}
 }
 
@@ -250,7 +253,8 @@ SR_8 sr_cls_port_msg_dispatch(struct sr_cls_port_msg *msg)
 	switch (msg->msg_type) {
 		case SR_CLS_PORT_DEL_RULE:
 			CEF_log_debug(SR_CEF_CID_NETWORK, "info", SEVERITY_LOW,
-							"msg=[PORT]Delete port %d,rulenum %d ,dir %d, proto %d", msg->port, msg->rulenum,msg->dir, msg->proto);
+				"%s=PORT Delete port %d,rulenum %d ,dir %d, proto %d", MESSAGE,
+				msg->port, msg->rulenum,msg->dir, msg->proto);
 			if ((st = sr_cls_port_del_rule(msg->port, msg->rulenum,msg->dir, msg->proto)) != SR_SUCCESS) { 
 			   return st;
 			}
@@ -261,7 +265,8 @@ SR_8 sr_cls_port_msg_dispatch(struct sr_cls_port_msg *msg)
 			break;
 		case SR_CLS_PORT_ADD_RULE:
 			CEF_log_debug(SR_CEF_CID_NETWORK, "info", SEVERITY_LOW,
-							"msg=[PORT]Add port %d,rulenum %d ,dir %d, proto %d", msg->port, msg->rulenum,msg->dir, msg->proto);
+				"%s=PORT Add port %d,rulenum %d ,dir %d, proto %d", MESSAGE,
+				msg->port, msg->rulenum,msg->dir, msg->proto);
 			if ((st = sr_cls_port_add_rule(msg->port, msg->rulenum,msg->dir, msg->proto)) != SR_SUCCESS) { 
 			   return st;
 			}

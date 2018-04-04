@@ -42,11 +42,15 @@ int sr_cls_exec_inode_add_rule(enum sr_rule_type type, SR_U32 exec_inode, SR_U32
 		if (!ent) {
 			ent = SR_ZALLOC(sizeof(*ent));
 			if (!ent) {
-				CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, "Failed to allocate memory for exec_file rule %d\n", rulenum);
+				CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, 
+				"Failed to allocate memory for exec_file rule %d",REASON,
+				rulenum);
 				return SR_ERROR;
 			} else {
 				ent->key = exec_inode;
-				CEF_log_debug(SR_CEF_CID_FILE, "info", SEVERITY_LOW, "add exec file inode : %u\n",ent->key);
+				CEF_log_debug(SR_CEF_CID_FILE, "info", SEVERITY_LOW, 
+				"%s=add exec file inode %u",MESSAGE,
+				ent->key);
 				sr_hash_insert(sr_cls_exec_file_table, ent);
 			}
 		}
@@ -65,7 +69,9 @@ int sr_cls_exec_inode_del_rule(enum sr_rule_type type, SR_U32 exec_inode, SR_U32
 	if (likely(exec_inode != INODE_ANY)) {
 		struct sr_hash_ent_multy_t *ent= (struct sr_hash_ent_multy_t *)sr_hash_lookup(sr_cls_exec_file_table, exec_inode);
 		if (!ent) {
-			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,"failed to delete exec_file rule %d, inode %d not found\n", rulenum, exec_inode);
+			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+			"%s=failed to delete exec_file rule %d, inode %d not found",REASON,
+			rulenum, exec_inode);
 			return SR_ERROR;
 		}
 		sal_clear_bit_array(rulenum, &(ent->rules[type]));

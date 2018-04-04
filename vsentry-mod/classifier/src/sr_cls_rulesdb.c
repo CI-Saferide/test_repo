@@ -52,14 +52,16 @@ void sr_cls_rule_add(SR_32 rule_type, SR_U16 rulenum, SR_U16 actions, SR_8 file_
 
 	if (unlikely(rulenum>=SR_MAX_RULES)){
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-						"reason=failed to add rule, invalid rule id (%u)", rulenum);
+						"%s=failed to add rule, invalid rule id (%u)",REASON,
+						rulenum);
 		return;
 	}
 	sr_db.sr_rules_db[rule_type][rulenum].actions = actions;
 	if (rule_type == SR_FILE_RULES) {
 		if (file_ops > 7) {
 			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-							"reason=failed to add rule, invalid rule id (%u)", rulenum);
+				"%s=failed to add rule, invalid rule id (%u)",REASON,
+				rulenum);
 			return;
 		}
 		sr_db.sr_rules_db[rule_type][rulenum].file_ops = file_ops;
@@ -139,7 +141,7 @@ enum cls_actions sr_cls_file_rule_match(SR_8 fileop, SR_U16 rulenum)
 
 	if (!(fileop & (SR_FILEOPS_READ | SR_FILEOPS_WRITE | SR_FILEOPS_EXEC))) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-						"reason=failed to match rule, invalid file op");
+			"%s=failed to match rule, invalid file op",REASON);
 		return SR_CLS_ACTION_NOOP;
 	}
 	if (!(sr_db.sr_rules_db[SR_FILE_RULES][rulenum].file_ops & fileop)) { // not really a match
@@ -197,12 +199,12 @@ SR_8 sr_cls_rules_msg_dispatch(struct sr_cls_rules_msg *msg)
 	switch (msg->msg_type) {
 		case SR_CLS_RULES_DEL:
 			CEF_log_debug(SR_CEF_CID_SYSTEM, "info", SEVERITY_LOW,
-							"msg=del rule on ruledb");
+							"%s=del rule on ruledb",MESSAGE);
 			sr_cls_rule_del(msg->rule_type, msg->rulenum);
 			break;
 		case SR_CLS_RULES_ADD:
 			CEF_log_debug(SR_CEF_CID_SYSTEM, "info", SEVERITY_LOW,
-							"msg=add rule on ruledb");
+							"%s=add rule on ruledb",MESSAGE);
 			sr_cls_rule_add(msg->rule_type,
 			msg->rulenum,
 			msg->actions,
