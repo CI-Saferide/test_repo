@@ -52,7 +52,7 @@ CEF:0|SafeRide|vSentry|0.2|300|CAN message drop|3|rt=2018-04-04 10:50:55.908850 
 CEF:0|SafeRide|vSentry|0.2|100|File operation drop|3|rt=2018-04-04 10:50:56.653316 deviceExternalId=NMTBE3JE00R197385K deviceFacility=engine cs1=3 fileHash=10065 filePermission=Read
 CEF:0|SafeRide|vSentry|0.2|200|Connection allow|1|rt=2018-04-04 10:50:55.930858 deviceExternalId=NMTBE3JE00R197385K deviceFacility=engine cs1=14 act=Allow proto=UDP src=127.00.00.01 spt=53 dst=127.00.00.01 dpt=56449
 
-CEF:1.0|SafeRide|vSentry|1.0|0|None|None| 
+CEF:0|SafeRide|vSentry|1.0|0|None|None| 
 
 */
 
@@ -64,7 +64,6 @@ typedef struct CEF_payload
     enum SR_CEF_SEVERITY		sev;
     SR_8 						extension[512];
 } CEF_payload;
-
 
 int sr_log_init (const char* app_name, int flags);
 void sr_log_deinit (void);
