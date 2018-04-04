@@ -2,7 +2,7 @@
 #define SR_LOG_H
 #include "sr_sal_common.h"
 
-#define CEF_VER_MAJOR	1
+#define CEF_VER_MAJOR	0 /*September 28,2017 By HP ArcSight*/
 #define CEF_VER_MINOR	0
 #define VENDOR_NAME		"SafeRide"
 #define PRODUCT_NAME	"vSentry"
@@ -38,14 +38,22 @@ enum SR_CEF_CLASS_ID {
 #define LOG_CEF_PREFIX "vsentry"
 #define LOG_CEF_SUFFIX ".log"
 
+/*deviceFacility*/
+#define LOG_FROM_ENGINE "engine"
+#define LOG_FROM_KERNEL "kernel"
+
+
 /*
 cef example:
 
-CEF:Version|Device Vendor|Device Product|Device Version|Device Event Class ID|Name|Severity|confidence|[Extension]
+CEF:Version|Device Vendor|Device Product|Device Version|Device Event Class ID|Name|Severity|[Extension]
 
-CEF:1.2|SafeRide|vSentry|1.0|100|Malware stopped|10|src=10.0.0.1 dst=2.1.2.2 spt=1232
+CEF:0|SafeRide|vSentry|0.2|300|CAN message drop|3|rt=2018-04-04 10:50:55.908850 deviceExternalId=NMTBE3JE00R197385K deviceFacility=engine cs1=1 act=Drop CanID=77 deviceDirection=1
+CEF:0|SafeRide|vSentry|0.2|100|File operation drop|3|rt=2018-04-04 10:50:56.653316 deviceExternalId=NMTBE3JE00R197385K deviceFacility=engine cs1=3 fileHash=10065 filePermission=Read
+CEF:0|SafeRide|vSentry|0.2|200|Connection allow|1|rt=2018-04-04 10:50:55.930858 deviceExternalId=NMTBE3JE00R197385K deviceFacility=engine cs1=14 act=Allow proto=UDP src=127.00.00.01 spt=53 dst=127.00.00.01 dpt=56449
 
 CEF:1.0|SafeRide|vSentry|1.0|0|None|None| 
+
 */
 
 										
@@ -55,7 +63,6 @@ typedef struct CEF_payload
 	SR_8						name[32];
     enum SR_CEF_SEVERITY		sev;
     SR_8 						extension[512];
-    SR_U8						confidence;
 } CEF_payload;
 
 

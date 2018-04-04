@@ -78,14 +78,18 @@ void log_print_cef_msg(CEF_payload *cef)
     tm_info = localtime(&timer);
     strftime(buffer, 26, "%Y-%m-%d %H:%M:%S", tm_info);
 
-		
-	sprintf(cef_buffer,"%s.%.6ld CEF:%d.%d|%s|%s|%d.%d|%d|%s|%d|%d|%s\n",
-			buffer,
-                        tv.tv_usec,
-			CEF_VER_MAJOR,CEF_VER_MINOR,
+	sprintf(cef_buffer,"CEF:%d|%s|%s|%d.%d|%d|%s|%d|rt=%s.%.6ld deviceExternalId=%s deviceFacility=%s %s\n",
+			CEF_VER_MAJOR,
 			VENDOR_NAME,PRODUCT_NAME,
 			VSENTRY_VER_MAJOR,VSENTRY_VER_MINOR,
-			cef->class,cef->name, cef->sev, cef->confidence, cef->extension);
+			cef->class,
+			cef->name,
+			cef->sev,
+			buffer,
+            tv.tv_usec,
+			config_params->vin, // the vin would be in the beginning of the extension filed.
+			LOG_FROM_ENGINE,
+			cef->extension);
 			
 	if (config_params->log_type & LOG_TYPE_CURL) {
 		SR_MUTEX_LOCK(&cef_lock);
@@ -116,7 +120,6 @@ void CEF_log_event(const SR_U32 class, const char *event_name, enum SR_CEF_SEVER
 		payload->class = class;		
 		sal_strcpy(payload->name,(char*)event_name);
 		payload->sev = severity;
-		payload->confidence = 100; /* currently hard coded */
 		sal_strcpy(payload->extension,msg);
 		
 		log_print_cef_msg(payload);
