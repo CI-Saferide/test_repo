@@ -15,13 +15,13 @@ SR_32 sr_stat_analysis_init(void)
 
 	if (sr_stat_learn_rule_hash_init() != SR_SUCCESS) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-						"stat analysis init failed at sr_stat_learn_rule_hash_init");
+						"%s=stat analysis init failed at sr_stat_learn_rule_hash_init",REASON);
 		return SR_ERROR;
 	}
 
 	if (sr_stat_process_connection_hash_init() != SR_SUCCESS) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-						"stat analysis init failed at sr_stat_process_connection_hash_init");
+						"%s=stat analysis init failed at sr_stat_process_connection_hash_init",REASON);
 		sr_stat_learn_rule_hash_uninit();
 		return SR_ERROR;
 	}
@@ -50,7 +50,7 @@ SR_32 sr_stat_analysis_send_msg(SR_U8 msg_type, sr_stat_connection_info_t *conne
         msg = (sr_stat_analysis_msg_t*)sr_get_msg(ENG2MOD_BUF, ENG2MOD_MSG_MAX_SIZE);
 	if (!msg) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-						"stat analysis at sr_stat_analysis_send_msg");
+						"%s=stat analysis at sr_stat_analysis_send_msg",REASON);
         	return SR_ERROR;
 	}
 		
@@ -83,12 +83,12 @@ SR_32 sr_stat_analysis_process_died(SR_U32 pid)
 
 	if ((rc = sr_stat_process_connection_hash_exec_for_process(pid, process_died_cb)) != SR_SUCCESS) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-						"sr_stat_process_connection_hash_exec_for_process FAILED !!!");
+						"%s=sr_stat_process_connection_hash_exec_for_process failed",REASON);
 		return SR_ERROR;
         }
 	if ((rc = sr_stat_process_connection_hash_delete(pid)) == SR_ERROR) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-						"sr_stat_process_connection_hash_exec_for_process FAILED !!!");
+						"%s=sr_stat_process_connection_hash_exec_for_process failed",REASON);
 		return SR_ERROR;
         }
 
@@ -96,7 +96,7 @@ SR_32 sr_stat_analysis_process_died(SR_U32 pid)
 		sr_stat_connection_info_t con = {};
 #ifdef SR_STAT_ANALYSIS_DEBUG
 		CEF_log_debug(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,
-						"STAT ANALYSIS AGING");
+						"%s=STAT ANALYSIS AGING",MESSAGE);
 #endif 
 		// Its time to check for aging
 		sr_stat_process_connection_delete_aged_connections();
