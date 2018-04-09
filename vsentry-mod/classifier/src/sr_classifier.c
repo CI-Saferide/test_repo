@@ -62,7 +62,9 @@ SR_32 sr_classifier_network(disp_info_t* info)
 	bit_array ba_res;
 
 	memset(&ba_res, 0, sizeof(bit_array));
-
+	
+	//printk("*************info->tuple_info.ip_proto :%s\n",info->tuple_info.ip_proto == IPPROTO_TCP?"TCP":"UDP");
+	
 	// Match 5-tuple
 	// Src IP
 	if (cr_cls_is_ip_address_local(info->tuple_info.saddr.v4addr)) 
@@ -74,16 +76,6 @@ SR_32 sr_classifier_network(disp_info_t* info)
 		} else { // take only src/any
 			sal_or_self_op_arrays(&ba_res, src_cls_network_any_src());
 		}
-	}
-	if (array_is_clear(ba_res)) {
-		return SR_CLS_ACTION_ALLOW;
-	}
-	// Dst Port
-	ptr = sr_cls_match_port(info->tuple_info.dport, SR_DIR_DST, info->tuple_info.ip_proto);
-	if (ptr) {
-		sal_and_self_op_two_arrays(&ba_res, ptr, src_cls_port_any_dst());
-	} else { // take only dst/any
-		sal_and_self_op_arrays(&ba_res, src_cls_port_any_dst());
 	}
 	if (array_is_clear(ba_res)) {
 		return SR_CLS_ACTION_ALLOW;
@@ -102,16 +94,41 @@ SR_32 sr_classifier_network(disp_info_t* info)
 	if (array_is_clear(ba_res)) {
 		return SR_CLS_ACTION_ALLOW;
 	}
-	// Src Port
-	ptr = sr_cls_match_port(info->tuple_info.sport, SR_DIR_SRC, info->tuple_info.ip_proto);
+	
+	/*since ports can be only TCP or UDP we check if this classification is relevant*/
+	if(info->tuple_info.ip_proto == IPPROTO_TCP || info->tuple_info.ip_proto == IPPROTO_UDP){
+		// Src Port
+		ptr = sr_cls_match_port(info->tuple_info.sport, SR_DIR_SRC, info->tuple_info.ip_proto);
+		if (ptr) {
+			sal_and_self_op_two_arrays(&ba_res, ptr, src_cls_port_any_src());
+		} else { // take only dst/any
+			sal_and_self_op_arrays(&ba_res, src_cls_port_any_src());
+		}
+		if (array_is_clear(ba_res)) {
+			return SR_CLS_ACTION_ALLOW;
+		}
+		// Dst Port
+		ptr = sr_cls_match_port(info->tuple_info.dport, SR_DIR_DST, info->tuple_info.ip_proto);
+		if (ptr) {
+			sal_and_self_op_two_arrays(&ba_res, ptr, src_cls_port_any_dst());
+		} else { // take only dst/any
+			sal_and_self_op_arrays(&ba_res, src_cls_port_any_dst());
+		}
+		if (array_is_clear(ba_res)) {
+			return SR_CLS_ACTION_ALLOW;
+		}
+	}
+	// IP Proto
+	ptr = sr_cls_match_protocol(info->tuple_info.ip_proto);
 	if (ptr) {
-		sal_and_self_op_two_arrays(&ba_res, ptr, src_cls_port_any_src());
-	} else { // take only dst/any
-		sal_and_self_op_arrays(&ba_res, src_cls_port_any_src());
+		sal_and_self_op_two_arrays(&ba_res, ptr, src_cls_proto_any());
+	} else { // take only proto/any
+		sal_and_self_op_arrays(&ba_res, src_cls_proto_any());
 	}
 	if (array_is_clear(ba_res)) {
 		return SR_CLS_ACTION_ALLOW;
 	}
+	
 	if (info->tuple_info.id.pid) {  // Zero PID is an indication that we are not in process context
 		// UID
 		if (info->tuple_info.id.uid != UID_ANY) {
@@ -135,7 +152,6 @@ SR_32 sr_classifier_network(disp_info_t* info)
 			sal_and_self_op_arrays(&ba_res, sr_cls_exec_file_any(SR_NET_RULES));
 		}
 	}
-	// IP Proto - TODO
 
 	while ((rule = sal_ffs_and_clear_array (&ba_res)) != -1) {
 		action = sr_cls_network_rule_match(rule, info->tuple_info.size);
