@@ -117,18 +117,18 @@ SR_32 sr_classifier_network(disp_info_t* info)
 		if (array_is_clear(ba_res)) {
 			return SR_CLS_ACTION_ALLOW;
 		}
-	}
+	}else{
 	// IP Proto
-	ptr = sr_cls_match_protocol(info->tuple_info.ip_proto);
-	if (ptr) {
-		sal_and_self_op_two_arrays(&ba_res, ptr, src_cls_proto_any());
-	} else { // take only proto/any
-		sal_and_self_op_arrays(&ba_res, src_cls_proto_any());
+		ptr = sr_cls_match_protocol(info->tuple_info.ip_proto);
+		if (ptr) {
+			sal_and_self_op_two_arrays(&ba_res, ptr, src_cls_proto_any());
+		} else { // take only proto/any
+			sal_and_self_op_arrays(&ba_res, src_cls_proto_any());
+		}
+		if (array_is_clear(ba_res)) {
+			return SR_CLS_ACTION_ALLOW;
+		}
 	}
-	if (array_is_clear(ba_res)) {
-		return SR_CLS_ACTION_ALLOW;
-	}
-	
 	if (info->tuple_info.id.pid) {  // Zero PID is an indication that we are not in process context
 		// UID
 		if (info->tuple_info.id.uid != UID_ANY) {
