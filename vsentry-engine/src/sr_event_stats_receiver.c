@@ -33,7 +33,7 @@ void sr_event_stats_receiver(SR_8 *msg_buff, SR_U32 msg_len)
 				if (pConStats->con_id.sport == 5001 || pConStats->con_id.dport == 5001 ||
 				    pConStats->con_id.sport == 22 || pConStats->con_id.dport == 22) { 
 				CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,
-					"CCCCCCCCCCCCCCCONN DEBUG proto:%d saddr:%x daddr:%x sport:%d dport:%d pid:%d rx_msgs:%d rx_bytes:%d tx_msgs:%d tx_bytes:%d time:%llu \n",
+					"%s=CONN DEBUG proto:%d saddr:%x daddr:%x sport:%d dport:%d pid:%d rx_msgs:%d rx_bytes:%d tx_msgs:%d tx_bytes:%d time:%llu",MESSAGE,
 					pConStats->con_id.ip_proto, 
 					pConStats->con_id.source_addr.v4addr,
 					pConStats->con_id.remote_addr.v4addr,
@@ -49,7 +49,7 @@ void sr_event_stats_receiver(SR_8 *msg_buff, SR_U32 msg_len)
 #endif
 				if ((rc = sr_stat_process_connection_hash_update(pConStats->pid, &connection_info)) != SR_SUCCESS) {
                 			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-								"failed to update hash table for process connection");
+								"%s=failed to update hash table for process connection",REASON);
 					break;	
 				}
 				break;
@@ -58,7 +58,7 @@ void sr_event_stats_receiver(SR_8 *msg_buff, SR_U32 msg_len)
 				offset += sizeof(struct sr_ec_connection_transmit_t);
 				if ((rc = sr_stat_process_connection_hash_finish_transmit(pConTran->count)) != SR_SUCCESS) {
                 			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-								"failed to hash exec for process connection");
+								"%s=failed to hash exec for process connection",REASON);
 					break;	
 				}
 				break;

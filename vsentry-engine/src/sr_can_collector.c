@@ -59,7 +59,8 @@ void log_it(char* str)
 			if((sal_gets_space("/")< SAVE_SPACE))
 			{
 				CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_LOW,
-					"reason=DISK SPACE TRESHOLD LIMIT REACHED %d -> CAN collector stopped\n",config_params->disk_space_treshold);
+					"%s=DISK SPACE TRESHOLD LIMIT REACHED %d -> CAN collector stopped",REASON,
+					config_params->disk_space_treshold);
 				sr_stop_task(SR_CAN_COLLECT_TASK);
 			}
      		sal_rename(mv_from, mv_to);
@@ -89,7 +90,7 @@ SR_32 can_collector_init(void *data)
 
 	if ((can_args.can_fd = init_can_socket(can_args.can_interface)) < 0) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_LOW,
-			"reason=init_can_socket Failed\n");
+			"%s=init_can_socket Failed",REASON);
 		return SR_ERROR;
 	}
 	

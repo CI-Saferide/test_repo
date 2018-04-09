@@ -14,7 +14,8 @@ int sr_cls_port_add_rule(SR_U32 port, char *exec, char *user, SR_U32 rulenum, SR
 	
 	if ((st = sr_get_inode(exec, &inode)) != SR_SUCCESS)  {
             CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_LOW,
-				"Error: %s failed getting inode \n", __FUNCTION__);
+				"%s=%s failed getting inode",REASON,
+				__FUNCTION__);
             return st;
 	}
 	uid = sr_get_uid(user);
@@ -43,7 +44,8 @@ int sr_cls_port_del_rule(SR_U32 port, char *exec, char *user, SR_U32 rulenum, SR
 	
 	if ((st = sr_get_inode(exec, &inode)) != SR_SUCCESS)  {
             CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_LOW,
-				"Error: %s failed getting inode \n", __FUNCTION__);
+				"%s=%s failed getting inode",REASON,
+				__FUNCTION__);
             return st;
 	}
 	uid = sr_get_uid(user);
