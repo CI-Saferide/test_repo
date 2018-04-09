@@ -53,8 +53,13 @@ void static print_connection(sr_connection_id_t *con_id)
 	if (!con_id) return;
 
 	CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,
-					"CCCDDD2:%d,%x,%x,%d,%d", 
-					con_id->ip_proto, con_id->saddr.v4addr, con_id->daddr.v4addr, con_id->sport, con_id->dport);
+		"%s=%s %s=%d %s=%x %s=%x %s=%d %s=%d", MESSAGE,
+		__FUNC__,
+		TRANSPORT_PROTOCOL,con_id->ip_proto,
+		DEVICE_SRC_IP,con_id->saddr.v4addr,
+		DEVICE_DEST_IP,con_id->daddr.v4addr,
+		DEVICE_SRC_PORT,con_id->sport,
+		DEVICE_DEST_PORT,con_id->dport);
 }
 #endif
 
@@ -104,23 +109,32 @@ static void process_connection_print(void *data_in_hash)
 	sal_get_process_name(process_connection_item->process_id, exe, sizeof(exe));
 
 	CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,
-		"Process :%d exe:%s num_of_connections:%d max_new_conns:%d \n",
-			process_connection_item->process_id,  exe, process_connection_item->counter,
-			process_connection_item->process_sample.max_new_cons);
+		"process :%d exe:%s num_of_connections:%d max_new_conns:%d",
+		process_connection_item->process_id,
+		exe,
+		process_connection_item->counter,
+		process_connection_item->process_sample.max_new_cons);
 
 	for (ptr = process_connection_item->process_connection_list; ptr; ptr = ptr->next) {
 		count++;
 		CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,
-		"proto:%d saddr:%x dassdr:%x sport:%d dport:%d rx_msgs:%u rx_bytes:%u tx_mgs:%u tx_bytes:%u time:%lu",
+			"proto:%d saddr:%x dassdr:%x sport:%d dport:%d rx_msgs:%u rx_bytes:%u tx_mgs:%u tx_bytes:%u time:%lu",
 			ptr->connection_info.con_id.ip_proto, 
-			ptr->connection_info.con_id.saddr.v4addr, ptr->connection_info.con_id.daddr.v4addr,
-			ptr->connection_info.con_id.sport, ptr->connection_info.con_id.dport,
-			ptr->connection_info.con_stats.rx_msgs, ptr->connection_info.con_stats.rx_bytes, ptr->connection_info.con_stats.tx_msgs,
-			ptr->connection_info.con_stats.tx_bytes, cur_time - ptr->connection_info.time);
+			ptr->connection_info.con_id.saddr.v4addr,
+			ptr->connection_info.con_id.daddr.v4addr,
+			ptr->connection_info.con_id.sport,
+			ptr->connection_info.con_id.dport,
+			ptr->connection_info.con_stats.rx_msgs,
+			ptr->connection_info.con_stats.rx_bytes,
+			ptr->connection_info.con_stats.tx_msgs,
+			ptr->connection_info.con_stats.tx_bytes,
+			cur_time - ptr->connection_info.time);
 
 	}
 	CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,
-		"%d connections in process:%d", count, process_connection_item->process_id);
+		"%s=%d connections in process:%d",MESSAGE,
+		count,
+		process_connection_item->process_id);
 }
 
 static SR_U32 process_connection_create_key(void *data)
@@ -139,7 +153,7 @@ SR_32 sr_stat_process_connection_hash_init(void)
         hash_ops.print = process_connection_print;
         if (!(process_connection_hash = sr_gen_hash_new(HASH_SIZE, hash_ops, 0))) {
                 CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-                "file_hash_init: sr_gen_hash_new failed");
+					"%s=file_hash_init: sr_gen_hash_new failed",REASON);
                 return SR_ERROR;
         }
 
@@ -163,7 +177,7 @@ static SR_32 update_connection_item(process_connection_item_t *process_connectio
 		SR_Zalloc(*iter, process_connection_data_t *, sizeof(process_connection_data_t));
 		if (!*iter) {
 			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_LOW,
-			"stat update conn item SR_Zalloc failed");
+				"%s=stat update conn item SR_Zalloc failed",REASON);
 			return SR_ERROR;
 		}
 		(*iter)->connection_info = *connection_info;
@@ -198,7 +212,7 @@ SR_32 sr_stat_process_connection_hash_update(SR_U32 process_id, sr_stat_connecti
 		SR_Zalloc(process_connection_item, process_connection_item_t *, sizeof(process_connection_item_t));
 		if (!process_connection_item) {
 			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-							"stat conn update memory allocation failed");
+				"%s=stat conn update memory allocation failed",REASON);
 			rc = SR_ERROR;
 			goto out;
 		}
@@ -207,7 +221,7 @@ SR_32 sr_stat_process_connection_hash_update(SR_U32 process_id, sr_stat_connecti
 		/* Add the process */
 		if ((rc = sr_gen_hash_insert(process_connection_hash, (void *)(long int)process_id, process_connection_item)) != SR_SUCCESS) {
 			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-							"stat conn update sr_gen_hash_insert failed");
+				"%s=stat conn update sr_gen_hash_insert failed",REASON);
 			rc = SR_ERROR;
 			goto out;
 		}
@@ -236,7 +250,7 @@ SR_32 sr_stat_process_connection_hash_exec_for_process(SR_U32 process_id, SR_32 
 	for (iter = process_connection_item->process_connection_list; iter; iter = iter->next) {
 		if ((rc = cb(process_id, &(iter->connection_info))) != SR_SUCCESS) {
 			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-							"process conn exec: cb failed");
+				"%s=process conn exec: cb failed",REASON);
 			return SR_ERROR;
 		}
 	}
@@ -340,9 +354,14 @@ static SR_BOOL is_data_learned_qualified(traffic_sample_t traffic_samples[], SR_
 		b = (traffic_samples[i].counters.rx_b_count - traffic_samples[i - 1].counters.rx_b_count) / time_diff;
 		avarage += b;
 #ifdef SR_STAT_ANALYSIS_DEBUG
-		CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW, ">>>>>>>>>>>>>>>> i:%d time:%llu rx bytes:%d tx_bytes :%d time:%f b:%d\n", i,  traffic_samples[i].time,
+		CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,
+			"i:%d time:%llu rx bytes:%d tx_bytes :%d time:%f b:%d",
+			i,
+			traffic_samples[i].time,
 			traffic_samples[i].counters.rx_b_count,
-			traffic_samples[i].counters.tx_b_count, time_diff, b * 8);
+			traffic_samples[i].counters.tx_b_count,
+			time_diff,
+			b * 8);
 #endif
         }
 	avarage /= (size - 1);
@@ -449,8 +468,11 @@ static SR_32 finish_transmit(void *hash_data, void *data)
 
 	if (process_connection_item->max_con_stats.rx_bytes > MAX_LEARN || 
 	    process_connection_item->max_con_stats.tx_bytes > MAX_LEARN) { 
+			
 		CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,
-			"\n XXXXXXXXXXXXXXXXX  PROCESS:%d XXXXXXXXXXXXXXXXXXXXXXXXX PROCESS:%d learned to much!!!\n", process_connection_item->process_id);
+			"XXXXXXXXXXXXXXXXX  PROCESS:%d XXXXXXXXXXXXXXXXXXXXXXXXX PROCESS:%d learned to much",
+			process_connection_item->process_id);
+			
 		for (i = 0; i < NUM_OF_SAMPLES; i++) {
 			SR_32 b = 0;
 			if (i > 0) {
@@ -460,10 +482,13 @@ static SR_32 finish_transmit(void *hash_data, void *data)
 					process_connection_item->traffic_samples[i - 1].counters.rx_b_count) / time_diff;
 			}
 			CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,
-			">>>>>>>>>>>>>>>> i:%d time:%llu rx bytes:%llu tx_bytes :%llu time:%f b:%d\n", i,  process_connection_item->traffic_samples[i].time,
-			process_connection_item->traffic_samples[i].counters.rx_b_count,
-			process_connection_item->traffic_samples[i].counters.tx_b_count, time_diff, b * 8);
-		
+				"i:%d time:%llu rx bytes:%llu tx_bytes :%llu time:%f b:%d", 
+				i, 
+				process_connection_item->traffic_samples[i].time,
+				process_connection_item->traffic_samples[i].counters.rx_b_count,
+				process_connection_item->traffic_samples[i].counters.tx_b_count, 
+				time_diff,
+				b * 8);
 		}
 		process_connection_item->sample_ind = 0;
 		goto out;
@@ -547,8 +572,12 @@ void sr_stat_process_connection_hash_print(void)
 SR_32 ut_cb(SR_U32 process_id, sr_stat_connection_info_t *connection_info)
 {
 	CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,
-		"EEEEEEexec cb process:%d rx_bytes:%d rx_msgs:%d tx_bytes:%d tx_msg:%d \n", 
-		process_id, connection_info->con_stats.rx_bytes, connection_info->con_stats.rx_msgs, connection_info->con_stats.tx_bytes, connection_info->con_stats.tx_msgs); 
+		"%s=EEEEEEexec cb %s=%d %s=%d rx_msgs=%d %s=%d tx_msgs=%d",MESSAGE,
+		DEVICE_PROCESS_NAME,process_id,
+		BYTES_INBOUNT,connection_info->con_stats.rx_bytes,
+		connection_info->con_stats.rx_msgs,
+		BYTES_OUT,connection_info->con_stats.tx_bytes,
+		connection_info->con_stats.tx_msgs); 
 
 	return SR_SUCCESS;
 }

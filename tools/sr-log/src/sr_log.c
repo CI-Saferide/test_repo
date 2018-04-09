@@ -11,8 +11,9 @@
 
 SR_MUTEX cef_lock = SR_MUTEX_INIT_VALUE; //for locking the cef wirte to file function
 
-// FORMAT: Date Time CEF:Version|Device Vendor|Device Product|Device Version|Device Event Class ID|Name|Severity|Confidence|[Extension]
-// Severity is a string or integer and reflectsthe importance of the event. The valid string values are Unknown, Low, Medium, High, and Very-High. The valid integer values are 0-3=Low, 4-6=Medium, 7- 8=High, and 9-10=Very-High.
+// FORMAT: CEF:Version|Device Vendor|Device Product|Device Version|Device Event Class ID|Name|Severity|[Extension]
+// Severity is a string or integer and reflectsthe importance of the event. 
+//The valid string values are Unknown, Low, Medium, High, and Very-High. The valid integer values are 0-3=Low, 4-6=Medium, 7- 8=High, and 9-10=Very-High.
 char severity_strings[SEVERITY_MAX][10] = { "Unknown", "Low", "Medium", "High", "Very-High"};
 
 static SR_8 g_app_name[20];
@@ -78,14 +79,17 @@ void log_print_cef_msg(CEF_payload *cef)
     tm_info = localtime(&timer);
     strftime(buffer, 26, "%Y-%m-%d %H:%M:%S", tm_info);
 
-		
-	sprintf(cef_buffer,"%s.%.6ld CEF:%d.%d|%s|%s|%d.%d|%d|%s|%d|%d|%s\n",
-			buffer,
-                        tv.tv_usec,
-			CEF_VER_MAJOR,CEF_VER_MINOR,
+	sprintf(cef_buffer,"CEF:%d|%s|%s|%d.%d|%d|%s|%d|%s=%s.%.6ld %s=%s %s=%s %s\n",
+			CEF_VER_MAJOR,
 			VENDOR_NAME,PRODUCT_NAME,
 			VSENTRY_VER_MAJOR,VSENTRY_VER_MINOR,
-			cef->class,cef->name, cef->sev, cef->confidence, cef->extension);
+			cef->class,
+			cef->name,
+			cef->sev,
+			DEVIC_RECEIPT_TIME,buffer,tv.tv_usec,
+			DEVICE_EXTERNAL_ID,config_params->vin, // the vin would be in the beginning of the extension filed.
+			DEVICE_FACILITY,LOG_FROM_ENGINE,
+			cef->extension);
 			
 	if (config_params->log_type & LOG_TYPE_CURL) {
 		SR_MUTEX_LOCK(&cef_lock);
@@ -116,7 +120,6 @@ void CEF_log_event(const SR_U32 class, const char *event_name, enum SR_CEF_SEVER
 		payload->class = class;		
 		sal_strcpy(payload->name,(char*)event_name);
 		payload->sev = severity;
-		payload->confidence = 100; /* currently hard coded */
 		sal_strcpy(payload->extension,msg);
 		
 		log_print_cef_msg(payload);

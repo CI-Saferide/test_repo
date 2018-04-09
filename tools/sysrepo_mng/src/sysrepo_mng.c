@@ -10,7 +10,10 @@
 #include "jsmn.h"
 #include <string.h>
 #include <ctype.h>
+
 #ifdef NO_CEF
+#define REASON 		"reason" // shut up GCC
+#define MESSAGE 	"msg" // shut up GCC AGAIN
 #define CEF_log_event(f1, f2, f3, ...) printf(__VA_ARGS__)
 #else
 #include "sr_log.h"
@@ -157,7 +160,9 @@ static int set_default_params(sr_session_ctx_t *sess, char *xpath, param_t* ptr,
 			value.data.bool_val = ptr[i].value;
 			break;
 		default:
-			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, "ERROR this type (%d) not supported", value.type);
+			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, 
+				"%s=this type (%d) not supported",REASON,
+				value.type);
 			rc = SR_ERR_UNSUPPORTED;
 			break;
 		}
@@ -166,8 +171,9 @@ static int set_default_params(sr_session_ctx_t *sess, char *xpath, param_t* ptr,
 			/* set the default value */
 			rc = sr_set_item(sess, param_xpath, &value, SR_EDIT_DEFAULT);
 			if (SR_ERR_OK != rc) {
-				CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, "ERROR sr_set_item %s: %s\n", param_xpath,
-					sr_strerror(rc));
+				CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+					"%s=sr_set_item %s: %s",REASON,
+					param_xpath,sr_strerror(rc));
 			}
 		}
 	}
@@ -212,7 +218,8 @@ static int set_str_value(sr_val_t *value, char* str_value)
         value->data.string_val = str_value;
         break;
     default:
-	CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, "ERROR unsupported value type");
+	CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+		"%s=unsupported value type",REASON);
         rc = SR_ERR_UNSUPPORTED;
         break;
     }
@@ -294,13 +301,16 @@ static SR_32 um_set_param(sr_session_ctx_t *sess, char *str_param)
 			}
 			break;
 		default:
-			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, "can't get type of %s", str_param);
+			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+				"%s=can't get type of %s", REASON,
+				str_param);
 			break;
 	}
 
         if (ptr) {
                 if (set_default_params(sess, str_param, ptr, array_size) != SR_ERR_OK) {
-			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, "setting new item params to default");
+			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+				"%s=setting new item params to default",REASON);
 			return SR_ERROR;
 		}
         }
@@ -315,7 +325,9 @@ static SR_32 um_set_value(sr_session_ctx_t *sess, char *str_param, char *str_val
 
 	rc = sr_get_item(sess, str_param, &value);
 	if (rc != SR_ERR_OK) {
-		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, " ERROR str_param:%s sr_get_item %s:", str_param, sr_strerror(rc));
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+			"%s=str_param:%s sr_get_item %s:", REASON,
+			str_param, sr_strerror(rc));
 		return rc;
 	}
 	memset(&new_val, 0, sizeof(sr_val_t));
@@ -324,15 +336,17 @@ static SR_32 um_set_value(sr_session_ctx_t *sess, char *str_param, char *str_val
 
 	rc = set_str_value(&new_val, str_value);
 	if (rc != SR_ERR_OK) {
-		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, "Error set_str_value failed to set %s to %s: %s",
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+			"%s=set_str_value failed to set %s to %s: %s",REASON,
 			str_param, str_value, sr_strerror(rc));
 		return rc;
 	}
 
 	rc = sr_set_item(sess, str_param, &new_val, SR_EDIT_DEFAULT);
 	if (SR_ERR_OK != rc) {
-		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, "ERROR sr_set_item %s to %s: %s\n", str_param,
-			str_value, sr_strerror(rc));
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+			"%s=sr_set_item %s to %s: %s",REASON,
+			str_param,str_value, sr_strerror(rc));
 		return rc;
 	}
 
@@ -417,14 +431,17 @@ static void handle_actions(sr_session_ctx_t *sess, char *buf, jsmntok_t *t, int 
 
 		rc = sr_set_item(sess, str_param, NULL, SR_EDIT_DEFAULT);
 		if (SR_ERR_OK != rc) {
-			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, "ERROR sr_set_item %s: %s\n", str_param, sr_strerror(rc));
-                	continue;
+			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+				"%s=sr_set_item %s: %s", REASON,
+				str_param, sr_strerror(rc));
+            continue;
 		}
 
 		sprintf(str_param, "/%s/%s/%s[name='%s']", DB_PREFIX, SR_ACTIONS, LIST_ACTIONS, action_name);
 		rc = set_default_params(sess, str_param, default_action_params, ARRAYSIZE(default_action_params));
                 if (rc != SR_ERR_OK) {
-			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, "ERROR setting new item params to default");
+			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+				"%s=etting new item params to default",REASON);
 			continue; 
 		}
 
@@ -432,7 +449,9 @@ static void handle_actions(sr_session_ctx_t *sess, char *buf, jsmntok_t *t, int 
 		sprintf(str_param, "/%s/%s/%s[name='%s']/%s", DB_PREFIX, SR_ACTIONS, LIST_ACTIONS, action_name, ACTION);
 
 		if (um_set_value(sess, str_param, str_value) != SR_SUCCESS)  {
-			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, "ERROR after um_set_value str_param:%s: str_value:%s: \n", str_param, str_value);
+			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+				"%s=after um_set_value str_param:%s: str_value:%s:",REASON,
+				str_param, str_value);
 			continue;
 		}
 
@@ -443,7 +462,9 @@ static void handle_actions(sr_session_ctx_t *sess, char *buf, jsmntok_t *t, int 
 		strcpy(str_value, "syslog");
 
 		if (um_set_value(sess, str_param, str_value) != SR_SUCCESS) 
-			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, "ERROR after um_set_value str_param:%s: str_value:%s: \n", str_param, str_value);
+			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+				"%s=after um_set_value str_param:%s: str_value:%s",REASON,
+				str_param, str_value);
         }
 }
 
@@ -455,12 +476,14 @@ static SR_32 create_rule(sr_session_ctx_t *sess, char *buf, jsmntok_t *t, char *
 	id = json_get_int(t, buf);
 	sprintf(str_param, "%snum='%d']", prefix, id);
 	if (um_set_param(sess, str_param) != SR_SUCCESS) {
-		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, "ERROR ip policies : um_set_param failed"); 
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+			"%s=ip policies : um_set_param failed",REASON); 
 		return SR_ERROR;
 	}
 	sprintf(str_param, "%snum='%d']/%s[id='%d']", prefix, id, TUPLE, 0);
 	if (um_set_param(sess, str_param) != SR_SUCCESS) {
-		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, "ERROR ip policies : um_set_param failed"); 
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+			"%s=ip policies : um_set_param failed",REASON); 
 		return SR_ERROR;
 	}
 
@@ -480,7 +503,9 @@ static SR_32 handle_string_from_tuple(sr_session_ctx_t *sess, char *buf, jsmntok
 		strcpy(str_value, default_value);
 	}
 	if (um_set_value(sess, str_param, str_value) != SR_SUCCESS) {
-		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, "ERROR after um_set_value str_param:%s: str_value:%s: \n", str_param, str_value);
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+			"%s=after um_set_value str_param:%s: str_value:%s:", REASON,
+			str_param, str_value);
 		return SR_ERROR;
 	}
 
@@ -494,7 +519,9 @@ static SR_32 handle_string_from_rule(sr_session_ctx_t *sess, char *buf, jsmntok_
 	json_get_string(t, buf, str_value);
 	sprintf(str_param, "%snum='%d']/%s", prefix, rule_id, field_name);
 	if (um_set_value(sess, str_param, str_value) != SR_SUCCESS) {
-		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, "ERROR after um_set_value str_param:%s: str_value:%s: \n", str_param, str_value);
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+			"%s=after um_set_value str_param:%s: str_value:%s:",REASON,
+			str_param, str_value);
 		return SR_ERROR;
 	}
 
@@ -528,7 +555,8 @@ static void handle_ip_policies(sr_session_ctx_t *sess, char *buf, jsmntok_t *t, 
                         }
 			if (id == -1) {
 				/* We have a problem here, the rule can not be processed */
-				CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, " Rule is corrupted\n");
+				CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, 
+					"%s=rule is corrupted",REASON);
                                 (*i)++;
                                 continue;
 			}
@@ -557,7 +585,9 @@ static void handle_ip_policies(sr_session_ctx_t *sess, char *buf, jsmntok_t *t, 
 				json_get_int_string(&t[*i],buf, str_value);
 				sprintf(str_param, "%snum='%d']/%s[id='%d']/srcport", IP_PREFIX, id, TUPLE, 0);
 				if (um_set_value(sess, str_param, str_value) != SR_SUCCESS) 
-					CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, "ERROR after um_set_value str_param:%s: str_value:%s: \n", str_param, str_value);
+					CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, 
+						"%s=after um_set_value str_param:%s: str_value:%s:",REASON,
+						str_param, str_value);
                                 continue;
 			}
                         if (jsoneq(buf, &t[*i], JSON_DSTPORT) == 0) {
@@ -565,7 +595,9 @@ static void handle_ip_policies(sr_session_ctx_t *sess, char *buf, jsmntok_t *t, 
 				json_get_int_string(&t[*i],buf, str_value);
 				sprintf(str_param, "%snum='%d']/%s[id='%d']/dstport", IP_PREFIX, id, TUPLE, 0);
 				if (um_set_value(sess, str_param, str_value) != SR_SUCCESS) 
-					CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, "ERROR after um_set_value str_param:%s: str_value:%s: \n", str_param, str_value);
+					CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+						"%s=after um_set_value str_param:%s: str_value:%s:",REASON,
+						str_param, str_value);
                                 continue;
 			}
                         if (jsoneq(buf, &t[*i], JSON_PROTOCOL) == 0) {
@@ -578,7 +610,9 @@ static void handle_ip_policies(sr_session_ctx_t *sess, char *buf, jsmntok_t *t, 
 					strcpy(str_value, "17");
 				sprintf(str_param, "%snum='%d']/%s[id='%d']/proto", IP_PREFIX, id, TUPLE, 0);
 				if (um_set_value(sess, str_param, str_value) != SR_SUCCESS) 
-					CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, "ERROR after um_set_value str_param:%s: str_value:%s: \n", str_param, str_value);
+					CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+						"%s=after um_set_value str_param:%s: str_value:%s:", REASON,
+						str_param, str_value);
                                 continue;
 			}
                         if (jsoneq(buf, &t[*i], JSON_PROGRAM) == 0) {
@@ -628,7 +662,8 @@ static void handle_system_policies(sr_session_ctx_t *sess, char *buf, jsmntok_t 
                         }
 			if (id == -1) {
 				/* We have a problem here, the rule can not be processed */
-				CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, " Rule is correpted\n");
+				CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+					"%s=rule is correpted",REASON);
                                 (*i)++;
                                 continue;
 			}
@@ -648,7 +683,9 @@ static void handle_system_policies(sr_session_ctx_t *sess, char *buf, jsmntok_t 
         			sprintf(str_param, "%snum='%d']/%s[id='%d']/%s", FILE_PREFIX, id, TUPLE, 0, "permission");
 				sprintf(str_value, "77%d", tmp);
         			if (um_set_value(sess, str_param, str_value) != SR_SUCCESS) {
-					CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, "ERROR after um_set_value str_param:%s: str_value:%s: \n", str_param, str_value);
+					CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+						"%s=after um_set_value str_param:%s: str_value:%s:", REASON,
+						str_param, str_value);
 				}
                                 continue;
 			}
@@ -699,7 +736,8 @@ static void handle_can_policies(sr_session_ctx_t *sess, char *buf, jsmntok_t *t,
 			}
 			if (id == -1) {
 				/* We have a problem here, the rule can not be processed */
-				CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, "Rule is correpted\n");
+				CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+					"%s=rule is correpted",REASON);
 				(*i)++;
 				continue;
 			}
@@ -715,7 +753,9 @@ static void handle_can_policies(sr_session_ctx_t *sess, char *buf, jsmntok_t *t,
 					strcpy(str_value, "any");
 				sprintf(str_param, "%snum='%d']/%s[id='%d']/%s", CAN_PREFIX, id, TUPLE, 0, "msg_id");
 				if (um_set_value(sess, str_param, str_value) != SR_SUCCESS) {
-					CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, "ERROR after um_set_value str_param:%s: str_value:%s: \n", str_param, str_value);
+					CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+						"%s=after um_set_value str_param:%s: str_value:%s:",REASON,
+						str_param, str_value);
 					continue;
 				}
 				continue;
@@ -726,7 +766,9 @@ static void handle_can_policies(sr_session_ctx_t *sess, char *buf, jsmntok_t *t,
 				convert_tolower(str_value);
 				sprintf(str_param, "%snum='%d']/%s[id='%d']/%s", CAN_PREFIX, id, TUPLE, 0, "direction");
 				if (um_set_value(sess, str_param, str_value) != SR_SUCCESS) {
-					CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, "ERROR after um_set_value str_param:%s: str_value:%s: \n", str_param, str_value);
+					CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+						"%s=after um_set_value str_param:%s: str_value:%s:", REASON,
+						str_param, str_value);
 					continue;
 				}
 				continue;
@@ -761,20 +803,25 @@ SR_32 sysrepo_mng_parse_json(sysrepo_mng_handler_t *handler, char *buf, SR_U32 *
 	jsmn_init(&p);
 	r = jsmn_parse(&p, buf, strlen(buf), NULL, 0);
 	if (r < 0) {
-		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, "Failed to parse JSON: %d\n", r);
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+			"%s=failed to parse JSON: %d",REASON,
+			r);
 		return SR_ERROR;
 	}
 #ifdef JSON_DEBUG
 	printf("Json parse r:%d \n", r);
 #endif
 	if (!(t = malloc(r * sizeof(jsmntok_t)))) {
-		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, "Failed alloc memory:\n");
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, 
+			"%s=failed alloc memory",REASON);
 		return SR_ERROR;
 	}
 	jsmn_init(&p);
 	r = jsmn_parse(&p, buf, strlen(buf), t, r);
 	if (r < 0) {
-		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, "Failed to parse JSON: %d", r);
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+			"%s=failed to parse JSON: %d",REASON,
+			r);
 		rc = SR_ERROR;
 		goto out;
 	}
@@ -785,11 +832,14 @@ SR_32 sysrepo_mng_parse_json(sysrepo_mng_handler_t *handler, char *buf, SR_U32 *
 				*version = (SR_U32)json_get_int(&t[i], buf);
 				if (*version == old_version)
 					goto out;
-				CEF_log_event(SR_CEF_CID_SYSTEM, "info", SEVERITY_LOW, "New version :%d version:%d buf:%s:\n", *version, old_version, buf);
+				CEF_log_event(SR_CEF_CID_SYSTEM, "info", SEVERITY_LOW,
+					"%s=new version :%d version:%d buf:%s",MESSAGE,*version, old_version, buf);
 			}
 			rc = sr_delete_item(sess, "/saferide:config", SR_EDIT_DEFAULT);
 			if (SR_ERR_OK != rc) {
-				CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, "sr_delete_item: %s\n", sr_strerror(rc));
+				CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+					"%s=sr_delete_item: %s", REASON,
+					sr_strerror(rc));
 				return SR_ERROR;
 			}
 		}
@@ -819,14 +869,18 @@ SR_32 sysrepo_mng_parse_json(sysrepo_mng_handler_t *handler, char *buf, SR_U32 *
 	 /* commit the changes */
 	rc = sr_commit(sess);
 	if (SR_ERR_OK != rc) {
-		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, "ERROR sr_commit: %s", sr_strerror(rc));
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+			"%s=sr_commit: %s",REASON,
+			sr_strerror(rc));
 		rc = SR_ERROR;
 		goto out;
 	}
 
 	rc = sr_copy_config(sess, "saferide", SR_DS_RUNNING, SR_DS_STARTUP);
 	if (SR_ERR_OK != rc) {
-		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, "EROOR sr_copy_config: %s\n", sr_strerror(rc));
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+			"%s=sr_copy_config: %s",REASON,
+			sr_strerror(rc));
 		rc = SR_ERROR;
 		goto out;
 	}
@@ -849,12 +903,15 @@ SR_32 sysrepo_mng_session_start(sysrepo_mng_handler_t *handler)
         /* connect to sysrepo */
         rc = sr_connect("update_manager", SR_CONN_DEFAULT, &(handler->conn));
         if (SR_ERR_OK != rc) {
-                CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, "databse management ERROR sr_connect");
+                CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+					"%s=databse management ERROR sr_connect",REASON);
                 return SR_ERROR;
         }
         rc = sr_session_start(handler->conn, SR_DS_RUNNING, SR_SESS_DEFAULT, &(handler->sess));
         if (SR_ERR_OK != rc) {
-                CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,  "sr_session_start failed: %s\n", sr_strerror(rc));
+                CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+					"%s=sr_session_start failed: %s",REASON,
+					sr_strerror(rc));
                 sr_disconnect(handler->conn);
                 return SR_ERROR;
         }

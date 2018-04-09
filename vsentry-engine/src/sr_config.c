@@ -87,7 +87,7 @@ static SR_32 handle_engine_start_stop(char *engine)
 static SR_32 handle_action(action_t *action)
 {
 	if (sr_db_action_update_action(action) != SR_SUCCESS) {
-		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, "handle action failed action:%s", action->action_name);
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, "reason=handle action failed act=%s", action->action_name);
 		return SR_ERROR;
 	}
 
@@ -98,7 +98,7 @@ static SR_32 handle_action(action_t *action)
 static SR_32 delete_action(action_t *action)
 {
 	if (sr_db_action_delete_action(action) != SR_SUCCESS) {
-		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, "handle action failed action:%s", action->action_name);
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, "reason=handle action failed act=%s", action->action_name);
 		return SR_ERROR;
 	}
 
@@ -111,7 +111,7 @@ static SR_32 convert_action(char *action_name, SR_U16 *actions_bitmap)
 	
 	db_action = sr_db_action_get_action(action_name);
 	if (!db_action) {
-		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, "convert action  action:%s not found", db_action->action_name);
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, "reason=convert act not found act=%s", db_action->action_name);
 		return SR_ERROR;
 	}
 	switch (db_action->action) {
@@ -136,12 +136,14 @@ static SR_32 add_ip_rule(ip_rule_t *rule)
 	char *user, *program;
 
 	if (sr_db_ip_rule_add(rule) != SR_SUCCESS) {
-		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, "add ip rule failed ad to db");
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+			"reason=add ip rule failed ad to db");
 		return SR_ERROR;
 	}
 
 	if (convert_action(rule->action_name, &actions_bitmap) != SR_SUCCESS) {
-		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, "add ip rule convert action failed");
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+			"reason=add ip rule convert action failed");
 		return SR_ERROR;
 	}
 
@@ -165,7 +167,9 @@ static SR_32 update_ip_rule(ip_rule_t *rule)
 	char *user, *program, *old_user, *old_program;
 
 	if (!(old_rule = sr_db_ip_rule_get(rule))) {
-		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, "update ip rule failed gettig old rule#:%d \n", rule->rulenum);
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+			"reason=update ip rule failed gettig old rule#:%d \n",
+			rule->rulenum);
 		return SR_ERROR;
 	}
 	user = *(rule->tuple.user) ? rule->tuple.user : "*";
@@ -175,7 +179,8 @@ static SR_32 update_ip_rule(ip_rule_t *rule)
 
 	if (strncmp(rule->action_name, old_rule->action_name, ACTION_STR_SIZE) != 0) {
 		if (convert_action(rule->action_name, &actions_bitmap) != SR_SUCCESS) {
-			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, "update ip rule convert_action failed");
+			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+				"reason=update ip rule convert_action failed");
 			return SR_ERROR;
 		}
 		sr_cls_rule_add(SR_NET_RULES, rule->rulenum, actions_bitmap, SR_FILEOPS_READ, SR_RATE_TYPE_BYTES, rule->tuple.max_rate, /* net_rule.rate_action */ 0 ,
@@ -225,7 +230,9 @@ static SR_32 delete_ip_rule(ip_rule_t *rule)
 	char *old_user, *old_program;
 
 	if (!(old_rule = sr_db_ip_rule_get(rule))) {
-		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, "delete ip rule db get rule failed gettig old rule#:%d", rule->rulenum);
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+			"reason=delete ip rule db get rule failed gettig old rule#:%d",
+			rule->rulenum);
 		return SR_SUCCESS;
 	}
 
@@ -272,12 +279,14 @@ static SR_32 add_file_rule(file_rule_t *rule)
 	program = *(rule->tuple.program) ? rule->tuple.program : "*";
 
 	if (sr_db_file_rule_add(rule) != SR_SUCCESS) {
-		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, "add file rule db add rule failed");
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+			"reason=add file rule db add rule failed");
 		return SR_ERROR;
 	}
 
 	if (convert_action(rule->action_name, &actions_bitmap) != SR_SUCCESS) {
-		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, "add file rule convert_action failed");
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+			"reason=add file rule convert_action failed");
 		return SR_ERROR;
 	}
 
@@ -297,7 +306,9 @@ static SR_32 update_file_rule(file_rule_t *rule)
 	char *user, *program, *old_user, *old_program;
 
 	if (!(old_rule = sr_db_file_rule_get(rule))) {
-		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, "update file rule failed gettig old rule#:%d \n", rule->rulenum);
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+			"reason=update file rule failed gettig old rule#:%d \n",
+			rule->rulenum);
 		return SR_ERROR;
 	}
 	user = *(rule->tuple.user) ? rule->tuple.user : "*";
@@ -310,7 +321,8 @@ static SR_32 update_file_rule(file_rule_t *rule)
 		strncmp(rule->tuple.permission, old_rule->tuple.permission, 4) != 0) {
 		convert_permissions(rule->tuple.permission, &permissions);
 		if (convert_action(rule->action_name, &actions_bitmap) != SR_SUCCESS) {
-			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, "update file rule: convert action failed");
+			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+				"reason=update file rule: convert action failed");
 			return SR_ERROR;
 		}
 		sr_cls_rule_add(SR_FILE_RULES, rule->rulenum, actions_bitmap, permissions, SR_RATE_TYPE_EVENT, rule->tuple.max_rate, /* net_rule.rate_action */ 0 ,
@@ -332,7 +344,9 @@ static SR_32 delete_file_rule(file_rule_t *rule)
 	file_rule_t *old_rule;
 
 	if (!(old_rule = sr_db_file_rule_get(rule))) {
-		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, "delete file rule: failed gettig old rule#:%d", rule->rulenum);
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+			"reason=delete file rule: failed gettig old rule#:%d",
+			rule->rulenum);
 		return SR_SUCCESS;
 	}
 
@@ -353,7 +367,8 @@ static SR_U8 convert_can_dir(SR_U8 dir)
 		case SENTRY_DIR_BOTH:
 			return SR_CAN_BOTH;
 		default:
-			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, "Invalid CAN direction:%d", dir);
+			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+				"reason=Invalid CAN direction:%d", dir);
 			break;
 	}
 	return SR_CAN_BOTH;
@@ -368,12 +383,14 @@ static SR_32 add_can_rule(can_rule_t *rule)
 	program = *(rule->tuple.program) ? rule->tuple.program : "*";
 
 	if (sr_db_can_rule_add(rule) != SR_SUCCESS) {
-		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, "add can rule: add to db failed");
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+			"reason=add can rule: add to db failed");
 		return SR_ERROR;
 	}
 
 	if (convert_action(rule->action_name, &actions_bitmap) != SR_SUCCESS) {
-		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, "add can rule: convert to action failed");
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+			"reason=add can rule: convert to action failed");
 		return SR_ERROR;
 	}
 
@@ -395,7 +412,8 @@ static SR_32 update_can_rule(can_rule_t *rule)
 	program = *(rule->tuple.program) ? rule->tuple.program : "*";
 
 	if (!(old_rule = sr_db_can_rule_get(rule))) {
-		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, "update can rule: add to db failed");
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+			"reason=update can rule: add to db failed");
 		return SR_ERROR;
 	}
 	old_user = *(old_rule->tuple.user) ? old_rule->tuple.user : "*";
@@ -403,7 +421,8 @@ static SR_32 update_can_rule(can_rule_t *rule)
 	sr_cls_canid_del_rule(old_rule->tuple.msg_id, old_program, old_user, old_rule->rulenum, convert_can_dir(old_rule->tuple.direction));
 	if (strncmp(rule->action_name, old_rule->action_name, ACTION_STR_SIZE)) {
 		if (convert_action(rule->action_name, &actions_bitmap) != SR_SUCCESS) {
-			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, "update can rule: convert_action failed");
+			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+				"reason=update can rule: convert_action failed");
 			return SR_ERROR;
 		}
 		sr_cls_rule_add(SR_CAN_RULES, rule->rulenum, actions_bitmap, SR_FILEOPS_READ, SR_RATE_TYPE_EVENT, rule->tuple.max_rate, /* net_rule.rate_action */ (SR_U16)0 ,
@@ -426,7 +445,9 @@ static SR_32 delete_can_rule(can_rule_t *rule)
 	can_rule_t *old_rule;
 
 	if (!(old_rule = sr_db_can_rule_get(rule))) {
-		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, "delete can rule: get from db failed rule:%d", rule->rulenum);
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+			"reason=delete can rule: get from db failed rule:%d",
+			rule->rulenum);
 		return SR_SUCCESS;
 	}
 
@@ -602,14 +623,16 @@ SR_BOOL read_config_file (void)
 			struct sr_net_record	net_rec = {};
 			if (1 != fread(&net_rec, sizeof(net_rec), 1, conf_file)) {
 				CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-					"fail to read from config file, line %d\n", __LINE__);
+					"reason=fail to read from config file, line %d\n",
+					__LINE__);
 				fclose (conf_file);
 				return SR_FALSE;
 			}
 			memset(process, 0, 4096);
 			if (net_rec.process_size != fread(&process, sizeof(SR_8), net_rec.process_size, conf_file)) {
 				CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-					"fail to read from config file, line %d\n", __LINE__);
+					"reason=fail to read from config file, line %d\n",
+					__LINE__);
 				fclose (conf_file);
 				return SR_FALSE;
 			}
@@ -626,7 +649,8 @@ SR_BOOL read_config_file (void)
 			char					filename[4096];
 			if (1 != fread(&file_rec, sizeof(file_rec), 1, conf_file)) {
 				CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-					"fail to read from config file, line %d\n", __LINE__);
+					"reason=fail to read from config file, line %d\n",
+					__LINE__);
 				fclose (conf_file);
 				return SR_FALSE;
 			}
@@ -634,13 +658,15 @@ SR_BOOL read_config_file (void)
 			memset(filename, 0, 4096);
 			if (file_rec.process_size != fread(&process, sizeof(SR_8), file_rec.process_size, conf_file)) {
 				CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-					"fail to read from config file, line %d\n", __LINE__);
+					"reason=fail to read from config file, line %d\n",
+					__LINE__);
 				fclose (conf_file);
 				return SR_FALSE;
 			}
 			if (file_rec.filename_size != fread(&filename, sizeof(SR_8), file_rec.filename_size, conf_file)) {
 				CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-					"fail to read from config file, line %d\n", __LINE__);
+					"reason=fail to read from config file, line %d\n",
+					__LINE__);
 				fclose (conf_file);
 				return SR_FALSE;
 			}
@@ -653,14 +679,16 @@ SR_BOOL read_config_file (void)
 			struct sr_can_record	can_rec;
 			if (1 != fread(&can_rec, sizeof(can_rec), 1, conf_file)) {
 				CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-					"fail to read from config file, line %d\n", __LINE__);
+					"reason=fail to read from config file, line %d\n",
+					__LINE__);
 				fclose (conf_file);
 				return SR_FALSE;
 			}
 			memset(process, 0, 4096);
 			if (can_rec.process_size != fread(&process, sizeof(SR_8), can_rec.process_size, conf_file)) {
 				CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-					"fail to read from config file, line %d\n", __LINE__);
+					"reason=fail to read from config file, line %d\n",
+					__LINE__);
 				fclose (conf_file);
 				return SR_FALSE;
 			}
@@ -672,16 +700,17 @@ SR_BOOL read_config_file (void)
 			struct sr_phone_record	phone_rec;
 			if (1 != fread(&phone_rec, sizeof(phone_rec), 1, conf_file)) {
 				CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-					"fail to read from config file, line %d\n", __LINE__);
+					"reason=fail to read from config file, line %d\n",
+					__LINE__);
 				fclose (conf_file);
 				return SR_FALSE;
 			}
 			CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,
-				"msg type = phone entry\n");
+				"msg=msg type - phone entry\n");
 			CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,
-				"phone_id = %d\n", phone_rec.phone_id);
+				"msg=phone_id - %d\n", phone_rec.phone_id);
 			CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,
-				"phone_number = %s\n", phone_rec.phone_number);
+				"msg=phone_number - %s\n", phone_rec.phone_number);
 			break;
 			}
 		case CONFIG_EMAIL_ENTRY: {
@@ -689,14 +718,16 @@ SR_BOOL read_config_file (void)
 			char					email[256];
 			if (1 != fread(&email_rec, sizeof(email_rec), 1, conf_file)) {
 				CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-					"fail to read from config file, line %d\n", __LINE__);
+					"reason=fail to read from config file, line %d\n",
+					__LINE__);
 				fclose (conf_file);
 				return SR_FALSE;
 			}
 			memset(email, 0, 256);
 			if (email_rec.email_size != fread(&email, sizeof(SR_8), email_rec.email_size, conf_file)) {
 				CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-					"fail to read from config file, line %d\n", __LINE__);
+					"reason=fail to read from config file, line %d\n",
+					__LINE__);
 				fclose (conf_file);
 				return SR_FALSE;
 			}
@@ -710,14 +741,16 @@ SR_BOOL read_config_file (void)
 			char					log_target[256];
 			if (1 != fread(&log_rec, sizeof(log_rec), 1, conf_file)) {
 				CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-					"fail to read from config file, line %d\n", __LINE__);
+					"reason=fail to read from config file, line %d\n",
+					__LINE__);
 				fclose (conf_file);
 				return SR_FALSE;
 			}
 			memset(log_target, 0, 256);
 			if (log_rec.log_size != fread(&log_target, sizeof(SR_8), log_rec.log_size, conf_file)) {
 				CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-					"fail to read from config file, line %d\n", __LINE__);
+					"reason=fail to read from config file, line %d\n",
+					__LINE__);
 				fclose (conf_file);
 				return SR_FALSE;
 			}

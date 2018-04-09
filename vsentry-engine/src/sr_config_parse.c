@@ -44,7 +44,7 @@ SR_32 read_vsentry_config(char* config_filename)
 
     if ((fp=fopen(config_filename, "r")) == NULL) {
         CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-			"failed to open config file %s, using defaults\n", config_filename);
+			"reason=failed to open config file %s, using defaults\n", config_filename);
         return SR_ERROR;
     }
     while(! feof(fp)) {

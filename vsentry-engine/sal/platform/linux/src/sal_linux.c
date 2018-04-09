@@ -12,7 +12,7 @@ SR_32 sal_task_stop(void *data)
 
 	if (!thread) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_LOW,
-			"sal_task_stop: invalid argument %p\n", data);
+			"reason=sal_task_stop: invalid argument %p", data);
 		return SR_ERROR;
 	}
 
@@ -39,7 +39,7 @@ SR_32 sal_task_start(void **data, SR_32 (*task_func)(void *data))
 
 	if (pthread_create(thread, NULL, sal_wrapper_func, task_func) != 0) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_LOW,
-			"sal_task_start: failed to create new thread\n");
+			"reason=sal_task_start: failed to create new thread");
 		free(thread);
 		return SR_ERROR;
 	}
@@ -47,7 +47,7 @@ SR_32 sal_task_start(void **data, SR_32 (*task_func)(void *data))
 	*data = (void*)thread;
 
 	CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,
-		"sal_task_start: new task was created\n");
+		"msg=sal_task_start: new task was created");
 
 	return SR_SUCCESS;
 }
@@ -102,12 +102,12 @@ SR_U32 sal_get_os(sal_os_t *os)
 
 	if (!(fin = fopen("/proc/version", "r"))) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_LOW,
-			"%s failed opening /proc/version\n");
+			"reason=failed opening /proc/version");
 		return SR_ERROR;
 	}
 	if (!fgets(line, PROC_LEN, fin)) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_LOW,
-			"%s failed reading from /proc/version\n");
+			"reason=failed reading from /proc/version");
 		return SR_ERROR;
 	}
 	if (strstr(line, UBUNTU)) {
@@ -133,7 +133,7 @@ SR_64 sal_gets_space(const SR_8* path)
 	
 	if (statvfs(path, &stat) != 0){
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_LOW,
-			"\nFailed statvfs !\n");
+			"reason=Failed statvfs");
 		return -1;
 	}
 	//the size in bytes

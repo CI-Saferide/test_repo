@@ -77,7 +77,8 @@ unsigned int sr_netfilter_hook_fn(void *priv,
 			non_uc ++;
 			if (non_uc % 100 == 0)
 				CEF_log_event(SR_CEF_CID_SYSTEM, "Stat dropped broadcast" , SEVERITY_LOW,
-							"DROPED BC :%x count:%d \n", con.con_id.saddr.v4addr, non_uc);
+							"%s=dropped BC :%x count:%d",MESSAGE,
+							con.con_id.saddr.v4addr, non_uc);
 #endif
 			return NF_ACCEPT;
 		}
@@ -87,7 +88,8 @@ unsigned int sr_netfilter_hook_fn(void *priv,
 			non_uc ++;
 			if (non_uc % 100 == 0)
 				CEF_log_event(SR_CEF_CID_SYSTEM, "Stat dropped broadcast" , SEVERITY_LOW,
-							"DROPED BC :%x count:%d \n", con.con_id.saddr.v4addr, non_uc);
+							"%s=dropped BC :%x count:%d",MESSAGE,
+							con.con_id.saddr.v4addr, non_uc);
 #endif
 			return NF_ACCEPT;
 		}

@@ -43,13 +43,13 @@ static SR_32 engine_main_loop(void *data)
 	SR_32 ret;
 	SR_8 *msg;
 
-	CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,"engine_main_loop started\n");
+	CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,"msg=engine_main_loop started");
 
 	/* init the module2engine buffer*/
 	ret = sr_msg_alloc_buf(MOD2ENG_BUF, MAX_BUFFER_SIZE);
 	if (ret != SR_SUCCESS){
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-			"failed to init MOD2ENG msg_buf\n");
+			"reason=failed to init MOD2ENG msg_buf");
 		return SR_ERROR;
 	}
 
@@ -68,7 +68,7 @@ static SR_32 engine_main_loop(void *data)
 	sr_msg_free_buf(MOD2ENG_BUF);
 
 	CEF_log_event(SR_CEF_CID_SYSTEM, "warning", SEVERITY_MEDIUM,
-					"engine_main_loop end\n");
+					"reason=engine_main_loop end");
 
 	return SR_SUCCESS;
 }
@@ -112,7 +112,7 @@ SR_32 sr_engine_start(void)
 		return SR_ERROR;
 	}
 	CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,
-		"vsentry engine started\n");
+		"msg=vsentry engine started");
 
 	ret = sr_log_uploader_init();
 	if (ret != SR_SUCCESS){
@@ -124,7 +124,7 @@ SR_32 sr_engine_start(void)
 	ret = sr_stat_analysis_init();
 	if (ret != SR_SUCCESS){
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-						"failed to init sr_stat_analysis_init\n");
+						"reason=failed to init sr_stat_analysis_init");
 		return SR_ERROR;
 	}
 #endif
@@ -133,7 +133,7 @@ SR_32 sr_engine_start(void)
 	ret = sr_ml_can_hash_init();
 	if (ret != SR_SUCCESS){
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-						"failed to init can_ml hash table\n");
+						"reason=failed to init can_ml hash table");
 		return SR_ERROR;
 	}
 #endif /* CONFIG_CAN_ML */
@@ -141,21 +141,21 @@ SR_32 sr_engine_start(void)
 	ret = sr_info_gather_init();
 	if (ret != SR_SUCCESS){
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-						"failed to init sr_stat_analysis_init\n");
+						"reason=failed to init sr_stat_analysis_init");
 		return SR_ERROR;
 	}
 
 	ret = sr_ml_conngraph_init();
 	if (ret != SR_SUCCESS){
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-						"failed to init sr_ml_conngraph\n");
+						"reason=failed to init sr_ml_conngraph");
 		return SR_ERROR;
 	}
 
 	ret = sr_start_task(SR_ENGINE_TASK, engine_main_loop);
 	if (ret != SR_SUCCESS) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-						"failed to start engine_main_loop\n");
+						"reason=failed to start engine_main_loop");
 		sr_stop_task(SR_INFO_GATHER_TASK);
 
 		return SR_ERROR;
@@ -164,21 +164,21 @@ SR_32 sr_engine_start(void)
 	ret = sr_msg_alloc_buf(ENG2MOD_BUF, MAX_BUFFER_SIZE);
 	if (ret != SR_SUCCESS){
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-						"failed to init ENG2MOD msg_buf\n");
+						"reason=failed to init ENG2MOD msg_buf");
 		return SR_ERROR;
 	}
 
 	ret = sr_file_hash_init();
 	if (ret != SR_SUCCESS){
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-						"failed to init file_hash\n");
+						"reason=failed to init file_hash");
 		return SR_ERROR;
 	}
 
 	ret = sr_create_filter_paths();
 	if (ret != SR_SUCCESS){
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-						"failed to init sr_create_fileter_faths\n");
+						"reason=failed to init sr_create_fileter_paths");
 		return SR_ERROR;
 	}
 
@@ -194,19 +194,19 @@ SR_32 sr_engine_start(void)
 		ret = sr_start_task(SR_CAN_COLLECT_TASK, can_collector_init);
 		if (ret != SR_SUCCESS) {
 			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-							"failed to start can-bus collector\n");
+							"reason=failed to start can-bus collector");
 			return SR_ERROR;	
 		}	
 		CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,
-						"can-bus collector - enabled!\n");
+						"msg=can-bus collector - enabled!");
 	} else {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,
-						"can-bus collector - disabled!\n");
+						"msg=can-bus collector - disabled!");
 	}
 	/* indicate VPI that we are running */
 	if (!(f = fopen("/tmp/sec_state", "w"))) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-						"failed to open file /tmp/sec_state\n");
+						"reason=failed to open file /tmp/sec_state");
 		return SR_ERROR;	
 	}
 	fprintf(f, "on");
@@ -220,7 +220,7 @@ SR_32 sr_engine_start(void)
 		sr_send_msg(ENG2MOD_BUF, (SR_32)sizeof(msg));
 	} else
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-						"failed to transfer config info to kernel");
+						"reason=failed to transfer config info to kernel");
 	while (run) {
 		SR_32 input = getchar();
 

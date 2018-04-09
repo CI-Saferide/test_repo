@@ -53,7 +53,8 @@ static SR_32 sr_cls_filter_path_del(SR_U8 *path)
 	for (iter = &filter_path_list; *iter && strcmp((*iter)->path, path); iter = &((*iter)->next));
 	if (!*iter) {
 		CEF_log_event(SR_CEF_CID_FILE, "error", SEVERITY_HIGH,
-						"filter_path_del path:%s not found\n", path);
+			"%s=filter_path_del path:%s not found",REASON,
+			path);
 		return SR_ERROR;
 	}
 
@@ -116,7 +117,7 @@ int sr_cls_inode_add_rule(SR_U32 inode, SR_U32 rulenum)
 			ent = SR_ZALLOC(sizeof(*ent));
 			if (!ent) {
 				CEF_log_event(SR_CEF_CID_FILE, "error", SEVERITY_HIGH,
-								"Error: Failed to allocate memory\n");
+					"%s=failed to allocate memory",REASON);
 				return SR_ERROR;
 			} else {
 				ent->key = inode;
@@ -139,7 +140,8 @@ int sr_cls_inode_del_rule(SR_U32 inode, SR_U32 rulenum)
 		struct sr_hash_ent_t *ent=sr_hash_lookup(sr_cls_file_table, inode);
 		if (!ent) {
 			CEF_log_event(SR_CEF_CID_FILE, "error", SEVERITY_HIGH,
-							"failed to del rule %d, inode rule not found\n", rulenum);
+				"%s=failed to del rule %d, inode rule not found",REASON,
+				rulenum);
 			return SR_ERROR;
 		}
 		sal_clear_bit_array(rulenum, &ent->rules);
@@ -167,7 +169,7 @@ int sr_cls_inode_inherit(SR_U32 from, SR_U32 to)
 			fileent = SR_ZALLOC(sizeof(*fileent));
 			if (!fileent) {
 				CEF_log_event(SR_CEF_CID_FILE, "error", SEVERITY_HIGH,
-								"failed to inherit inode, allocate memory failed\n");
+					"%s=failed to inherit inode, allocate memory failed",REASON);
 				return SR_ERROR;
 			} else {
 				fileent->key = to;
@@ -175,7 +177,7 @@ int sr_cls_inode_inherit(SR_U32 from, SR_U32 to)
 			if ((rc = sr_hash_insert(sr_cls_file_table, fileent)) != SR_SUCCESS) {
 				SR_FREE(fileent);
 				CEF_log_event(SR_CEF_CID_FILE, "error", SEVERITY_HIGH,
-								"failed to insert entry to file table\n");
+					"%s=failed to insert entry to file table",REASON);
 				return rc;
 			}
 		}
@@ -212,7 +214,8 @@ SR_8 sr_cls_file_msg_dispatch(struct sr_cls_file_msg *msg)
 			break;
 		case SR_CLS_INODE_DEL_RULE:
 			CEF_log_debug(SR_CEF_CID_FILE, "info", SEVERITY_LOW,
-							"delete file rule %d from %x\n", msg->rulenum, msg->inode1);
+				"%s=delete file rule %d from %x",MESSAGE,
+				msg->rulenum, msg->inode1);
 			if ((st = sr_cls_inode_del_rule(msg->inode1, msg->rulenum)) != SR_SUCCESS)
 			    return st;
 			if ((st = sr_cls_exec_inode_del_rule(SR_FILE_RULES, msg->exec_inode, msg->rulenum)) != SR_SUCCESS)
@@ -221,7 +224,8 @@ SR_8 sr_cls_file_msg_dispatch(struct sr_cls_file_msg *msg)
 			break;
 		case SR_CLS_INODE_ADD_RULE:
 			CEF_log_debug(SR_CEF_CID_FILE, "info", SEVERITY_LOW,
-							"add file rule %d to %x\n", msg->rulenum, msg->inode1);
+				"%s=add file rule %d to %x",MESSAGE,
+				msg->rulenum, msg->inode1);
 			if ((st = sr_cls_inode_add_rule(msg->inode1, msg->rulenum)) != SR_SUCCESS)
 			    return st;
 			if ((st = sr_cls_exec_inode_add_rule(SR_FILE_RULES, msg->exec_inode, msg->rulenum)) != SR_SUCCESS)
@@ -230,7 +234,8 @@ SR_8 sr_cls_file_msg_dispatch(struct sr_cls_file_msg *msg)
 			break;
 		case SR_CLS_INODE_REMOVE:
 			CEF_log_debug(SR_CEF_CID_FILE, "info", SEVERITY_LOW,
-							"remove inode %x\n", msg->inode1);
+				"%s=remove inode %x",MESSAGE,
+				msg->inode1);
 			sr_cls_inode_remove(msg->inode1);
 			break;
 		default:
