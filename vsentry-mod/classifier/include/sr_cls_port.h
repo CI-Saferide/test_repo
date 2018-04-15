@@ -33,5 +33,6 @@ bit_array *src_cls_port_any_dst(void);
 bit_array *src_cls_proto_any(void);
 SR_8 sr_cls_port_msg_dispatch(struct sr_cls_port_msg *msg);
 struct sr_hash_table_t *get_cls_port_table(SR_U8 dir);
+struct sr_hash_table_t *get_cls_protocol_table(void);
 
 #endif

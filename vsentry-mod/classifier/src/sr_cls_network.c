@@ -302,11 +302,11 @@ SR_8 sr_cls_network_msg_dispatch(struct sr_cls_network_msg *msg)
 	switch (msg->msg_type) {
 		case SR_CLS_IPV4_DEL_RULE:
 		
-			CEF_log_debug(SR_CEF_CID_NETWORK, "info", SEVERITY_LOW,
-				"%s=del_ipv4 addr 0x%x, netmask 0x%x, rulenum %d",MESSAGE,
+			CEF_log_event(SR_CEF_CID_NETWORK, "info", SEVERITY_LOW,
+				"%s=del_ipv4 addr 0x%x netmask 0x%x %s=%d",MESSAGE,
 				msg->addr, 
 				msg->netmask, 
-				msg->rulenum);	
+				RULE_NUM_KEY,msg->rulenum);	
 				
 			if ((st = sr_cls_del_ipv4(msg->addr, msg->netmask, msg->rulenum, msg->dir)) != SR_SUCCESS)
 			    return st;
@@ -317,11 +317,11 @@ SR_8 sr_cls_network_msg_dispatch(struct sr_cls_network_msg *msg)
 			break;
 		case SR_CLS_IPV4_ADD_RULE:
 		
-			CEF_log_debug(SR_CEF_CID_NETWORK, "info", SEVERITY_LOW,
-				"%s=add_ipv4 addr %x, netmask %x, rulenum %d",MESSAGE,
+			CEF_log_event(SR_CEF_CID_NETWORK, "info", SEVERITY_LOW,
+				"%s=add_ipv4 addr %x netmask %x %s=%d",MESSAGE,
 				msg->addr, 
 				msg->netmask, 
-				msg->rulenum);
+				RULE_NUM_KEY,msg->rulenum);
 				
 			if ((st = sr_cls_add_ipv4(msg->addr, msg->netmask, msg->rulenum, msg->dir)) != SR_SUCCESS)
 			    return st;

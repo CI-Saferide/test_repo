@@ -4,9 +4,6 @@
 #include "sr_classifier.h"
 #include "sr_cls_port.h"
 
-
-//#include <linux/time.h> // for unit testing
-
 #define HT_PORT_SIZE 32
 struct sr_hash_table_t *sr_cls_dport_table[2]; // 0 - TCP, 1 - UDP
 bit_array sr_cls_port_dst_any_rules;
@@ -23,6 +20,7 @@ int sr_cls_port_init(void)
 	memset(&sr_cls_port_dst_any_rules, 0, sizeof(bit_array));
 	
 	memset(&sr_cls_protocol_any_rules, 0, sizeof(bit_array));
+	
 	sr_cls_protocol_table = sr_hash_new_table(HT_PORT_SIZE);
 	if (!sr_cls_protocol_table) {
 			sal_kernel_print_err("[%s]: Failed to allocate PROTOCOL table!\n", MODULE_NAME);
@@ -138,6 +136,11 @@ struct sr_hash_table_t *get_cls_port_table(SR_U8 dir){
 	return NULL;
 }
 
+struct sr_hash_table_t *get_cls_protocol_table()
+{
+	return sr_cls_protocol_table;
+}
+
 bit_array *src_cls_port_any_src(void)
 {
         return &sr_cls_port_src_any_rules;
@@ -161,38 +164,36 @@ void sr_cls_port_remove(SR_U32 port, SR_8 dir, SR_U8 proto)
 
 void sr_cls_protocol_remove(SR_U8 proto)
 { 
-	sr_hash_delete(sr_cls_protocol_table, proto);
+	sr_hash_delete(sr_cls_protocol_table, (SR_U32)proto);
 }
 
 int sr_cls_port_add_rule(SR_U32 port, SR_U32 rulenum, SR_8 dir, SR_U8 proto)
 {
 	struct sr_hash_ent_t *ent;
-	
-	if(proto == IPPROTO_TCP || proto == IPPROTO_UDP){
 		
-		if (port != PORT_ANY) { 
-			ent=sr_hash_lookup((dir==SR_DIR_DST)?sr_cls_dport_table[SR_PROTO_SELECTOR(proto)]:sr_cls_sport_table[SR_PROTO_SELECTOR(proto)], port);
-			if (!ent) {		
+	if (port != PORT_ANY) { 
+		ent=sr_hash_lookup((dir==SR_DIR_DST)?sr_cls_dport_table[SR_PROTO_SELECTOR(proto)]:sr_cls_sport_table[SR_PROTO_SELECTOR(proto)], port);
+		if (!ent) {		
 				ent = SR_ZALLOC(sizeof(*ent)); // <-A MINE!!!
 				if (!ent) {
 					CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 									"%s=failed to allocate memory",REASON);
 					return SR_ERROR;
 				} else {
-					ent->ent_type = DST_PORT;
+					ent->ent_type = dir==DST_PORT?DST_PORT:SRC_PORT;
 					ent->key = (SR_U32)port;
 					sr_hash_insert((dir==SR_DIR_DST)?sr_cls_dport_table[SR_PROTO_SELECTOR(proto)]:sr_cls_sport_table[SR_PROTO_SELECTOR(proto)],ent);
 				}	
-			}	
-			sal_set_bit_array(rulenum, &ent->rules);
-		} else {
-			sal_set_bit_array(rulenum, (dir==SR_DIR_SRC)?&sr_cls_port_src_any_rules:&sr_cls_port_dst_any_rules);
-		}
+		}	
+		sal_set_bit_array(rulenum, &ent->rules);
+	} else {
+		sal_set_bit_array(rulenum, (dir==SR_DIR_SRC)?&sr_cls_port_src_any_rules:&sr_cls_port_dst_any_rules);
+	}
 	
-	}else{
+
 		
 		if (proto != SR_PROTO_ANY) { 
-			ent=sr_hash_lookup( sr_cls_protocol_table,proto);
+			ent=sr_hash_lookup( sr_cls_protocol_table,(SR_U32)proto);
 			if (!ent) {		
 				ent = SR_ZALLOC(sizeof(*ent)); // <-A MINE!!!
 				if (!ent) {
@@ -200,8 +201,8 @@ int sr_cls_port_add_rule(SR_U32 port, SR_U32 rulenum, SR_8 dir, SR_U8 proto)
 									"%s=failed to allocate memory",REASON);
 					return SR_ERROR;
 				} else {
-					//ent->ent_type = DST_PORT;
-					ent->key = proto;
+					ent->ent_type = dir==DST_PORT?DST_PORT:SRC_PORT;
+					ent->key = (SR_U32)proto;
 					sr_hash_insert(sr_cls_protocol_table,ent);
 				}	
 			}	
@@ -210,14 +211,12 @@ int sr_cls_port_add_rule(SR_U32 port, SR_U32 rulenum, SR_8 dir, SR_U8 proto)
 			sal_set_bit_array(rulenum,&sr_cls_protocol_any_rules);
 		}
 		
-	}
+	
 	return SR_SUCCESS;
 }
 int sr_cls_port_del_rule(SR_U32 port, SR_U32 rulenum, SR_8 dir, SR_U8 proto)
 {
 	
-	if(proto == IPPROTO_TCP || proto == IPPROTO_UDP){
-		
 		if (port != PORT_ANY) {
 			struct sr_hash_ent_t *ent=sr_hash_lookup((dir==SR_DIR_DST)?sr_cls_dport_table[SR_PROTO_SELECTOR(proto)]:sr_cls_sport_table[SR_PROTO_SELECTOR(proto)], port);
 			if (!ent) {
@@ -236,12 +235,10 @@ int sr_cls_port_del_rule(SR_U32 port, SR_U32 rulenum, SR_8 dir, SR_U8 proto)
 		} else { // "Any" rules
 			sal_clear_bit_array(rulenum, (dir==SR_DIR_SRC)?&sr_cls_port_src_any_rules:&sr_cls_port_dst_any_rules);
 		}
-		
-	}else{
-		
+
 		if (proto != SR_PROTO_ANY) {
 			
-			struct sr_hash_ent_t *ent=sr_hash_lookup(sr_cls_protocol_table, proto);
+			struct sr_hash_ent_t *ent=sr_hash_lookup(sr_cls_protocol_table, (SR_U32)proto);
 			if (!ent) {
 				CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 					"%s=cannot del rule %u on protocol %u - rule not found",REASON,
@@ -259,7 +256,6 @@ int sr_cls_port_del_rule(SR_U32 port, SR_U32 rulenum, SR_8 dir, SR_U8 proto)
 			sal_clear_bit_array(rulenum,&sr_cls_protocol_any_rules);
 		}
 	
-	}
 	return SR_SUCCESS;
 }
 
@@ -270,18 +266,18 @@ void print_table(struct sr_hash_table_t *table)
 	
 	if (table != NULL) {
 		CEF_log_debug(SR_CEF_CID_SYSTEM, "info", SEVERITY_HIGH,
-						"%s=printing PORT elements!",MESSAGE);
+			"%s=printing PORT elements!",MESSAGE);
 		for(i = 0; i < HT_PORT_SIZE; i++) {
 			if (table->buckets[i].head != NULL){
 				CEF_log_debug(SR_CEF_CID_SYSTEM, "info", SEVERITY_HIGH,
-								"%s=hash_index[%d]",MESSAGE,i);
+					"%s=hash_index[%d]",MESSAGE,i);
 				curr = table->buckets[i].head;				
 				while (curr != NULL){
 					CEF_log_debug(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-									"%s=port %u",MESSAGE,curr->key);
+						"%s=port %u",MESSAG,curr->key);				
 					sr_cls_print_port_rules(curr->key, SR_DIR_DST, IPPROTO_TCP); // TODO: needed ?
 					next = curr->next;
-					curr= next;
+					curr = next;
 				}
 			}
 		}		
@@ -301,8 +297,9 @@ struct sr_hash_ent_t *sr_cls_port_find(SR_U32 port, SR_8 dir, SR_U8 proto)
 	struct sr_hash_ent_t *ent=sr_hash_lookup((dir==SR_DIR_DST)?sr_cls_dport_table[SR_PROTO_SELECTOR(proto)]:sr_cls_sport_table[SR_PROTO_SELECTOR(proto)], port);
 	if (!ent) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-		"%s=port %u not found",REASON,
+			"%s=port %u not found",REASON,
 		port);
+		
 		return NULL;
 	}
 	return ent;
@@ -319,12 +316,14 @@ void sr_cls_print_port_rules(SR_U32 port, SR_8 dir, SR_U8 proto)
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 			"%s=port %u rule not found",REASON,
 			port);
+			
 		return;
 	}
 	sal_or_self_op_arrays(&rules, &ent->rules);
 	while ((rule = sal_ffs_and_clear_array (&rules)) != -1) {
 		CEF_log_event(SR_CEF_CID_NETWORK, "info", SEVERITY_LOW,
-			"%s=rule %d",MESSAGE,rule);
+			"%s=rule %d",MESSAGE,
+			rule);
 	}
 }
 
@@ -340,7 +339,7 @@ bit_array *sr_cls_match_port(SR_U32 port, SR_8 dir, SR_U8 proto)
 
 bit_array *sr_cls_match_protocol(SR_U8 proto)
 {
-	struct sr_hash_ent_t *ent=sr_hash_lookup(sr_cls_protocol_table,proto);
+	struct sr_hash_ent_t *ent=sr_hash_lookup(sr_cls_protocol_table,(SR_U32)proto);
 
 	if (!ent) {
 		return NULL;
@@ -391,25 +390,4 @@ SR_8 sr_cls_port_msg_dispatch(struct sr_cls_port_msg *msg)
 			break;
 	}
 	return SR_SUCCESS;
-}
-
-int myRandom(int bottom, int top){ // for unit testing
-	
-	SR_U32 get_time;
-	//int sec ,hr, min, tmp1,tmp2;
-	SR_32 usec;
-	struct timeval tv;
-
-	do_gettimeofday(&tv);
-	//get_time = tv.tv_sec;
-	//sec = get_time % 60;
-	//tmp1 = get_time / 60;
-	//min = tmp1 % 60;
-	//tmp2 = tmp1 / 60;
-	//hr = tmp2 % 24;
-
-	//printk("The time is hr:min:sec  ::  %d:%d:%dn",hr,min,sec);
-	get_time = tv.tv_usec;
-	usec = get_time % 9999;	
-    return (usec % (top - bottom)) + bottom;
 }
