@@ -145,14 +145,14 @@ SR_32 database_management(void *p)
 
     	if (sysrepo_mng_session_start(&handler)) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, 
-				"%s=sysrepo_mng_session_start failed",REASON);
+				"%s=sysrepo manager session start failed",REASON);
         	goto cleanup;
     	}
 
 	while (is_run_db_mng) { 
 		if (get_server_db(&handler) != SR_SUCCESS) {
 			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-				"%s=get_server_db_failed:",REASON);
+				"%s=get server database failed:",REASON);
 		}
 		sleep(1);
 	}

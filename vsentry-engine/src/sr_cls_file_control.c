@@ -128,8 +128,7 @@ int sr_cls_file_del_rule(char *filename, char *exec, char *user, SR_U32 rulenum,
 
 	if ((st = sr_get_inode(exec, &exec_inode)) != SR_SUCCESS) {
 	    CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_LOW,
-			"%s=%s failed getting inode",REASON,
-			__FUNCTION__);
+			"%s=failed getting inode while deleting",REASON);
 	   return st;
 	}
 
@@ -249,8 +248,8 @@ int sr_cls_file_create(char *filename)
 
 	if ((rc = sr_file_hash_exec_for_file(filename, sr_event_process_rule)) != SR_SUCCESS) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_LOW,
-			"%s=%s: sr_file_hash_exec_for_file failed, file:%s",REASON,
-			__FUNCTION__, filename);
+			"%s=file hash exec for file failed - file:%s",REASON, 
+			filename);
 		return rc;
 	}
 
