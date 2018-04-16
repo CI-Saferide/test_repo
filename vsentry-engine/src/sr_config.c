@@ -735,7 +735,7 @@ SR_BOOL read_config_file (void)
 			memset(email, 0, 256);
 			if (email_rec.email_size != fread(&email, sizeof(SR_8), email_rec.email_size, conf_file)) {
 				CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-					"%s=fail to read from config file, line %d\n",REASON,
+					"%s=fail to read from config file, line %d",REASON,
 					__LINE__);
 				fclose (conf_file);
 				return SR_FALSE;
@@ -785,8 +785,7 @@ SR_32 sr_create_filter_paths(void)
 	
 	if (sal_get_os(&os) != SR_SUCCESS) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-			"%s=%s failed sal_get_os",REASON,
-			__FUNCTION__);
+			"%s=failed getting os",REASON);
 		return SR_ERROR;
 	}
 
