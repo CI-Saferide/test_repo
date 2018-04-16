@@ -37,7 +37,8 @@ static SR_32 calc_learn_values(void *hash_data, void *data)
 	} else {
 		ptr->mean_delta = 0;
 		CEF_log_event(SR_CEF_CID_SYSTEM, "No learning data", SEVERITY_MEDIUM,
-						"State changed to protection without any learning info msg_id 0x%x. detection will not work!", ptr->msg_id);
+			"%s=state changed to protection without any learning info msg_id 0x%x. detection will not work!",MESSAGE,
+			ptr->msg_id);
 	}
 	ptr->K = (SR_U32)(ptr->mean_delta / 4);
 	ptr->h = calc_h(ptr->K);
@@ -51,7 +52,8 @@ static SR_32 calc_learn_values(void *hash_data, void *data)
 		sr_send_msg(ENG2MOD_BUF, sizeof(msg));
 	} else {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-						"failed to transfer can_ml leaning info for msg_id 0x%x", ptr->msg_id);
+			"%s=failed to transfer can_ml leaning info for msg_id 0x%x",REASON,
+			ptr->msg_id);
 	}
 	ptr->calc_sigma_plus = 0;
 	ptr->calc_sigma_minus = 0;
@@ -80,7 +82,8 @@ static SR_32 update_learning_info(void *hash_data, void *data)
 	buf_len = strlen(buf);
 	if ((learning_ptr + buf_len) >= DYNAMIC_POLICY_BUFFER) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-					"no space left for dynamic policy update. msg_id 0x%x cannot be added", ptr->msg_id);
+			"%s=no space left for dynamic policy update. msg_id 0x%x cannot be added",REASON,
+			ptr->msg_id);
 		return SR_ERROR;
 	}
 	sprintf(&learning_info[learning_ptr], "%s", buf);
@@ -97,7 +100,8 @@ static SR_32 can_ml_send_dynamic_data(CURL *curl)
     /* Check for errors */
     if(res != CURLE_OK) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-						"fail to send can_ml dynamic policy, %s (%d)", curl_easy_strerror(res), res);
+			"%s=fail to send can_ml dynamic policy, %s (%d)",REASON,
+			curl_easy_strerror(res), res);
 		return SR_ERROR;
 	}
 	return SR_SUCCESS;
@@ -124,7 +128,7 @@ SR_32 can_ml_learn_info_task(void *data)
 	} else {
 		/* fail to init the curl */
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-					"fail to init curl handle, can_ml dynamic policy will not be transmitted");
+			"%s=fail to init curl handle, can_ml dynamic policy will not be transmitted",REASON);
 		return SR_ERROR;
 	}
 
@@ -161,7 +165,11 @@ void can_ml_print(void *data_in_hash)
 {
 	ml_can_item_t* ptr = (ml_can_item_t*)data_in_hash;
 	CEF_log_event(SR_CEF_CID_SYSTEM, "info", SEVERITY_LOW,
-					"can_ml msg_id: 0x%x, sigma_plus = %d, sigma_minus = %d, K = %d, h = %d", ptr->msg_id, ptr->calc_sigma_plus, ptr->calc_sigma_plus, ptr->K, ptr->h);
+		"%s=can_ml msg_id: 0x%x, sigma_plus = %d, sigma_minus = %d, K = %d, h = %d",MESSAGE,
+		ptr->msg_id,
+		ptr->calc_sigma_plus,
+		ptr->calc_sigma_plus,
+		ptr->K, ptr->h);
 }
 
 static SR_U32 can_ml_create_key(void *data)
@@ -184,13 +192,13 @@ SR_32 sr_ml_can_hash_init(void)
 	can_ml_hash_ops.print = can_ml_print;
 	if (!(can_ml_hash = sr_gen_hash_new(ML_CAN_HASH_SIZE, can_ml_hash_ops, 0))) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-						"failed to gen new hash table for can_ml");
+			"%s=failed to gen new hash table for can_ml",REASON);
 		return SR_ERROR;
 	}
 	
 	if (SR_SUCCESS != sr_start_task(SR_CAN_ML_POLICY, can_ml_learn_info_task)) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-						"failed to start can_ml dynamic policy transmitter\n");
+			"%s=failed to start can_ml dynamic policy transmitter",REASON);
 		return SR_ERROR;
 	}
 	return SR_SUCCESS;
@@ -231,7 +239,8 @@ static SR_32 update_can_item(SR_U64 ts, SR_U32 msg_id)
 			can_ml_item->samples = 0;
 			if ((rc = sr_gen_hash_insert(can_ml_hash, (void *)(long)msg_id , can_ml_item)) != SR_SUCCESS) {
 					CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-									"failed to insert mid 0x%x to can_ml table", msg_id);
+						"%s=failed to insert mid 0x%x to can_ml table",REASON,
+						msg_id);
 					return SR_ERROR;
 			}
 	} else {
@@ -287,7 +296,7 @@ void ml_can_set_state(sr_ml_can_mode_t state)
 				sr_send_msg(ENG2MOD_BUF, sizeof(msg));
 			} else {
 				CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-							"failed to transfer can_ml stop protect request");
+					"%s=failed to transfer can_ml stop protect request",REASON);
 			}
 			break;
 		case SR_ML_CAN_MODE_PROTECT:
@@ -301,7 +310,7 @@ void ml_can_set_state(sr_ml_can_mode_t state)
 				sr_send_msg(ENG2MOD_BUF, sizeof(msg));
 			} else {
 				CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-							"failed to transfer can_ml start protect request");
+					"%s=failed to transfer can_ml start protect request",REASON);
 			}
 			break;
 		case SR_ML_CAN_MODE_HALT:
@@ -316,7 +325,7 @@ void ml_can_set_state(sr_ml_can_mode_t state)
 					sr_send_msg(ENG2MOD_BUF, sizeof(msg));
 				} else
 					CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-								"failed to transfer can_ml stop protect request");
+						"%s=failed to transfer can_ml stop protect request",REASON);
 			}
 			break;
 		default:

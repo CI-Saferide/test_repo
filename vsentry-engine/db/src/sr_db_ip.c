@@ -38,10 +38,16 @@ static int ip_rule_compare_cb(void *a, void *b)
 static void ip_rule_print_cb(void *data)
 {
 	ip_rule_t *ip_rule = (ip_rule_t *)data;
-
-	CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW, "ip_rule#%d tuple:%d prot:%d saddr:%x sport:%d daddr:%x dport:%d",
-		ip_rule->rulenum, ip_rule->tuple.id, ip_rule->tuple.proto, ip_rule->tuple.srcaddr.s_addr, ip_rule->tuple.srcport,
-		ip_rule->tuple.dstaddr.s_addr, ip_rule->tuple.dstport);
+					
+	CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,
+		"%s=%d %s=%d %s=%d %s=%x %s=%d %s=%x %s=%d",
+		RULE_NUM_KEY,ip_rule->rulenum, 
+		"TupleID",ip_rule->tuple.id, 
+		TRANSPORT_PROTOCOL,ip_rule->tuple.proto, 
+		DEVICE_SRC_IP,ip_rule->tuple.srcaddr.s_addr, 
+		DEVICE_SRC_PORT,ip_rule->tuple.srcport,
+		DEVICE_DEST_IP,ip_rule->tuple.dstaddr.s_addr, 
+		DEVICE_DEST_PORT,ip_rule->tuple.dstport);
 }
 
 SR_32 sr_db_ip_rule_init(void)
@@ -61,7 +67,8 @@ SR_32 sr_db_ip_rule_add(ip_rule_t *ip_rule)
     	*new_item = *ip_rule;
 
 	if (!list_append(&ip_rules_list, new_item)) {
-		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, "ip rule add list_append failed !!!\n");
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+		"%s=ip rule add list_append failed",REASON);
 		return SR_ERROR;
 	}
 

@@ -29,7 +29,7 @@ int sr_cls_file_add_rule(char *filename, char *exec, char *user, SR_U32 rulenum,
 
 	if ((st = sr_get_inode(exec, &exec_inode)) != SR_SUCCESS) {
 	    CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-			"Error file add rule failed getting inode \n");
+			"%s=file add rule failed getting inode",REASON);
 	    return st;
 	}
 
@@ -38,7 +38,7 @@ int sr_cls_file_add_rule(char *filename, char *exec, char *user, SR_U32 rulenum,
 	if (S_ISREG(buf.st_mode)) {
 		if ((buf.st_nlink > 1) && (treetop)) {
 			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_LOW,
-				"Error: Cannot add classification rules for hard links\n");
+				"%s=cannot add classification rules for hard links",REASON);
 			return SR_ERROR;
 		}
 		// sr_cls_inode_add_rule(buf.st_ino, rulenum)
@@ -128,7 +128,7 @@ int sr_cls_file_del_rule(char *filename, char *exec, char *user, SR_U32 rulenum,
 
 	if ((st = sr_get_inode(exec, &exec_inode)) != SR_SUCCESS) {
 	    CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_LOW,
-			"Error: %s failed getting inode \n", __FUNCTION__);
+			"%s=failed getting inode while deleting",REASON);
 	   return st;
 	}
 
@@ -137,7 +137,7 @@ int sr_cls_file_del_rule(char *filename, char *exec, char *user, SR_U32 rulenum,
 	if (S_ISREG(buf.st_mode)) {
 		if ((buf.st_nlink > 1) && (treetop)) {
 			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_LOW,
-				"Error: Cannot del classification rules for hard links\n");
+				"%s=cannot del classification rules for hard links",REASON);
 			return SR_ERROR;
 		}
 		msg = (sr_file_msg_cls_t*)sr_get_msg(ENG2MOD_BUF, ENG2MOD_MSG_MAX_SIZE);
@@ -208,8 +208,17 @@ int sr_cls_file_del_rule(char *filename, char *exec, char *user, SR_U32 rulenum,
 static SR_U32 sr_event_process_rule(char *filename, char *exec, char *user, SR_U32 rulenum, SR_U16 actions, SR_8 file_ops)
 {
         sr_cls_file_add_rule(filename, exec, user, rulenum, 1);
-        sr_cls_rule_add(SR_FILE_RULES, rulenum, actions, file_ops, SR_RATE_TYPE_EVENT, /* file_rule_tuple.max_rate */ 0, /* file_rule.rate_action */ 0 ,
-                         /* file_ruole.action.log_target */ 0 , /* file_rule.tuple.action.email_id */ 0 , /* file_rule.tuple.action.phone_id */ 0 , /* file_rule.action.skip_rulenum */ 0);
+        sr_cls_rule_add(SR_FILE_RULES,
+						rulenum, 
+						actions, 
+						file_ops, 
+						SR_RATE_TYPE_EVENT, 
+						0 /* file_rule_tuple.max_rate */, 
+						0 /* file_rule.rate_action */,
+                        0 /* file_ruole.action.log_target */,
+                        0 /* file_rule.tuple.action.email_id */,
+                        0 /* file_rule.tuple.action.phone_id */, 
+                        0 /* file_rule.action.skip_rulenum */);
 
         return SR_SUCCESS;
 }
@@ -239,7 +248,8 @@ int sr_cls_file_create(char *filename)
 
 	if ((rc = sr_file_hash_exec_for_file(filename, sr_event_process_rule)) != SR_SUCCESS) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_LOW,
-			"Error %s: sr_file_hash_exec_for_file failed, file:%s \n", __FUNCTION__, filename);
+			"%s=file hash exec for file failed - file:%s",REASON, 
+			filename);
 		return rc;
 	}
 
