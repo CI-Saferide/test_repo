@@ -41,6 +41,7 @@ $(TARGET)-objs := sal/platform/linux/src/module_init.o \
 				  sal/platform/linux/src/sysfs_support.o \
 				  sal/platform/linux/lsm/src/sr_lsm_hooks.o \
 				  sal/platform/linux/src/event_mediator.o \
+				  sal/platform/linux/src/sal_linux_mng.o \
 				  sal/platform/linux/netfilter/src/sr_netfilter.o \
 				  event_collector/src/sr_event_collector.o \
 				  dispatcher/src/dispatcher.o \

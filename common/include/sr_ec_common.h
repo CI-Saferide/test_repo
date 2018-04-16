@@ -11,6 +11,11 @@ enum sr_event_type {
         SR_EVENT_MAX_EVENT
 };
 
+enum sr_sync_type {
+        SR_SYNC_GATHER_INFO,
+        SR_SYNC_ENGINE,
+};
+
 #ifdef CONFIG_STAT_ANALYSIS
 enum sr_event_stats_type {
         SR_EVENT_STATS_CONNECTION,

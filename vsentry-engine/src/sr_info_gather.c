@@ -6,15 +6,25 @@
 #include "sr_sal_common.h"
 #include "sr_info_gather.h"
 #include "sr_event_stats_receiver.h"
+#include "sr_ec_common.h"
 
 static SR_32 sr_info_gather_loop(void *data)
 {
         SR_32 ret;
         SR_8 *msg;
+	int fd;
+	SR_BOOL is_msg;
+	ssize_t n __attribute__((unused));
 
         CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,
 						"msg=engine gather_loop started");
                 
+	if (!(fd = sal_get_vsentry_fd())) {
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_LOW,
+			"reason=sr_info_gather_loop: no vsenbtry fd");
+		return SR_ERROR;
+	}
+
         ret = sr_msg_alloc_buf(ENG2LOG_BUF, MAX_BUFFER_SIZE);
         if (ret != SR_SUCCESS){
                 CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
@@ -39,15 +49,18 @@ static SR_32 sr_info_gather_loop(void *data)
 #endif
  
         while (!sr_task_should_stop(SR_INFO_GATHER_TASK)) {
+				is_msg = SR_FALSE;
                 msg = sr_read_msg(MOD2LOG_BUF, &ret);
                 if (ret > 0) {
                         //printf ("recv\n");
+						is_msg = SR_TRUE;
                         log_print_cef_msg((CEF_payload*)msg);
                         sr_free_msg(MOD2LOG_BUF);
                 }       
 
                 msg = sr_read_msg(ENG2LOG_BUF, &ret);
                 if (ret > 0) {
+						is_msg = SR_TRUE;
                         CEF_log_debug(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,
 										"msg=ENG2LOG msg: %s", msg);
                         sr_free_msg(ENG2LOG_BUF);
@@ -56,14 +69,18 @@ static SR_32 sr_info_gather_loop(void *data)
 #ifdef CONFIG_STAT_ANALYSIS
                 msg = sr_read_msg(MOD2STAT_BUF, &ret);
                 if (ret > 0) {
+					is_msg = SR_TRUE;
 #ifdef SR_STAT_ANALYSIS_DEBUG
 			CEF_log_debug(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,
 							"msg=got message ret:%d", ret);
 #endif
-			sr_event_stats_receiver(msg, ret);
-                        sr_free_msg(MOD2STAT_BUF);
-                }
+					sr_event_stats_receiver(msg, ret);
+                    sr_free_msg(MOD2STAT_BUF);
+				}
 #endif
+				// If no msgs hang until messages are sent
+				if (!is_msg)
+					n = read(fd, NULL, SR_SYNC_GATHER_INFO);
         }
 
         /* free allocated buffer */

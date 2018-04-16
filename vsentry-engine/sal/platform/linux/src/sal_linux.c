@@ -6,6 +6,29 @@
 
 #define SAFERIDE_PREFIX "saferide"
 
+static int fd_vsentry;
+
+SR_32 sal_vsentry_fd_open(void)
+{
+	if ((fd_vsentry = open(VS_FILE_NAME, O_RDWR|O_SYNC)) < 0) {
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_LOW,
+				"reason=sal_shmem_alloc: faield to open %s", VS_FILE_NAME);
+				return SR_ERROR;
+	}
+	return SR_SUCCESS;
+}
+
+int sal_get_vsentry_fd(void)
+{
+	return fd_vsentry;
+}
+
+void sal_vsentry_fd_close(void)
+{
+	close(fd_vsentry);
+}
+
+
 SR_32 sal_task_stop(void *data)
 {
 	pthread_t *thread = (pthread_t*)data;

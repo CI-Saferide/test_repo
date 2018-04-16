@@ -71,4 +71,9 @@ void sal_openlog(void);
 void sal_closelog(void);
 void sal_log(char *cef_buffer, SR_32 severity);
 
+SR_32 sal_vsentry_fd_open(void);
+int sal_get_vsentry_fd(void);
+void sal_vsentry_fd_close(void);
+
+
 #endif /* SAL_LINUX_ENGINE_H*/

@@ -2,8 +2,6 @@
 #include "sal_linux.h"
 #include "sr_sal_common.h"
 
-static int fd = 0;
-
 SR_32 sal_shmem_free(sr_shmem *sr_shmem_ptr)
 {
     if (!sr_shmem_ptr || !sr_shmem_ptr->buffer) {
@@ -27,7 +25,7 @@ SR_32 sal_shmem_free(sr_shmem *sr_shmem_ptr)
 
 SR_32 sal_shmem_alloc(sr_shmem *sr_shmem_ptr, SR_32 length, SR_32 type)
 {
-	int offset;
+	int offset, fd;
 
     if (!sr_shmem_ptr || (length <= 0) || (length > MAX_BUFFER_SIZE)) {
         CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_LOW,
@@ -57,13 +55,10 @@ SR_32 sal_shmem_alloc(sr_shmem *sr_shmem_ptr, SR_32 length, SR_32 type)
 			return SR_ERROR;
 	}
 
-	if (fd == 0 ) {
-		fd = open(VS_FILE_NAME, O_RDWR|O_SYNC);
-		if (fd < 0) {
-			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_LOW,
-				"reason=sal_shmem_alloc: faield to open %s", VS_FILE_NAME);
-			return SR_ERROR;
-		}
+	if (!(fd = sal_get_vsentry_fd())) {
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_LOW,
+			"reason=sal_shmem_alloc: no vsenbtry fd");
+		return SR_ERROR;
 	}
 
 	sr_shmem_ptr->buffer = mmap(NULL, length, (PROT_READ | PROT_WRITE),
