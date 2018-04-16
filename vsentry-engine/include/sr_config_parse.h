@@ -2,6 +2,7 @@
 #define SR_CONFIG_PARSE_H
 
 #include "sr_types.h"
+#include "sr_actions_common.h"
 
 #define PATH_BUFF 	128
 #define CAN_NAME 	16
@@ -35,7 +36,9 @@ struct config_params_t {
 	/* config params */
 	SR_U8	cef_max_rate;						/* max allowed cef message rate per second for classifier and ml algorithms */	
 	SR_U8   log_type;
-	
+	SR_U8   DEFAULT_FILE_ACTION;
+	SR_U8   DEFAULT_CAN_ACTION;
+	SR_U8   DEFAULT_NET_ACTION;
 };
 
 SR_32 read_vsentry_config(char* config_filename);

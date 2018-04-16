@@ -8,6 +8,7 @@
 #include "sr_actions_common.h"
 #include "sr_cls_sk_process.h"
 #include "sr_cls_housekeeping.h"
+#include "sr_control.h"
 
 SR_32 sr_classifier_init(void)
 {
@@ -315,6 +316,9 @@ SR_32 sr_classifier_canbus(disp_info_t* info)
 	SR_16 rule;
 	SR_U16 action;
 	int st;
+	struct config_params_t *config_params;
+
+	config_params = sr_control_config_params();
 	
 #ifdef ROOT_CLS_IGNORE
 	if (!info->tuple_info.id.uid) return SR_CLS_ACTION_ALLOW; // Don't mess up root access
@@ -327,6 +331,9 @@ SR_32 sr_classifier_canbus(disp_info_t* info)
 		sal_or_op_arrays(ptr,(info->can_info.dir==SR_CAN_OUT)?src_cls_out_canid_any():src_cls_in_canid_any(), &ba_res);
 	} else { // take only inbound/any
 		sal_or_self_op_arrays(&ba_res, (info->can_info.dir==SR_CAN_OUT)?src_cls_out_canid_any():src_cls_in_canid_any());
+	}
+	if (array_is_clear(ba_res)) {
+		return config_params->def_can_action;
 	}
 	
 

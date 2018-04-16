@@ -218,6 +218,9 @@ SR_32 sr_engine_start(void)
 	if (msg) {
 		msg->msg_type = SR_MSG_TYPE_CONFIG;
 		msg->sub_msg.cef_max_rate = config_params->cef_max_rate; 
+		msg->sub_msg.def_file_action = config_params->DEFAULT_FILE_ACTION;
+		msg->sub_msg.def_can_action = config_params->DEFAULT_CAN_ACTION;
+		msg->sub_msg.def_net_action = config_params->DEFAULT_NET_ACTION;
 		sr_send_msg(ENG2MOD_BUF, (SR_32)sizeof(msg));
 	} else
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,

@@ -21,3 +21,8 @@ CEF_PATH_TEMP /var/log/
 
 #CONFIG params
 CEF_MAX_RATE 2
+
+#default cls rules
+DEFAULT_FILE_RULE allow
+DEFAULT_CAN_RULE allow
+DEFAULT_NET_RULE allow

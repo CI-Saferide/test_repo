@@ -402,9 +402,17 @@ static SR_32 add_can_rule(can_rule_t *rule)
 	}
 
 	sr_cls_canid_add_rule(rule->tuple.msg_id, program, user, rule->rulenum, convert_can_dir(rule->tuple.direction));
-	sr_cls_rule_add(SR_CAN_RULES, rule->rulenum, actions_bitmap, SR_FILEOPS_READ, SR_RATE_TYPE_EVENT, rule->tuple.max_rate, /* net_rule.rate_action */ (SR_U16)0 ,
-                         /* net_ruole.action.log_target */ (SR_U16)0 , /* net_rule.tuple.action.email_id */ (SR_U16)0 , /* net_rule.tuple.action.phone_id */ (SR_U16)0 ,
-				/* net_rule.action.skip_rulenum */ (SR_U16)0);
+	sr_cls_rule_add(SR_CAN_RULES,
+					rule->rulenum,
+					actions_bitmap, 
+					SR_FILEOPS_READ, 
+					SR_RATE_TYPE_EVENT, 
+					rule->tuple.max_rate, 
+					(SR_U16)0 /* net_rule.rate_action */ ,
+					(SR_U16)0 /* net_ruole.action.log_target */,
+					(SR_U16)0 /* net_rule.tuple.action.email_id */,
+					(SR_U16)0 /* net_rule.tuple.action.phone_id */,
+					(SR_U16)0/* net_rule.action.skip_rulenum */);
 
 	return SR_SUCCESS;
 }
