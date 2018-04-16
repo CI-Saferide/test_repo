@@ -120,10 +120,8 @@ SR_32 sr_classifier_network(disp_info_t* info)
 		ptr = sr_cls_match_protocol(info->tuple_info.ip_proto);
 		if (ptr) {
 			sal_and_self_op_two_arrays(&ba_res, ptr, src_cls_proto_any());
-			//printk("FOUND MATCH PROTO %s\n",info->tuple_info.ip_proto == IPPROTO_TCP?"TCP":"UDP");
 		} else { // take only proto/any
 			sal_and_self_op_arrays(&ba_res, src_cls_proto_any());
-			//printk("sal_and_self_op_arrays(&ba_res, src_cls_proto_any());\n");
 		}
 		
 		if (array_is_clear(ba_res)) {
