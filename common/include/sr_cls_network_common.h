@@ -21,6 +21,7 @@ enum {
 };
 
 enum {
+	SR_PROTO_ANY = 0,
 	SR_PROTO_TCP = 6,
 	SR_PROTO_UDP = 17,
 };

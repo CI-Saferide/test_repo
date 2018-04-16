@@ -60,9 +60,13 @@ SR_32 sr_classifier_network(disp_info_t* info)
 	SR_16 rule;
 	SR_U16 action;
 	bit_array ba_res;
+	
+#ifdef ROOT_CLS_IGNORE
+	if (!info->tuple_info.id.uid) return SR_CLS_ACTION_ALLOW; // Don't mess up root access
+#endif
 
 	memset(&ba_res, 0, sizeof(bit_array));
-
+	
 	// Match 5-tuple
 	// Src IP
 	if (cr_cls_is_ip_address_local(info->tuple_info.saddr.v4addr)) 
@@ -112,6 +116,20 @@ SR_32 sr_classifier_network(disp_info_t* info)
 	if (array_is_clear(ba_res)) {
 		return SR_CLS_ACTION_ALLOW;
 	}
+			// IP Proto
+		ptr = sr_cls_match_protocol(info->tuple_info.ip_proto);
+		if (ptr) {
+			sal_and_self_op_two_arrays(&ba_res, ptr, src_cls_proto_any());
+		} else { // take only proto/any
+			sal_and_self_op_arrays(&ba_res, src_cls_proto_any());
+		}
+		
+		if (array_is_clear(ba_res)) {
+
+			return SR_CLS_ACTION_ALLOW;
+		
+		}
+	
 	if (info->tuple_info.id.pid) {  // Zero PID is an indication that we are not in process context
 		// UID
 		if (info->tuple_info.id.uid != UID_ANY) {
@@ -135,7 +153,30 @@ SR_32 sr_classifier_network(disp_info_t* info)
 			sal_and_self_op_arrays(&ba_res, sr_cls_exec_file_any(SR_NET_RULES));
 		}
 	}
-	// IP Proto - TODO
+
+	if (info->tuple_info.id.pid) {  // Zero PID is an indication that we are not in process context
+		// UID
+		if (info->tuple_info.id.uid != UID_ANY) {
+			ptr = sr_cls_match_uid(SR_NET_RULES, info->tuple_info.id.uid);
+		} else {
+			ptr = NULL;
+		}
+		if (ptr) {
+			sal_and_self_op_two_arrays(&ba_res, ptr, sr_cls_uid_any(SR_NET_RULES));
+		} else { // take only dst/any
+			sal_and_self_op_arrays(&ba_res, sr_cls_uid_any(SR_NET_RULES));
+		}
+		if (array_is_clear(ba_res)) {
+			return SR_CLS_ACTION_ALLOW;
+		}
+		//PID
+		ptr = sr_cls_process_match(SR_NET_RULES, info->tuple_info.id.pid);
+		if (ptr) {
+			sal_and_self_op_two_arrays(&ba_res, ptr, sr_cls_exec_file_any(SR_NET_RULES));
+		} else { // take only dst/any
+			sal_and_self_op_arrays(&ba_res, sr_cls_exec_file_any(SR_NET_RULES));
+		}
+	}
 
 	while ((rule = sal_ffs_and_clear_array (&ba_res)) != -1) {
 		action = sr_cls_network_rule_match(rule, info->tuple_info.size);
@@ -146,16 +187,16 @@ SR_32 sr_classifier_network(disp_info_t* info)
 			dip_t = info->tuple_info.daddr.v4addr.s_addr;
 			
 			sprintf(actionstring, "Allow");
-			sprintf(sip, "%02d.%02d.%02d.%02d", (sip_t&0xff000000)>>24, (sip_t&0x00ff0000)>>16, (sip_t&0xff00)>> 8, sip_t&0xff);
-			sprintf(dip, "%02d.%02d.%02d.%02d", (dip_t&0xff000000)>>24, (dip_t&0x00ff0000)>>16, (dip_t&0xff00)>> 8, dip_t&0xff);
+			sprintf(sip, "%d.%d.%d.%d", (sip_t&0xff000000)>>24, (sip_t&0x00ff0000)>>16, (sip_t&0xff00)>> 8, sip_t&0xff);
+			sprintf(dip, "%d.%d.%d.%d", (dip_t&0xff000000)>>24, (dip_t&0x00ff0000)>>16, (dip_t&0xff00)>> 8, dip_t&0xff);
 			sprintf(ext, "%s=%d %s=%s %s=%s %s=%s %s=%d %s=%s %s=%d",
-			RULE_NUM_KEY,rule,
-			DEVICE_ACTION,actionstring,
-			TRANSPORT_PROTOCOL,info->tuple_info.ip_proto == IPPROTO_TCP?"TCP":"UDP",
-			DEVICE_SRC_IP,sip,
-			DEVICE_SRC_PORT,info->tuple_info.sport,
-			DEVICE_DEST_IP,dip,
-			DEVICE_DEST_PORT,info->tuple_info.dport);
+				RULE_NUM_KEY,rule,
+				DEVICE_ACTION,actionstring,
+				TRANSPORT_PROTOCOL,info->tuple_info.ip_proto == IPPROTO_TCP?"TCP":"UDP",
+				DEVICE_SRC_IP,sip,
+				DEVICE_SRC_PORT,info->tuple_info.sport,
+				DEVICE_DEST_IP,dip,
+				DEVICE_DEST_PORT,info->tuple_info.dport);
 			if (action & SR_CLS_ACTION_DROP) {
 				CEF_log_event(SR_CEF_CID_NETWORK, "Connection drop" , SEVERITY_HIGH, ext);
 			} else {
@@ -177,7 +218,10 @@ SR_32 sr_classifier_file(disp_info_t* info)
 	SR_U16 action;
 	int st;
 
+#ifdef ROOT_CLS_IGNORE
 	if (!info->tuple_info.id.uid) return SR_CLS_ACTION_ALLOW; // Don't mess up root access
+#endif
+
 	memset(&ba_res, 0, sizeof(bit_array));
 
 	sal_or_self_op_arrays(&ba_res, sr_cls_file_any());
@@ -227,8 +271,7 @@ SR_32 sr_classifier_file(disp_info_t* info)
 	// PID
 	if ((st = sr_cls_process_add(info->fileinfo.id.pid)) != SR_SUCCESS) {
 	    CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-						"%s=error adding process",
-						REASON);
+			"%s=error adding process",REASON);
 	}
 	ptr = sr_cls_process_match(SR_FILE_RULES, info->fileinfo.id.pid);
 	if (ptr) {
@@ -244,10 +287,12 @@ SR_32 sr_classifier_file(disp_info_t* info)
 		action = sr_cls_file_rule_match(info->fileinfo.fileop, rule);
 		if (action & SR_CLS_ACTION_LOG) {
 			char ext[64];
-			sprintf(ext, "%s=%d %s=%d %s=%s",
-			RULE_NUM_KEY,rule,
-			INODE_NUMBER,info->fileinfo.parent_inode?info->fileinfo.parent_inode:info->fileinfo.current_inode,
-			FILE_PERMISSION,(info->fileinfo.fileop&SR_FILEOPS_WRITE)?"Write":(info->fileinfo.fileop&SR_FILEOPS_READ)?"Read":"Execute"); 
+			
+			sprintf(ext, "%s=%d %s=%u %s=%s",
+				RULE_NUM_KEY,rule,
+				INODE_NUMBER,info->fileinfo.parent_inode?info->fileinfo.parent_inode:info->fileinfo.current_inode,
+				FILE_PERMISSION,(info->fileinfo.fileop&SR_FILEOPS_WRITE)?"Write":(info->fileinfo.fileop&SR_FILEOPS_READ)?"Read":"Execute"); 
+			
 			if (action & SR_CLS_ACTION_DROP)
 				CEF_log_event(SR_CEF_CID_FILE, "File operation drop" , SEVERITY_HIGH, ext);
 			else
@@ -271,6 +316,10 @@ SR_32 sr_classifier_canbus(disp_info_t* info)
 	SR_U16 action;
 	int st;
 	
+#ifdef ROOT_CLS_IGNORE
+	if (!info->tuple_info.id.uid) return SR_CLS_ACTION_ALLOW; // Don't mess up root access
+#endif
+	
 	memset(&ba_res, 0, sizeof(bit_array));
 	
 	ptr = sr_cls_match_canid(info->can_info.msg_id,(info->can_info.dir==SR_CAN_OUT)?SR_CAN_OUT:SR_CAN_IN);
@@ -284,8 +333,8 @@ SR_32 sr_classifier_canbus(disp_info_t* info)
 	if (info->can_info.id.pid) { 
 	    if ((st = sr_cls_process_add(info->can_info.id.pid)) != SR_SUCCESS) {
 	        CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-							"%s=error adding process",
-							REASON);
+				"%s=error adding process",
+				REASON);
 	    }
 	    ptr = sr_cls_process_match(SR_CAN_RULES, info->can_info.id.pid);
 	    if (ptr) {
@@ -330,11 +379,11 @@ SR_32 sr_classifier_canbus(disp_info_t* info)
 			}
 
 			CEF_log_event(SR_CEF_CID_CAN, msg , severity, 
-							"%s=%d %s=%s %s=%x %s=%d",
-							RULE_NUM_KEY,rule,
-							DEVICE_ACTION,actionstring,
-							CAN_MSG_ID,info->can_info.msg_id,
-							DEVICE_DIRECTION,info->can_info.dir == SR_CAN_OUT?SR_CAN_OUT:SR_CAN_IN); /* "0" for inbound or "1" for outbound*/
+				"%s=%d %s=%s %s=%x %s=%d",
+				RULE_NUM_KEY,rule,
+				DEVICE_ACTION,actionstring,
+				CAN_MSG_ID,info->can_info.msg_id,
+				DEVICE_DIRECTION,info->can_info.dir == SR_CAN_OUT?SR_CAN_OUT:SR_CAN_IN); /* "0" for inbound or "1" for outbound*/
 		}
 		if (action & SR_CLS_ACTION_DROP)
 			return SR_CLS_ACTION_DROP;
