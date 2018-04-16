@@ -274,7 +274,7 @@ void print_table(struct sr_hash_table_t *table)
 				curr = table->buckets[i].head;				
 				while (curr != NULL){
 					CEF_log_debug(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-						"%s=port %u",MESSAG,curr->key);				
+						"%s=port %u",MESSAGE,curr->key);				
 					sr_cls_print_port_rules(curr->key, SR_DIR_DST, IPPROTO_TCP); // TODO: needed ?
 					next = curr->next;
 					curr = next;
