@@ -58,14 +58,17 @@ void sr_classifier_empty_tables(SR_BOOL is_lock)
 SR_32 sr_classifier_network(disp_info_t* info)
 {
 	bit_array *ptr;
-	SR_16 rule;
+	SR_16 rule = -1;
 	SR_U16 action;
 	bit_array ba_res;
+	SR_U16 def_action = 0;
+	struct config_params_t *config_params;
 	
 #ifdef ROOT_CLS_IGNORE
 	if (!info->tuple_info.id.uid) return SR_CLS_ACTION_ALLOW; // Don't mess up root access
 #endif
 
+	config_params = sr_control_config_params();
 	memset(&ba_res, 0, sizeof(bit_array));
 	
 	// Match 5-tuple
@@ -81,106 +84,115 @@ SR_32 sr_classifier_network(disp_info_t* info)
 		}
 	}
 	if (array_is_clear(ba_res)) {
-		return SR_CLS_ACTION_ALLOW;
-	}
-	// Dst Port
-	ptr = sr_cls_match_port(info->tuple_info.dport, SR_DIR_DST, info->tuple_info.ip_proto);
-	if (ptr) {
-		sal_and_self_op_two_arrays(&ba_res, ptr, src_cls_port_any_dst());
-	} else { // take only dst/any
-		sal_and_self_op_arrays(&ba_res, src_cls_port_any_dst());
-	}
-	if (array_is_clear(ba_res)) {
-		return SR_CLS_ACTION_ALLOW;
-	}
-	// Dst IP 
-	if (cr_cls_is_ip_address_local(info->tuple_info.daddr.v4addr)) 
-		sal_and_self_op_two_arrays(&ba_res, src_cls_network_local_dst(), src_cls_network_any_dst());
-	else {
-		ptr = sr_cls_match_ip(htonl(info->tuple_info.daddr.v4addr.s_addr), SR_DIR_DST);
+		//printk("[%s] NO MATCH: %u PROTO: %d\n",__func__,config_params->def_net_action,info->tuple_info.ip_proto);
+		if(config_params->def_net_action & SR_CLS_ACTION_LOG)
+				def_action = config_params->def_net_action;
+		else if(config_params->def_net_action & SR_CLS_ACTION_DROP)
+				return SR_CLS_ACTION_DROP;
+			else if(config_params->def_net_action & SR_CLS_ACTION_ALLOW)
+				return SR_CLS_ACTION_ALLOW;	
+	}else{
+		// Dst Port
+		ptr = sr_cls_match_port(info->tuple_info.dport, SR_DIR_DST, info->tuple_info.ip_proto);
 		if (ptr) {
-			sal_and_self_op_two_arrays(&ba_res, ptr, src_cls_network_any_dst());
+			sal_and_self_op_two_arrays(&ba_res, ptr, src_cls_port_any_dst());
 		} else { // take only dst/any
-			sal_and_self_op_arrays(&ba_res, src_cls_network_any_dst());
+			sal_and_self_op_arrays(&ba_res, src_cls_port_any_dst());
 		}
-	}
-	if (array_is_clear(ba_res)) {
-		return SR_CLS_ACTION_ALLOW;
-	}
-	// Src Port
-	ptr = sr_cls_match_port(info->tuple_info.sport, SR_DIR_SRC, info->tuple_info.ip_proto);
-	if (ptr) {
-		sal_and_self_op_two_arrays(&ba_res, ptr, src_cls_port_any_src());
-	} else { // take only dst/any
-		sal_and_self_op_arrays(&ba_res, src_cls_port_any_src());
-	}
-	if (array_is_clear(ba_res)) {
-		return SR_CLS_ACTION_ALLOW;
-	}
-			// IP Proto
+		if (array_is_clear(ba_res)) {
+			return SR_CLS_ACTION_ALLOW;
+		}
+		// Dst IP 
+		if (cr_cls_is_ip_address_local(info->tuple_info.daddr.v4addr)) 
+			sal_and_self_op_two_arrays(&ba_res, src_cls_network_local_dst(), src_cls_network_any_dst());
+		else {
+			ptr = sr_cls_match_ip(htonl(info->tuple_info.daddr.v4addr.s_addr), SR_DIR_DST);
+			if (ptr) {
+				sal_and_self_op_two_arrays(&ba_res, ptr, src_cls_network_any_dst());
+			} else { // take only dst/any
+				sal_and_self_op_arrays(&ba_res, src_cls_network_any_dst());
+			}
+		}
+		if (array_is_clear(ba_res)) {
+			return SR_CLS_ACTION_ALLOW;
+		}
+		// Src Port
+		ptr = sr_cls_match_port(info->tuple_info.sport, SR_DIR_SRC, info->tuple_info.ip_proto);
+		if (ptr) {
+			sal_and_self_op_two_arrays(&ba_res, ptr, src_cls_port_any_src());
+		} else { // take only dst/any
+			sal_and_self_op_arrays(&ba_res, src_cls_port_any_src());
+		}
+		if (array_is_clear(ba_res)) {
+			return SR_CLS_ACTION_ALLOW;	
+		}
+		// IP Proto
 		ptr = sr_cls_match_protocol(info->tuple_info.ip_proto);
 		if (ptr) {
 			sal_and_self_op_two_arrays(&ba_res, ptr, src_cls_proto_any());
 		} else { // take only proto/any
 			sal_and_self_op_arrays(&ba_res, src_cls_proto_any());
 		}
-		
 		if (array_is_clear(ba_res)) {
-
-			return SR_CLS_ACTION_ALLOW;
-		
+			return SR_CLS_ACTION_ALLOW;	
 		}
+		
+		if (info->tuple_info.id.pid) {  // Zero PID is an indication that we are not in process context
+			// UID
+			if (info->tuple_info.id.uid != UID_ANY) {
+				ptr = sr_cls_match_uid(SR_NET_RULES, info->tuple_info.id.uid);
+			} else {
+				ptr = NULL;
+			}
+			if (ptr) {
+				sal_and_self_op_two_arrays(&ba_res, ptr, sr_cls_uid_any(SR_NET_RULES));
+			} else { // take only dst/any
+				sal_and_self_op_arrays(&ba_res, sr_cls_uid_any(SR_NET_RULES));
+			}
+			if (array_is_clear(ba_res)) {
+				return SR_CLS_ACTION_ALLOW;
+			}
+			//PID
+			ptr = sr_cls_process_match(SR_NET_RULES, info->tuple_info.id.pid);
+			if (ptr) {
+				sal_and_self_op_two_arrays(&ba_res, ptr, sr_cls_exec_file_any(SR_NET_RULES));
+			} else { // take only dst/any
+				sal_and_self_op_arrays(&ba_res, sr_cls_exec_file_any(SR_NET_RULES));
+			}
+		}
+
+		if (info->tuple_info.id.pid) {  // Zero PID is an indication that we are not in process context
+			// UID
+			if (info->tuple_info.id.uid != UID_ANY) {
+				ptr = sr_cls_match_uid(SR_NET_RULES, info->tuple_info.id.uid);
+			} else {
+				ptr = NULL;
+			}
+			if (ptr) {
+				sal_and_self_op_two_arrays(&ba_res, ptr, sr_cls_uid_any(SR_NET_RULES));
+			} else { // take only dst/any
+				sal_and_self_op_arrays(&ba_res, sr_cls_uid_any(SR_NET_RULES));
+			}
+			if (array_is_clear(ba_res)) {
+				return SR_CLS_ACTION_ALLOW;
+			}
+			//PID
+			ptr = sr_cls_process_match(SR_NET_RULES, info->tuple_info.id.pid);
+			if (ptr) {
+				sal_and_self_op_two_arrays(&ba_res, ptr, sr_cls_exec_file_any(SR_NET_RULES));
+			} else { // take only dst/any
+				sal_and_self_op_arrays(&ba_res, sr_cls_exec_file_any(SR_NET_RULES));
+			}
+		}
+	}
 	
-	if (info->tuple_info.id.pid) {  // Zero PID is an indication that we are not in process context
-		// UID
-		if (info->tuple_info.id.uid != UID_ANY) {
-			ptr = sr_cls_match_uid(SR_NET_RULES, info->tuple_info.id.uid);
-		} else {
-			ptr = NULL;
-		}
-		if (ptr) {
-			sal_and_self_op_two_arrays(&ba_res, ptr, sr_cls_uid_any(SR_NET_RULES));
-		} else { // take only dst/any
-			sal_and_self_op_arrays(&ba_res, sr_cls_uid_any(SR_NET_RULES));
-		}
-		if (array_is_clear(ba_res)) {
-			return SR_CLS_ACTION_ALLOW;
-		}
-		//PID
-		ptr = sr_cls_process_match(SR_NET_RULES, info->tuple_info.id.pid);
-		if (ptr) {
-			sal_and_self_op_two_arrays(&ba_res, ptr, sr_cls_exec_file_any(SR_NET_RULES));
-		} else { // take only dst/any
-			sal_and_self_op_arrays(&ba_res, sr_cls_exec_file_any(SR_NET_RULES));
-		}
-	}
-
-	if (info->tuple_info.id.pid) {  // Zero PID is an indication that we are not in process context
-		// UID
-		if (info->tuple_info.id.uid != UID_ANY) {
-			ptr = sr_cls_match_uid(SR_NET_RULES, info->tuple_info.id.uid);
-		} else {
-			ptr = NULL;
-		}
-		if (ptr) {
-			sal_and_self_op_two_arrays(&ba_res, ptr, sr_cls_uid_any(SR_NET_RULES));
-		} else { // take only dst/any
-			sal_and_self_op_arrays(&ba_res, sr_cls_uid_any(SR_NET_RULES));
-		}
-		if (array_is_clear(ba_res)) {
-			return SR_CLS_ACTION_ALLOW;
-		}
-		//PID
-		ptr = sr_cls_process_match(SR_NET_RULES, info->tuple_info.id.pid);
-		if (ptr) {
-			sal_and_self_op_two_arrays(&ba_res, ptr, sr_cls_exec_file_any(SR_NET_RULES));
-		} else { // take only dst/any
-			sal_and_self_op_arrays(&ba_res, sr_cls_exec_file_any(SR_NET_RULES));
-		}
-	}
-
-	while ((rule = sal_ffs_and_clear_array (&ba_res)) != -1) {
-		action = sr_cls_network_rule_match(rule, info->tuple_info.size);
+	do{
+		if(def_action == config_params->def_net_action){
+			action = config_params->def_net_action;
+			rule = 4096; // the default rule
+		}else
+			action = sr_cls_network_rule_match(rule, info->tuple_info.size);
+			
 		if (action & SR_CLS_ACTION_LOG) {
 			char ext[256],sip[16],dip[16], actionstring[16];
 			SR_U32 sip_t, dip_t;
@@ -206,7 +218,7 @@ SR_32 sr_classifier_network(disp_info_t* info)
 		}
 		if (action & SR_CLS_ACTION_DROP)
 			return SR_CLS_ACTION_DROP;
-	}
+	}while ((rule = sal_ffs_and_clear_array (&ba_res)) != -1) ;
 
 	return SR_CLS_ACTION_ALLOW;
 }
@@ -215,14 +227,16 @@ SR_32 sr_classifier_network(disp_info_t* info)
 SR_32 sr_classifier_file(disp_info_t* info)
 {
 	bit_array *ptr = NULL, ba_res;
-	SR_16 rule;
+	SR_16 rule = -1;
 	SR_U16 action;
+	SR_U16 def_action = 0;
 	int st;
+	struct config_params_t *config_params;
 
 #ifdef ROOT_CLS_IGNORE
 	if (!info->tuple_info.id.uid) return SR_CLS_ACTION_ALLOW; // Don't mess up root access
 #endif
-
+	config_params = sr_control_config_params();
 	memset(&ba_res, 0, sizeof(bit_array));
 
 	sal_or_self_op_arrays(&ba_res, sr_cls_file_any());
@@ -231,7 +245,7 @@ SR_32 sr_classifier_file(disp_info_t* info)
 		if (ptr) {
 			sal_or_self_op_arrays(&ba_res, ptr);
 		}
-        }
+	}
 	if (info->fileinfo.parent_inode != INODE_ANY) {
 		ptr = sr_cls_file_find(info->fileinfo.parent_inode);
 		if (ptr) {
@@ -251,41 +265,51 @@ SR_32 sr_classifier_file(disp_info_t* info)
 		}
 	}
 	if (array_is_clear(ba_res)) {
-		return SR_CLS_ACTION_ALLOW;
-	}
+		if(config_params->def_file_action & SR_CLS_ACTION_LOG)
+			def_action = config_params->def_file_action;
+		else if(config_params->def_file_action & SR_CLS_ACTION_DROP)
+			return SR_CLS_ACTION_DROP;
+		else if(config_params->def_file_action & SR_CLS_ACTION_ALLOW)
+			return SR_CLS_ACTION_ALLOW;	
+	}else{
 
-	// UID
-	if (info->tuple_info.id.uid != UID_ANY) {
-		ptr = sr_cls_match_uid(SR_FILE_RULES, info->tuple_info.id.uid);
-	} else {
-		ptr = NULL;
-	}
-	if (ptr) {
-		sal_and_self_op_two_arrays(&ba_res, ptr, sr_cls_uid_any(SR_FILE_RULES));
-	} else { // take only dst/any
-		sal_and_self_op_arrays(&ba_res, sr_cls_uid_any(SR_FILE_RULES));
-	}
-	if (array_is_clear(ba_res)) {
-		return SR_CLS_ACTION_ALLOW;
-	}
+		// UID
+		if (info->tuple_info.id.uid != UID_ANY) {
+			ptr = sr_cls_match_uid(SR_FILE_RULES, info->tuple_info.id.uid);
+		} else {
+			ptr = NULL;
+		}
+		if (ptr) {
+			sal_and_self_op_two_arrays(&ba_res, ptr, sr_cls_uid_any(SR_FILE_RULES));
+		} else { // take only dst/any
+			sal_and_self_op_arrays(&ba_res, sr_cls_uid_any(SR_FILE_RULES));
+		}
+		if (array_is_clear(ba_res)) {
+			return config_params->def_file_action;
+		}
 
-	// PID
-	if ((st = sr_cls_process_add(info->fileinfo.id.pid)) != SR_SUCCESS) {
-	    CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-			"%s=error adding process",REASON);
+		// PID
+		if ((st = sr_cls_process_add(info->fileinfo.id.pid)) != SR_SUCCESS) {
+			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+				"%s=error adding process",REASON);
+		}
+		ptr = sr_cls_process_match(SR_FILE_RULES, info->fileinfo.id.pid);
+		if (ptr) {
+		   sal_and_self_op_two_arrays(&ba_res, ptr, sr_cls_exec_file_any(SR_FILE_RULES));
+		} else { // take only dst/any
+		   sal_and_self_op_arrays(&ba_res, sr_cls_exec_file_any(SR_FILE_RULES));
+		}
+		if (array_is_clear(ba_res)) {
+			return SR_CLS_ACTION_ALLOW;
+		}
 	}
-	ptr = sr_cls_process_match(SR_FILE_RULES, info->fileinfo.id.pid);
-	if (ptr) {
-	   sal_and_self_op_two_arrays(&ba_res, ptr, sr_cls_exec_file_any(SR_FILE_RULES));
-	} else { // take only dst/any
-	   sal_and_self_op_arrays(&ba_res, sr_cls_exec_file_any(SR_FILE_RULES));
-	}
-	if (array_is_clear(ba_res)) {
-		return SR_CLS_ACTION_ALLOW;
-	}
-
-	while ((rule = sal_ffs_and_clear_array (&ba_res)) != -1) {
-		action = sr_cls_file_rule_match(info->fileinfo.fileop, rule);
+	do {
+		if(def_action == config_params->def_file_action){
+			action = config_params->def_file_action;
+			rule = 4096; // the default rule
+		}else
+			action = sr_cls_file_rule_match(info->fileinfo.fileop, rule);
+			
 		if (action & SR_CLS_ACTION_LOG) {
 			char ext[64];
 			
@@ -305,7 +329,8 @@ SR_32 sr_classifier_file(disp_info_t* info)
 		if (action & SR_CLS_ACTION_ALLOW) {
 			return SR_CLS_ACTION_ALLOW;
 		}
-	}
+	} while ((rule = sal_ffs_and_clear_array (&ba_res)) != -1);
+	
 	return SR_CLS_ACTION_ALLOW;
 }
 
@@ -313,17 +338,16 @@ SR_32 sr_classifier_file(disp_info_t* info)
 SR_32 sr_classifier_canbus(disp_info_t* info)
 {
 	bit_array *ptr, ba_res;
-	SR_16 rule;
+	SR_16 rule = -1;
 	SR_U16 action;
+	SR_U16 def_action = 0;
 	int st;
 	struct config_params_t *config_params;
-
-	config_params = sr_control_config_params();
 	
 #ifdef ROOT_CLS_IGNORE
 	if (!info->tuple_info.id.uid) return SR_CLS_ACTION_ALLOW; // Don't mess up root access
 #endif
-	
+	config_params = sr_control_config_params();	
 	memset(&ba_res, 0, sizeof(bit_array));
 	
 	ptr = sr_cls_match_canid(info->can_info.msg_id,(info->can_info.dir==SR_CAN_OUT)?SR_CAN_OUT:SR_CAN_IN);
@@ -333,41 +357,50 @@ SR_32 sr_classifier_canbus(disp_info_t* info)
 		sal_or_self_op_arrays(&ba_res, (info->can_info.dir==SR_CAN_OUT)?src_cls_out_canid_any():src_cls_in_canid_any());
 	}
 	if (array_is_clear(ba_res)) {
-		return config_params->def_can_action;
-	}
+		if(config_params->def_can_action & SR_CLS_ACTION_LOG)
+			def_action = config_params->def_can_action;
+		else if(config_params->def_can_action & SR_CLS_ACTION_DROP)
+			return SR_CLS_ACTION_DROP;
+		else if(config_params->def_can_action & SR_CLS_ACTION_ALLOW)
+			return SR_CLS_ACTION_ALLOW;	
+	}else{
 	
+		if (info->can_info.id.pid) { 
+			if ((st = sr_cls_process_add(info->can_info.id.pid)) != SR_SUCCESS) {
+				CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+					"%s=error adding process",
+					REASON);
+			}
+			ptr = sr_cls_process_match(SR_CAN_RULES, info->can_info.id.pid);
+			if (ptr) {
+				sal_and_self_op_two_arrays(&ba_res, ptr, sr_cls_exec_file_any(SR_CAN_RULES));
+			} else { // take only dst/any
+				sal_and_self_op_arrays(&ba_res, sr_cls_exec_file_any(SR_CAN_RULES));
+			}
+		}
 
-	if (info->can_info.id.pid) { 
-	    if ((st = sr_cls_process_add(info->can_info.id.pid)) != SR_SUCCESS) {
-	        CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-				"%s=error adding process",
-				REASON);
-	    }
-	    ptr = sr_cls_process_match(SR_CAN_RULES, info->can_info.id.pid);
-	    if (ptr) {
-	        sal_and_self_op_two_arrays(&ba_res, ptr, sr_cls_exec_file_any(SR_CAN_RULES));
-	    } else { // take only dst/any
-	        sal_and_self_op_arrays(&ba_res, sr_cls_exec_file_any(SR_CAN_RULES));
-	    }
+		// UID
+		if (info->tuple_info.id.uid != UID_ANY) {
+			ptr = sr_cls_match_uid(SR_CAN_RULES, info->tuple_info.id.uid);
+		} else {
+			ptr = NULL;
+		}
+		if (ptr) {
+			sal_and_self_op_two_arrays(&ba_res, ptr, sr_cls_uid_any(SR_CAN_RULES));
+		} else { 
+			sal_and_self_op_arrays(&ba_res, sr_cls_uid_any(SR_CAN_RULES));
+		}
+		if (array_is_clear(ba_res)) {
+			return SR_CLS_ACTION_ALLOW;
+		}
 	}
-
-	// UID
-	if (info->tuple_info.id.uid != UID_ANY) {
-		ptr = sr_cls_match_uid(SR_CAN_RULES, info->tuple_info.id.uid);
-	} else {
-		ptr = NULL;
-	}
-	if (ptr) {
-		sal_and_self_op_two_arrays(&ba_res, ptr, sr_cls_uid_any(SR_CAN_RULES));
-	} else { 
-		sal_and_self_op_arrays(&ba_res, sr_cls_uid_any(SR_CAN_RULES));
-	}
-	if (array_is_clear(ba_res)) {
-		return SR_CLS_ACTION_ALLOW;
-	}
-
-	while ((rule = sal_ffs_and_clear_array (&ba_res)) != -1) {
-		action = sr_cls_can_rule_match(rule);
+	do {
+		if(def_action == config_params->def_can_action){
+			action = config_params->def_can_action;
+			rule = 4096; // the default rule
+		}else
+			action = sr_cls_can_rule_match(rule);
+		
 		if (action & SR_CLS_ACTION_LOG) {
 			char actionstring[16], msg[64];
 			SR_U8 severity;
@@ -394,6 +427,8 @@ SR_32 sr_classifier_canbus(disp_info_t* info)
 		}
 		if (action & SR_CLS_ACTION_DROP)
 			return SR_CLS_ACTION_DROP;
-	}
+			
+	}while ((rule = sal_ffs_and_clear_array (&ba_res)) != -1);
+	
 	return SR_CLS_ACTION_ALLOW;
 }
