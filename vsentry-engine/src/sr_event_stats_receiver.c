@@ -61,6 +61,8 @@ void sr_event_stats_receiver(SR_8 *msg_buff, SR_U32 msg_len)
 								"failed to hash exec for process connection");
 					break;	
 				}
+				/* Use this oportunity to check for aging */
+				sr_stat_analysis_handle_aging();
 				break;
 			default:
 				break;
