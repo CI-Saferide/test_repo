@@ -58,19 +58,18 @@ void sr_classifier_empty_tables(SR_BOOL is_lock)
 SR_32 sr_classifier_network(disp_info_t* info)
 {
 	bit_array *ptr;
-	SR_16 rule = -1;
+	SR_16 rule = SR_CLS_NO_MATCH;
 	SR_U16 action;
 	bit_array ba_res;
-	SR_U16 def_action = 0;
+	SR_U16 def_action = SR_CLS_ACTION_NOOP;//just default action
 	struct config_params_t *config_params;
 	
 #ifdef ROOT_CLS_IGNORE
 	if (!info->tuple_info.id.uid) return SR_CLS_ACTION_ALLOW; // Don't mess up root access
 #endif
 
-	config_params = sr_control_config_params();
 	memset(&ba_res, 0, sizeof(bit_array));
-	
+	config_params = sr_control_config_params();
 	// Match 5-tuple
 	// Src IP	
 	if (cr_cls_is_ip_address_local(info->tuple_info.saddr.v4addr))
@@ -83,13 +82,9 @@ SR_32 sr_classifier_network(disp_info_t* info)
 			sal_or_self_op_arrays(&ba_res, src_cls_network_any_src());
 		}
 	}
-	if (array_is_clear(ba_res)) {
-		if(config_params->def_net_action & SR_CLS_ACTION_LOG)
-			def_action = config_params->def_net_action;
-		else if(config_params->def_net_action & SR_CLS_ACTION_DROP)
-			return SR_CLS_ACTION_DROP;
-		else if(config_params->def_net_action & SR_CLS_ACTION_ALLOW)
-			return SR_CLS_ACTION_ALLOW;	
+	
+	if (array_is_clear(ba_res)) {	
+		goto defaultConf;			
 	}else{
 		// IP Proto	
 		//should support all protocols classifications not just TCP\UDP
@@ -100,7 +95,8 @@ SR_32 sr_classifier_network(disp_info_t* info)
 			sal_and_self_op_arrays(&ba_res, src_cls_proto_any());
 		}
 		if (array_is_clear(ba_res)) {
-			return SR_CLS_ACTION_ALLOW;	
+			config_params = sr_control_config_params();
+			goto defaultConf;	
 		}
 		//check if the incomming disp info is TCP\UDP for checking the ports or skipp this check
 		if(info->tuple_info.ip_proto == IPPROTO_TCP || info->tuple_info.ip_proto == IPPROTO_UDP){
@@ -112,7 +108,8 @@ SR_32 sr_classifier_network(disp_info_t* info)
 				sal_and_self_op_arrays(&ba_res, src_cls_port_any_src());
 			}
 			if (array_is_clear(ba_res)) {
-				return SR_CLS_ACTION_ALLOW;	
+				config_params = sr_control_config_params();
+				goto defaultConf;	
 			}
 			// Dst Port
 			ptr = sr_cls_match_port(info->tuple_info.dport, SR_DIR_DST, info->tuple_info.ip_proto);
@@ -122,7 +119,8 @@ SR_32 sr_classifier_network(disp_info_t* info)
 				sal_and_self_op_arrays(&ba_res, src_cls_port_any_dst());
 			}
 			if (array_is_clear(ba_res)) {
-				return SR_CLS_ACTION_ALLOW;
+				config_params = sr_control_config_params();
+				goto defaultConf;
 			}
 		}
 		// Dst IP 
@@ -137,7 +135,7 @@ SR_32 sr_classifier_network(disp_info_t* info)
 			}
 		}
 		if (array_is_clear(ba_res)) {
-			return SR_CLS_ACTION_ALLOW;
+			goto defaultConf;
 		}
 		
 		if (info->tuple_info.id.pid) {  // Zero PID is an indication that we are not in process context
@@ -153,7 +151,7 @@ SR_32 sr_classifier_network(disp_info_t* info)
 				sal_and_self_op_arrays(&ba_res, sr_cls_uid_any(SR_NET_RULES));
 			}
 			if (array_is_clear(ba_res)) {
-				return SR_CLS_ACTION_ALLOW;
+				goto defaultConf;
 			}
 			//PID
 			ptr = sr_cls_process_match(SR_NET_RULES, info->tuple_info.id.pid);
@@ -177,7 +175,7 @@ SR_32 sr_classifier_network(disp_info_t* info)
 				sal_and_self_op_arrays(&ba_res, sr_cls_uid_any(SR_NET_RULES));
 			}
 			if (array_is_clear(ba_res)) {
-				return SR_CLS_ACTION_ALLOW;
+				goto defaultConf;
 			}
 			//PID
 			ptr = sr_cls_process_match(SR_NET_RULES, info->tuple_info.id.pid);
@@ -190,10 +188,21 @@ SR_32 sr_classifier_network(disp_info_t* info)
 		
 	}
 	
+	goto result; // skip the default check...
+	
+defaultConf:
+	if(config_params->def_net_action & SR_CLS_ACTION_LOG)
+		def_action = config_params->def_net_action;
+	else if(config_params->def_net_action & SR_CLS_ACTION_DROP)
+		return SR_CLS_ACTION_DROP;
+	else if(config_params->def_net_action & SR_CLS_ACTION_ALLOW)
+		return SR_CLS_ACTION_ALLOW;	
+
+result:	
 	do{
 		if(def_action == config_params->def_net_action){
 			action = config_params->def_net_action;
-			rule = 4096; // the default rule
+			rule = SR_CLS_DEFAULT_RULE;
 		}else
 			action = sr_cls_network_rule_match(rule, info->tuple_info.size);	
 		
@@ -230,7 +239,7 @@ SR_32 sr_classifier_network(disp_info_t* info)
 		if (action & SR_CLS_ACTION_DROP) return SR_CLS_ACTION_DROP;
 		if (action & SR_CLS_ACTION_ALLOW) return SR_CLS_ACTION_ALLOW;
 		
-	}while ((rule = sal_ffs_and_clear_array (&ba_res)) != -1);
+	}while ((rule = sal_ffs_and_clear_array (&ba_res)) != SR_CLS_NO_MATCH);
 
 	return SR_CLS_ACTION_ALLOW;
 }
@@ -239,17 +248,18 @@ SR_32 sr_classifier_network(disp_info_t* info)
 SR_32 sr_classifier_file(disp_info_t* info)
 {
 	bit_array *ptr = NULL, ba_res;
-	SR_16 rule = -1;
+	SR_16 rule = SR_CLS_NO_MATCH;
 	SR_U16 action;
-	SR_U16 def_action = 0;
+	SR_U16 def_action = SR_CLS_ACTION_NOOP;//just default action
 	int st;
 	struct config_params_t *config_params;
 
 #ifdef ROOT_CLS_IGNORE
 	if (!info->tuple_info.id.uid) return SR_CLS_ACTION_ALLOW; // Don't mess up root access
 #endif
-	config_params = sr_control_config_params();
+
 	memset(&ba_res, 0, sizeof(bit_array));
+	config_params = sr_control_config_params();
 
 	sal_or_self_op_arrays(&ba_res, sr_cls_file_any());
 	if (info->fileinfo.current_inode != INODE_ANY) {
@@ -276,13 +286,9 @@ SR_32 sr_classifier_file(disp_info_t* info)
 			sal_or_self_op_arrays(&ba_res, ptr);
 		}
 	}
+	
 	if (array_is_clear(ba_res)) {
-		if(config_params->def_file_action & SR_CLS_ACTION_LOG)
-			def_action = config_params->def_file_action;
-		else if(config_params->def_file_action & SR_CLS_ACTION_DROP)
-			return SR_CLS_ACTION_DROP;
-		else if(config_params->def_file_action & SR_CLS_ACTION_ALLOW)
-			return SR_CLS_ACTION_ALLOW;	
+		goto defaultConf;
 	}else{
 
 		// UID
@@ -297,7 +303,7 @@ SR_32 sr_classifier_file(disp_info_t* info)
 			sal_and_self_op_arrays(&ba_res, sr_cls_uid_any(SR_FILE_RULES));
 		}
 		if (array_is_clear(ba_res)) {
-			return config_params->def_file_action;
+			goto defaultConf;
 		}
 
 		// PID
@@ -312,13 +318,25 @@ SR_32 sr_classifier_file(disp_info_t* info)
 		   sal_and_self_op_arrays(&ba_res, sr_cls_exec_file_any(SR_FILE_RULES));
 		}
 		if (array_is_clear(ba_res)) {
-			return SR_CLS_ACTION_ALLOW;
+			goto defaultConf;
 		}
 	}
+	
+	goto result; // skip the default check...
+	
+defaultConf:
+	if(config_params->def_file_action & SR_CLS_ACTION_LOG)
+		def_action = config_params->def_file_action;
+	else if(config_params->def_file_action & SR_CLS_ACTION_DROP)
+		return SR_CLS_ACTION_DROP;
+	else if(config_params->def_file_action & SR_CLS_ACTION_ALLOW)
+		return SR_CLS_ACTION_ALLOW;		
+	
+result:	
 	do {
 		if(def_action == config_params->def_file_action){
 			action = config_params->def_file_action;
-			rule = 4096; // the default rule
+			rule = SR_CLS_DEFAULT_RULE; // the default rule
 		}else
 			action = sr_cls_file_rule_match(info->fileinfo.fileop, rule);
 			
@@ -341,7 +359,7 @@ SR_32 sr_classifier_file(disp_info_t* info)
 		if (action & SR_CLS_ACTION_ALLOW) {
 			return SR_CLS_ACTION_ALLOW;
 		}
-	} while ((rule = sal_ffs_and_clear_array (&ba_res)) != -1);
+	} while ((rule = sal_ffs_and_clear_array (&ba_res)) != SR_CLS_NO_MATCH);
 	
 	return SR_CLS_ACTION_ALLOW;
 }
@@ -350,16 +368,16 @@ SR_32 sr_classifier_file(disp_info_t* info)
 SR_32 sr_classifier_canbus(disp_info_t* info)
 {
 	bit_array *ptr, ba_res;
-	SR_16 rule = -1;
+	SR_16 rule = SR_CLS_NO_MATCH;
 	SR_U16 action;
-	SR_U16 def_action = 0;
+	SR_U16 def_action = SR_CLS_ACTION_NOOP;//just default action
 	int st;
 	struct config_params_t *config_params;
 	
 #ifdef ROOT_CLS_IGNORE
 	if (!info->tuple_info.id.uid) return SR_CLS_ACTION_ALLOW; // Don't mess up root access
 #endif
-	config_params = sr_control_config_params();	
+	config_params = sr_control_config_params();
 	memset(&ba_res, 0, sizeof(bit_array));
 	
 	ptr = sr_cls_match_canid(info->can_info.msg_id,(info->can_info.dir==SR_CAN_OUT)?SR_CAN_OUT:SR_CAN_IN);
@@ -368,13 +386,9 @@ SR_32 sr_classifier_canbus(disp_info_t* info)
 	} else { // take only inbound/any
 		sal_or_self_op_arrays(&ba_res, (info->can_info.dir==SR_CAN_OUT)?src_cls_out_canid_any():src_cls_in_canid_any());
 	}
+	
 	if (array_is_clear(ba_res)) {
-		if(config_params->def_can_action & SR_CLS_ACTION_LOG)
-			def_action = config_params->def_can_action;
-		else if(config_params->def_can_action & SR_CLS_ACTION_DROP)
-			return SR_CLS_ACTION_DROP;
-		else if(config_params->def_can_action & SR_CLS_ACTION_ALLOW)
-			return SR_CLS_ACTION_ALLOW;	
+		goto defaultConf;
 	}else{
 	
 		if (info->can_info.id.pid) { 
@@ -390,7 +404,6 @@ SR_32 sr_classifier_canbus(disp_info_t* info)
 				sal_and_self_op_arrays(&ba_res, sr_cls_exec_file_any(SR_CAN_RULES));
 			}
 		}
-
 		// UID
 		if (info->tuple_info.id.uid != UID_ANY) {
 			ptr = sr_cls_match_uid(SR_CAN_RULES, info->tuple_info.id.uid);
@@ -403,13 +416,27 @@ SR_32 sr_classifier_canbus(disp_info_t* info)
 			sal_and_self_op_arrays(&ba_res, sr_cls_uid_any(SR_CAN_RULES));
 		}
 		if (array_is_clear(ba_res)) {
-			return SR_CLS_ACTION_ALLOW;
+			goto defaultConf;
 		}
 	}
+
+	goto result; // skip the default check...
+	
+defaultConf:
+
+	if(config_params->def_can_action & SR_CLS_ACTION_LOG)
+		def_action = config_params->def_can_action;
+	else if(config_params->def_can_action & SR_CLS_ACTION_DROP)
+		return SR_CLS_ACTION_DROP;
+	else if(config_params->def_can_action & SR_CLS_ACTION_ALLOW)
+		return SR_CLS_ACTION_ALLOW;
+
+	
+result:
 	do {
-		if(def_action == config_params->def_can_action){
+		if(def_action == config_params->def_can_action ){
 			action = config_params->def_can_action;
-			rule = 4096; // the default rule
+			rule = SR_CLS_DEFAULT_RULE; // the default rule
 		}else
 			action = sr_cls_can_rule_match(rule);
 		
@@ -440,7 +467,7 @@ SR_32 sr_classifier_canbus(disp_info_t* info)
 		if (action & SR_CLS_ACTION_DROP)
 			return SR_CLS_ACTION_DROP;
 			
-	}while ((rule = sal_ffs_and_clear_array (&ba_res)) != -1);
+	}while ((rule = sal_ffs_and_clear_array (&ba_res)) != SR_CLS_NO_MATCH);
 	
 	return SR_CLS_ACTION_ALLOW;
 }
