@@ -195,27 +195,7 @@ SR_32 sr_classifier_network(disp_info_t* info)
 			action = config_params->def_net_action;
 			rule = 4096; // the default rule
 		}else
-			action = sr_cls_network_rule_match(rule, info->tuple_info.size);
-		
-		
-		
-		/*
-		
-		printk("[%s] DO WHILE***RULE=%d Src_IP=%d.%d.%d.%d DST_IP=%d.%d.%d.%d act=%u PROTO: %s\n",__func__,rule,
-		(info->tuple_info.saddr.v4addr.s_addr&0xff000000)>>24,
-		(info->tuple_info.saddr.v4addr.s_addr&0x00ff0000)>>16,
-		(info->tuple_info.saddr.v4addr.s_addr&0xff00)>>8,
-		info->tuple_info.saddr.v4addr.s_addr&0xff,
-		(info->tuple_info.daddr.v4addr.s_addr&0xff000000)>>24,
-		(info->tuple_info.daddr.v4addr.s_addr&0x00ff0000)>>16,
-		(info->tuple_info.daddr.v4addr.s_addr&0xff00)>>8,
-		info->tuple_info.daddr.v4addr.s_addr&0xff,
-		action,
-		info->tuple_info.ip_proto == IPPROTO_TCP?"TCP":"UDP");
-		
-		*/
-		
-		
+			action = sr_cls_network_rule_match(rule, info->tuple_info.size);	
 		
 		if (action & SR_CLS_ACTION_LOG) {
 			
