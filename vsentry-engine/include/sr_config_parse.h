@@ -36,9 +36,9 @@ struct config_params_t {
 	/* config params */
 	SR_U8	cef_max_rate;						/* max allowed cef message rate per second for classifier and ml algorithms */	
 	SR_U8   log_type;
-	SR_U8   DEFAULT_FILE_ACTION;
-	SR_U8   DEFAULT_CAN_ACTION;
-	SR_U8   DEFAULT_NET_ACTION;
+	SR_U16	default_file_action;
+	SR_U16  default_net_action;
+	SR_U16	default_can_action;
 };
 
 SR_32 read_vsentry_config(char* config_filename);

@@ -31,9 +31,9 @@ void config_defaults(void)
 	config_params.cef_max_rate = (SR_U8)2;
 	config_params.log_type = (SR_U8)0;
 	
-	config_params.DEFAULT_FILE_ACTION = SR_CLS_ACTION_ALLOW;
-	config_params.DEFAULT_CAN_ACTION  = SR_CLS_ACTION_ALLOW;
-	config_params.DEFAULT_NET_ACTION  = SR_CLS_ACTION_ALLOW;
+	config_params.default_file_action = SR_CLS_ACTION_ALLOW;
+	config_params.default_net_action  = SR_CLS_ACTION_ALLOW;
+	config_params.default_can_action  = SR_CLS_ACTION_ALLOW;
 }
 
 #define CONFIG_LINE_BUFFER_SIZE 100
@@ -147,46 +147,46 @@ SR_32 read_vsentry_config(char* config_filename)
 
 		if (!strcmp(param, "DEFAULT_FILE_RULE")) {
 			if (!memcmp(value, "ALLOW", strlen("ALLOW")))
-				config_params.DEFAULT_FILE_ACTION = SR_CLS_ACTION_ALLOW;
+				config_params.default_file_action = SR_CLS_ACTION_ALLOW;
 			if (!memcmp(value, "DROP", strlen("DROP")))
-				config_params.DEFAULT_FILE_ACTION = SR_CLS_ACTION_DROP;
+				config_params.default_file_action = SR_CLS_ACTION_DROP;
 			if (!memcmp(value, "ALLOW-LOG", strlen("ALLOW-LOG"))){
-				config_params.DEFAULT_FILE_ACTION = SR_CLS_ACTION_ALLOW;
-				config_params.DEFAULT_FILE_ACTION |= SR_CLS_ACTION_LOG;
+				config_params.default_file_action = SR_CLS_ACTION_ALLOW;
+				config_params.default_file_action |= SR_CLS_ACTION_LOG;
 			}
 			if (!memcmp(value, "DROP-LOG", strlen("DROP-LOG"))){
-				config_params.DEFAULT_FILE_ACTION = SR_CLS_ACTION_DROP;
-				config_params.DEFAULT_FILE_ACTION |= SR_CLS_ACTION_LOG;
+				config_params.default_file_action = SR_CLS_ACTION_DROP;
+				config_params.default_file_action |= SR_CLS_ACTION_LOG;
 			}
 		}
 
 		if (!strcmp(param, "DEFAULT_CAN_RULE")) {
 			if (!memcmp(value, "ALLOW", strlen("ALLOW")))
-				config_params.DEFAULT_CAN_ACTION = SR_CLS_ACTION_ALLOW;
+				config_params.default_can_action = SR_CLS_ACTION_ALLOW;
 			if (!memcmp(value, "DROP", strlen("DROP")))
-				config_params.DEFAULT_CAN_ACTION = SR_CLS_ACTION_DROP;
+				config_params.default_can_action = SR_CLS_ACTION_DROP;
 			if (!memcmp(value, "ALLOW-LOG", strlen("DROP-LOG"))){
-				config_params.DEFAULT_CAN_ACTION = SR_CLS_ACTION_ALLOW;
-				config_params.DEFAULT_CAN_ACTION |= SR_CLS_ACTION_LOG;
+				config_params.default_can_action = SR_CLS_ACTION_ALLOW;
+				config_params.default_can_action |= SR_CLS_ACTION_LOG;
 			}
 			if (!memcmp(value, "DROP-LOG", strlen("DROP-LOG"))){
-				config_params.DEFAULT_CAN_ACTION = SR_CLS_ACTION_DROP;
-				config_params.DEFAULT_CAN_ACTION |= SR_CLS_ACTION_LOG;
+				config_params.default_can_action = SR_CLS_ACTION_DROP;
+				config_params.default_can_action |= SR_CLS_ACTION_LOG;
 			}
 		}
 
 		if (!strcmp(param, "DEFAULT_NET_RULE")) {
 			if (!memcmp(value, "ALLOW", strlen("ALLOW")))
-				config_params.DEFAULT_NET_ACTION = SR_CLS_ACTION_ALLOW;
+				config_params.default_net_action = SR_CLS_ACTION_ALLOW;
 			if (!memcmp(value, "DROP", strlen("DROP")))
-				config_params.DEFAULT_NET_ACTION = SR_CLS_ACTION_DROP;
+				config_params.default_net_action = SR_CLS_ACTION_DROP;
 			if (!memcmp(value, "ALLOW-LOG", strlen("ALLOW-LOG"))){
-				config_params.DEFAULT_NET_ACTION = SR_CLS_ACTION_ALLOW;
-				config_params.DEFAULT_NET_ACTION |= SR_CLS_ACTION_LOG;
+				config_params.default_net_action = SR_CLS_ACTION_ALLOW;
+				config_params.default_net_action |= SR_CLS_ACTION_LOG;
 			}
 			if (!memcmp(value, "DROP-LOG", strlen("DROP-LOG"))){
-				config_params.DEFAULT_NET_ACTION = SR_CLS_ACTION_DROP;
-				config_params.DEFAULT_NET_ACTION |= SR_CLS_ACTION_LOG;
+				config_params.default_net_action = SR_CLS_ACTION_DROP;
+				config_params.default_net_action |= SR_CLS_ACTION_LOG;
 			}
 		}
 
