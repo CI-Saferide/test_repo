@@ -19,5 +19,6 @@ void sr_stat_analysis_ut(void);
 SR_32 sr_stat_analysis_send_msg(SR_U8 msg_type, sr_stat_connection_info_t *connection_info);
 void sr_stat_analysis_learn_mode_set(sr_stat_mode_t mode);
 sr_stat_mode_t sr_stat_analysis_learn_mode_get(void);
+SR_32 sr_stat_analysis_handle_aging(void);
 
 #endif
