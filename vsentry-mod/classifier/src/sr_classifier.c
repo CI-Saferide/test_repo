@@ -72,8 +72,8 @@ SR_32 sr_classifier_network(disp_info_t* info)
 	memset(&ba_res, 0, sizeof(bit_array));
 	
 	// Match 5-tuple
-	// Src IP
-	if (cr_cls_is_ip_address_local(info->tuple_info.saddr.v4addr)) 
+	// Src IP	
+	if (cr_cls_is_ip_address_local(info->tuple_info.saddr.v4addr))
 		sal_or_op_arrays(src_cls_network_local_src(), src_cls_network_any_src(), &ba_res);
 	else {
 		ptr = sr_cls_match_ip(htonl(info->tuple_info.saddr.v4addr.s_addr), SR_DIR_SRC);
@@ -84,23 +84,46 @@ SR_32 sr_classifier_network(disp_info_t* info)
 		}
 	}
 	if (array_is_clear(ba_res)) {
-		//printk("[%s] NO MATCH: %u PROTO: %d\n",__func__,config_params->def_net_action,info->tuple_info.ip_proto);
 		if(config_params->def_net_action & SR_CLS_ACTION_LOG)
-				def_action = config_params->def_net_action;
+			def_action = config_params->def_net_action;
 		else if(config_params->def_net_action & SR_CLS_ACTION_DROP)
-				return SR_CLS_ACTION_DROP;
-			else if(config_params->def_net_action & SR_CLS_ACTION_ALLOW)
-				return SR_CLS_ACTION_ALLOW;	
+			return SR_CLS_ACTION_DROP;
+		else if(config_params->def_net_action & SR_CLS_ACTION_ALLOW)
+			return SR_CLS_ACTION_ALLOW;	
 	}else{
-		// Dst Port
-		ptr = sr_cls_match_port(info->tuple_info.dport, SR_DIR_DST, info->tuple_info.ip_proto);
+		// IP Proto	
+		//should support all protocols classifications not just TCP\UDP
+		ptr = sr_cls_match_protocol(info->tuple_info.ip_proto);
 		if (ptr) {
-			sal_and_self_op_two_arrays(&ba_res, ptr, src_cls_port_any_dst());
-		} else { // take only dst/any
-			sal_and_self_op_arrays(&ba_res, src_cls_port_any_dst());
+			sal_and_self_op_two_arrays(&ba_res, ptr, src_cls_proto_any());
+		} else { // take only proto/any
+			sal_and_self_op_arrays(&ba_res, src_cls_proto_any());
 		}
 		if (array_is_clear(ba_res)) {
-			return SR_CLS_ACTION_ALLOW;
+			return SR_CLS_ACTION_ALLOW;	
+		}
+		//check if the incomming disp info is TCP\UDP for checking the ports or skipp this check
+		if(info->tuple_info.ip_proto == IPPROTO_TCP || info->tuple_info.ip_proto == IPPROTO_UDP){
+			// Src Port
+			ptr = sr_cls_match_port(info->tuple_info.sport, SR_DIR_SRC, info->tuple_info.ip_proto);
+			if (ptr) {
+				sal_and_self_op_two_arrays(&ba_res, ptr, src_cls_port_any_src());
+			} else { // take only dst/any
+				sal_and_self_op_arrays(&ba_res, src_cls_port_any_src());
+			}
+			if (array_is_clear(ba_res)) {
+				return SR_CLS_ACTION_ALLOW;	
+			}
+			// Dst Port
+			ptr = sr_cls_match_port(info->tuple_info.dport, SR_DIR_DST, info->tuple_info.ip_proto);
+			if (ptr) {
+				sal_and_self_op_two_arrays(&ba_res, ptr, src_cls_port_any_dst());
+			} else { // take only dst/any
+				sal_and_self_op_arrays(&ba_res, src_cls_port_any_dst());
+			}
+			if (array_is_clear(ba_res)) {
+				return SR_CLS_ACTION_ALLOW;
+			}
 		}
 		// Dst IP 
 		if (cr_cls_is_ip_address_local(info->tuple_info.daddr.v4addr)) 
@@ -115,26 +138,6 @@ SR_32 sr_classifier_network(disp_info_t* info)
 		}
 		if (array_is_clear(ba_res)) {
 			return SR_CLS_ACTION_ALLOW;
-		}
-		// Src Port
-		ptr = sr_cls_match_port(info->tuple_info.sport, SR_DIR_SRC, info->tuple_info.ip_proto);
-		if (ptr) {
-			sal_and_self_op_two_arrays(&ba_res, ptr, src_cls_port_any_src());
-		} else { // take only dst/any
-			sal_and_self_op_arrays(&ba_res, src_cls_port_any_src());
-		}
-		if (array_is_clear(ba_res)) {
-			return SR_CLS_ACTION_ALLOW;	
-		}
-		// IP Proto
-		ptr = sr_cls_match_protocol(info->tuple_info.ip_proto);
-		if (ptr) {
-			sal_and_self_op_two_arrays(&ba_res, ptr, src_cls_proto_any());
-		} else { // take only proto/any
-			sal_and_self_op_arrays(&ba_res, src_cls_proto_any());
-		}
-		if (array_is_clear(ba_res)) {
-			return SR_CLS_ACTION_ALLOW;	
 		}
 		
 		if (info->tuple_info.id.pid) {  // Zero PID is an indication that we are not in process context
@@ -184,6 +187,7 @@ SR_32 sr_classifier_network(disp_info_t* info)
 				sal_and_self_op_arrays(&ba_res, sr_cls_exec_file_any(SR_NET_RULES));
 			}
 		}
+		
 	}
 	
 	do{
@@ -192,14 +196,39 @@ SR_32 sr_classifier_network(disp_info_t* info)
 			rule = 4096; // the default rule
 		}else
 			action = sr_cls_network_rule_match(rule, info->tuple_info.size);
-			
+		
+		
+		
+		/*
+		
+		printk("[%s] DO WHILE***RULE=%d Src_IP=%d.%d.%d.%d DST_IP=%d.%d.%d.%d act=%u PROTO: %s\n",__func__,rule,
+		(info->tuple_info.saddr.v4addr.s_addr&0xff000000)>>24,
+		(info->tuple_info.saddr.v4addr.s_addr&0x00ff0000)>>16,
+		(info->tuple_info.saddr.v4addr.s_addr&0xff00)>>8,
+		info->tuple_info.saddr.v4addr.s_addr&0xff,
+		(info->tuple_info.daddr.v4addr.s_addr&0xff000000)>>24,
+		(info->tuple_info.daddr.v4addr.s_addr&0x00ff0000)>>16,
+		(info->tuple_info.daddr.v4addr.s_addr&0xff00)>>8,
+		info->tuple_info.daddr.v4addr.s_addr&0xff,
+		action,
+		info->tuple_info.ip_proto == IPPROTO_TCP?"TCP":"UDP");
+		
+		*/
+		
+		
+		
 		if (action & SR_CLS_ACTION_LOG) {
+			
 			char ext[256],sip[16],dip[16], actionstring[16];
 			SR_U32 sip_t, dip_t;
 			sip_t = info->tuple_info.saddr.v4addr.s_addr;
 			dip_t = info->tuple_info.daddr.v4addr.s_addr;
 			
-			sprintf(actionstring, "Allow");
+			if (action & SR_CLS_ACTION_DROP) 
+				sprintf(actionstring, "drop");
+			else
+				sprintf(actionstring, "allow");
+			
 			sprintf(sip, "%d.%d.%d.%d", (sip_t&0xff000000)>>24, (sip_t&0x00ff0000)>>16, (sip_t&0xff00)>> 8, sip_t&0xff);
 			sprintf(dip, "%d.%d.%d.%d", (dip_t&0xff000000)>>24, (dip_t&0x00ff0000)>>16, (dip_t&0xff00)>> 8, dip_t&0xff);
 			sprintf(ext, "%s=%d %s=%s %s=%s %s=%s %s=%d %s=%s %s=%d",
@@ -212,13 +241,16 @@ SR_32 sr_classifier_network(disp_info_t* info)
 				DEVICE_DEST_PORT,info->tuple_info.dport);
 			if (action & SR_CLS_ACTION_DROP) {
 				CEF_log_event(SR_CEF_CID_NETWORK, "Connection drop" , SEVERITY_HIGH, ext);
+				return SR_CLS_ACTION_DROP;
 			} else {
 				CEF_log_event(SR_CEF_CID_NETWORK, "Connection allow" , SEVERITY_LOW, ext);
+				return SR_CLS_ACTION_ALLOW;
 			}
 		}
-		if (action & SR_CLS_ACTION_DROP)
-			return SR_CLS_ACTION_DROP;
-	}while ((rule = sal_ffs_and_clear_array (&ba_res)) != -1) ;
+		if (action & SR_CLS_ACTION_DROP) return SR_CLS_ACTION_DROP;
+		if (action & SR_CLS_ACTION_ALLOW) return SR_CLS_ACTION_ALLOW;
+		
+	}while ((rule = sal_ffs_and_clear_array (&ba_res)) != -1);
 
 	return SR_CLS_ACTION_ALLOW;
 }
