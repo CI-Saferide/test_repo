@@ -95,7 +95,6 @@ SR_32 sr_classifier_network(disp_info_t* info)
 			sal_and_self_op_arrays(&ba_res, src_cls_proto_any());
 		}
 		if (array_is_clear(ba_res)) {
-			config_params = sr_control_config_params();
 			goto defaultConf;	
 		}
 		//check if the incomming disp info is TCP\UDP for checking the ports or skipp this check
@@ -108,7 +107,6 @@ SR_32 sr_classifier_network(disp_info_t* info)
 				sal_and_self_op_arrays(&ba_res, src_cls_port_any_src());
 			}
 			if (array_is_clear(ba_res)) {
-				config_params = sr_control_config_params();
 				goto defaultConf;	
 			}
 			// Dst Port
@@ -119,7 +117,6 @@ SR_32 sr_classifier_network(disp_info_t* info)
 				sal_and_self_op_arrays(&ba_res, src_cls_port_any_dst());
 			}
 			if (array_is_clear(ba_res)) {
-				config_params = sr_control_config_params();
 				goto defaultConf;
 			}
 		}
