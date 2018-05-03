@@ -1,19 +1,5 @@
-#include <sr_types.h>
 #include <sr_gen_hash.h>
-#include <sal_linux.h>
-#include <sal_mem.h>
-#include "sr_stat_analysis_common.h"
-#include "sr_stat_analysis.h"
-#include "sr_stat_process_connection.h"
-#include "sr_cls_network_control.h"
-#include "sr_cls_rules_control.h"
-#include "sr_sal_common.h"
-#include "sr_actions_common.h"
-#include "sr_cls_port_control.h"
-#include "sal_linux.h"
-#include <curl/curl.h>
-#include "sr_config_parse.h"
-#include "sr_stat_learn_rule.h"
+#include "sr_white_list.h"
 
 #define HASH_SIZE 500
 
