@@ -267,7 +267,9 @@ SR_32 sr_engine_start(void)
 		}
 	}
 	sr_get_command_stop();
+#ifdef ENBALE_POLICY_UPDATE
 	sr_static_policy_db_mng_stop();
+#endif /* ENBALE_POLICY_UPDATE */
 	sr_stop_task(SR_CAN_COLLECT_TASK);
 	sr_stop_task(SR_ENGINE_TASK);
 	sentry_stop();
