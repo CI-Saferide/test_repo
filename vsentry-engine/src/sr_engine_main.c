@@ -115,11 +115,13 @@ SR_32 sr_engine_start(void)
 	CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,
 		"%s=vsentry engine started",MESSAGE);
 
+#ifdef SUPPORT_REMOTE_SERVER
 	ret = sr_log_uploader_init();
 	if (ret != SR_SUCCESS){
 		printf("failed to init_log_uploader\n");
 		return SR_ERROR;
 	}
+#endif /* SUPPORT_REMOTE_SERVER */
 
 #ifdef CONFIG_STAT_ANALYSIS
 	ret = sr_stat_analysis_init();
@@ -185,11 +187,13 @@ SR_32 sr_engine_start(void)
 
 	sr_db_init();
 	sentry_init(sr_config_vsentry_db_cb);
-
+	
+#ifdef SUPPORT_REMOTE_SERVER
 #ifdef ENBALE_POLICY_UPDATE
 	/* enbale automatic policy updates from server */
 	sr_static_policy_db_mng_start();
 #endif /* ENBALE_POLICY_UPDATE */
+#endif /* SUPPORT_REMOTE_SERVER */
 
 	sr_get_command_start();
 
