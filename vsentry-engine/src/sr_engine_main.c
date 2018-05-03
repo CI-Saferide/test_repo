@@ -186,7 +186,10 @@ SR_32 sr_engine_start(void)
 	sr_db_init();
 	sentry_init(sr_config_vsentry_db_cb);
 
+#ifdef ENBALE_POLICY_UPDATE
+	/* enbale automatic policy updates from server */
 	sr_static_policy_db_mng_start();
+#endif /* ENBALE_POLICY_UPDATE */
 
 	sr_get_command_start();
 
