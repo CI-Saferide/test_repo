@@ -16,6 +16,7 @@ VPATH 		:=  $(TOP_DIR)/sal/platform/linux/src \
 				$(TOP_DIR)/src \
 				$(TOP_DIR)/../common/src \
 				$(TOP_DIR)/stat_analysis/src \
+				$(TOP_DIR)/white_list/src \
 				$(TOP_DIR)/db/src
 
 # sources to compile
@@ -73,6 +74,7 @@ INCLUDES 	:=  -I../common/include \
 				-I../vsentry-lib/include \
 				-I../common/stat_analysis/include \
 				-Istat_analysis/include \
+				-Iwhite_list/include \
 				-Idb/include \
 
 OBJS		:=  $(addprefix $(OBJDIR)/,$(SRCS:.c=.o))

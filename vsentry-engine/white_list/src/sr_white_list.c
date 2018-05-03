@@ -1,5 +1,6 @@
 #include <sr_gen_hash.h>
 #include "sr_white_list.h"
+#include "sal_mem.h"
 
 #define HASH_SIZE 500
 
