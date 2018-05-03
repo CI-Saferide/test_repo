@@ -23,6 +23,7 @@
 #include "sr_config_parse.h"
 #include "sr_info_gather.h"
 #include "sr_static_policy.h"
+#include "sr_white_list.h"
 #ifdef CONFIG_STAT_ANALYSIS
 #include "sr_stat_analysis.h"
 #endif
@@ -118,6 +119,13 @@ SR_32 sr_engine_start(void)
 	ret = sr_log_uploader_init();
 	if (ret != SR_SUCCESS){
 		printf("failed to init_log_uploader\n");
+		return SR_ERROR;
+	}
+
+	ret = sr_white_list_init();
+	if (ret != SR_SUCCESS){
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+						"%s=failed to init sr_white_list_init",REASON);
 		return SR_ERROR;
 	}
 
@@ -263,6 +271,7 @@ SR_32 sr_engine_start(void)
 #ifdef CONFIG_STAT_ANALYSIS
 	sr_stat_analysis_uninit();
 #endif /* CONFIG_STAT_ANALYSIS */
+	sr_white_list_uninit();
 #ifdef CONFIG_CAN_ML
 	sr_ml_can_hash_deinit();
 #endif /* CONFIG_CAN_ML */
