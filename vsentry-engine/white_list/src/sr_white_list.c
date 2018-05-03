@@ -6,13 +6,9 @@
 
 static struct sr_gen_hash *white_list_hash;
 
-typedef struct white_list_item  {
-	char exec[SR_MAX_PATH_SIZE];
-} white_list_item_t;
-
 static SR_32 white_list_comp(void *data_in_hash, void *comp_val)
 {
-        white_list_item_t *white_list_item = (white_list_item_t *)data_in_hash;
+        sr_white_list_item_t *white_list_item = (sr_white_list_item_t *)data_in_hash;
 	char *comp_exe = (char *)comp_val;
 
         if (!data_in_hash)
@@ -23,14 +19,14 @@ static SR_32 white_list_comp(void *data_in_hash, void *comp_val)
 
 static void white_list_print(void *data_in_hash)
 {
-	white_list_item_t *white_list_item = (white_list_item_t *)data_in_hash;
+	sr_white_list_item_t *white_list_item = (sr_white_list_item_t *)data_in_hash;
 
 	printf("exec:%s: \n", white_list_item->exec);
 }
 
 static SR_U32 white_list_create_key(void *data)
 {
-	white_list_item_t *white_list_item = (white_list_item_t *)data;
+	sr_white_list_item_t *white_list_item = (sr_white_list_item_t *)data;
 	SR_U32 num = 0, len, i;
 	// TODO : Ctreate a better hash key creation function.
 	
@@ -65,7 +61,7 @@ SR_32 sr_white_list_init(void)
 
 SR_32 sr_white_list_hash_insert(char *exec)
 {
-	white_list_item_t *white_list_item;
+	sr_white_list_item_t *white_list_item;
 	SR_32 rc;
 
 	if (sr_gen_hash_get(white_list_hash, exec)) {
@@ -74,7 +70,7 @@ SR_32 sr_white_list_hash_insert(char *exec)
 		return SR_ERROR;
         }
 		
-	SR_Zalloc(white_list_item, white_list_item_t *, sizeof(white_list_item_t));
+	SR_Zalloc(white_list_item, sr_white_list_item_t *, sizeof(sr_white_list_item_t));
 	if (!white_list_item) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 				"%s=learn hash update: memory allocation failed",REASON);
@@ -88,6 +84,16 @@ SR_32 sr_white_list_hash_insert(char *exec)
 	}       
 
 	return SR_SUCCESS;
+}
+
+sr_white_list_item_t *sr_white_list_hash_get(char *exec)
+{
+	sr_white_list_item_t *item;
+
+	if (!(item = sr_gen_hash_get(white_list_hash, exec)))
+		return NULL;
+
+	return item;
 }
 
 void sr_white_list_uninit(void)
