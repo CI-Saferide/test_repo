@@ -4,6 +4,8 @@
 
 #define HASH_SIZE 500
 
+static sr_wl_mode_t wl_mode;
+
 static struct sr_gen_hash *white_list_hash;
 
 static SR_32 white_list_comp(void *data_in_hash, void *comp_val)
@@ -22,6 +24,8 @@ static void white_list_print(void *data_in_hash)
 	sr_white_list_item_t *white_list_item = (sr_white_list_item_t *)data_in_hash;
 
 	printf("exec:%s: \n", white_list_item->exec);
+
+	sr_white_list_file_print(white_list_item->white_list_file);
 }
 
 static SR_U32 white_list_create_key(void *data)
@@ -39,7 +43,14 @@ static SR_U32 white_list_create_key(void *data)
 
 static void white_list_free(void *data_in_hash)
 {
-	SR_Free(data_in_hash);
+	sr_white_list_item_t *white_list_item = (sr_white_list_item_t *)data_in_hash;
+
+	if (!white_list_item)
+		return;
+
+	sr_white_list_file_cleanup(white_list_item->white_list_file);
+
+	SR_Free(white_list_item);
 }
 
 SR_32 sr_white_list_init(void)
@@ -55,18 +66,63 @@ SR_32 sr_white_list_init(void)
 					"%s=file_hash_init: sr_gen_hash_new failed",REASON);
                 return SR_ERROR;
         }
+		wl_mode = SR_WL_MODE_OFF;
 
         return SR_SUCCESS;
 }
 
-SR_32 sr_white_list_hash_insert(char *exec)
+SR_32 wr_white_list_set_mode(sr_wl_mode_t new_wl_mode)
+{
+	SR_32 rc;
+
+	if (wl_mode == new_wl_mode)
+		return SR_SUCCESS;
+	switch (wl_mode) {
+		case SR_WL_MODE_LEARN:
+			break;
+		case SR_WL_MODE_PROTECT:
+			// Remove the rules
+			break;
+		case SR_WL_MODE_OFF:
+			break;
+		default:
+			return SR_ERROR;
+	}
+	switch (new_wl_mode) { 
+		case SR_WL_MODE_LEARN:
+			sr_white_list_delete_all();
+			break;
+		case SR_WL_MODE_PROTECT:
+			wl_mode = SR_WL_MODE_PROTECT;
+			if ((rc = sr_white_list_file_protect()) != SR_SUCCESS) {
+               			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+					"%s=sr_white_list_file_protect failed",REASON);
+                		return SR_ERROR;
+			}
+			break;
+		case SR_WL_MODE_OFF:
+			break;
+		default:
+			return SR_ERROR;
+	}
+	wl_mode = new_wl_mode;
+
+	return SR_SUCCESS;
+}
+
+sr_wl_mode_t wr_white_list_get_mode(void)
+{
+	return wl_mode;
+}
+
+SR_32 sr_white_list_hash_insert(char *exec, sr_white_list_item_t **new_item)
 {
 	sr_white_list_item_t *white_list_item;
 	SR_32 rc;
 
 	if (sr_gen_hash_get(white_list_hash, exec)) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-                                "%s=whilte list insert - item existsfailed",REASON);
+                                "%s=whilte list insert - item failed",REASON);
 		return SR_ERROR;
         }
 		
@@ -76,6 +132,8 @@ SR_32 sr_white_list_hash_insert(char *exec)
 				"%s=learn hash update: memory allocation failed",REASON);
 		return SR_ERROR;
 	}
+	if (new_item)
+		*new_item = white_list_item;
 	strncpy(white_list_item->exec, exec, SR_MAX_PATH_SIZE);
 	if ((rc = sr_gen_hash_insert(white_list_hash, (void *)exec, white_list_item)) != SR_SUCCESS) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,

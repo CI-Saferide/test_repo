@@ -152,6 +152,18 @@ SR_32 disp_file_created(disp_info_t* info)
 	return SR_SUCCESS;
 }
 
+SR_32 disp_file_opened(disp_info_t* info)
+{
+	struct sr_ec_file_open_t file_open_data;
+
+	strncpy(file_open_data.file, info->fileinfo.fullpath, SR_MAX_PATH_SIZE); 
+	file_open_data.pid = info->fileinfo.id.pid; 
+	file_open_data.fileop = info->fileinfo.fileop;
+	sr_ec_send_event(MOD2STAT_BUF, SR_EVENT_STATS_FILE_OPEN, &file_open_data);
+
+	return SR_SUCCESS;
+}
+
 SR_32 disp_ipv4_sendmsg(disp_info_t* info)
 {
 	return (sr_classifier_network(info));

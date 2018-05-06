@@ -623,6 +623,7 @@ SR_32 vsentry_file_open(struct file *file, const struct cred *cred)
 	disp_info_t disp;
 	struct task_struct *ts = current;
 	const struct cred *rcred= ts->real_cred;
+	SR_32 rc;
 	
 	memset(&disp, 0, sizeof(disp_info_t));
 	
@@ -665,7 +666,19 @@ SR_32 vsentry_file_open(struct file *file, const struct cred *cred)
 #endif /* DEBUG_EVENT_MEDIATOR */
 	
 	/* call dispatcher */
-	return (disp_file_open(&disp));
+	rc = disp_file_open(&disp);
+
+	if (rc == 0) {
+		if (get_path(file->f_path.dentry, disp.fileinfo.fullpath, sizeof(disp.fileinfo.fullpath)) != SR_SUCCESS) {
+			CEF_log_event(SR_CEF_CID_SYSTEM, "Error", SEVERITY_HIGH,
+                                                        "File operation denied, file path it to long");
+                        return 0;
+                }
+
+		disp_file_opened(&disp);
+	}
+
+	return rc;
 }
 
 SR_32 vsentry_inode_link(struct dentry *old_dentry, struct inode *dir, struct dentry *new_dentry)

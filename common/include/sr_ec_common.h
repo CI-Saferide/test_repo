@@ -15,6 +15,7 @@ enum sr_event_type {
 enum sr_event_stats_type {
         SR_EVENT_STATS_CONNECTION,
         SR_EVENT_STATS_CONNECTION_TRANSMIT,
+        SR_EVENT_STATS_FILE_OPEN,
         SR_EVENT_STATS_MAX_EVENT
 };
 #endif
@@ -68,6 +69,14 @@ struct sr_ec_connection_transmit_t{
 	SR_U32 count;
 };
 #pragma pack(pop)
-#endif 
+
+#pragma pack(push, 1)
+struct sr_ec_file_open_t{
+	SR_8 file[SR_MAX_PATH_SIZE];
+	SR_U32 pid;
+	SR_U8  fileop;
+};
+#pragma pack(pop)
+#endif
 
 #endif /* SR_EC_COMMON_H */

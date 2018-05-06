@@ -38,6 +38,8 @@
 #include "sr_config_common.h"
 #include "sr_can_collector.h"
 #include "sr_config_parse.h"
+#include "sr_white_list.h"
+
 
 static SR_32 engine_main_loop(void *data)
 {
@@ -259,6 +261,22 @@ SR_32 sr_engine_start(void)
 			case 'd':
 					printf ("printing debug info for ml_can\n");
 					sr_ml_can_print_hash();
+				break;
+			case 'e':
+					printf ("Move to WL learn mode \n");
+					wr_white_list_set_mode(SR_WL_MODE_LEARN);
+				break;
+			case 'f':
+				printf ("Move to WL prootect mode \n");
+				wr_white_list_set_mode(SR_WL_MODE_PROTECT);
+				break;
+			case 'g':
+				printf ("Move to WL OFF mode \n");
+				wr_white_list_set_mode(SR_WL_MODE_OFF);
+				break;
+			case 'z':
+				printf("print the white list !!!\n");
+				sr_white_list_hash_print();
 				break;
 #endif /* CONFIG_CAN_ML */
 		}

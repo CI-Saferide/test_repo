@@ -114,6 +114,7 @@ SR_32 disp_inode_symlink(disp_info_t* info);
 SR_32 disp_inode_rename(disp_info_t* info);
 void disp_inode_remove(SR_U32 inode);
 SR_32 disp_file_created(disp_info_t* info);
+SR_32 disp_file_opened(disp_info_t* info);
 
 SR_32 disp_socket_connect(disp_info_t* info);
 SR_32 disp_socket_accept(disp_info_t* info);

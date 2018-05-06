@@ -6,6 +6,7 @@
 #include "sr_event_receiver.h"
 #include "sr_stat_analysis.h"
 #include "sr_stat_process_connection.h"
+#include "sr_white_list_file.h"
 
 void sr_event_stats_receiver(SR_8 *msg_buff, SR_U32 msg_len)
 {
@@ -13,6 +14,7 @@ void sr_event_stats_receiver(SR_8 *msg_buff, SR_U32 msg_len)
 	struct sr_ec_connection_stat_t *pConStats;
 	struct sr_ec_connection_transmit_t *pConTran;
 	sr_stat_connection_info_t connection_info = {};
+	struct sr_ec_file_open_t *pFile_open;
 
 	while (offset < msg_len) {
 		switch  (msg_buff[offset++]) {
@@ -63,6 +65,15 @@ void sr_event_stats_receiver(SR_8 *msg_buff, SR_U32 msg_len)
 				}
 				/* Use this oportunity to check for aging */
 				sr_stat_analysis_handle_aging();
+				break;
+			case SR_EVENT_STATS_FILE_OPEN:
+				pFile_open = (struct sr_ec_file_open_t *) &msg_buff[offset];
+				offset += sizeof(struct sr_ec_file_open_t);
+				if ((rc = sr_white_list_file_open(pFile_open)) != SR_SUCCESS) {
+                			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+								"%s=sr_white_list_open failed",REASON);
+					break;	
+				}
 				break;
 			default:
 				break;
