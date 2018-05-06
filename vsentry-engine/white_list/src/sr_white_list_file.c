@@ -8,6 +8,7 @@
 #include "sr_cls_rules_control.h"
 
 #define SR_START_RULE_NO 3072
+#define SR_END_RULE_NO 4095
 
 static SR_32 rule_id; 
 
@@ -82,6 +83,12 @@ static SR_32 file_protect_cb(void *hash_data, void *data)
 
 	for (iter = wl_item->white_list_file; iter; iter = iter->next) {
 		printf("rule#%d file:%s: fileop:%x exec:%s \n", rule_id, iter->file, iter->fileop, wl_item->exec);
+		if (rule_id > SR_END_RULE_NO) {
+			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+				"%s=File learn rule exeeds max number of rules file:%s exec:%s",
+					REASON, iter->file, wl_item->exec);
+			continue;
+		}
 		sr_cls_file_add_rule(iter->file, wl_item->exec, "*", rule_id, (SR_U8)1);
 		sr_cls_rule_add(SR_FILE_RULES, rule_id, actions_bitmap, iter->fileop, 0, 0, 0, 0, 0, 0, 0);
 		rule_id++;
@@ -98,7 +105,7 @@ static SR_32 file_unprotect_cb(void *hash_data, void *data)
 	if (!hash_data)
 		return SR_ERROR;
 
-	for (iter = wl_item->white_list_file; iter; iter = iter->next) {
+	for (iter = wl_item->white_list_file; iter && rule_id <= SR_END_RULE_NO; iter = iter->next) {
 		sr_cls_file_del_rule(iter->file, wl_item->exec, "*", rule_id, (SR_U8)1);
 		sr_cls_rule_del(SR_NET_RULES, rule_id);
 		rule_id++;
@@ -111,7 +118,7 @@ SR_32 sr_white_list_file_protect(SR_BOOL is_protect)
 {
 	SR_32 rc;
 	
-	rule_id = 0;
+	rule_id = SR_START_RULE_NO;
 	
 	if ((rc = sr_white_list_hash_exec_for_all(is_protect ? file_protect_cb : file_unprotect_cb)) != SR_SUCCESS) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
