@@ -90,13 +90,30 @@ static SR_32 file_protect_cb(void *hash_data, void *data)
 	return SR_SUCCESS;
 }
 
-SR_32 sr_white_list_file_protect(void)
+static SR_32 file_unprotect_cb(void *hash_data, void *data)
+{
+	sr_white_list_item_t *wl_item = (sr_white_list_item_t *)hash_data;
+	sr_white_list_file_t *iter;
+
+	if (!hash_data)
+		return SR_ERROR;
+
+	for (iter = wl_item->white_list_file; iter; iter = iter->next) {
+		sr_cls_file_del_rule(iter->file, wl_item->exec, "*", rule_id, (SR_U8)1);
+		sr_cls_rule_del(SR_NET_RULES, rule_id);
+		rule_id++;
+
+	}
+	return SR_SUCCESS;
+}
+
+SR_32 sr_white_list_file_protect(SR_BOOL is_protect)
 {
 	SR_32 rc;
 	
 	rule_id = 0;
 	
-	if ((rc = sr_white_list_hash_exec_for_all(file_protect_cb)) != SR_SUCCESS) {
+	if ((rc = sr_white_list_hash_exec_for_all(is_protect ? file_protect_cb : file_unprotect_cb)) != SR_SUCCESS) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 			"%s=sr_white_list_hash_exec_for_all failed",REASON);
 		return SR_ERROR;

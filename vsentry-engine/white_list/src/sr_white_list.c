@@ -82,6 +82,11 @@ SR_32 wr_white_list_set_mode(sr_wl_mode_t new_wl_mode)
 			break;
 		case SR_WL_MODE_PROTECT:
 			// Remove the rules
+			if ((rc = sr_white_list_file_protect(SR_FALSE)) != SR_SUCCESS) {
+               			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+					"%s=sr_white_list_file_protect failed",REASON);
+                		return SR_ERROR;
+			}
 			break;
 		case SR_WL_MODE_OFF:
 			break;
@@ -94,7 +99,7 @@ SR_32 wr_white_list_set_mode(sr_wl_mode_t new_wl_mode)
 			break;
 		case SR_WL_MODE_PROTECT:
 			wl_mode = SR_WL_MODE_PROTECT;
-			if ((rc = sr_white_list_file_protect()) != SR_SUCCESS) {
+			if ((rc = sr_white_list_file_protect(SR_TRUE)) != SR_SUCCESS) {
                			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 					"%s=sr_white_list_file_protect failed",REASON);
                 		return SR_ERROR;
@@ -156,6 +161,21 @@ sr_white_list_item_t *sr_white_list_hash_get(char *exec)
 
 void sr_white_list_uninit(void)
 {
+	switch (wl_mode) {
+		case SR_WL_MODE_LEARN:
+			break;
+		case SR_WL_MODE_PROTECT:
+			// Remove the rules
+			if (sr_white_list_file_protect(SR_FALSE) != SR_SUCCESS) {
+				CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+				"%s=sr_white_list_file_protect failed",REASON);
+			}
+			break;
+		case SR_WL_MODE_OFF:
+			break;
+		default:
+			break;
+	}
         sr_gen_hash_destroy(white_list_hash);
 }
 
