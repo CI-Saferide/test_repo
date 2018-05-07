@@ -6,11 +6,13 @@
 #include "sr_cls_file_control.h"
 #include "sr_actions_common.h"
 #include "sr_cls_rules_control.h"
+#include "sysrepo_mng.h"
 
 #define SR_START_RULE_NO 3072
 #define SR_END_RULE_NO 4095
 
 static SR_32 rule_id; 
+static sysrepo_mng_handler_t sysrepo_handler;
 
 /* For each binary ther will be at maximum 3 rules. One for each premisiion. The file will be tuples, the rule number
 	is staring from 3k - up to 4k !!! */ 
@@ -76,7 +78,6 @@ static SR_32 file_protect_cb(void *hash_data, void *data)
 {
 	sr_white_list_item_t *wl_item = (sr_white_list_item_t *)hash_data;
 	sr_white_list_file_t *iter;
-	SR_U16 actions_bitmap = SR_CLS_ACTION_ALLOW | SR_CLS_ACTION_LOG;
 
 	if (!hash_data)
 		return SR_ERROR;
@@ -89,28 +90,21 @@ static SR_32 file_protect_cb(void *hash_data, void *data)
 					REASON, iter->file, wl_item->exec);
 			continue;
 		}
-		sr_cls_file_add_rule(iter->file, wl_item->exec, "*", rule_id, (SR_U8)1);
-		sr_cls_rule_add(SR_FILE_RULES, rule_id, actions_bitmap, iter->fileop, 0, 0, 0, 0, 0, 0, 0);
+		if (sys_repo_mng_create_file_rule(&sysrepo_handler, rule_id, iter->file, wl_item->exec, "*", "allow_log", iter->fileop) != SR_SUCCESS) {
+			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+				"%s=sys_repo_mng_create_file_rule  fiel rule id:%d ",
+					REASON, rule_id);
+		}
 		rule_id++;
-
 	}
+
 	return SR_SUCCESS;
 }
 
 static SR_32 file_unprotect_cb(void *hash_data, void *data)
 {
-	sr_white_list_item_t *wl_item = (sr_white_list_item_t *)hash_data;
-	sr_white_list_file_t *iter;
+	// TODO : delete rulues.
 
-	if (!hash_data)
-		return SR_ERROR;
-
-	for (iter = wl_item->white_list_file; iter && rule_id <= SR_END_RULE_NO; iter = iter->next) {
-		sr_cls_file_del_rule(iter->file, wl_item->exec, "*", rule_id, (SR_U8)1);
-		sr_cls_rule_del(SR_NET_RULES, rule_id);
-		rule_id++;
-
-	}
 	return SR_SUCCESS;
 }
 
@@ -118,6 +112,12 @@ SR_32 sr_white_list_file_protect(SR_BOOL is_protect)
 {
 	SR_32 rc;
 	
+	if (sysrepo_mng_session_start(&sysrepo_handler)) {
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+			"%s=sysrepo_mng_session_start failed",REASON);
+		return SR_ERROR;
+	}
+
 	rule_id = SR_START_RULE_NO;
 	
 	if ((rc = sr_white_list_hash_exec_for_all(is_protect ? file_protect_cb : file_unprotect_cb)) != SR_SUCCESS) {
@@ -125,6 +125,13 @@ SR_32 sr_white_list_file_protect(SR_BOOL is_protect)
 			"%s=sr_white_list_hash_exec_for_all failed",REASON);
 		return SR_ERROR;
 	}
+
+	if (sys_repo_mng_commit(&sysrepo_handler) != SR_SUCCESS) { 
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+				"%s=sys_repo_mng_commit failed ", REASON);
+	}
+
+	sysrepo_mng_session_end(&sysrepo_handler);
 
 	return SR_SUCCESS;
 }

@@ -1,6 +1,7 @@
 #include <sysrepo_mng.h>
 #include <sysrepo.h>
 #include "sr_cls_network_common.h"
+#include "sr_actions_common.h"
 #include "sr_msg.h"
 #include "sentry.h"
 #include "action.h"
@@ -932,3 +933,83 @@ SR_32 sysrepo_mng_session_end(sysrepo_mng_handler_t *handler)
 
 	return SR_SUCCESS;
 }
+
+static void file_op_convert(SR_U8 file_op, char *perms)
+{
+	SR_U8 res = 0;
+
+	if (file_op & SR_FILEOPS_READ) 
+		res |= 4;
+	if (file_op & SR_FILEOPS_WRITE) 
+		res |= 2;
+	if (file_op & SR_FILEOPS_EXEC) 
+		res |= 1;
+
+	sprintf(perms, "77%d", res);
+}
+
+#define ADD_FILE_FIELD(fieldname, fieldvalue) \
+	sprintf(str_param, "%snum='%d']/%s[id='%d']/%s", FILE_PREFIX, rule_id, TUPLE, 0, fieldname); \
+        if (um_set_value(handler->sess, str_param, fieldvalue) != SR_SUCCESS) { \
+                CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, \
+                        "%s=after um_set_value str_param:%s: ", REASON, str_param); \
+                return SR_ERROR; \
+        }
+
+SR_32 sys_repo_mng_create_file_rule(sysrepo_mng_handler_t *handler, SR_32 rule_id, char *file_name, char *exec, char *user, char *action, SR_U8 file_op)
+{
+	char str_param[MAX_STR_SIZE];
+	char perms[4];
+
+	file_op_convert(file_op, perms);
+	sprintf(str_param, "%snum='%d']", FILE_PREFIX, rule_id);
+	if (um_set_param(handler->sess, str_param) != SR_SUCCESS) {
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+			"%s=create rule : um_set_param failed",REASON);
+		return SR_ERROR;
+	}
+	sprintf(str_param, "%snum='%d']/%s[id='%d']", FILE_PREFIX, rule_id, TUPLE, 0);
+	if (um_set_param(handler->sess, str_param) != SR_SUCCESS) {
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+			"%s=rule_create : um_set_param failed",REASON);
+		return SR_ERROR;
+	}
+	
+	sprintf(str_param, "%snum='%d']/%s", FILE_PREFIX, rule_id, "action");
+	if (um_set_value(handler->sess, str_param, action) != SR_SUCCESS) {
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+			"%s=after um_set_value str_param:%s: action",REASON, str_param);
+		return SR_ERROR;
+	}
+
+	ADD_FILE_FIELD("filename", file_name) 
+	ADD_FILE_FIELD("program", exec) 
+	ADD_FILE_FIELD("user", user) 
+	ADD_FILE_FIELD("permission", perms) 
+
+	return SR_SUCCESS;
+}
+
+SR_32 sys_repo_mng_commit(sysrepo_mng_handler_t *handler)
+{
+	SR_32 rc;
+
+	rc = sr_commit(handler->sess);
+	if (SR_ERR_OK != rc) {
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+			"%s=sr_commit: %s",REASON,
+			sr_strerror(rc));
+		return SR_ERROR;
+	}
+
+	rc = sr_copy_config(handler->sess, "saferide", SR_DS_RUNNING, SR_DS_STARTUP);
+	if (SR_ERR_OK != rc) {
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+			"%s=sr_copy_config: %s",REASON,
+			sr_strerror(rc));
+		return SR_ERROR;
+	}
+
+	return SR_SUCCESS;
+}
+
