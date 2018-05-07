@@ -20,21 +20,23 @@ SR_32 sr_white_list_canbus(struct sr_ec_can_t *can_info)
 	
 	if (wr_white_list_get_mode() != SR_WL_MODE_LEARN)
 		return SR_SUCCESS;
-	/*	
-
+		
+		
+#if 0
+	/*debug can print*/	
 	struct sr_ec_can_t *wl_can;
 	wl_can = can_info;
 	int i;
 	char exe[1000];
 	sal_get_process_name(wl_can->pid,exe,sizeof(exe));
-
 	printf("*****\n%s PID=%u | ",exe,wl_can->pid);
 	printf("MsgID=%03x [%u] ",wl_can->msg_id,wl_can->payload_len);
 	for(i=0;i<wl_can->payload_len;i++){
 		printf("%02x ",wl_can->payload[i]);
 	}
 	printf("%s\n********\n",wl_can->dir==SR_CAN_IN?"IN":"OUT");
-			*/			
+	printf("PID=%u ITER MSG_ID=%x %s %s\n",can_info->pid,(*iter)->msg_id,can_info->dir==SR_CAN_IN?"IN":"OUT",exec);
+#endif		
 
      if (sal_get_process_name(can_info->pid, exec, SR_MAX_PATH_SIZE) != SR_SUCCESS)
 		strcpy(exec, "*");
@@ -50,7 +52,7 @@ SR_32 sr_white_list_canbus(struct sr_ec_can_t *can_info)
 	
 		
 		for (iter = &(white_list_item->white_list_can);
-			*iter && ((*iter)->msg_id != can_info->msg_id && (*iter)->dir == can_info->dir);
+			*iter && ((*iter)->msg_id != can_info->msg_id && (*iter)->dir == can_info->dir); //check for msg_id and same direction in item
 			iter = &((*iter)->next));
 			
 		//If no such can msg then insert 
@@ -63,7 +65,6 @@ SR_32 sr_white_list_canbus(struct sr_ec_can_t *can_info)
 			}
 			(*iter)->msg_id = can_info->msg_id;
 			(*iter)->dir = can_info->dir;
-			printf("PID=%u ITER MSG_ID=%x %s %s\n",can_info->pid,(*iter)->msg_id,can_info->dir==SR_CAN_IN?"IN":"OUT",exec);
 		}
 
 	return SR_SUCCESS;
@@ -72,7 +73,6 @@ SR_32 sr_white_list_canbus(struct sr_ec_can_t *can_info)
 void sr_white_list_canbus_print(sr_wl_can_item_t *wl_canbus)
 {
 	sr_wl_can_item_t *iter;
-	//printf("printing canbus WL!!!\n");
 	
 	for (iter = wl_canbus; iter; iter = iter->next)
 		printf("MsgID=%03x dir=%s\n", iter->msg_id,iter->dir==SR_CAN_OUT? "OUT":"IN");
@@ -102,7 +102,7 @@ static SR_32 canbus_unprotect_cb(void *hash_data, void *data)
 	for (iter = wl_item->white_list_can; iter && rule_id <= SR_END_RULE_NO; iter = iter->next) {
 		sr_cls_canid_del_rule(iter->msg_id, wl_item->exec, "*", rule_id, iter->dir);
 		sr_cls_rule_del(SR_CAN_RULES, rule_id);
-		rule_id++;// delete same as add??
+		rule_id++;
 
 	}
 	
