@@ -57,20 +57,26 @@ static void white_list_free(void *data_in_hash)
 
 SR_32 sr_white_list_init(void)
 {
-        hash_ops_t hash_ops = {};
+	hash_ops_t hash_ops = {};
 
-        hash_ops.create_key = white_list_create_key;
-        hash_ops.comp = white_list_comp;
-        hash_ops.print = white_list_print;
-        hash_ops.free = white_list_free;
-        if (!(white_list_hash = sr_gen_hash_new(HASH_SIZE, hash_ops, 0))) {
+	if (sr_white_list_file_init() != SR_SUCCESS) {
                 CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-					"%s=file_hash_init: sr_gen_hash_new failed",REASON);
-                return SR_ERROR;
-        }
-		wl_mode = SR_WL_MODE_OFF;
+					"%s=sr_white_list_file_init",REASON);
+		return SR_ERROR;
+	}
 
-        return SR_SUCCESS;
+	hash_ops.create_key = white_list_create_key;
+	hash_ops.comp = white_list_comp;
+	hash_ops.print = white_list_print;
+	hash_ops.free = white_list_free;
+	if (!(white_list_hash = sr_gen_hash_new(HASH_SIZE, hash_ops, 0))) {
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+			"%s=file_hash_init: sr_gen_hash_new failed",REASON);
+		return SR_ERROR;
+	}
+	wl_mode = SR_WL_MODE_OFF;
+
+	return SR_SUCCESS;
 }
 
 SR_32 wr_white_list_set_mode(sr_wl_mode_t new_wl_mode)
@@ -194,6 +200,7 @@ void sr_white_list_uninit(void)
 			break;
 	}
         sr_gen_hash_destroy(white_list_hash);
+	sr_white_list_file_uninit();
 }
 
 SR_32 sr_white_list_hash_exec_for_all(SR_32 (*cb)(void *hash_data, void *data))

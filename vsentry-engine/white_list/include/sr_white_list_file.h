@@ -13,5 +13,7 @@ SR_32 sr_white_list_file_open(struct sr_ec_file_open_t *file_open_info);
 void sr_white_list_file_print(sr_white_list_file_t *while_list_file);
 void sr_white_list_file_cleanup(sr_white_list_file_t *white_list_file);
 SR_32 sr_white_list_file_protect(SR_BOOL is_protect);
+SR_32 sr_white_list_file_init(void);
+void sr_white_list_file_uninit(void);
 
 #endif

@@ -13,6 +13,39 @@
 
 static SR_32 rule_id; 
 static sysrepo_mng_handler_t sysrepo_handler;
+static char *home_dir;
+
+#define CHECK_DIR(dir_name) \
+	if (!memcmp(file, dir_name, strlen(dir_name))) { \
+		strcpy(file_dir, dir_name); \
+		return file_dir; \
+	}
+
+static char *get_file_to_learn(char *file, char *file_dir)
+{
+	CHECK_DIR("/tmp")
+	CHECK_DIR("/var/spool")
+	if (home_dir)
+		CHECK_DIR(home_dir)
+
+	return file;
+}
+
+SR_32 sr_white_list_file_init(void)
+{
+	char *home = sal_get_home_user();
+	
+	if (home)
+		home_dir = strdup(home);
+
+	return SR_SUCCESS;
+}
+
+void sr_white_list_file_uninit(void)
+{
+	if (home_dir)
+		free(home_dir);
+}
 
 /* For each binary ther will be at maximum 3 rules. One for each premisiion. The file will be tuples, the rule number
 	is staring from 3k - up to 4k !!! */ 
@@ -20,7 +53,7 @@ static sysrepo_mng_handler_t sysrepo_handler;
 SR_32 sr_white_list_file_open(struct sr_ec_file_open_t *file_open_info)
 {
 	sr_white_list_item_t *white_list_item;
-	char exec[SR_MAX_PATH_SIZE];
+	char exec[SR_MAX_PATH_SIZE], *file_to_learn, file_dir[SR_MAX_PATH_SIZE];
 	sr_white_list_file_t **iter;
 
 	if (wr_white_list_get_mode() != SR_WL_MODE_LEARN)
@@ -28,6 +61,9 @@ SR_32 sr_white_list_file_open(struct sr_ec_file_open_t *file_open_info)
 
         if (sal_get_process_name(file_open_info->pid, exec, SR_MAX_PATH_SIZE) != SR_SUCCESS)
                 strcpy(exec, "*");
+
+	// The file to learn might be only a part of the path 
+	file_to_learn = get_file_to_learn(file_open_info->file, file_dir);
 
 	if (!(white_list_item = sr_white_list_hash_get(exec))) {
 		if (sr_white_list_hash_insert(exec, &white_list_item) != SR_SUCCESS) {
@@ -38,7 +74,7 @@ SR_32 sr_white_list_file_open(struct sr_ec_file_open_t *file_open_info)
 	}
 
 	for (iter = &(white_list_item->white_list_file); 
-		*iter && strcmp((*iter)->file, file_open_info->file); iter = &((*iter)->next));
+		*iter && strcmp((*iter)->file, file_to_learn); iter = &((*iter)->next));
 	/* If no such file and fileop then insert */
 	if (!*iter) { 
 		SR_Zalloc(*iter, sr_white_list_file_t *, sizeof(sr_white_list_file_t));
@@ -47,7 +83,7 @@ SR_32 sr_white_list_file_open(struct sr_ec_file_open_t *file_open_info)
 				"%s=learn hash update: memory allocation failed",REASON);
 			return SR_ERROR;
 		}
-		strncpy((*iter)->file, file_open_info->file, SR_MAX_PATH_SIZE);
+		strncpy((*iter)->file, file_to_learn, SR_MAX_PATH_SIZE);
 	}
 	(*iter)->fileop |= file_open_info->fileop;
 
