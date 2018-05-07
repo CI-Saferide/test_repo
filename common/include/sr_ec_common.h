@@ -8,6 +8,7 @@ enum sr_event_type {
         SR_EVENT_NEW_CONNECTION,
         SR_EVENT_FILE_CREATED,
         SR_EVENT_PROCESS_DIED,
+        SR_EVENT_CANBUS,
         SR_EVENT_MAX_EVENT
 };
 
@@ -55,6 +56,17 @@ struct sr_ec_connection_stat_t{
 	SR_U32 tx_msgs;
 	SR_U32 tx_bytes;
 	SR_U64 curr_time;
+};
+#pragma pack(pop)
+
+#pragma pack(push, 1)
+struct sr_ec_can_t{
+	SR_U32 pid;
+    SR_U32 uid;
+    SR_U32 	msg_id;
+	SR_U8	payload[8];
+	SR_U8 	payload_len;
+	SR_U8 	dir; //inbound/outbound msg
 };
 #pragma pack(pop)
 

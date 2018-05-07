@@ -26,6 +26,7 @@ static void white_list_print(void *data_in_hash)
 	printf("exec:%s: \n", white_list_item->exec);
 
 	sr_white_list_file_print(white_list_item->white_list_file);
+	sr_white_list_canbus_print(white_list_item->white_list_can);
 }
 
 static SR_U32 white_list_create_key(void *data)
@@ -49,6 +50,7 @@ static void white_list_free(void *data_in_hash)
 		return;
 
 	sr_white_list_file_cleanup(white_list_item->white_list_file);
+	sr_white_list_canbus_cleanup(white_list_item->white_list_can);
 
 	SR_Free(white_list_item);
 }
@@ -87,6 +89,11 @@ SR_32 wr_white_list_set_mode(sr_wl_mode_t new_wl_mode)
 					"%s=sr_white_list_file_protect failed",REASON);
                 		return SR_ERROR;
 			}
+			if ((rc = sr_white_list_canbus_protect(SR_FALSE)) != SR_SUCCESS) {
+               			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+					"%s=sr_white_list_canbus_protect failed",REASON);
+                		return SR_ERROR;
+			}
 			break;
 		case SR_WL_MODE_OFF:
 			break;
@@ -102,6 +109,11 @@ SR_32 wr_white_list_set_mode(sr_wl_mode_t new_wl_mode)
 			if ((rc = sr_white_list_file_protect(SR_TRUE)) != SR_SUCCESS) {
                			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 					"%s=sr_white_list_file_protect failed",REASON);
+                		return SR_ERROR;
+			}
+			if ((rc = sr_white_list_canbus_protect(SR_TRUE)) != SR_SUCCESS) {
+               			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+					"%s=sr_white_list_canbus_protect failed",REASON);
                 		return SR_ERROR;
 			}
 			break;
@@ -139,6 +151,7 @@ SR_32 sr_white_list_hash_insert(char *exec, sr_white_list_item_t **new_item)
 	}
 	if (new_item)
 		*new_item = white_list_item;
+		
 	strncpy(white_list_item->exec, exec, SR_MAX_PATH_SIZE);
 	if ((rc = sr_gen_hash_insert(white_list_hash, (void *)exec, white_list_item)) != SR_SUCCESS) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
@@ -169,6 +182,10 @@ void sr_white_list_uninit(void)
 			if (sr_white_list_file_protect(SR_FALSE) != SR_SUCCESS) {
 				CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 				"%s=sr_white_list_file_protect failed",REASON);
+			}
+			if (sr_white_list_canbus_protect(SR_FALSE) != SR_SUCCESS) {
+				CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+				"%s=sr_white_list_canbus_protect failed",REASON);
 			}
 			break;
 		case SR_WL_MODE_OFF:
@@ -204,4 +221,3 @@ void sr_white_list_hash_print(void)
 {
 	sr_gen_hash_print(white_list_hash);
 }
-

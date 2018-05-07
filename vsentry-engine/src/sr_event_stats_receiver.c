@@ -7,6 +7,7 @@
 #include "sr_stat_analysis.h"
 #include "sr_stat_process_connection.h"
 #include "sr_white_list_file.h"
+#include "sr_white_list_can.h"
 
 void sr_event_stats_receiver(SR_8 *msg_buff, SR_U32 msg_len)
 {
@@ -15,6 +16,7 @@ void sr_event_stats_receiver(SR_8 *msg_buff, SR_U32 msg_len)
 	struct sr_ec_connection_transmit_t *pConTran;
 	sr_stat_connection_info_t connection_info = {};
 	struct sr_ec_file_open_t *pFile_open;
+	struct sr_ec_can_t *wl_can;
 
 	while (offset < msg_len) {
 		switch  (msg_buff[offset++]) {
@@ -75,6 +77,16 @@ void sr_event_stats_receiver(SR_8 *msg_buff, SR_U32 msg_len)
 					break;	
 				}
 				break;
+			case SR_EVENT_CANBUS:
+				wl_can = (struct sr_ec_can_t *) &msg_buff[offset];
+				offset += sizeof(struct sr_ec_can_t);
+				
+				if ((rc = sr_white_list_canbus(wl_can)) != SR_SUCCESS) { // hashing function
+                			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+								"%s=failed to hash exec for process canbus",REASON);
+					break;	
+				}
+				break;					
 			default:
 				break;
 		}

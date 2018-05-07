@@ -3,6 +3,7 @@
 
 #include "sr_sal_common.h"
 #include "sr_white_list_file.h"
+#include "sr_white_list_can.h"
 
 typedef enum {
         SR_WL_MODE_LEARN,
@@ -11,8 +12,9 @@ typedef enum {
 } sr_wl_mode_t;
 
 typedef struct white_list_item  {
-        char exec[SR_MAX_PATH_SIZE];
+	char exec[SR_MAX_PATH_SIZE];
 	sr_white_list_file_t *white_list_file;
+	sr_wl_can_item_t *white_list_can;
 } sr_white_list_item_t;
 
 SR_32 sr_white_list_init(void);
