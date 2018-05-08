@@ -207,11 +207,12 @@ SR_32 disp_socket_sendmsg(disp_info_t* info)
 	const event_name *hook_event_names;
 	struct sr_ec_can_t can_data; // event collector data for white list
 	
-	can_data.pid = info->tuple_info.id.pid;
-	can_data.msg_id = info->can_info.msg_id;
-	can_data.dir = SR_CAN_OUT;
-	sr_ec_send_event(MOD2STAT_BUF, SR_EVENT_CANBUS, &can_data);
-	
+	if(get_collector_state() == SR_TRUE){
+		can_data.pid = info->tuple_info.id.pid;
+		can_data.msg_id = info->can_info.msg_id;
+		can_data.dir = SR_CAN_OUT;
+		sr_ec_send_event(MOD2STAT_BUF, SR_EVENT_CANBUS, &can_data);
+	}
 	/* call classifier */
 	classifier_rc = sr_classifier_canbus(info);
 #ifdef CONFIG_CAN_ML
@@ -259,12 +260,12 @@ SR_32 disp_can_recvmsg(disp_info_t* info)
 	const event_name *hook_event_names;
 	struct sr_ec_can_t can_data; // event collector data for white list
 	
-	can_data.pid = info->tuple_info.id.pid;
-	can_data.msg_id = info->can_info.msg_id;
-	can_data.dir = SR_CAN_IN;
-
-	sr_ec_send_event(MOD2STAT_BUF, SR_EVENT_CANBUS, &can_data);
-	
+	if(get_collector_state() == SR_TRUE){
+		can_data.pid = info->tuple_info.id.pid;
+		can_data.msg_id = info->can_info.msg_id;
+		can_data.dir = SR_CAN_IN;
+		sr_ec_send_event(MOD2STAT_BUF, SR_EVENT_CANBUS, &can_data);
+	}
 	hook_event_names = event_mediator_hooks_event_names();
 
 	/* call classifier */
