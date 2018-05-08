@@ -204,17 +204,11 @@ SR_32 disp_socket_sendmsg(disp_info_t* info)
 	SR_32		classifier_rc = -EACCES;
 	SR_U8		ml_rc = SR_ML_ALLOW;
 	const event_name *hook_event_names;
-	SR_32 i;
 	struct sr_ec_can_t can_data; // event collector data for white list
 	
 	can_data.pid = info->tuple_info.id.pid;
-	can_data.uid = info->tuple_info.id.uid;
 	can_data.msg_id = info->can_info.msg_id;
-	can_data.payload_len = info->can_info.payload_len;	
 	can_data.dir = SR_CAN_OUT;
-	for (i = 0; i < can_data.payload_len; i++) {
-		can_data.payload[i] = info->can_info.payload[i];
-	}
 	sr_ec_send_event(MOD2STAT_BUF, SR_EVENT_CANBUS, &can_data);
 	
 	/* call classifier */
@@ -262,17 +256,12 @@ SR_32 disp_can_recvmsg(disp_info_t* info)
 {
 	SR_32		classifier_rc = -EACCES;
 	const event_name *hook_event_names;
-	SR_32 i;
 	struct sr_ec_can_t can_data; // event collector data for white list
 	
 	can_data.pid = info->tuple_info.id.pid;
-	can_data.uid = info->tuple_info.id.uid;
 	can_data.msg_id = info->can_info.msg_id;
-	can_data.payload_len = info->can_info.payload_len;	
 	can_data.dir = SR_CAN_IN;
-	for (i = 0; i < can_data.payload_len; i++) {
-		can_data.payload[i] = info->can_info.payload[i];
-	}
+
 	sr_ec_send_event(MOD2STAT_BUF, SR_EVENT_CANBUS, &can_data);
 	
 	hook_event_names = event_mediator_hooks_event_names();

@@ -28,14 +28,10 @@ SR_32 sr_white_list_canbus(struct sr_ec_can_t *can_info)
 	/*debug can print*/	
 	struct sr_ec_can_t *wl_can;
 	wl_can = can_info;
-	int i;
 	char exe[1000];
 	sal_get_process_name(wl_can->pid,exe,sizeof(exe));
 	printf("*****\n%s PID=%u | ",exe,wl_can->pid);
-	printf("MsgID=%03x [%u] ",wl_can->msg_id,wl_can->payload_len);
-	for(i=0;i<wl_can->payload_len;i++){
-		printf("%02x ",wl_can->payload[i]);
-	}
+	printf("MsgID=%03x",wl_can->msg_id);
 	printf("%s\n********\n",wl_can->dir==SR_CAN_IN?"IN":"OUT");
 	printf("PID=%u ITER MSG_ID=%x %s %s\n",can_info->pid,(*iter)->msg_id,can_info->dir==SR_CAN_IN?"IN":"OUT",exec);
 #endif		

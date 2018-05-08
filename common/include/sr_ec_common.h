@@ -62,10 +62,7 @@ struct sr_ec_connection_stat_t{
 #pragma pack(push, 1)
 struct sr_ec_can_t{
 	SR_U32 pid;
-    SR_U32 uid;
     SR_U32 	msg_id;
-	SR_U8	payload[8];
-	SR_U8 	payload_len;
 	SR_U8 	dir; //inbound/outbound msg
 };
 #pragma pack(pop)
