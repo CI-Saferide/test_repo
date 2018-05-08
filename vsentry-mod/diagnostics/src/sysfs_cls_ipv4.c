@@ -213,6 +213,7 @@ static void store_rule(struct radix_head** table,SR_16 rule_find)
 static void fetch_cls_ipv4(void)
 {
 	sal_memset(buffer, 0, PAGE_SIZE);
+	sal_memset(sysfs_network, 0, sizeof(sysfs_network));
 
 	sr_cls_uid_table = get_cls_uid_table(SR_FILE_RULES);
 	sr_cls_exec_file_table = get_cls_exec_file_table();
