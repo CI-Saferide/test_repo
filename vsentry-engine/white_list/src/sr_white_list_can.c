@@ -20,7 +20,7 @@ SR_32 sr_white_list_canbus(struct sr_ec_can_t *can_info)
 	char exec[SR_MAX_PATH_SIZE];
 	sr_wl_can_item_t **iter;
 	
-	if (wr_white_list_get_mode() != SR_WL_MODE_LEARN)
+	if (sr_white_list_get_mode() != SR_WL_MODE_APPLY)
 		return SR_SUCCESS;
 		
 		

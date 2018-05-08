@@ -133,7 +133,7 @@ SR_32 sr_white_list_set_mode(sr_wl_mode_t new_wl_mode)
 	return SR_SUCCESS;
 }
 
-sr_wl_mode_t wr_white_list_get_mode(void)
+sr_wl_mode_t sr_white_list_get_mode(void)
 {
 	return wl_mode;
 }

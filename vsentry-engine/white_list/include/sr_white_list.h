@@ -26,6 +26,6 @@ SR_32 sr_white_list_hash_delete(char *exec);
 SR_32 sr_white_list_delete_all(void);
 void sr_white_list_hash_print(void);
 SR_32 sr_white_list_set_mode(sr_wl_mode_t new_wl_mode);
-sr_wl_mode_t wr_white_list_get_mode(void);
+sr_wl_mode_t sr_white_list_get_mode(void);
 
 #endif
