@@ -20,6 +20,7 @@
 #include "sr_stat_analysis.h"
 #endif
 #include "sr_cls_sk_process.h"
+#include "sr_event_collector.h"
 
 //#define DEBUG_EVENT_MEDIATOR
 /* Protocol families, same as address families */
@@ -669,13 +670,15 @@ SR_32 vsentry_file_open(struct file *file, const struct cred *cred)
 	rc = disp_file_open(&disp);
 
 	if (rc == 0) {
-		if (get_path(file->f_path.dentry, disp.fileinfo.fullpath, sizeof(disp.fileinfo.fullpath)) != SR_SUCCESS) {
-			CEF_log_event(SR_CEF_CID_SYSTEM, "Error", SEVERITY_HIGH,
-                                                        "File operation denied, file path it to long");
-                        return 0;
-                }
+		if(get_collector_state() == SR_TRUE){		
+			if (get_path(file->f_path.dentry, disp.fileinfo.fullpath, sizeof(disp.fileinfo.fullpath)) != SR_SUCCESS) {
+				CEF_log_event(SR_CEF_CID_SYSTEM, "Error", SEVERITY_HIGH,
+															"File operation denied, file path it to long");
+							return 0;
+					}
 
-		disp_file_open_report(&disp);
+			disp_file_open_report(&disp);
+		}
 	}
 
 	return rc;
