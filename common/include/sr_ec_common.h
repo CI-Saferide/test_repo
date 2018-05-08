@@ -4,6 +4,11 @@
 #include "sr_types.h"
 #include "sr_sal_common.h"
 
+typedef enum {
+        SR_EC_MODE_COLLECT,
+        SR_EC_MODE_OFF,
+} sr_ec_mode_t;
+
 enum sr_event_type {
         SR_EVENT_NEW_CONNECTION,
         SR_EVENT_FILE_CREATED,
