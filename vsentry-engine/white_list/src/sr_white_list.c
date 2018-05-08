@@ -90,14 +90,14 @@ SR_32 sr_white_list_set_mode(sr_wl_mode_t new_wl_mode)
 			break;
 		case SR_WL_MODE_APPLY:
 			// Remove the rules
-			if ((rc = sr_white_list_file_protect(SR_FALSE)) != SR_SUCCESS) {
+			if ((rc = sr_white_list_file_apply(SR_FALSE)) != SR_SUCCESS) {
                			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-					"%s=sr_white_list_file_protect failed",REASON);
+					"%s=sr_white_list_file_apply failed",REASON);
                 		return SR_ERROR;
 			}
-			if ((rc = sr_white_list_canbus_protect(SR_FALSE)) != SR_SUCCESS) {
+			if ((rc = sr_white_list_canbus_apply(SR_FALSE)) != SR_SUCCESS) {
                			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-					"%s=sr_white_list_canbus_protect failed",REASON);
+					"%s=sr_white_list_canbus_apply failed",REASON);
                 		return SR_ERROR;
 			}
 			break;
@@ -112,14 +112,14 @@ SR_32 sr_white_list_set_mode(sr_wl_mode_t new_wl_mode)
 			break;
 		case SR_WL_MODE_APPLY:
 			wl_mode = SR_WL_MODE_APPLY;
-			if ((rc = sr_white_list_file_protect(SR_TRUE)) != SR_SUCCESS) {
+			if ((rc = sr_white_list_file_apply(SR_TRUE)) != SR_SUCCESS) {
                			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-					"%s=sr_white_list_file_protect failed",REASON);
+					"%s=sr_white_list_file_apply failed",REASON);
                 		return SR_ERROR;
 			}
-			if ((rc = sr_white_list_canbus_protect(SR_TRUE)) != SR_SUCCESS) {
+			if ((rc = sr_white_list_canbus_apply(SR_TRUE)) != SR_SUCCESS) {
                			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-					"%s=sr_white_list_canbus_protect failed",REASON);
+					"%s=sr_white_list_canbus_apply failed",REASON);
                 		return SR_ERROR;
 			}
 			break;
@@ -185,13 +185,13 @@ void sr_white_list_uninit(void)
 			break;
 		case SR_WL_MODE_APPLY:
 			// Remove the rules
-			if (sr_white_list_file_protect(SR_FALSE) != SR_SUCCESS) {
+			if (sr_white_list_file_apply(SR_FALSE) != SR_SUCCESS) {
 				CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-				"%s=sr_white_list_file_protect failed",REASON);
+				"%s=sr_white_list_file_apply failed",REASON);
 			}
-			if (sr_white_list_canbus_protect(SR_FALSE) != SR_SUCCESS) {
+			if (sr_white_list_canbus_apply(SR_FALSE) != SR_SUCCESS) {
 				CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-				"%s=sr_white_list_canbus_protect failed",REASON);
+				"%s=sr_white_list_canbus_apply failed",REASON);
 			}
 			break;
 		case SR_WL_MODE_OFF:

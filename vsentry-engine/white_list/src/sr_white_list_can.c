@@ -89,7 +89,7 @@ void sr_white_list_canbus_cleanup(sr_wl_can_item_t *wl_canbus)
 	
 }
 
-static SR_32 canbus_unprotect_cb(void *hash_data, void *data)
+static SR_32 canbus_unapply_cb(void *hash_data, void *data)
 {
 	// TODO : delete rulues.
 	/*	
@@ -110,7 +110,7 @@ static SR_32 canbus_unprotect_cb(void *hash_data, void *data)
 	return SR_SUCCESS;
 }
 
-static SR_32 canbus_protect_cb(void *hash_data, void *data)
+static SR_32 canbus_apply_cb(void *hash_data, void *data)
 {
 	sr_white_list_item_t *wl_item = (sr_white_list_item_t *)hash_data;	
 	sr_wl_can_item_t *iter;
@@ -138,7 +138,7 @@ static SR_32 canbus_protect_cb(void *hash_data, void *data)
 	return SR_SUCCESS;
 }
 
-SR_32 sr_white_list_canbus_protect(SR_BOOL is_protect)
+SR_32 sr_white_list_canbus_apply(SR_BOOL is_apply)
 {
 	SR_32 rc;
 	
@@ -150,7 +150,7 @@ SR_32 sr_white_list_canbus_protect(SR_BOOL is_protect)
 
 	rule_id = SR_START_RULE_NO;
 	
-	if ((rc = sr_white_list_hash_exec_for_all(is_protect ? canbus_protect_cb : canbus_unprotect_cb)) != SR_SUCCESS) {
+	if ((rc = sr_white_list_hash_exec_for_all(is_apply ? canbus_apply_cb : canbus_unapply_cb)) != SR_SUCCESS) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 			"%s=sr_white_list_hash_exec_for_all failed",REASON);
 		return SR_ERROR;

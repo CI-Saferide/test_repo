@@ -152,7 +152,8 @@ SR_32 disp_file_created(disp_info_t* info)
 	return SR_SUCCESS;
 }
 
-SR_32 disp_file_opened(disp_info_t* info)
+/* Report open file for white list, Only when white list is enabled. */
+SR_32 disp_file_open_report(disp_info_t* info)
 {
 	struct sr_ec_file_open_t file_open_data;
 

@@ -110,7 +110,7 @@ void sr_white_list_file_cleanup(sr_white_list_file_t *white_list_file)
 	}
 }
 
-static SR_32 file_protect_cb(void *hash_data, void *data)
+static SR_32 file_apply_cb(void *hash_data, void *data)
 {
 	sr_white_list_item_t *wl_item = (sr_white_list_item_t *)hash_data;
 	sr_white_list_file_t *iter;
@@ -137,14 +137,14 @@ static SR_32 file_protect_cb(void *hash_data, void *data)
 	return SR_SUCCESS;
 }
 
-static SR_32 file_unprotect_cb(void *hash_data, void *data)
+static SR_32 file_unapply_cb(void *hash_data, void *data)
 {
 	// TODO : delete rulues.
 
 	return SR_SUCCESS;
 }
 
-SR_32 sr_white_list_file_protect(SR_BOOL is_protect)
+SR_32 sr_white_list_file_apply(SR_BOOL is_apply)
 {
 	SR_32 rc;
 	
@@ -156,7 +156,7 @@ SR_32 sr_white_list_file_protect(SR_BOOL is_protect)
 
 	rule_id = SR_START_RULE_NO;
 	
-	if ((rc = sr_white_list_hash_exec_for_all(is_protect ? file_protect_cb : file_unprotect_cb)) != SR_SUCCESS) {
+	if ((rc = sr_white_list_hash_exec_for_all(is_apply ? file_apply_cb : file_unapply_cb)) != SR_SUCCESS) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 			"%s=sr_white_list_hash_exec_for_all failed",REASON);
 		return SR_ERROR;

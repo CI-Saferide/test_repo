@@ -185,7 +185,7 @@ SR_32 vsentry_inode_mkdir(struct inode *dir, struct dentry *dentry, umode_t mask
 	if (rc == 0) {
 		if (get_path(dentry, disp.fileinfo.fullpath, sizeof(disp.fileinfo.fullpath)) != SR_SUCCESS) {
 			CEF_log_event(SR_CEF_CID_SYSTEM, "Error", SEVERITY_HIGH, 
-							"File operation denied, file path it to long");
+							"File operation denied, file path it too long");
 			return -EACCES;
 		}
 		if (!sr_cls_filter_path_is_match(disp.fileinfo.fullpath) && disp_file_created(&disp) != SR_SUCCESS) {
@@ -675,7 +675,7 @@ SR_32 vsentry_file_open(struct file *file, const struct cred *cred)
                         return 0;
                 }
 
-		disp_file_opened(&disp);
+		disp_file_open_report(&disp);
 	}
 
 	return rc;
