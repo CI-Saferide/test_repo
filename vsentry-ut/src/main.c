@@ -199,6 +199,13 @@ static void cleanup_file_setup(void)
 	rc = system(cmd);
 }
 
+static int handle_cleanup(sysrepo_mng_handler_t *handler)
+{
+	sysrepo_mng_parse_json(handler, FIXED_PART_START FIXED_PART_END, NULL, 0);
+
+	return 0;
+}
+
 static int handle_file(sysrepo_mng_handler_t *handler)
 {
 	char cmd[MAX_STR_SIZE], *cat_prog, *user;
@@ -593,6 +600,10 @@ int main(int argc, char **argv)
 	}
 	if (!strcmp(type, "can")) {
 		rc = handle_can(&handler);
+		goto cleanup;
+	}
+	if (!strcmp(type, "clean")) {
+		rc = handle_cleanup(&handler);
 		goto cleanup;
 	}
 

@@ -49,6 +49,8 @@ SRCS 		:=  main.c \
 				sr_stat_process_connection.c \
 				sr_stat_learn_rule.c \
 				sr_white_list.c \
+				sr_white_list_file.c \
+				sr_white_list_can.c \
 				sr_static_policy.c \
 				sr_command.c \
 				sr_stat_analysis.c \

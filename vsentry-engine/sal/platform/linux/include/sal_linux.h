@@ -70,5 +70,6 @@ SR_U32 sal_get_host_info(char *host_info, int size);
 void sal_openlog(void);
 void sal_closelog(void);
 void sal_log(char *cef_buffer, SR_32 severity);
+char *sal_get_home_user(void);
 
 #endif /* SAL_LINUX_ENGINE_H*/
