@@ -79,7 +79,7 @@ SR_32 sr_white_list_init(void)
 	return SR_SUCCESS;
 }
 
-SR_32 wr_white_list_set_mode(sr_wl_mode_t new_wl_mode)
+SR_32 sr_white_list_set_mode(sr_wl_mode_t new_wl_mode)
 {
 	SR_32 rc;
 

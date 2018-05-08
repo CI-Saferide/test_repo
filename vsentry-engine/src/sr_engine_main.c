@@ -264,15 +264,15 @@ SR_32 sr_engine_start(void)
 				break;
 			case 'e':
 					printf ("Move to WL learn mode \n");
-					wr_white_list_set_mode(SR_WL_MODE_LEARN);
+					sr_white_list_set_mode(SR_WL_MODE_LEARN);
 				break;
 			case 'f':
 				printf ("Move to WL prootect mode \n");
-				wr_white_list_set_mode(SR_WL_MODE_APPLY);
+				sr_white_list_set_mode(SR_WL_MODE_APPLY);
 				break;
 			case 'g':
 				printf ("Move to WL OFF mode \n");
-				wr_white_list_set_mode(SR_WL_MODE_OFF);
+				sr_white_list_set_mode(SR_WL_MODE_OFF);
 				break;
 			case 'z':
 				printf("print the white list !!!\n");
