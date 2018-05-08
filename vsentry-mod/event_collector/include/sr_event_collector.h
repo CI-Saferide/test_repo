@@ -13,6 +13,6 @@ void sr_event_collector_uninit(void);
 int sr_ec_send_event(SR_U8 buf_type, SR_U8 event_type, void *data);
 void sr_ec_append_event(SR_U8 buf_type, SR_U8 event_type, void *sample_data, SR_U32 data_length, SR_BOOL is_lock);
 SR_BOOL get_collector_state(void);
-SR_32 sr_collector_handle_message(sr_ec_mode_t ec_mode);
+SR_32 sr_collector_handle_message(struct sr_ec_msg *msg);
 
 #endif

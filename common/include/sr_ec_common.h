@@ -9,6 +9,10 @@ typedef enum {
         SR_EC_MODE_OFF,
 } sr_ec_mode_t;
 
+struct sr_ec_msg{
+	sr_ec_mode_t ec_mode;
+};
+
 enum sr_event_type {
         SR_EVENT_NEW_CONNECTION,
         SR_EVENT_FILE_CREATED,

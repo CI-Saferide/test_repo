@@ -11,6 +11,7 @@
 #include "sr_cls_port_common.h"
 #include "sr_control_common.h"
 #include "sr_actions_common.h"
+#include "sr_ec_common.h"
 #ifdef CONFIG_STAT_ANALYSIS
 #include "sr_stat_analysis_common.h"
 #endif
@@ -30,6 +31,7 @@ typedef enum {
 	SR_MSG_TYPE_CONTROL,
 	SR_MSG_TYPE_CLS_CLEANUP_NOLOCK,	
 	SR_MSG_TYPE_CLS_FILTER_PATH,
+	SR_MSG_TYPE_WL,
 #ifdef CONFIG_STAT_ANALYSIS
 	SR_MSG_TYPE_STAT_ANALYSIS,
 #endif
@@ -99,6 +101,11 @@ typedef struct {
 	struct sr_ml_can_msg sub_msg;
 } sr_ml_can_msg_t;
 #endif /* CONFIG_CAN_ML */
+
+typedef struct {
+	sr_msg_dispatch_type msg_type;
+	struct sr_ec_msg sub_msg;
+} sr_ec_msg_t;
 
 typedef struct {
 	sr_msg_dispatch_type msg_type;
