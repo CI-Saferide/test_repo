@@ -101,6 +101,7 @@ static void clone_cls_can_table(struct sr_hash_table_t **table)
 	SR_16 rule;
 	
 	sal_memset(&ba_res, 0, sizeof(ba_res));
+	sal_memset(sysfs_canbus, 0, sizeof(sysfs_canbus));
 	
 	if (table[0] != NULL && table[1] != NULL) {
 		for (j=0; j<=1; j++) {
