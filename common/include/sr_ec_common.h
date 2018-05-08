@@ -5,7 +5,7 @@
 #include "sr_sal_common.h"
 
 typedef enum {
-        SR_EC_MODE_COLLECT,
+        SR_EC_MODE_ON,
         SR_EC_MODE_OFF,
 } sr_ec_mode_t;
 

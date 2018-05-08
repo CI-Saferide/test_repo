@@ -139,22 +139,18 @@ out:
 
 SR_32 sr_collector_handle_message(sr_ec_mode_t ec_mode)
 {
-	/*
-	if (msg->msg_id == CAN_ML_START_PROTECT) {
-		// this is an indication for start the protection 
+	collect = SR_FALSE;
+	
+	if (ec_mode == SR_EC_MODE_ON) {
 		collect = SR_TRUE;
-		CEF_log_event(SR_CEF_CID_ML_CAN, "info", SEVERITY_LOW,
-			"%s=can_ml protection started",MESSAGE);
-	} else if (msg->msg_id == CAN_ML_STOP_PROTECT) {
-		// this is an indication for protection stop 
-		if (protect == SR_TRUE) {
-			CEF_log_event(SR_CEF_CID_ML_CAN, "info", SEVERITY_LOW,
-				"%s=can_ml protection stopped",MESSAGE);
-		}
+	} else if (ec_mode == SR_EC_MODE_OFF) {
 		collect = SR_FALSE;
-		sr_ml_can_hash_delete_all();
 	}
-	*/
+	
+	CEF_log_event(SR_CEF_CID_SYSTEM, "info", SEVERITY_LOW,
+		"%s=collection %s",MESSAGE,
+		ec_mode == SR_EC_MODE_ON?"EC_MODE_ON":"EC_MODE_OFF");
+			
 	return SR_SUCCESS;
 }
 
