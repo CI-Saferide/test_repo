@@ -7,7 +7,7 @@
 
 typedef enum {
         SR_WL_MODE_LEARN,
-        SR_WL_MODE_PROTECT,
+        SR_WL_MODE_APPLY,
         SR_WL_MODE_OFF,
 } sr_wl_mode_t;
 

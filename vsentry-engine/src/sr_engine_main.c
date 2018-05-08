@@ -268,7 +268,7 @@ SR_32 sr_engine_start(void)
 				break;
 			case 'f':
 				printf ("Move to WL prootect mode \n");
-				wr_white_list_set_mode(SR_WL_MODE_PROTECT);
+				wr_white_list_set_mode(SR_WL_MODE_APPLY);
 				break;
 			case 'g':
 				printf ("Move to WL OFF mode \n");

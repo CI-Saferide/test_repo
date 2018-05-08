@@ -88,7 +88,7 @@ SR_32 wr_white_list_set_mode(sr_wl_mode_t new_wl_mode)
 	switch (wl_mode) {
 		case SR_WL_MODE_LEARN:
 			break;
-		case SR_WL_MODE_PROTECT:
+		case SR_WL_MODE_APPLY:
 			// Remove the rules
 			if ((rc = sr_white_list_file_protect(SR_FALSE)) != SR_SUCCESS) {
                			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
@@ -110,8 +110,8 @@ SR_32 wr_white_list_set_mode(sr_wl_mode_t new_wl_mode)
 		case SR_WL_MODE_LEARN:
 			sr_white_list_delete_all();
 			break;
-		case SR_WL_MODE_PROTECT:
-			wl_mode = SR_WL_MODE_PROTECT;
+		case SR_WL_MODE_APPLY:
+			wl_mode = SR_WL_MODE_APPLY;
 			if ((rc = sr_white_list_file_protect(SR_TRUE)) != SR_SUCCESS) {
                			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 					"%s=sr_white_list_file_protect failed",REASON);
@@ -183,7 +183,7 @@ void sr_white_list_uninit(void)
 	switch (wl_mode) {
 		case SR_WL_MODE_LEARN:
 			break;
-		case SR_WL_MODE_PROTECT:
+		case SR_WL_MODE_APPLY:
 			// Remove the rules
 			if (sr_white_list_file_protect(SR_FALSE) != SR_SUCCESS) {
 				CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
