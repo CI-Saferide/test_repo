@@ -2,6 +2,9 @@
 #define  __SR_WHITE_LIST_H_
 
 #include "sr_sal_common.h"
+#include "sr_ec_common.h"
+#include "sr_msg_dispatch.h"
+#include "sr_msg.h"
 #include "sr_white_list_file.h"
 #include "sr_white_list_can.h"
 

@@ -137,19 +137,19 @@ out:
 	return;
 }
 
-SR_32 sr_collector_handle_message(sr_ec_mode_t ec_mode)
+SR_32 sr_collector_handle_message(struct sr_ec_msg *msg)
 {
 	collect = SR_FALSE;
 	
-	if (ec_mode == SR_EC_MODE_ON) {
+	if (msg->ec_mode  == SR_EC_MODE_ON) {
 		collect = SR_TRUE;
-	} else if (ec_mode == SR_EC_MODE_OFF) {
+	} else if (msg->ec_mode == SR_EC_MODE_OFF) {
 		collect = SR_FALSE;
 	}
 	
 	CEF_log_event(SR_CEF_CID_SYSTEM, "info", SEVERITY_LOW,
 		"%s=collection %s",MESSAGE,
-		ec_mode == SR_EC_MODE_ON?"EC_MODE_ON":"EC_MODE_OFF");
+		msg->ec_mode == SR_EC_MODE_ON?"EC_MODE_ON":"EC_MODE_OFF");
 			
 	return SR_SUCCESS;
 }

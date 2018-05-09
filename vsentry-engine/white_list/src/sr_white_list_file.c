@@ -53,7 +53,7 @@ SR_32 sr_white_list_file_open(struct sr_ec_file_open_t *file_open_info)
 	char exec[SR_MAX_PATH_SIZE], *file_to_learn, file_dir[SR_MAX_PATH_SIZE];
 	sr_white_list_file_t **iter;
 
-	if (sr_white_list_get_mode() != SR_WL_MODE_APPLY)
+	if (sr_white_list_get_mode() != SR_WL_MODE_LEARN)
 		return SR_SUCCESS;
 
         if (sal_get_process_name(file_open_info->pid, exec, SR_MAX_PATH_SIZE) != SR_SUCCESS)

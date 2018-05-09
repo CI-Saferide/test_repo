@@ -11,6 +11,7 @@
 #include "sr_cls_canid.h"
 #include "sr_cls_port.h"
 #include "sr_control.h"
+#include "sr_event_collector.h"
 #ifdef CONFIG_STAT_ANALYSIS
 #include "sr_stat_analysis.h"
 #endif
@@ -108,6 +109,9 @@ SR_32 sr_msg_dispatch(char *msg, int size)
 			sr_stat_analysis_handle_message((struct sr_stat_analysis_msg *)hdr->msg_payload);
 			break;
 #endif /* CONFIG_STAT_ANALYSIS */
+		case SR_MSG_TYPE_WL:
+			sr_collector_handle_message((struct sr_ec_msg *)hdr->msg_payload);
+			break;
 #ifdef CONFIG_CAN_ML
 		case SR_MSG_TYPE_ML_CAN:
 			sr_ml_can_handle_message((struct sr_ml_can_msg *)hdr->msg_payload);

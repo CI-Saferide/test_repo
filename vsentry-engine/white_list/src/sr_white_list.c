@@ -82,6 +82,7 @@ SR_32 sr_white_list_init(void)
 SR_32 sr_white_list_set_mode(sr_wl_mode_t new_wl_mode)
 {
 	SR_32 rc;
+	sr_ec_msg_t *msg;
 
 	if (wl_mode == new_wl_mode)
 		return SR_SUCCESS;
@@ -129,6 +130,15 @@ SR_32 sr_white_list_set_mode(sr_wl_mode_t new_wl_mode)
 			return SR_ERROR;
 	}
 	wl_mode = new_wl_mode;
+
+	msg = (sr_ec_msg_t *)sr_get_msg(ENG2MOD_BUF, ENG2MOD_MSG_MAX_SIZE);
+	if (msg) {
+		msg->msg_type = SR_MSG_TYPE_WL;
+		msg->sub_msg.ec_mode = (wl_mode==SR_WL_MODE_LEARN?SR_EC_MODE_ON:SR_EC_MODE_OFF);
+		sr_send_msg(ENG2MOD_BUF, sizeof(msg));
+	} else
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+			"%s=failed to transfer whitelist collect data request",REASON);
 
 	return SR_SUCCESS;
 }

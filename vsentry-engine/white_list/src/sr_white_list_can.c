@@ -17,7 +17,7 @@ SR_32 sr_white_list_canbus(struct sr_ec_can_t *can_info)
 	char exec[SR_MAX_PATH_SIZE];
 	sr_wl_can_item_t **iter;
 	
-	if (sr_white_list_get_mode() != SR_WL_MODE_APPLY)
+	if (sr_white_list_get_mode() != SR_WL_MODE_LEARN)
 		return SR_SUCCESS;
 		
 		
@@ -30,7 +30,6 @@ SR_32 sr_white_list_canbus(struct sr_ec_can_t *can_info)
 	printf("*****\n%s PID=%u | ",exe,wl_can->pid);
 	printf("MsgID=%03x",wl_can->msg_id);
 	printf("%s\n********\n",wl_can->dir==SR_CAN_IN?"IN":"OUT");
-	printf("PID=%u ITER MSG_ID=%x %s %s\n",can_info->pid,(*iter)->msg_id,can_info->dir==SR_CAN_IN?"IN":"OUT",exec);
 #endif		
 
      if (sal_get_process_name(can_info->pid, exec, SR_MAX_PATH_SIZE) != SR_SUCCESS)
@@ -60,6 +59,7 @@ SR_32 sr_white_list_canbus(struct sr_ec_can_t *can_info)
 			}
 			(*iter)->msg_id = can_info->msg_id;
 			(*iter)->dir = can_info->dir;
+			//printf("PID=%u ITER MSG_ID=%x %s %s\n",can_info->pid,(*iter)->msg_id,(*iter)->dir==SR_CAN_IN?"IN":"OUT",exec);
 		}
 
 	return SR_SUCCESS;
