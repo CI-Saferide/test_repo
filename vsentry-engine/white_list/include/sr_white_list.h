@@ -7,6 +7,9 @@
 #include "sr_msg.h"
 #include "sr_white_list_file.h"
 #include "sr_white_list_can.h"
+#include "sr_white_list_ip.h"
+
+#define WHITE_LIST_ACTION "allow_wl"
 
 typedef enum {
         SR_WL_MODE_LEARN,

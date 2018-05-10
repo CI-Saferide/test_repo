@@ -311,3 +311,14 @@ char *sal_get_home_user(void)
 {
 	return getenv("HOME");
 }
+
+char *sal_get_str_ip_address(SR_U32 ip)
+{
+	static char str_address[INET_ADDRSTRLEN];
+
+	// Assuming host order 
+	ip = htonl(ip);
+	inet_ntop(AF_INET, &ip, str_address, INET_ADDRSTRLEN);
+
+	return str_address;
+}

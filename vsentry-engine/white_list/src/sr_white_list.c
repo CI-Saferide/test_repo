@@ -110,6 +110,7 @@ SR_32 sr_white_list_set_mode(sr_wl_mode_t new_wl_mode)
 	switch (new_wl_mode) { 
 		case SR_WL_MODE_LEARN:
 			sr_white_list_delete_all();
+			sr_white_list_ip_delete_all();
 			break;
 		case SR_WL_MODE_APPLY:
 			wl_mode = SR_WL_MODE_APPLY;
@@ -122,6 +123,11 @@ SR_32 sr_white_list_set_mode(sr_wl_mode_t new_wl_mode)
                			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 					"%s=sr_white_list_canbus_apply failed",REASON);
                 		return SR_ERROR;
+			}
+			if (sr_white_list_ip_apply(SR_TRUE) != SR_SUCCESS) {
+               			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+					"%s=sr_white_list_ip_apply failed",REASON);
+				return SR_ERROR;
 			}
 			break;
 		case SR_WL_MODE_OFF:

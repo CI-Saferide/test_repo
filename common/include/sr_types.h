@@ -15,6 +15,7 @@
 #define SR_FALSE 	(SR_BOOL)0
 #define SR_SUCCESS 	0
 #define SR_NOT_FOUND	1	
+#define SR_ENTRY_EXISTS	2	
 #define SR_ERROR 	-1
 #define SR_MAX_PATH 1024
 #define SR_DIR_SRC (SR_U8)0

@@ -59,10 +59,6 @@ int sr_ec_send_event(SR_U8 buf_type, SR_U8 event_type, void *data)
 	switch (buf_type) {
 		case  MOD2ENG_BUF:
 			switch (event_type) {
-				case SR_EVENT_NEW_CONNECTION:
-					// collect
-					sr_ec_append_event(buf_type, event_type, data, sizeof(struct sr_ec_new_connection_t), SR_TRUE);
-					break;
 				case SR_EVENT_FILE_CREATED:
 					sr_ec_append_event(buf_type, event_type, data, sizeof(struct sr_ec_file_t), SR_TRUE);
 					break;
@@ -86,8 +82,11 @@ int sr_ec_send_event(SR_U8 buf_type, SR_U8 event_type, void *data)
 				case SR_EVENT_STATS_FILE_OPEN:
 					sr_ec_append_event(buf_type, event_type, data, sizeof(struct sr_ec_file_open_t), SR_FALSE);
 					break;
-				case SR_EVENT_CANBUS:
+				case SR_EVENT_STATS_CANBUS:
 					sr_ec_append_event(buf_type, event_type, data, sizeof(struct sr_ec_can_t), SR_FALSE);
+					break;
+				case SR_EVENT_STATS_NEW_CONNECTION:
+					sr_ec_append_event(buf_type, event_type, data, sizeof(struct sr_ec_new_connection_t), SR_FALSE);
 					break;
 				default:
 					break;

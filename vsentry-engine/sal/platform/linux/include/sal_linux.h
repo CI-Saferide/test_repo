@@ -62,6 +62,8 @@ SR_U32 sal_get_os(sal_os_t *os);
 #define SR_MUTEX_UNLOCK(l) pthread_mutex_unlock(l)
 #define SR_MUTEX_INIT_VALUE PTHREAD_MUTEX_INITIALIZER
 
+#define IPV4_STR_MAX_LEN INET_ADDRSTRLEN
+
 SR_U64 sal_get_time(void);
 SR_32 sal_get_process_name(SR_U32 pid, char *exe, SR_U32 size);
 SR_U32 sal_get_ip_for_interface(char *interface);
@@ -71,5 +73,6 @@ void sal_openlog(void);
 void sal_closelog(void);
 void sal_log(char *cef_buffer, SR_32 severity);
 char *sal_get_home_user(void);
+char *sal_get_str_ip_address(SR_U32 ip);
 
 #endif /* SAL_LINUX_ENGINE_H*/

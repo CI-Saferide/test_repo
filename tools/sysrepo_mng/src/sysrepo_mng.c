@@ -956,6 +956,14 @@ static void file_op_convert(SR_U8 file_op, char *perms)
                 return SR_ERROR; \
         }
 
+#define ADD_NET_FIELD(tuple, fieldname, fieldvalue) \
+	sprintf(str_param, "%snum='%d']/%s[id='%d']/%s", IP_PREFIX, rule_id, TUPLE, tuple, fieldname); \
+        if (um_set_value(handler->sess, str_param, fieldvalue) != SR_SUCCESS) { \
+                CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, \
+                        "%s=after um_set_value str_param:%s: ", REASON, str_param); \
+                return SR_ERROR; \
+        }
+
 SR_32 sys_repo_mng_create_file_rule(sysrepo_mng_handler_t *handler, SR_32 rule_id, char *file_name, char *exec, char *user, char *action, SR_U8 file_op)
 {
 	char str_param[MAX_STR_SIZE];
@@ -986,6 +994,48 @@ SR_32 sys_repo_mng_create_file_rule(sysrepo_mng_handler_t *handler, SR_32 rule_i
 	ADD_FILE_FIELD("program", exec) 
 	ADD_FILE_FIELD("user", user) 
 	ADD_FILE_FIELD("permission", perms) 
+
+	return SR_SUCCESS;
+}
+
+SR_32 sys_repo_mng_create_net_rule(sysrepo_mng_handler_t *handler, SR_32 rule_id, SR_32 tuple, char *src_addr, char *src_netmask,
+	char *dst_addr, char *dst_netmask, SR_U8 ip_proto, SR_U16 src_port, SR_U16 dst_port, char *exec, char *user, char *action)
+{
+	char str_param[MAX_STR_SIZE], str_help[MAX_STR_SIZE];
+
+	sprintf(str_param, "%snum='%d']", IP_PREFIX, rule_id);
+	if (um_set_param(handler->sess, str_param) != SR_SUCCESS) {
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+			"%s=create rule : um_set_param failed",REASON);
+		return SR_ERROR;
+	}
+	
+	sprintf(str_param, "%snum='%d']/%s", IP_PREFIX, rule_id, "action");
+	if (um_set_value(handler->sess, str_param, action) != SR_SUCCESS) {
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+			"%s=after um_set_value str_param:%s: action",REASON, str_param);
+		return SR_ERROR;
+	}
+	
+	sprintf(str_param, "%snum='%d']/%s[id='%d']", IP_PREFIX, rule_id, TUPLE, tuple);
+	if (um_set_param(handler->sess, str_param) != SR_SUCCESS) {
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+			"%s=rule_create : um_set_param failed",REASON);
+		return SR_ERROR;
+	}
+
+	ADD_NET_FIELD(tuple, "srcaddr", src_addr) 
+	ADD_NET_FIELD(tuple, "dstaddr", dst_addr) 
+	ADD_NET_FIELD(tuple, "srcnetmask", src_netmask) 
+	ADD_NET_FIELD(tuple, "dstnetmask", dst_netmask) 
+	ADD_NET_FIELD(tuple, "program", exec) 
+	ADD_NET_FIELD(tuple, "user", user) 
+	sprintf(str_help, "%d", ip_proto);
+	ADD_NET_FIELD(tuple, "proto", str_help) 
+	sprintf(str_help, "%d", src_port);
+	ADD_NET_FIELD(tuple, "srcport", str_help) 
+	sprintf(str_help, "%d", dst_port);
+	ADD_NET_FIELD(tuple, "dstport", str_help) 
 
 	return SR_SUCCESS;
 }

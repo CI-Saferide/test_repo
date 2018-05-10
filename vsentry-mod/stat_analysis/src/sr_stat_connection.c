@@ -113,6 +113,7 @@ SR_U32 sr_connection_transmit(void)
 		con.con_id.remote_addr.v4addr = LRU_transmit->objects[i]->con_id.daddr.v4addr;
 		con.con_id.sport = LRU_transmit->objects[i]->con_id.sport;
 		con.con_id.dport = LRU_transmit->objects[i]->con_id.dport;
+		con.is_outgoing = LRU_transmit->objects[i]->is_outgoing;
 		if (con.con_id.ip_proto == IPPROTO_UDP && !LRU_transmit->objects[i]->pid) {
 			con.pid = sr_stat_port_find_pid(con.con_id.dport); 
 		} else

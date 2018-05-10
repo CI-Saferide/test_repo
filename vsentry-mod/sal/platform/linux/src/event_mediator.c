@@ -934,6 +934,7 @@ SR_32 vsentry_socket_sendmsg(struct socket *sock,struct msghdr *msg,SR_32 size)
 			con.con_id.sport = sock->sk->sk_num;
 			con.con_id.dport = ntohs(sock->sk->sk_dport);
 			con.pid = current->tgid;
+			con.is_outgoing = SR_TRUE;
 
 			if ((conp = sr_stat_connection_lookup(&con.con_id))) {
 				if ((rc = sr_stat_connection_update_counters(conp, current->tgid, 0, 0, size, 1)) != SR_SUCCESS) {
