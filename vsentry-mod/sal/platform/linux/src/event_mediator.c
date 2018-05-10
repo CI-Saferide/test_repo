@@ -640,7 +640,10 @@ SR_32 vsentry_file_open(struct file *file, const struct cred *cred)
 	else
 		CEF_log_event(SR_CEF_CID_SYSTEM, "Error", SEVERITY_HIGH,
 						"[%s] inode in null\n", hook_event_names[HOOK_FILE_OPEN].name);
-	disp.fileinfo.parent_inode = 0;
+	if ((file->f_path.dentry->d_parent) && (file->f_path.dentry->d_parent->d_inode))
+		disp.fileinfo.parent_inode = file->f_path.dentry->d_parent->d_inode->i_ino;
+	else
+		disp.fileinfo.parent_inode = 0;
 		
 	disp.fileinfo.id.uid = (int)rcred->uid.val;
 	disp.fileinfo.id.pid = current->pid;
