@@ -104,8 +104,14 @@ SR_32 sr_engine_start(void)
 	sr_config_msg_t *msg;
 	struct config_params_t *config_params;
 	struct canTaskParams *can_args;
+	char cwd[1024];
 	
-	read_vsentry_config("/etc/sentry/sr_config");
+	if (getcwd(cwd, sizeof(cwd)) != NULL) {
+		strcat(cwd, "/sr_config");
+		read_vsentry_config(cwd);
+	} else
+		/* try without current directory */
+		read_vsentry_config("sr_config");
 
 	config_params = sr_config_get_param();
 	can_args = sr_can_collector_args();
