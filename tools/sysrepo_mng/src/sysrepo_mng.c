@@ -1113,3 +1113,46 @@ SR_32 sys_repo_mng_commit(sysrepo_mng_handler_t *handler)
 	return SR_SUCCESS;
 }
 
+SR_32 sys_repo_mng_create_action(sysrepo_mng_handler_t *handler, char *action_name, SR_BOOL is_allow, SR_BOOL is_log)
+{
+	char str_param[MAX_STR_SIZE], str_value[MAX_STR_SIZE];
+	SR_32 rc;
+
+	sprintf(str_param, "/%s/%s/%s[name='%s']", DB_PREFIX, SR_ACTIONS, LIST_ACTIONS, action_name);
+	rc = sr_set_item(handler->sess, str_param, NULL, SR_EDIT_DEFAULT);
+	if (SR_ERR_OK != rc) {
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+		"%s=sr_set_item %s: %s", REASON,
+		str_param, sr_strerror(rc));
+		return SR_ERROR;
+	}
+
+	sprintf(str_param, "/%s/%s/%s[name='%s']", DB_PREFIX, SR_ACTIONS, LIST_ACTIONS, action_name);
+	rc = set_default_params(handler->sess, str_param, default_action_params, ARRAYSIZE(default_action_params));
+	if (rc != SR_ERR_OK) {
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+			"%s=setting new item params to default",REASON);
+		return SR_ERROR;
+	}
+	strncpy(str_value, is_allow ? JSON_ACTION_ALLOW : JSON_ACTION_DROP, MAX_STR_SIZE);
+	sprintf(str_param, "/%s/%s/%s[name='%s']/%s", DB_PREFIX, SR_ACTIONS, LIST_ACTIONS, action_name, ACTION);
+	if (um_set_value(handler->sess, str_param, str_value) != SR_SUCCESS)  {
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+			"%s=after um_set_value str_param:%s: str_value:%s:",REASON,
+			str_param, str_value);
+		return SR_ERROR;
+	}
+	if (!is_log)
+		return SR_SUCCESS;
+
+	sprintf(str_param, "/%s/%s/%s[name='%s']/%s", DB_PREFIX, SR_ACTIONS, LIST_ACTIONS, action_name, LOG_FACILITY);
+	strcpy(str_value, "syslog");
+	if (um_set_value(handler->sess, str_param, str_value) != SR_SUCCESS) { 
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+			"%s=after um_set_value str_param:%s: str_value:%s",REASON,
+			str_param, str_value);
+		return SR_ERROR;
+	}
+
+	return SR_SUCCESS;
+}

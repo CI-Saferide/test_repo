@@ -126,7 +126,7 @@ static SR_32 file_apply_cb(void *hash_data, void *data)
 					REASON, iter->file, wl_item->exec);
 			continue;
 		}
-		if (sys_repo_mng_create_file_rule(&sysrepo_handler, rule_id, iter->file, wl_item->exec, "*", "allow_log", iter->fileop) != SR_SUCCESS) {
+		if (sys_repo_mng_create_file_rule(&sysrepo_handler, rule_id, iter->file, wl_item->exec, "*", WHITE_LIST_ACTION, iter->fileop) != SR_SUCCESS) {
 			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 				"%s=sys_repo_mng_create_file_rule  fiel rule id:%d ",
 					REASON, rule_id);

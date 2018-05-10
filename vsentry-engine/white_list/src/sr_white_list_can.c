@@ -126,7 +126,7 @@ static SR_32 canbus_apply_cb(void *hash_data, void *data)
 					REASON, iter->msg_id,iter->dir ,wl_item->exec);
 			continue;
 		}
-		if (sys_repo_mng_create_canbus_rule(&sysrepo_handler, rule_id, iter->msg_id, wl_item->exec, "*", "allow_log", iter->dir) != SR_SUCCESS) {
+		if (sys_repo_mng_create_canbus_rule(&sysrepo_handler, rule_id, iter->msg_id, wl_item->exec, "*", WHITE_LIST_ACTION, iter->dir) != SR_SUCCESS) {
 			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 				"%s=sys_repo_mng_create_can_rule  fiel rule id:%d ",
 					REASON, rule_id);
