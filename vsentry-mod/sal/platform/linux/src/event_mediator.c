@@ -668,7 +668,21 @@ SR_32 vsentry_file_open(struct file *file, const struct cred *cred)
 					disp.fileinfo.id.pid,
 					disp.fileinfo.id.uid);
 #endif /* DEBUG_EVENT_MEDIATOR */
-	
+
+	if (file->f_path.dentry->d_inode && file->f_path.dentry->d_inode->i_sb) { 
+		switch (file->f_path.dentry->d_inode->i_sb->s_dev) {
+			case 4:
+				disp.fileinfo.dev_type = DEV_TYPE_PROC;
+				break;
+			case 19:
+				disp.fileinfo.dev_type = DEV_TYPE_SYS;
+				break;
+			default:
+				disp.fileinfo.dev_type = DEV_TYPE_UNKOWN;
+				break;
+		}
+	}
+
 	/* call dispatcher */
 	rc = disp_file_open(&disp);
 
@@ -677,9 +691,8 @@ SR_32 vsentry_file_open(struct file *file, const struct cred *cred)
 			if (get_path(file->f_path.dentry, disp.fileinfo.fullpath, sizeof(disp.fileinfo.fullpath)) != SR_SUCCESS) {
 				CEF_log_event(SR_CEF_CID_SYSTEM, "Error", SEVERITY_HIGH,
 															"File operation denied, file path it to long");
-							return 0;
-					}
-
+				return 0;
+			}
 			disp_file_open_report(&disp);
 		}
 	}

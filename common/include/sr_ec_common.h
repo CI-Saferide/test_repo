@@ -94,6 +94,7 @@ struct sr_ec_file_open_t{
 	SR_8 file[SR_MAX_PATH_SIZE];
 	SR_U32 pid;
 	SR_U8  fileop;
+	SR_U8  dev_type;
 };
 #pragma pack(pop)
 #endif

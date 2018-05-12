@@ -24,4 +24,10 @@
 #define MAX(X, Y) ((X) >= (Y) ? (X) : (Y))
 #define MIN(X, Y) ((X) <= (Y) ? (X) : (Y))
 
+typedef enum dev_type {
+        DEV_TYPE_UNKOWN = 0,
+        DEV_TYPE_PROC,
+        DEV_TYPE_SYS,
+} dev_type_t;
+
 #endif /*__SR_TYPES__ */
