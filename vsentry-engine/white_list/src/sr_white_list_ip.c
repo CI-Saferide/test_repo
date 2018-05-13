@@ -116,8 +116,6 @@ SR_32 sr_wl_ip_binary_insert(char *exec)
 	sr_wl_ip_binary_t *sr_wl_ip_binary_item;
 
 	if (sr_gen_hash_get(wl_ip_binary_hash, exec)) {
-		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-			"%s=whilte list insert - item failed",REASON);
 		return SR_ENTRY_EXISTS;
 	}
 
@@ -297,7 +295,7 @@ static SR_32 white_list_ip_update_pid(struct radix_node *node, SR_U32 pid)
 	} else
 		strcpy(exec, "*");
 
-	if (sr_wl_ip_binary_insert(exec) != SR_SUCCESS) {
+	if (sr_wl_ip_binary_insert(exec) == SR_ERROR) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 			"%s=%s: sr_gen_hash_insert failed",REASON, __FUNCTION__);
 		return SR_ERROR;
