@@ -45,6 +45,8 @@ static SR_32 engine_main_loop(void *data)
 {
 	SR_32 ret;
 	SR_8 *msg;
+	int fd;
+	ssize_t n __attribute__((unused));
 
 	CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,
 		"%s=engine_main_loop started",MESSAGE);
@@ -57,6 +59,12 @@ static SR_32 engine_main_loop(void *data)
 		return SR_ERROR;
 	}
 
+	if (!(fd = sal_get_vsentry_fd())) {
+                CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_LOW,
+                        "%s=sr_info_gather_loop: no vsenbtry fd", REASON);
+                return SR_ERROR;
+	}
+
 	while (!sr_task_should_stop(SR_ENGINE_TASK)) {
 		msg = sr_read_msg(MOD2ENG_BUF, &ret);
 		if (ret > 0) {
@@ -65,7 +73,7 @@ static SR_32 engine_main_loop(void *data)
 		}
 
 		if (ret == 0)
-			sal_schedule_timeout(1);
+			n = read(fd, NULL, SR_SYNC_ENGINE);
 	}
 
 	/* free allocated buffer */
@@ -157,6 +165,13 @@ SR_32 sr_engine_start(int argc, char *argv[])
 	if (ret != SR_SUCCESS){
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 						"%s=failed to init sr_white_list_init",REASON);
+		return SR_ERROR;
+	}
+
+	ret = sal_vsentry_fd_open();
+	if (ret != SR_SUCCESS){
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+						"%s=failed sal_fd_vsentry_open", REASON);
 		return SR_ERROR;
 	}
 
@@ -336,5 +351,6 @@ SR_32 sr_engine_start(int argc, char *argv[])
 	sr_db_deinit();
 	sr_log_uploader_deinit();
 	sr_log_deinit();
+	sal_vsentry_fd_close();
 	return 0;
 }
