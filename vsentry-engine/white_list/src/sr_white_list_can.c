@@ -8,9 +8,6 @@
 #include "sr_cls_rules_control.h"
 #include "sysrepo_mng.h"
 
-#define SR_START_RULE_NO 3072
-#define SR_END_RULE_NO 4095
-
 static SR_32 rule_id; 
 static sysrepo_mng_handler_t sysrepo_handler;
 
@@ -41,7 +38,7 @@ SR_32 sr_white_list_canbus(struct sr_ec_can_t *can_info)
 	if (!(white_list_item = sr_white_list_hash_get(exec))) {		
 		if (sr_white_list_hash_insert(exec, &white_list_item) != SR_SUCCESS) {
 			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-				"%s=whilte list insert - failed",REASON);
+				"%s=can whilte list insert failed",REASON);
 			return SR_ERROR;
 		}
 		
@@ -57,7 +54,7 @@ SR_32 sr_white_list_canbus(struct sr_ec_can_t *can_info)
 			SR_Zalloc(*iter, sr_wl_can_item_t *, sizeof(sr_wl_can_item_t));
 			if (!*iter) {
 				CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-					"%s=learn hash update: memory allocation failed",REASON);
+					"%s=can wl learn hash update: memory allocation failed",REASON);
 				return SR_ERROR;
 			}
 			(*iter)->msg_id = can_info->msg_id;
@@ -89,7 +86,7 @@ void sr_white_list_canbus_cleanup(sr_wl_can_item_t *wl_canbus)
 	
 }
 
-static SR_32 canbus_unapply_cb(void *hash_data, void *data)
+static SR_32 canbus_delete_cb(void *hash_data, void *data)
 {
 	// TODO : delete rulues.
 	/*	
@@ -99,7 +96,7 @@ static SR_32 canbus_unapply_cb(void *hash_data, void *data)
 	if (!hash_data)
 		return SR_ERROR;
 
-	for (iter = wl_item->white_list_can; iter && rule_id <= SR_END_RULE_NO; iter = iter->next) {
+	for (iter = wl_item->white_list_can; iter && rule_id <= SR_CAN_WL_END_RULE_NO; iter = iter->next) {
 		sr_cls_canid_del_rule(iter->msg_id, wl_item->exec, "*", rule_id, iter->dir);
 		sr_cls_rule_del(SR_CAN_RULES, rule_id);
 		rule_id++;
@@ -119,16 +116,16 @@ static SR_32 canbus_apply_cb(void *hash_data, void *data)
 		return SR_ERROR;
 
 	for (iter = wl_item->white_list_can; iter; iter = iter->next) {
-		printf("rule=%d msg_id=%03x exec=%s %s\n", rule_id, iter->msg_id, wl_item->exec,iter->dir==SR_CAN_IN?"IN":"OUT");
-		if (rule_id > SR_END_RULE_NO) {
+		//printf("rule=%d msg_id=%03x exec=%s %s\n", rule_id, iter->msg_id, wl_item->exec,iter->dir==SR_CAN_IN?"IN":"OUT");
+		if (rule_id > SR_CAN_WL_END_RULE_NO) {
 			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-				"%s=canbus learn rule exeeds max number of rules can_msg:%x %s exec:%s",
+				"%s=can learn rule exeeds list boundary. mid:%x %s exec:%s",
 					REASON, iter->msg_id,iter->dir ,wl_item->exec);
-			continue;
+			continue; /* we do not break since we want to have log per any rule that we cannot accomodate in the persistent storage */
 		}
 		if (sys_repo_mng_create_canbus_rule(&sysrepo_handler, rule_id, iter->msg_id, wl_item->exec, "*", WHITE_LIST_ACTION, iter->dir) != SR_SUCCESS) {
 			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-				"%s=sys_repo_mng_create_can_rule  fiel rule id:%d ",
+				"%s=fail to create can rule in persistent db. rule id:%d ",
 					REASON, rule_id);
 		}
 		rule_id++;
@@ -144,20 +141,20 @@ SR_32 sr_white_list_canbus_apply(SR_BOOL is_apply)
 	
 	if (sysrepo_mng_session_start(&sysrepo_handler)) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-			"%s=sysrepo_mng_session_start failed",REASON);
+			"%s=wl can:fail to init persistent db",REASON);
 		return SR_ERROR;
 	}
 
-	rule_id = SR_START_RULE_NO;
+	rule_id = SR_CAN_WL_START_RULE_NO;
 	
-	if ((rc = sr_white_list_hash_exec_for_all(is_apply ? canbus_apply_cb : canbus_unapply_cb)) != SR_SUCCESS) {
+	if ((rc = sr_white_list_hash_exec_for_all(is_apply ? canbus_apply_cb : canbus_delete_cb)) != SR_SUCCESS) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-			"%s=sr_white_list_hash_exec_for_all failed",REASON);
+			"%s=can wl hash exec failed",REASON);
 		return SR_ERROR;
 	}
 	if (sys_repo_mng_commit(&sysrepo_handler) != SR_SUCCESS) { 
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-				"%s=sys_repo_mng_commit failed ", REASON);
+				"%s=failed to commit wl can rules from persistent db", REASON);
 	}
 
 	sysrepo_mng_session_end(&sysrepo_handler);	

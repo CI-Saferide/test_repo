@@ -102,8 +102,14 @@ SR_32 sr_engine_start(void)
 	sr_config_msg_t *msg;
 	struct config_params_t *config_params;
 	struct canTaskParams *can_args;
+	char cwd[1024];
 	
-	read_vsentry_config("/etc/sentry/sr_config");
+	if (getcwd(cwd, sizeof(cwd)) != NULL) {
+		strcat(cwd, "/sr_config");
+		read_vsentry_config(cwd);
+	} else
+		/* try without current directory */
+		read_vsentry_config("sr_config");
 
 	config_params = sr_config_get_param();
 	can_args = sr_can_collector_args();
@@ -116,11 +122,13 @@ SR_32 sr_engine_start(void)
 	CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,
 		"%s=vsentry engine started",MESSAGE);
 
+#ifdef SUPPORT_REMOTE_SERVER
 	ret = sr_log_uploader_init();
 	if (ret != SR_SUCCESS){
 		printf("failed to init_log_uploader\n");
 		return SR_ERROR;
 	}
+#endif /* SUPPORT_REMOTE_SERVER */
 
 	ret = sr_white_list_init();
 	if (ret != SR_SUCCESS){
@@ -193,8 +201,13 @@ SR_32 sr_engine_start(void)
 
 	sr_db_init();
 	sentry_init(sr_config_vsentry_db_cb);
-
+	
+#ifdef SUPPORT_REMOTE_SERVER
+#ifdef ENBALE_POLICY_UPDATE
+	/* enbale automatic policy updates from server */
 	sr_static_policy_db_mng_start();
+#endif /* ENBALE_POLICY_UPDATE */
+#endif /* SUPPORT_REMOTE_SERVER */
 
 	sr_get_command_start();
 
@@ -281,7 +294,11 @@ SR_32 sr_engine_start(void)
 		}
 	}
 	sr_get_command_stop();
+#ifdef SUPPORT_REMOTE_SERVER
+#ifdef ENBALE_POLICY_UPDATE
 	sr_static_policy_db_mng_stop();
+#endif /* ENBALE_POLICY_UPDATE */
+#endif /* SUPPORT_REMOTE_SERVER */
 	sr_stop_task(SR_CAN_COLLECT_TASK);
 	sr_stop_task(SR_ENGINE_TASK);
 	sentry_stop();

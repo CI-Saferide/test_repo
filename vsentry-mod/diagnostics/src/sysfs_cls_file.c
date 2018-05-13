@@ -126,6 +126,7 @@ static void clone_cls_file_table(struct sr_hash_table_t *table)
 	SR_8 perm_string[4] = {'-','-','-','\0'};
 	
 	sal_memset(&ba_res, 0, sizeof(ba_res));
+	sal_memset(sysfs_file, 0, sizeof(sysfs_file));
 	
 	if (table != NULL) {
 		

@@ -8,9 +8,6 @@
 #include "sr_cls_rules_control.h"
 #include "sysrepo_mng.h"
 
-#define SR_START_RULE_NO 3072
-#define SR_END_RULE_NO 4095
-
 static SR_32 rule_id; 
 static sysrepo_mng_handler_t sysrepo_handler;
 static char *home_dir;
@@ -78,7 +75,7 @@ SR_32 sr_white_list_file_open(struct sr_ec_file_open_t *file_open_info)
 	if (!(white_list_item = sr_white_list_hash_get(exec))) {
 		if (sr_white_list_hash_insert(exec, &white_list_item) != SR_SUCCESS) {
 			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-				"%s=whilte list insert - failed",REASON);
+				"%s=file white list insert failed",REASON);
 			return SR_ERROR;
 		}
 	}
@@ -129,16 +126,17 @@ static SR_32 file_apply_cb(void *hash_data, void *data)
 		return SR_ERROR;
 
 	for (iter = wl_item->white_list_file; iter; iter = iter->next) {
-		printf("rule#%d file:%s: fileop:%x exec:%s \n", rule_id, iter->file, iter->fileop, wl_item->exec);
-		if (rule_id > SR_END_RULE_NO) {
+		//printf("rule#%d file:%s: fileop:%x exec:%s \n", rule_id, iter->file, iter->fileop, wl_item->exec);
+		if (rule_id > SR_FILE_WL_END_RULE_NO) {
 			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-				"%s=File learn rule exeeds max number of rules file:%s exec:%s",
+				"%s=file learn rule exeeds list boundary. file:%s exec:%s",
 					REASON, iter->file, wl_item->exec);
-			continue;
+			continue; /* we do not break since we want to have log per any rule that we cannot accomodate in the persistent storage */
 		}
+    
 		if (sys_repo_mng_create_file_rule(&sysrepo_handler, rule_id, iter->file, wl_item->exec, "*", WHITE_LIST_ACTION, iter->fileop) != SR_SUCCESS) {
 			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-				"%s=sys_repo_mng_create_file_rule  fiel rule id:%d ",
+				"%s=fail to create file rule in persistent db. rule id:%d ",
 					REASON, rule_id);
 		}
 		rule_id++;
@@ -147,7 +145,7 @@ static SR_32 file_apply_cb(void *hash_data, void *data)
 	return SR_SUCCESS;
 }
 
-static SR_32 file_unapply_cb(void *hash_data, void *data)
+static SR_32 wl_file_delete_cb(void *hash_data, void *data)
 {
 	// TODO : delete rulues.
 
@@ -160,21 +158,21 @@ SR_32 sr_white_list_file_apply(SR_BOOL is_apply)
 	
 	if (sysrepo_mng_session_start(&sysrepo_handler)) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-			"%s=sysrepo_mng_session_start failed",REASON);
+			"%s=wl file:fail to init persistent db",REASON);
 		return SR_ERROR;
 	}
 
-	rule_id = SR_START_RULE_NO;
+	rule_id = SR_FILE_WL_START_RULE_NO;
 	
-	if ((rc = sr_white_list_hash_exec_for_all(is_apply ? file_apply_cb : file_unapply_cb)) != SR_SUCCESS) {
+	if ((rc = sr_white_list_hash_exec_for_all(is_apply ? file_apply_cb : wl_file_delete_cb)) != SR_SUCCESS) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-			"%s=sr_white_list_hash_exec_for_all failed",REASON);
+			"%s=file wl hash exec failed",REASON);
 		return SR_ERROR;
 	}
 
 	if (sys_repo_mng_commit(&sysrepo_handler) != SR_SUCCESS) { 
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-				"%s=sys_repo_mng_commit failed ", REASON);
+				"%s=failed to commit wl file rules from persistent db", REASON);
 	}
 
 	sysrepo_mng_session_end(&sysrepo_handler);
