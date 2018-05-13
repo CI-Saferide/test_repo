@@ -48,7 +48,7 @@ static SR_32 engine_main_loop(void *data)
 	int fd;
 	ssize_t n __attribute__((unused));
 
-	CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,
+	CEF_log_event(SR_CEF_CID_SYSTEM, "info", SEVERITY_LOW,
 		"%s=engine_main_loop started",MESSAGE);
 
 	/* init the module2engine buffer*/
@@ -150,7 +150,7 @@ SR_32 sr_engine_start(int argc, char *argv[])
 		printf("failed to init sr_log\n");
 		return SR_ERROR;
 	}
-	CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,
+	CEF_log_event(SR_CEF_CID_SYSTEM, "info", SEVERITY_LOW,
 		"%s=vsentry engine started",MESSAGE);
 
 #ifdef SUPPORT_REMOTE_SERVER
@@ -257,10 +257,10 @@ SR_32 sr_engine_start(int argc, char *argv[])
 							"%s=failed to start can-bus collector",REASON);
 			return SR_ERROR;	
 		}	
-		CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,
+		CEF_log_event(SR_CEF_CID_SYSTEM, "info", SEVERITY_LOW,
 						"%s=can-bus collector - enabled!",MESSAGE);
 	} else {
-		CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,
+		CEF_log_event(SR_CEF_CID_SYSTEM, "info", SEVERITY_LOW,
 						"%s=can-bus collector - disabled!",MESSAGE);
 	}
 	/* indicate VPI that we are running */

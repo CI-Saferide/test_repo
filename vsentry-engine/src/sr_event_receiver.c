@@ -61,7 +61,7 @@ void sr_event_receiver(SR_8 *msg_buff, SR_U32 msg_len)
 				pNewFile = (struct sr_ec_file_t *) &msg_buff[offset];
 				offset += sizeof(struct sr_ec_file_t);
 #ifdef SR_STAT_ANALYSIS_DEBUG
-				CEF_log_debug(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,
+				CEF_log_debug(SR_CEF_CID_SYSTEM, "info", SEVERITY_LOW,
 					"%s=file created :%s",MESSAGE,
 					pNewFile->name ? (char *)(pNewFile->name) : "");
 #endif
@@ -77,7 +77,7 @@ void sr_event_receiver(SR_8 *msg_buff, SR_U32 msg_len)
 				offset += sizeof(struct sr_ec_process_died_t);
 				spid = (SR_32)(pProcessDied->pid);
 #ifdef SR_STAT_ANALYSIS_DEBUG
-				CEF_log_debug(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,
+				CEF_log_debug(SR_CEF_CID_SYSTEM, "info", SEVERITY_LOW,
 					"%s=Process died:%d",MESSAGE,
 					spid);
 #endif

@@ -194,7 +194,7 @@ SR_32 disp_incoming_connection(disp_info_t* info)
 // TODO: might not have full 5-tuple at this stage !?!?!?
 SR_32 disp_socket_create(disp_info_t* info)
 {
-	CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,
+	CEF_log_event(SR_CEF_CID_SYSTEM, "info", SEVERITY_LOW,
 			"Called function %s [DISABLED]\n", __FUNCTION__);
 	//sr_classifier_network(info);
 	return SR_CLS_ACTION_ALLOW;
@@ -225,7 +225,7 @@ SR_32 disp_socket_sendmsg(disp_info_t* info)
 	/* create event message */
 
 #ifdef DEBUG_DISPATCHER
-	CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,
+	CEF_log_event(SR_CEF_CID_SYSTEM, "info", SEVERITY_LOW,
 			"[%s:HOOK %s] family=af_can, msd_id=%x, payload_len=%d, payload= %02x %02x %02x %02x %02x %02x %02x %02x, pid=%d, gid=%d, tid=%d\n", 
 			module_name, 
 			hook_event_names[info->can_info.id.event].name,
@@ -274,7 +274,7 @@ SR_32 disp_can_recvmsg(disp_info_t* info)
 	classifier_rc = sr_classifier_canbus(info);
 	
 	#ifdef DEBUG_DISPATCHER
-	CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,
+	CEF_log_event(SR_CEF_CID_SYSTEM, "info", SEVERITY_LOW,
 			"[%s:HOOK %s] family=af_can, msd_id=%x, payload_len=%d, payload= %02x %02x %02x %02x %02x %02x %02x %02x, pid=%d, gid=%d, tid=%d\n", 
 			module_name, 
 			hook_event_names[info->can_info.id.event].name,

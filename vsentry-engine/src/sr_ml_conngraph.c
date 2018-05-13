@@ -59,7 +59,7 @@ void sr_ml_conngraph_event( struct sr_ec_new_connection_t *pNewConnection)
 		case ML_MODE_DETECT:
 			free(ip);
 			if (!node) { // detected connection to unknown destination
-				CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,
+				CEF_log_event(SR_CEF_CID_SYSTEM, "info", SEVERITY_LOW,
 					"%s=detected suspicious connection to %x[%d]",MESSAGE,
 					pNewConnection->remote_addr.v4addr,
 					pNewConnection->dport); // TODO: this needs to be properly logged
@@ -75,7 +75,7 @@ void sr_ml_conngraph_event( struct sr_ec_new_connection_t *pNewConnection)
 int sr_ml_node_printer(struct radix_node *node, void *unused)
 { 
 	struct sockaddr_in *ip=(struct sockaddr_in *)(node->rn_u.rn_leaf.rn_Key);
-	CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,
+	CEF_log_event(SR_CEF_CID_SYSTEM, "info", SEVERITY_LOW,
 					"%s=node: %x",MESSAGE,
 					ip->sin_addr.s_addr);
 	return 0;
@@ -120,7 +120,7 @@ void sr_ml_conngraph_save(void)
 	rn_walktree(sr_ml_conngraph_table, sr_ml_node_save, (void *)&fd);
 
 	close(fd);
-	CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,
+	CEF_log_event(SR_CEF_CID_SYSTEM, "info", SEVERITY_LOW,
 		"%s=successfully saved conngraph conf file",MESSAGE);
 
 }

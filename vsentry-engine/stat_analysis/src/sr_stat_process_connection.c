@@ -52,7 +52,7 @@ void static print_connection(sr_connection_id_t *con_id)
 {
 	if (!con_id) return;
 
-	CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,
+	CEF_log_event(SR_CEF_CID_SYSTEM, "info", SEVERITY_LOW,
 		"%s=%s %s=%d %s=%x %s=%x %s=%d %s=%d", MESSAGE,
 		__FUNC__,
 		TRANSPORT_PROTOCOL,con_id->ip_proto,
@@ -108,7 +108,7 @@ static void process_connection_print(void *data_in_hash)
 	exe[0] = 0;
 	sal_get_process_name(process_connection_item->process_id, exe, sizeof(exe));
 
-	CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,
+	CEF_log_event(SR_CEF_CID_SYSTEM, "info", SEVERITY_LOW,
 		"process :%d exe:%s num_of_connections:%d max_new_conns:%d",
 		process_connection_item->process_id,
 		exe,
@@ -117,7 +117,7 @@ static void process_connection_print(void *data_in_hash)
 
 	for (ptr = process_connection_item->process_connection_list; ptr; ptr = ptr->next) {
 		count++;
-		CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,
+		CEF_log_event(SR_CEF_CID_SYSTEM, "info", SEVERITY_LOW,
 			"proto:%d saddr:%x dassdr:%x sport:%d dport:%d rx_msgs:%u rx_bytes:%u tx_mgs:%u tx_bytes:%u time:%lu",
 			ptr->connection_info.con_id.ip_proto, 
 			ptr->connection_info.con_id.saddr.v4addr,
@@ -131,7 +131,7 @@ static void process_connection_print(void *data_in_hash)
 			cur_time - ptr->connection_info.time);
 
 	}
-	CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,
+	CEF_log_event(SR_CEF_CID_SYSTEM, "info", SEVERITY_LOW,
 		"%s=%d connections in process:%d",MESSAGE,
 		count,
 		process_connection_item->process_id);
@@ -354,7 +354,7 @@ static SR_BOOL is_data_learned_qualified(traffic_sample_t traffic_samples[], SR_
 		b = (traffic_samples[i].counters.rx_b_count - traffic_samples[i - 1].counters.rx_b_count) / time_diff;
 		avarage += b;
 #ifdef SR_STAT_ANALYSIS_DEBUG
-		CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,
+		CEF_log_event(SR_CEF_CID_SYSTEM, "info", SEVERITY_LOW,
 			"i:%d time:%llu rx bytes:%d tx_bytes :%d time:%f b:%d",
 			i,
 			traffic_samples[i].time,
@@ -421,7 +421,7 @@ static SR_32 finish_transmit(void *hash_data, void *data)
 
 #ifdef SR_STAT_ANALYSIS_DEBUG
 		if (iter->connection_info.con_id.sport == 5001 || iter->connection_info.con_id.dport == 5001) { 
-			CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,
+			CEF_log_event(SR_CEF_CID_SYSTEM, "info", SEVERITY_LOW,
 			"PPPPPPPPPPPPPP state:%s time:%llu sport:%d dport:%d RX:%d TX:%d --------------",
 				stat_mode == SR_STAT_MODE_LEARN ? "Learn" : "Protect", iter->connection_info.transmit_time,
 				iter->connection_info.con_id.sport, iter->connection_info.con_id.dport,
@@ -469,8 +469,8 @@ static SR_32 finish_transmit(void *hash_data, void *data)
 	if (process_connection_item->max_con_stats.rx_bytes > MAX_LEARN || 
 	    process_connection_item->max_con_stats.tx_bytes > MAX_LEARN) { 
 			
-		CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,
-			"XXXXXXXXXXXXXXXXX  PROCESS:%d XXXXXXXXXXXXXXXXXXXXXXXXX PROCESS:%d learned to much",
+		CEF_log_event(SR_CEF_CID_SYSTEM, "info", SEVERITY_LOW,
+			"PROCESS:%d learned to much",
 			process_connection_item->process_id);
 			
 		for (i = 0; i < NUM_OF_SAMPLES; i++) {
@@ -481,7 +481,7 @@ static SR_32 finish_transmit(void *hash_data, void *data)
 				b = (process_connection_item->traffic_samples[i].counters.rx_b_count -
 					process_connection_item->traffic_samples[i - 1].counters.rx_b_count) / time_diff;
 			}
-			CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,
+			CEF_log_event(SR_CEF_CID_SYSTEM, "info", SEVERITY_LOW,
 				"i:%d time:%llu rx bytes:%llu tx_bytes :%llu time:%f b:%d", 
 				i, 
 				process_connection_item->traffic_samples[i].time,
@@ -571,8 +571,8 @@ void sr_stat_process_connection_hash_print(void)
 
 SR_32 ut_cb(SR_U32 process_id, sr_stat_connection_info_t *connection_info)
 {
-	CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,
-		"%s=EEEEEEexec cb %s=%d %s=%d rx_msgs=%d %s=%d tx_msgs=%d",MESSAGE,
+	CEF_log_event(SR_CEF_CID_SYSTEM, "info", SEVERITY_LOW,
+		"%s=exec cb %s=%d %s=%d rx_msgs=%d %s=%d tx_msgs=%d",MESSAGE,
 		DEVICE_PROCESS_NAME,process_id,
 		BYTES_INBOUNT,connection_info->con_stats.rx_bytes,
 		connection_info->con_stats.rx_msgs,

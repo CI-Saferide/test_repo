@@ -52,12 +52,12 @@ void file_print(void *data_in_hash)
 	file_rules_data_t *ptr;
 	file_rules_item_t *rules_item = (file_rules_item_t *)data_in_hash;
 
-	CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,
+	CEF_log_event(SR_CEF_CID_SYSTEM, "info", SEVERITY_LOW,
 		"%s=file path:%s",MESSAGE,
 		rules_item->file_path);
 					
 	for (ptr = rules_item->file_rules_list; ptr; ptr = ptr->next) {
-		CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,
+		CEF_log_event(SR_CEF_CID_SYSTEM, "info", SEVERITY_LOW,
 			"%s=Rule #%d user:%s exec:%s actions:%x ops:%x",MESSAGE,
 			ptr->rulenum,
 			ptr->user,
