@@ -96,7 +96,7 @@ static void eng2mod_test(void)
 	}
 }
 
-SR_32 sr_engine_start(void)
+SR_32 sr_engine_start(int argc, char *argv[])
 {
 	SR_32 ret;
 	SR_BOOL run = SR_TRUE;
@@ -104,14 +104,35 @@ SR_32 sr_engine_start(void)
 	sr_config_msg_t *msg;
 	struct config_params_t *config_params;
 	struct canTaskParams *can_args;
-	char cwd[1024];
+	SR_8 *config_file = NULL;
+	SR_32 cmd_line;
 	
-	if (getcwd(cwd, sizeof(cwd)) != NULL) {
-		strcat(cwd, "/sr_config");
-		read_vsentry_config(cwd);
+	while ((cmd_line = getopt (argc, argv, "hc:")) != -1)
+	switch (cmd_line) {
+		case 'h':
+			printf ("param					description\n");
+			printf ("----------------------------------------------------------------------\n");
+			printf ("-c [path]				specifies configuration file full path\n");        
+			printf ("\n");
+			return 0;
+			break;
+		case 'c':
+			config_file = optarg;
+			break;
+	}
+	
+	if (NULL == config_file) {
+		/* no config file parameters passed, using current directory */
+		char cwd[1024];
+		if (getcwd(cwd, sizeof(cwd)) != NULL) {
+			strcat(cwd, "/sr_config");
+			read_vsentry_config(cwd);
+		} else
+			/* try without current directory */
+			read_vsentry_config("sr_config");
 	} else
-		/* try without current directory */
-		read_vsentry_config("sr_config");
+		/* using config file from cmd_line */
+		read_vsentry_config(config_file);
 
 	config_params = sr_config_get_param();
 	can_args = sr_can_collector_args();
