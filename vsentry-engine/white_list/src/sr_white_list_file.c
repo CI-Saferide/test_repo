@@ -14,16 +14,27 @@ static char *home_dir;
 
 #define CHECK_DIR(dir_name) \
 	if (!memcmp(file, dir_name, strlen(dir_name))) { \
-		strcpy(file_dir, dir_name); \
-		return file_dir; \
+		strcpy(new_file, dir_name); \
+		return new_file; \
 	}
 
-static char *get_file_to_learn(char *file, char *file_dir)
+static char *get_file_to_learn(char *file, char *new_file, dev_type_t dev_type)
 {
 	CHECK_DIR("/tmp")
 	CHECK_DIR("/var/spool")
 	if (home_dir)
 		CHECK_DIR(home_dir)
+
+	switch (dev_type) {
+		case DEV_TYPE_PROC:
+			sprintf(new_file, "/proc%s", file);
+			return new_file;
+		case DEV_TYPE_SYS:
+			sprintf(new_file, "/sys%s", file);
+			return new_file;
+		default:
+			break;
+	}
 
 	return file;
 }
@@ -50,7 +61,7 @@ void sr_white_list_file_uninit(void)
 SR_32 sr_white_list_file_open(struct sr_ec_file_open_t *file_open_info)
 {
 	sr_white_list_item_t *white_list_item;
-	char exec[SR_MAX_PATH_SIZE], *file_to_learn, file_dir[SR_MAX_PATH_SIZE];
+	char exec[SR_MAX_PATH_SIZE], *file_to_learn, new_file[SR_MAX_PATH_SIZE];
 	sr_white_list_file_t **iter;
 
 	if (sr_white_list_get_mode() != SR_WL_MODE_LEARN)
@@ -59,9 +70,8 @@ SR_32 sr_white_list_file_open(struct sr_ec_file_open_t *file_open_info)
         if (sal_get_process_name(file_open_info->pid, exec, SR_MAX_PATH_SIZE) != SR_SUCCESS)
                 strcpy(exec, "*");
 
-	// The file to learn might be only a part of the path 
-	file_to_learn = get_file_to_learn(file_open_info->file, file_dir);
-
+	// The file to learn might be changed.
+	file_to_learn = get_file_to_learn(file_open_info->file, new_file, file_open_info->dev_type);
 	if (!(white_list_item = sr_white_list_hash_get(exec))) {
 		if (sr_white_list_hash_insert(exec, &white_list_item) != SR_SUCCESS) {
 			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
@@ -123,7 +133,8 @@ static SR_32 file_apply_cb(void *hash_data, void *data)
 					REASON, iter->file, wl_item->exec);
 			continue; /* we do not break since we want to have log per any rule that we cannot accomodate in the persistent storage */
 		}
-		if (sys_repo_mng_create_file_rule(&sysrepo_handler, rule_id, iter->file, wl_item->exec, "*", "wl-allow", iter->fileop) != SR_SUCCESS) {
+    
+		if (sys_repo_mng_create_file_rule(&sysrepo_handler, rule_id, iter->file, wl_item->exec, "*", WHITE_LIST_ACTION, iter->fileop) != SR_SUCCESS) {
 			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 				"%s=fail to create file rule in persistent db. rule id:%d ",
 					REASON, rule_id);

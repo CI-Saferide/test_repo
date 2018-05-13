@@ -137,7 +137,7 @@ SR_32 disp_socket_connect(disp_info_t* info)
 	sample_data.ip_proto = info->tuple_info.ip_proto;
 	sample_data.dport = info->tuple_info.dport;
 	sample_data.sport = info->tuple_info.sport;
-	sr_ec_send_event(MOD2ENG_BUF, SR_EVENT_NEW_CONNECTION, &sample_data);
+	sr_ec_send_event(MOD2STAT_BUF, SR_EVENT_STATS_NEW_CONNECTION, &sample_data);
 	return (sr_classifier_network(info));
 }
 
@@ -160,6 +160,7 @@ SR_32 disp_file_open_report(disp_info_t* info)
 	strncpy(file_open_data.file, info->fileinfo.fullpath, SR_MAX_PATH_SIZE); 
 	file_open_data.pid = info->fileinfo.id.pid; 
 	file_open_data.fileop = info->fileinfo.fileop;
+	file_open_data.dev_type = info->fileinfo.dev_type;
 	sr_ec_send_event(MOD2STAT_BUF, SR_EVENT_STATS_FILE_OPEN, &file_open_data);
 
 	return SR_SUCCESS;
@@ -177,17 +178,6 @@ SR_32 disp_ipv4_recvmsg(disp_info_t* info)
 
 SR_32 disp_incoming_connection(disp_info_t* info)
 {
-	struct sr_ec_new_connection_t sample_data;
-
-	sample_data.pid = info->tuple_info.id.pid;
-	sample_data.uid = info->tuple_info.id.uid;
-	sample_data.remote_addr.v4addr = info->tuple_info.saddr.v4addr.s_addr;
-	sample_data.source_addr.v4addr = info->tuple_info.daddr.v4addr.s_addr;
-	sample_data.ip_proto = info->tuple_info.ip_proto;
-	sample_data.dport = info->tuple_info.sport;
-	sample_data.sport = info->tuple_info.dport;
-	sr_ec_send_event(MOD2ENG_BUF, SR_EVENT_NEW_CONNECTION, &sample_data);
-
 	return sr_classifier_network(info);
 }
 
@@ -211,7 +201,7 @@ SR_32 disp_socket_sendmsg(disp_info_t* info)
 		can_data.pid = info->tuple_info.id.pid;
 		can_data.msg_id = info->can_info.msg_id;
 		can_data.dir = SR_CAN_OUT;
-		sr_ec_send_event(MOD2STAT_BUF, SR_EVENT_CANBUS, &can_data);
+		sr_ec_send_event(MOD2STAT_BUF, SR_EVENT_STATS_CANBUS, &can_data);
 	}
 	/* call classifier */
 	classifier_rc = sr_classifier_canbus(info);
@@ -264,7 +254,7 @@ SR_32 disp_can_recvmsg(disp_info_t* info)
 		can_data.pid = info->tuple_info.id.pid;
 		can_data.msg_id = info->can_info.msg_id;
 		can_data.dir = SR_CAN_IN;
-		sr_ec_send_event(MOD2STAT_BUF, SR_EVENT_CANBUS, &can_data);
+		sr_ec_send_event(MOD2STAT_BUF, SR_EVENT_STATS_CANBUS, &can_data);
 	}
 	hook_event_names = event_mediator_hooks_event_names();
 

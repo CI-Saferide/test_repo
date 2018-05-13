@@ -54,6 +54,7 @@ typedef union {
 		SR_U8 		filename[SR_MAX_PATH_SIZE];
 		SR_U8 		fullpath[SR_MAX_PATH_SIZE];
 		SR_U8 		old_path[SR_MAX_PATH_SIZE];
+		dev_type_t  dev_type;
 	}fileinfo;
 
 /* socket related functions */

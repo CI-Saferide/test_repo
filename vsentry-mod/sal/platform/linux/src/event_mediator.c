@@ -640,7 +640,10 @@ SR_32 vsentry_file_open(struct file *file, const struct cred *cred)
 	else
 		CEF_log_event(SR_CEF_CID_SYSTEM, "Error", SEVERITY_HIGH,
 						"[%s] inode in null\n", hook_event_names[HOOK_FILE_OPEN].name);
-	disp.fileinfo.parent_inode = 0;
+	if ((file->f_path.dentry->d_parent) && (file->f_path.dentry->d_parent->d_inode))
+		disp.fileinfo.parent_inode = file->f_path.dentry->d_parent->d_inode->i_ino;
+	else
+		disp.fileinfo.parent_inode = 0;
 		
 	disp.fileinfo.id.uid = (int)rcred->uid.val;
 	disp.fileinfo.id.pid = current->pid;
@@ -665,7 +668,21 @@ SR_32 vsentry_file_open(struct file *file, const struct cred *cred)
 					disp.fileinfo.id.pid,
 					disp.fileinfo.id.uid);
 #endif /* DEBUG_EVENT_MEDIATOR */
-	
+
+	if (file->f_path.dentry->d_inode && file->f_path.dentry->d_inode->i_sb) { 
+		switch (file->f_path.dentry->d_inode->i_sb->s_dev) {
+			case 4:
+				disp.fileinfo.dev_type = DEV_TYPE_PROC;
+				break;
+			case 19:
+				disp.fileinfo.dev_type = DEV_TYPE_SYS;
+				break;
+			default:
+				disp.fileinfo.dev_type = DEV_TYPE_UNKOWN;
+				break;
+		}
+	}
+
 	/* call dispatcher */
 	rc = disp_file_open(&disp);
 
@@ -674,9 +691,8 @@ SR_32 vsentry_file_open(struct file *file, const struct cred *cred)
 			if (get_path(file->f_path.dentry, disp.fileinfo.fullpath, sizeof(disp.fileinfo.fullpath)) != SR_SUCCESS) {
 				CEF_log_event(SR_CEF_CID_SYSTEM, "Error", SEVERITY_HIGH,
 															"File operation denied, file path it to long");
-							return 0;
-					}
-
+				return 0;
+			}
 			disp_file_open_report(&disp);
 		}
 	}
@@ -934,6 +950,7 @@ SR_32 vsentry_socket_sendmsg(struct socket *sock,struct msghdr *msg,SR_32 size)
 			con.con_id.sport = sock->sk->sk_num;
 			con.con_id.dport = ntohs(sock->sk->sk_dport);
 			con.pid = current->tgid;
+			con.is_outgoing = SR_TRUE;
 
 			if ((conp = sr_stat_connection_lookup(&con.con_id))) {
 				if ((rc = sr_stat_connection_update_counters(conp, current->tgid, 0, 0, size, 1)) != SR_SUCCESS) {

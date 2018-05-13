@@ -7,6 +7,9 @@
 #include "sr_msg.h"
 #include "sr_white_list_file.h"
 #include "sr_white_list_can.h"
+#include "sr_white_list_ip.h"
+
+#define WHITE_LIST_ACTION "allow_wl"
 
 #define SR_CAN_WL_START_RULE_NO 	3072
 #define SR_CAN_WL_END_RULE_NO 		4095

@@ -13,7 +13,6 @@
 #include "sr_cls_rules_control.h"
 #include "sr_event_receiver.h"
 #include "sr_config.h"
-#include "sr_ml_conngraph.h"
 #include "sr_sal_common.h"
 #include "sr_control.h"
 #include "sr_ver.h"
@@ -24,6 +23,7 @@
 #include "sr_info_gather.h"
 #include "sr_static_policy.h"
 #include "sr_white_list.h"
+#include "sr_white_list_ip.h"
 #ifdef CONFIG_STAT_ANALYSIS
 #include "sr_stat_analysis.h"
 #endif
@@ -38,8 +38,6 @@
 #include "sr_config_common.h"
 #include "sr_can_collector.h"
 #include "sr_config_parse.h"
-#include "sr_white_list.h"
-
 
 static SR_32 engine_main_loop(void *data)
 {
@@ -200,10 +198,10 @@ SR_32 sr_engine_start(int argc, char *argv[])
 		return SR_ERROR;
 	}
 
-	ret = sr_ml_conngraph_init();
+	ret = sr_white_list_ip_init();
 	if (ret != SR_SUCCESS){
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-						"%s=failed to init sr_ml_conngraph",REASON);
+						"%s=failed to init sr_white_list_ip_init",REASON);
 		return SR_ERROR;
 	}
 
@@ -325,7 +323,8 @@ SR_32 sr_engine_start(int argc, char *argv[])
 				break;
 			case 'z':
 				printf("print the white list !!!\n");
-				sr_white_list_hash_print();
+				//sr_white_list_hash_print();
+				sr_white_list_ip_print();
 				break;
 #endif /* CONFIG_CAN_ML */
 		}
@@ -343,6 +342,7 @@ SR_32 sr_engine_start(int argc, char *argv[])
 	sr_stat_analysis_uninit();
 #endif /* CONFIG_STAT_ANALYSIS */
 	sr_white_list_uninit();
+	sr_white_list_ip_uninit();
 #ifdef CONFIG_CAN_ML
 	sr_ml_can_hash_deinit();
 #endif /* CONFIG_CAN_ML */

@@ -123,7 +123,7 @@ static SR_32 canbus_apply_cb(void *hash_data, void *data)
 					REASON, iter->msg_id,iter->dir ,wl_item->exec);
 			continue; /* we do not break since we want to have log per any rule that we cannot accomodate in the persistent storage */
 		}
-		if (sys_repo_mng_create_canbus_rule(&sysrepo_handler, rule_id, iter->msg_id, wl_item->exec, "*", "wl-allow", iter->dir) != SR_SUCCESS) {
+		if (sys_repo_mng_create_canbus_rule(&sysrepo_handler, rule_id, iter->msg_id, wl_item->exec, "*", WHITE_LIST_ACTION, iter->dir) != SR_SUCCESS) {
 			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 				"%s=fail to create can rule in persistent db. rule id:%d ",
 					REASON, rule_id);

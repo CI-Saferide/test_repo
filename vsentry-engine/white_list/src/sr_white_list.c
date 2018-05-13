@@ -1,6 +1,7 @@
 #include <sr_gen_hash.h>
 #include "sr_white_list.h"
 #include "sal_mem.h"
+#include "sysrepo_mng.h"
 
 #define HASH_SIZE 500
 
@@ -53,6 +54,32 @@ static void white_list_free(void *data_in_hash)
 	sr_white_list_canbus_cleanup(white_list_item->white_list_can);
 
 	SR_Free(white_list_item);
+}
+
+static SR_32 sr_white_list_create_action(void)
+{
+	sysrepo_mng_handler_t sysrepo_handler;
+ 
+        if (sysrepo_mng_session_start(&sysrepo_handler) != SR_SUCCESS) {
+                CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+                        "%s=sysrepo_mng_session_start failed",REASON);
+                return SR_ERROR;
+        }
+                        
+	if (sys_repo_mng_create_action(&sysrepo_handler, WHITE_LIST_ACTION, SR_TRUE, SR_TRUE) != SR_ERR_OK) {
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+			"%s=sr_white_list_create_action: sys_repo_mng_create_action failed",REASON);
+		return SR_ERROR;
+	}
+
+	if (sys_repo_mng_commit(&sysrepo_handler) != SR_SUCCESS) { 
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+		"%s=sys_repo_mng_commit failed ", REASON);
+	}
+
+	sysrepo_mng_session_end(&sysrepo_handler);
+
+	return SR_SUCCESS;
 }
 
 SR_32 sr_white_list_init(void)
@@ -110,8 +137,10 @@ SR_32 sr_white_list_set_mode(sr_wl_mode_t new_wl_mode)
 	switch (new_wl_mode) { 
 		case SR_WL_MODE_LEARN:
 			sr_white_list_delete_all();
+			sr_white_list_ip_delete_all();
 			break;
 		case SR_WL_MODE_APPLY:
+			sr_white_list_create_action();
 			wl_mode = SR_WL_MODE_APPLY;
 			if ((rc = sr_white_list_file_apply(SR_TRUE)) != SR_SUCCESS) {
                			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
@@ -122,6 +151,11 @@ SR_32 sr_white_list_set_mode(sr_wl_mode_t new_wl_mode)
                			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 					"%s=sr_white_list_canbus_apply failed",REASON);
                 		return SR_ERROR;
+			}
+			if (sr_white_list_ip_apply(SR_TRUE) != SR_SUCCESS) {
+               			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+					"%s=sr_white_list_ip_apply failed",REASON);
+				return SR_ERROR;
 			}
 			break;
 		case SR_WL_MODE_OFF:
