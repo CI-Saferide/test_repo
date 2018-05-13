@@ -123,7 +123,7 @@ SR_32 sr_stat_analysis_handle_aging(void)
                 return SR_SUCCESS;
 
 #ifdef SR_STAT_ANALYSIS_DEBUG
-        CEF_log_debug(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,
+        CEF_log_debug(SR_CEF_CID_SYSTEM, "info", SEVERITY_LOW,
                                                 "STAT ANALYSIS AGING");
 #endif
         sr_stat_process_connection_delete_aged_connections();

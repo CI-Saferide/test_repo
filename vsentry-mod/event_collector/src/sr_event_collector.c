@@ -1,6 +1,7 @@
 #include "sal_module.h"
 #include "sr_event_collector.h"
 #include "sr_msg.h"
+#include "sal_linux_mng.h"
 
 SR_U8 *sr_ec_buffer[TOTAL_BUFS];
 SR_U32 sr_ec_offset[TOTAL_BUFS]; // offset to buffer;
@@ -79,6 +80,7 @@ int sr_ec_send_event(SR_U8 buf_type, SR_U8 event_type, void *data)
 					break;
 				case SR_EVENT_STATS_CONNECTION_TRANSMIT:
 					sr_ec_append_event(buf_type, event_type, data, sizeof(struct sr_ec_connection_transmit_t), SR_FALSE);
+					sal_linux_mng_readbuf_up(SYNC_INFO_GATHER);									
 				case SR_EVENT_STATS_FILE_OPEN:
 					sr_ec_append_event(buf_type, event_type, data, sizeof(struct sr_ec_file_open_t), SR_FALSE);
 					break;
@@ -93,6 +95,34 @@ int sr_ec_send_event(SR_U8 buf_type, SR_U8 event_type, void *data)
 			}
 			break;
 #endif
+		default:
+			break;
+	}
+
+	return SR_SUCCESS;
+}
+
+static SR_32 sr_ec_send_msg_notification(SR_U8 buf_type, SR_U8 event_type)
+{
+	switch (buf_type) {
+		case MOD2ENG_BUF: 
+			switch (event_type) {
+				case SR_EVENT_STATS_NEW_CONNECTION:
+				case SR_EVENT_FILE_CREATED:
+				case SR_EVENT_PROCESS_DIED:
+					sal_linux_mng_readbuf_up(SYNC_ENGINE);					
+					break;
+				default:
+					break;
+			}
+		case MOD2STAT_BUF: 
+			switch (event_type) {
+				case SR_EVENT_STATS_CONNECTION_TRANSMIT:
+					sal_linux_mng_readbuf_up(SYNC_INFO_GATHER);					
+					break;
+				default:
+					break;
+			}
 		default:
 			break;
 	}
@@ -121,6 +151,7 @@ void sr_ec_append_event(SR_U8 buf_type, SR_U8 event_type, void *sample_data, SR_
 			(sr_ec_sample_period_exceeded(buf_type, now_sec, now_nsec))) ) { // time based constraint
 		// send old buffer and allocate a new one
 		sr_send_msg(buf_type, sr_ec_offset[buf_type]);
+		sr_ec_send_msg_notification(buf_type, event_type);
 		if (sr_ec_allocate_buffer(buf_type) != SR_SUCCESS) {
 			goto out;
 		}

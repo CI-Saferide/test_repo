@@ -117,7 +117,7 @@ SR_32 can_collector_task(void *data)
 		}	
 	}
     close(can_args->can_fd);
-	CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,
+	CEF_log_event(SR_CEF_CID_SYSTEM, "info", SEVERITY_LOW,
 		"CAN collector ended\n");
 
 	return SR_SUCCESS;

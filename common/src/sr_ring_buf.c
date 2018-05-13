@@ -192,25 +192,25 @@ void sr_print_rb_info(sr_ring_buffer *rb)
 	/*SR_32 i;
 	sr_buffer *buf_ptr = (sr_buffer *)((SR_U8*)rb + sizeof(sr_ring_buffer));*/
 
-	CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,
+	CEF_log_event(SR_CEF_CID_SYSTEM, "info", SEVERITY_LOW,
 			"%s=read_ptr            = %08x", MESSAGE,rb->read_ptr);
-	CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,
+	CEF_log_event(SR_CEF_CID_SYSTEM, "info", SEVERITY_LOW,
 			"%s=write_ptr           = %08x", MESSAGE,rb->write_ptr);
-	CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,
+	CEF_log_event(SR_CEF_CID_SYSTEM, "info", SEVERITY_LOW,
 			"%s=free_ptr            = %08x", MESSAGE,rb->free_ptr);
-	CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,
+	CEF_log_event(SR_CEF_CID_SYSTEM, "info", SEVERITY_LOW,
 			"%s=each_buf_size       = %08x", MESSAGE,rb->each_buf_size);
-	CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,
+	CEF_log_event(SR_CEF_CID_SYSTEM, "info", SEVERITY_LOW,
 			"%s=num_of_bufs         = %08x", MESSAGE,rb->num_of_bufs);
-	CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,
+	CEF_log_event(SR_CEF_CID_SYSTEM, "info", SEVERITY_LOW,
 			"%s=buf_mem_offset      = %08x", MESSAGE,rb->buf_mem_offset);
-	CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,
+	CEF_log_event(SR_CEF_CID_SYSTEM, "info", SEVERITY_LOW,
 			"%s=total_read_bytes    = %08x", MESSAGE,rb->total_read_bytes);
-	CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,
+	CEF_log_event(SR_CEF_CID_SYSTEM, "info", SEVERITY_LOW,
 			"%s=total_read_bufs     = %08x", MESSAGE,rb->total_read_bufs);
-	CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,
+	CEF_log_event(SR_CEF_CID_SYSTEM, "info", SEVERITY_LOW,
 			"%s=total_write_bytes   = %08x", MESSAGE,rb->total_write_bytes);
-	CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,
+	CEF_log_event(SR_CEF_CID_SYSTEM, "info", SEVERITY_LOW,
 			"%s=total_write_bufs    = %08x", MESSAGE,rb->total_write_bufs);
 
 	/*for (i=0; i<rb->num_of_bufs; i++) {

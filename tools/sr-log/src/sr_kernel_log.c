@@ -3,6 +3,7 @@
 #include "sr_ring_buf.h"
 #include "sr_tasks.h"
 #include "sr_sal_common.h"
+#include "sal_linux_mng.h"
 #include "sr_log.h"
 
 //Severity is a string or integer and reflectsthe importance of the event.
@@ -29,6 +30,7 @@ void CEF_log_event(const SR_U32 class, const char *event_name,enum SR_CEF_SEVERI
 		payload->sev = severity;
 		sal_strcpy(payload->extension,msg);
 		sr_send_msg(MOD2LOG_BUF, sizeof(payload));
+		sal_linux_mng_readbuf_up(SYNC_INFO_GATHER);
 	}else{
 		sal_kernel_print_err ("Failed to CEF log: %s|%s|%s=%s %s=%s %s\n",
 			(char*)event_name,

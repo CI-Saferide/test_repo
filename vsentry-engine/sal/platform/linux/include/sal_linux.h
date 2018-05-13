@@ -75,4 +75,9 @@ void sal_log(char *cef_buffer, SR_32 severity);
 char *sal_get_home_user(void);
 char *sal_get_str_ip_address(SR_U32 ip);
 
+SR_32 sal_vsentry_fd_open(void);
+int sal_get_vsentry_fd(void);
+void sal_vsentry_fd_close(void);
+
+
 #endif /* SAL_LINUX_ENGINE_H*/

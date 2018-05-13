@@ -720,12 +720,12 @@ SR_BOOL read_config_file (void)
 				fclose (conf_file);
 				return SR_FALSE;
 			}
-			CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,
+			CEF_log_event(SR_CEF_CID_SYSTEM, "info", SEVERITY_LOW,
 				"%s=msg type - phone entry",MESSAGE);
-			CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,
+			CEF_log_event(SR_CEF_CID_SYSTEM, "info", SEVERITY_LOW,
 				"%s=phone_id - %d",MESSAGE,
 				phone_rec.phone_id);
-			CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,
+			CEF_log_event(SR_CEF_CID_SYSTEM, "info", SEVERITY_LOW,
 				"%s=phone_number - %s",MESSAGE,
 				phone_rec.phone_number);
 			break;
