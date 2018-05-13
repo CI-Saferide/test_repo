@@ -57,7 +57,7 @@ SR_32 sal_shmem_alloc(sr_shmem *sr_shmem_ptr, SR_32 length, SR_32 type)
 
 	if (!(fd = sal_get_vsentry_fd())) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_LOW,
-			"reason=sal_shmem_alloc: no vsenbtry fd");
+			"%s=sal_shmem_alloc: no vsenbtry fd", REASON);
 		return SR_ERROR;
 	}
 

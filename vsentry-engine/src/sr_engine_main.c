@@ -57,7 +57,7 @@ static SR_32 engine_main_loop(void *data)
 
 	if (!(fd = sal_get_vsentry_fd())) {
                 CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_LOW,
-                        "reason=sr_info_gather_loop: no vsenbtry fd");
+                        "%s=sr_info_gather_loop: no vsenbtry fd", REASON);
                 return SR_ERROR;
 	}
 
@@ -131,7 +131,7 @@ SR_32 sr_engine_start(void)
 	ret = sal_vsentry_fd_open();
 	if (ret != SR_SUCCESS){
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-						"reason=failed sal_fd_vsentry_open");
+						"%s=failed sal_fd_vsentry_open", REASON);
 		return SR_ERROR;
 	}
 

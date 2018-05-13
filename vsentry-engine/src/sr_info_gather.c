@@ -21,7 +21,7 @@ static SR_32 sr_info_gather_loop(void *data)
                 
 	if (!(fd = sal_get_vsentry_fd())) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_LOW,
-			"reason=sr_info_gather_loop: no vsenbtry fd");
+			"%s=sr_info_gather_loop: no vsenbtry fd", REASON);
 		return SR_ERROR;
 	}
 
