@@ -127,7 +127,6 @@ SR_32 sr_wl_ip_binary_insert(char *exec)
 	}
 
 	strncpy(sr_wl_ip_binary_item->exec, exec, SR_MAX_PATH_SIZE);
-printf("XXXXXXXXXXXX Arik Inserting binary:%s:  \n", sr_wl_ip_binary_item->exec);
         if (sr_gen_hash_insert(wl_ip_binary_hash, (void *)exec, sr_wl_ip_binary_item) != SR_SUCCESS) {
                 CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
                                "%s=%s: sr_gen_hash_insert failed",REASON, __FUNCTION__);
@@ -218,21 +217,14 @@ SR_32 sr_white_list_ip_apply(SR_32 is_apply)
 
 	// load all ips to list
 	rn_walktree(sr_wl_conngraph_table, ip_add_to_list_cb, NULL);
-	for (ip_iter = ip_item_list; ip_iter; ip_iter = ip_iter->next) {
-		printf("IP LIST - ip:%x \n", ip_iter->ip);
-	}
-
 	// load all execs to list
 	sr_wl_ip_exec_for_all(exec_add_to_list_cb);
-	for (exec_iter = exec_item_list; exec_iter; exec_iter = exec_iter->next)
-		printf("EXEC LIST - exec:%s \n", exec_iter->exec);
 
 	if (!exec_item_list || !ip_item_list)
 		return SR_SUCCESS;
 
 	for (exec_iter = exec_item_list, ip_iter = ip_item_list; exec_iter && ip_iter;
 			exec_iter = exec_iter->next, ip_iter = ip_iter->next) {
-		printf(" Add rule ip:%x exec:%s \n", ip_iter->ip, exec_iter->exec);
 		if (sys_repo_mng_create_net_rule(&sysrepo_handler, WL_IP_RULE_ID, tuple_id, "0.0.0.0", "0.0.0.0", sal_get_str_ip_address(ip_iter->ip), "255.255.255.255",
 			0, 0, 0, exec_iter->exec, "*", WHITE_LIST_ACTION) != SR_SUCCESS) {
 			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
@@ -243,7 +235,6 @@ SR_32 sr_white_list_ip_apply(SR_32 is_apply)
 	}
 	// In case exec iter was left 
 	for (; exec_iter; exec_iter = exec_iter->next) {
-		printf(" EEEE Add rule ip:%x exec:%s \n", ip_item_list->ip, exec_iter->exec);
 		if (sys_repo_mng_create_net_rule(&sysrepo_handler, WL_IP_RULE_ID, tuple_id, "0.0.0.0", "0.0.0.0", sal_get_str_ip_address(ip_item_list->ip), "255.255.255.255",
 			0, 0, 0, exec_iter->exec, "*", WHITE_LIST_ACTION) != SR_SUCCESS) {
 			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
@@ -254,11 +245,10 @@ SR_32 sr_white_list_ip_apply(SR_32 is_apply)
 	}
 	// In case ip iter was left 
 	for (; ip_iter; ip_iter = ip_iter->next) {
-		printf(" IIII Add rule ip:%x exec:%s \n", ip_iter->ip, exec_item_list->exec);
 		if (sys_repo_mng_create_net_rule(&sysrepo_handler, WL_IP_RULE_ID, tuple_id, "0.0.0.0", "0.0.0.0", sal_get_str_ip_address(ip_iter->ip), "255.255.255.255",
 			0, 0, 0, exec_item_list->exec, "*", "allow_log") != SR_SUCCESS) {
 			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-				"%s=sys_repo_mng_create_file_rule  fiel rule id:%d ",
+				"%s=sys_repo_mng_create_file_rule failed rule id:%d ",
 					REASON, WL_IP_RULE_ID);
 		}
 		tuple_id++;
@@ -340,7 +330,7 @@ SR_32 sr_white_list_ip_new_connection(struct sr_ec_new_connection_t *pNewConnect
 		case SR_WL_MODE_APPLY:
 			free(ip);
 			if (!node) { // detected connection to unknown destination
-				CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,
+				CEF_log_event(SR_CEF_CID_SYSTEM, "info", SEVERITY_LOW,
 					"%s=detected suspicious connection to %x[%d]",MESSAGE,
 					pNewConnection->remote_addr.v4addr,
 					pNewConnection->dport); // TODO: this needs to be properly logged
@@ -359,7 +349,7 @@ static int sr_wl_node_printer(struct radix_node *node, void *unused)
 	struct sockaddr_in *ip;
 
 	ip=(struct sockaddr_in *)(node->rn_u.rn_leaf.rn_Key);
-	CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,
+	CEF_log_event(SR_CEF_CID_SYSTEM, "info", SEVERITY_LOW,
 					"%s=node: %x",MESSAGE,
 					ip->sin_addr.s_addr);
 	printf(" RADIX addr:%x \n", ip->sin_addr.s_addr);
