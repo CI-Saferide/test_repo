@@ -54,7 +54,8 @@ SR_32 sr_db_action_update_action(action_t *action)
 	/* Add new action */
 	for (i = 0; i < DB_MAX_NUM_OF_ACTIONS && db_actions[i].is_populated; i++);
 	if (i == DB_MAX_NUM_OF_ACTIONS) {
-		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, "Max number of action have reached.");
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, 
+			"%s=max number of action have reached.",REASON);
 		return SR_ERROR;
 	}
 	db_actions[i].action = *action;

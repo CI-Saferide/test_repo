@@ -77,9 +77,6 @@ SR_32 process_died_cb(SR_U32 process_id, sr_stat_connection_info_t *connection_i
 SR_32 sr_stat_analysis_process_died(SR_U32 pid)
 {
 	SR_32 rc;
-	SR_U64 t;
-
-	t = sal_get_time();
 
 	if ((rc = sr_stat_process_connection_hash_exec_for_process(pid, process_died_cb)) != SR_SUCCESS) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
@@ -91,19 +88,6 @@ SR_32 sr_stat_analysis_process_died(SR_U32 pid)
 						"%s=sr_stat_process_connection_hash_exec_for_process failed",REASON);
 		return SR_ERROR;
         }
-
-	if (t - last_aging > SR_AGING_CHECK_TIME) {
-		sr_stat_connection_info_t con = {};
-#ifdef SR_STAT_ANALYSIS_DEBUG
-		CEF_log_debug(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,
-						"%s=STAT ANALYSIS AGING",MESSAGE);
-#endif 
-		// Its time to check for aging
-		sr_stat_process_connection_delete_aged_connections();
-		last_aging = t; 
-		// Send keep alive just in case
-		sr_stat_analysis_send_msg(SR_STAT_ANALYSIS_KEEP_ALIVE, &con);
- 	}
 
 	return SR_SUCCESS;
 }
@@ -128,3 +112,23 @@ void sr_stat_analysis_learn_mode_set(sr_stat_mode_t new_stat_mode)
 		sr_stat_learn_rule_undeploy();
 	stat_mode = new_stat_mode;
 } 
+
+SR_32 sr_stat_analysis_handle_aging(void)
+{
+        SR_U64 t;
+
+        t = sal_get_time();
+
+        if (t - last_aging < SR_AGING_CHECK_TIME)
+                return SR_SUCCESS;
+
+#ifdef SR_STAT_ANALYSIS_DEBUG
+        CEF_log_debug(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,
+                                                "STAT ANALYSIS AGING");
+#endif
+        sr_stat_process_connection_delete_aged_connections();
+        last_aging = t;
+
+        return  SR_SUCCESS;
+}
+

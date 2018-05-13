@@ -7,6 +7,9 @@
 
 struct config_params_t {
 	SR_U8	cef_max_rate;						/* max allowed cef message rate per second for classifier and ml algorithms */	
+	SR_U16	def_file_action;					/* default action for file classifier */
+	SR_U16	def_can_action;						/* default action for canbus classifier */
+	SR_U16	def_net_action;						/* default action for network classifier */
 };
 
 void 	vsentry_set_state (SR_BOOL state);

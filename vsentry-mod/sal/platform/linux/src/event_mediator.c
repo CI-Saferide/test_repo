@@ -20,6 +20,7 @@
 #include "sr_stat_analysis.h"
 #endif
 #include "sr_cls_sk_process.h"
+#include "sr_event_collector.h"
 
 //#define DEBUG_EVENT_MEDIATOR
 /* Protocol families, same as address families */
@@ -185,7 +186,7 @@ SR_32 vsentry_inode_mkdir(struct inode *dir, struct dentry *dentry, umode_t mask
 	if (rc == 0) {
 		if (get_path(dentry, disp.fileinfo.fullpath, sizeof(disp.fileinfo.fullpath)) != SR_SUCCESS) {
 			CEF_log_event(SR_CEF_CID_SYSTEM, "Error", SEVERITY_HIGH, 
-							"File operation denied, file path it to long");
+							"File operation denied, file path it too long");
 			return -EACCES;
 		}
 		if (!sr_cls_filter_path_is_match(disp.fileinfo.fullpath) && disp_file_created(&disp) != SR_SUCCESS) {
@@ -623,6 +624,7 @@ SR_32 vsentry_file_open(struct file *file, const struct cred *cred)
 	disp_info_t disp;
 	struct task_struct *ts = current;
 	const struct cred *rcred= ts->real_cred;
+	SR_32 rc;
 	
 	memset(&disp, 0, sizeof(disp_info_t));
 	
@@ -665,7 +667,21 @@ SR_32 vsentry_file_open(struct file *file, const struct cred *cred)
 #endif /* DEBUG_EVENT_MEDIATOR */
 	
 	/* call dispatcher */
-	return (disp_file_open(&disp));
+	rc = disp_file_open(&disp);
+
+	if (rc == 0) {
+		if(get_collector_state() == SR_TRUE){		
+			if (get_path(file->f_path.dentry, disp.fileinfo.fullpath, sizeof(disp.fileinfo.fullpath)) != SR_SUCCESS) {
+				CEF_log_event(SR_CEF_CID_SYSTEM, "Error", SEVERITY_HIGH,
+															"File operation denied, file path it to long");
+							return 0;
+					}
+
+			disp_file_open_report(&disp);
+		}
+	}
+
+	return rc;
 }
 
 SR_32 vsentry_inode_link(struct dentry *old_dentry, struct inode *dir, struct dentry *new_dentry)

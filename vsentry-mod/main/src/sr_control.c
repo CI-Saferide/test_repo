@@ -75,5 +75,8 @@ SR_8 sr_control_msg_dispatch(struct sr_control_msg *msg)
 SR_32 sr_config_handle_message(struct sr_config_msg *msg)
 {
 	config_params.cef_max_rate = msg->cef_max_rate;
+	config_params.def_file_action = msg->def_file_action;
+	config_params.def_can_action = msg->def_can_action;
+	config_params.def_net_action = msg->def_net_action;
 	return SR_SUCCESS;
 }

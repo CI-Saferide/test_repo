@@ -19,7 +19,7 @@ struct sysfs_network_ent_t
 	SR_8 actionstring[16],uid_buff[16],inode_buff[16];
 	SR_U16 uid,action;
 	SR_U32 rule,inode;
-	SR_8 src_ipv4[16], dst_ipv4[16],proto[4],binary[SR_MAX_PATH];
+	SR_8 src_ipv4[16],src_netmask[16], dst_ipv4[16],dst_netmask[16],proto[16],binary[SR_MAX_PATH];
 	SR_32 s_port,d_port;
 	SR_U8 src_flag,dst_flag; 	// because the way the cls info stored in the tables 
 								// you need an indicator to iterate in a chaned hash.

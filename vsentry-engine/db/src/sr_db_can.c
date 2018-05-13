@@ -40,8 +40,14 @@ static void can_rule_print_cb(void *data)
 {
 	can_rule_t *can_rule = (can_rule_t *)data;
 
-	CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW, "can_rule#%d tuple:%d msgid:%x direction:%d user:%s program:%s", 
-		can_rule->rulenum, can_rule->tuple.id, can_rule->tuple.msg_id, can_rule->tuple.direction, can_rule->tuple.user, can_rule->tuple.program);
+	CEF_log_event(SR_CEF_CID_SYSTEM, "info", SEVERITY_LOW,
+		"%s=%d %s=%d %s=%x %s=%d %s=%s %s=%s", 
+		RULE_NUM_KEY,can_rule->rulenum,
+		"TupleID",can_rule->tuple.id,
+		CAN_MSG_ID,can_rule->tuple.msg_id,
+		DEVICE_DIRECTION,can_rule->tuple.direction,
+		DEVICE_UID,can_rule->tuple.user,
+		DEVICE_FILE_PATH,can_rule->tuple.program);
 }
 
 SR_32 sr_db_can_rule_init(void)
@@ -60,7 +66,8 @@ SR_32 sr_db_can_rule_add(can_rule_t *can_rule)
 		return SR_ERROR;
 	*new_item = *can_rule;
 	if (!list_append(&can_rules_list, new_item)) {
-		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, "cal rule add :list_append failed");
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+			"%s=cal rule add :list_append failed",REASON);
 		return SR_ERROR;
 	}
 

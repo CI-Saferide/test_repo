@@ -15,6 +15,7 @@ static struct sr_hash_table_t *sr_cls_uid_table; // the uid table for NETWORK
 static struct sr_hash_table_t *sr_cls_exec_file_table; // the binary table for NETWORK
 static struct radix_head  *sr_cls_ipv4_table[2]; //index 0 SRC , 1 DST
 static struct sr_hash_table_t *sr_cls_port_table[4]; // 0 - SR_SRC_TCP, 1 - SR_SRC_UDP, 2 - SR_DST_TCP, 3 - SR_DST_UDP
+static struct sr_hash_table_t *sr_cls_protocol_table;
 static struct sysfs_network_ent_t sysfs_network[SR_MAX_RULES];
 
 SR_32 get_port_for_rule(SR_16 rule, SR_U8 dir)
@@ -31,7 +32,8 @@ SR_32 get_port_for_rule(SR_16 rule, SR_U8 dir)
 					while (curr != NULL){
 						if(sal_test_bit_array(rule,&curr->rules)){
 							//according to the iteration the match was positive we know the proto
-							sprintf(sysfs_network[rule].proto,"%s",(j == 0 || j == 2)? "TCP":"UDP");
+							sprintf(sysfs_network[rule].proto,"%s",((j == 0) || (j == 2)) ? "TCP":"UDP");
+							
 							if(dir == SR_DIR_SRC && (j == 1 || j == 0))
 								return curr->key;
 							if(dir == SR_DIR_DST && (j == 2 || j == 3))
@@ -49,7 +51,6 @@ SR_32 get_port_for_rule(SR_16 rule, SR_U8 dir)
 	while ((rule = sal_ffs_and_clear_array (&ba_res)) != -1) {
 		return 0;
 	}	
-	
 	return -1;
 }
 
@@ -57,7 +58,7 @@ int rn_walktree_sysfs(struct radix_head *h, SR_U8 dir)
 {
 	struct radix_node *base, *next;
 	struct radix_node *rn = h->rnh_treetop;
-	char *cp;
+	char *cp,*cp_mask;
 	bit_array matched_rules;
 	SR_16 rule;
 
@@ -82,6 +83,8 @@ int rn_walktree_sysfs(struct radix_head *h, SR_U8 dir)
 			
 			base = rn->rn_dupedkey;
 			cp = (char *)rn->rn_key + 4;
+			cp_mask=(char *)rn->rn_mask + 4;
+			
 			//put some work to fetch the DST/SRC port OR any
 			//need to check if its TCP or UDP <---- redundent to check again
 			
@@ -91,8 +94,11 @@ int rn_walktree_sysfs(struct radix_head *h, SR_U8 dir)
 					continue;	
 				}
 				sysfs_network[rule].rule = rule; // <== might be redundent, not sure - check later if it's really usefull.	
-				
-				sprintf(sysfs_network[rule].src_ipv4,"%u.%u.%u.%u",(unsigned char)cp[0], (unsigned char)cp[1], (unsigned char)cp[2], (unsigned char)cp[3]);
+				sprintf(sysfs_network[rule].src_netmask ,"%u.%u.%u.%u",
+					(unsigned char)cp_mask[0],(unsigned char)cp_mask[1],(unsigned char)cp_mask[2],(unsigned char)cp_mask[3]);
+				sprintf(sysfs_network[rule].src_ipv4,"%u.%u.%u.%u",
+					(unsigned char)cp[0], (unsigned char)cp[1], (unsigned char)cp[2], (unsigned char)cp[3]);
+					
 				sysfs_network[rule].s_port = get_port_for_rule(rule,dir);
 				sysfs_network[rule].src_flag = 1;
 			}else{
@@ -100,10 +106,16 @@ int rn_walktree_sysfs(struct radix_head *h, SR_U8 dir)
 				if(sysfs_network[rule].rule == rule && sysfs_network[rule].dst_flag == 1){
 					continue;	
 				}
-				sprintf(sysfs_network[rule].dst_ipv4,"%u.%u.%u.%u",(unsigned char)cp[0], (unsigned char)cp[1], (unsigned char)cp[2], (unsigned char)cp[3]);
+				sprintf(sysfs_network[rule].dst_netmask ,"%u.%u.%u.%u",
+					(unsigned char)cp_mask[0],(unsigned char)cp_mask[1],(unsigned char)cp_mask[2],(unsigned char)cp_mask[3]);
+				sprintf(sysfs_network[rule].dst_ipv4,"%u.%u.%u.%u",
+					(unsigned char)cp[0], (unsigned char)cp[1], (unsigned char)cp[2], (unsigned char)cp[3]);
+					
 				sysfs_network[rule].d_port = get_port_for_rule(rule,dir);
 				sysfs_network[rule].dst_flag = 1;
 			}
+			
+			sprintf(sysfs_network[rule].proto,"%s","N/A");
 			
 			//putting some work for the UID...
 			sysfs_network[rule].uid = get_uid_for_rule(sr_cls_uid_table,rule,UID_HASH_TABLE_SIZE,SR_NET_RULES);
@@ -125,7 +137,7 @@ int rn_walktree_sysfs(struct radix_head *h, SR_U8 dir)
 				if(sysfs_network[rule].inode == 0){
 					sprintf(sysfs_network[rule].inode_buff, "%s", "ANY");
 				}else
-					sprintf(sysfs_network[rule].inode_buff, "%d", sysfs_network[rule].inode);
+					sprintf(sysfs_network[rule].inode_buff, "%u", sysfs_network[rule].inode);
 					
 			}
 					
@@ -156,10 +168,12 @@ static void store_table(struct radix_head** table)
 	for(i = 0; i < SR_MAX_RULES; i++){
 		if(sysfs_network[i].rule){
 			
-			sal_sprintf(buffer_RULE,"%d\t%s\t\t%s\t\t%d\t%d\t%s\t%s\t%s\t\t%s\n",
+			sal_sprintf(buffer_RULE,"%d\t%s/%s\t\t%s/%s\t%d\t%d\t%s\t%s\t%s\t\t%s\n",
 				sysfs_network[i].rule,
 				sysfs_network[i].src_ipv4,
+				sysfs_network[i].src_netmask,
 				sysfs_network[i].dst_ipv4,
+				sysfs_network[i].dst_netmask,
 				sysfs_network[i].s_port,
 				sysfs_network[i].d_port,
 				sysfs_network[i].proto,
@@ -177,10 +191,12 @@ static void store_rule(struct radix_head** table,SR_16 rule_find)
 {
 		
 	if(sysfs_network[rule_find].rule == rule_find ){
-		sal_sprintf(buffer_RULE,"%d\t%s\t\t%s\t\t%d\t%d\t%s\t%s\t%s\t\t%s\n",
+		sal_sprintf(buffer_RULE,"%d\t%s/%s\t\t\t\t%s/%s\t%d\t%d\t%s\t%s\t%s\t\t%s\n",
 			sysfs_network[rule_find].rule,
 			sysfs_network[rule_find].src_ipv4,
+			sysfs_network[rule_find].src_netmask,
 			sysfs_network[rule_find].dst_ipv4,
+			sysfs_network[rule_find].dst_netmask,
 			sysfs_network[rule_find].s_port,
 			sysfs_network[rule_find].d_port,
 			sysfs_network[rule_find].proto,
@@ -197,6 +213,7 @@ static void store_rule(struct radix_head** table,SR_16 rule_find)
 static void fetch_cls_ipv4(void)
 {
 	sal_memset(buffer, 0, PAGE_SIZE);
+	sal_memset(sysfs_network, 0, sizeof(sysfs_network));
 
 	sr_cls_uid_table = get_cls_uid_table(SR_FILE_RULES);
 	sr_cls_exec_file_table = get_cls_exec_file_table();
@@ -208,12 +225,13 @@ static void fetch_cls_ipv4(void)
 	sr_cls_port_table[SR_SRC_UDP] = get_cls_port_table(SR_SRC_UDP);
 	sr_cls_port_table[SR_DST_TCP] = get_cls_port_table(SR_DST_TCP);
 	sr_cls_port_table[SR_DST_UDP] = get_cls_port_table(SR_DST_UDP);
+	sr_cls_protocol_table = get_cls_protocol_table();
 	
 	rn_walktree_sysfs(sr_cls_ipv4_table[SR_DIR_SRC],SR_DIR_SRC);
 	rn_walktree_sysfs(sr_cls_ipv4_table[SR_DIR_DST],SR_DIR_DST);
 	
 	sal_sprintf(buffer,
-		"rule\tsrc_ip/mask\t\tdst_ip/mask\t\ts_port\td_port\tproto\tuid\tbinary\t\taction\n----------------------------------------------------------------------------------------------------------------------\n");
+		"rule\tsrc_ip/mask\t\t\t\tdst_ip/mask\t\t\ts_port\td_port\tproto\tuid\tbinary\t\taction\n------------------------------------------------------------------------------------------------------------------------------\n");
 }
 
 void set_sysfs_ipv4(unsigned char * buff)

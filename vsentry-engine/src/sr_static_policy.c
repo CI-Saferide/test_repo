@@ -26,7 +26,8 @@ static SR_32 set_version_to_file(SR_U32 version)
 
 	if (!(fout = fopen(STATIC_POLICY_VERSION_FILE, "w"))) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-						"failed openning file :%s", STATIC_POLICY_VERSION_FILE);
+			"%s=failed openning file :%s",REASON,
+			STATIC_POLICY_VERSION_FILE);
                 return SR_ERROR;
 	}
 	fprintf(fout, "%u", version);
@@ -106,7 +107,9 @@ static SR_32 get_server_db(sysrepo_mng_handler_t *handler)
     
 	/* Perform the request, res will get the return code */
 	if ((res = curl_easy_perform(curl)) != CURLE_OK) {
-		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,  "curl_easy_perform failed: %s", curl_easy_strerror(res));
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, 
+			"%s=curl_easy_perform failed: %s",REASON,
+			curl_easy_strerror(res));
 		goto out;
 	}
 
@@ -119,7 +122,8 @@ static SR_32 get_server_db(sysrepo_mng_handler_t *handler)
 	if (new_version != static_policy_version) {
 		static_policy_version = new_version;
 		if (set_version_to_file(new_version) != SR_SUCCESS) {
-			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,  "FAILED setting new version");
+			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+			"%s=FAILED setting new version",REASON);
 		}
 	}
 
@@ -140,13 +144,15 @@ SR_32 database_management(void *p)
 	sysrepo_mng_handler_t handler;
 
     	if (sysrepo_mng_session_start(&handler)) {
-		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,  "sysrepo_mng_session_start failed \n");
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, 
+				"%s=sysrepo manager session start failed",REASON);
         	goto cleanup;
     	}
 
 	while (is_run_db_mng) { 
 		if (get_server_db(&handler) != SR_SUCCESS) {
-			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,  "get_server_db_failed:");
+			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+				"%s=get server database failed:",REASON);
 		}
 		sleep(1);
 	}
@@ -159,13 +165,15 @@ cleanup:
 SR_32 sr_static_policy_db_mng_start(void)
 {
 	if (get_vesrion_from_file(&static_policy_version) != SR_SUCCESS) {
-		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, "failed to get version");
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+		"%s=failed to get version",REASON);
 		return SR_ERROR;
 	}
 
 	is_run_db_mng = SR_TRUE;
 	if (sr_start_task(SR_STATIC_POLICY, database_management) != SR_SUCCESS) {
-		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, "failed to start static policy");
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+			"%s=failed to start static policy",REASON);
 		return SR_ERROR;
 	}
 

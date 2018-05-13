@@ -329,3 +329,8 @@ void sal_log(char *cef_buffer, SR_32 severity)
 
 	syslog(syslog_severity, "%s", cef_buffer);
 }
+
+char *sal_get_home_user(void)
+{
+	return getenv("HOME");
+}

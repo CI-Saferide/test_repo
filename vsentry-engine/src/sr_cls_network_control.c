@@ -13,7 +13,7 @@ int sr_cls_add_ipv4(SR_U32 addr, char *exec, char *user, SR_U32 netmask, int rul
 
 	if ((st = sr_get_inode(exec, &inode)) != SR_SUCCESS) {
 	    CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_LOW,
-			"Error: %s failed getting inode \n", __FUNCTION__);
+			"%s=failed getting inode while adding ipv4 rule",REASON);
 	    return st; 
 	}
 	uid = sr_get_uid(user);
@@ -44,7 +44,7 @@ int sr_cls_del_ipv4(SR_U32 addr, char *exec, char *user, SR_U32 netmask, SR_U16 
 	
 	if ((st = sr_get_inode(exec, &inode)) != SR_SUCCESS)  {
 	    CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_LOW,
-			"Error: %s failed getting inode \n", __FUNCTION__);
+			"%s=failed getting inode while deleting ipv4 rule",REASON);
 	    return st; 
 	}
 	uid = sr_get_uid(user);

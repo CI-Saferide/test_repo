@@ -28,11 +28,13 @@ static SR_32 handle_engine_start_stop(SR_BOOL is_on)
 
 	usleep(500000);
 	if ((rc = sr_control_set_state(is_on)) != SR_SUCCESS) {
-		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,  "failed sr_control_set_state");
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, 
+			"%s=failed sr_control_set_state",REASON);
 		return SR_ERROR;
 	}
 	if (!(f = fopen("/tmp/sec_state", "w"))) {
-		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,  "failed opening file /tmp/sec_state");
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+			"%s=failed opening file /tmp/sec_state",REASON);
 		return SR_ERROR;
 	}
 		
@@ -98,7 +100,9 @@ static SR_32 handle_command(void)
 
 	res = curl_easy_perform(curl);
 	if(res != CURLE_OK) {
-		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,  "curl_easy_perform failed: %s", curl_easy_strerror(res));
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+			"%s=curl_easy_perform failed: %s",REASON,
+			curl_easy_strerror(res));
 		goto out;
 	}
         if (!fetch->payload)
@@ -108,31 +112,31 @@ static SR_32 handle_command(void)
 		sr_stat_analysis_learn_mode_set(SR_STAT_MODE_LEARN);
 		ml_can_set_state(SR_ML_CAN_MODE_LEARN);
 		CEF_log_event(SR_CEF_CID_SYSTEM, "state change", SEVERITY_LOW,
-							"state changed to learning mode");
+							"%s=state changed to learning mode",MESSAGE);
 	}
 	if (strstr(fetch->payload, CMD_PROTECT)) {
 		sr_stat_analysis_learn_mode_set(SR_STAT_MODE_PROTECT);
 		ml_can_set_state(SR_ML_CAN_MODE_PROTECT);
 		CEF_log_event(SR_CEF_CID_SYSTEM, "state change", SEVERITY_LOW,
-							"state changed to protecting mode");
+							"%s=state changed to protecting mode",MESSAGE);
 	}
 	if (strstr(fetch->payload, CMD_OFF)) {
 		sr_stat_analysis_learn_mode_set(SR_STAT_MODE_OFF);
 		ml_can_set_state(SR_ML_CAN_MODE_HALT);
 		CEF_log_event(SR_CEF_CID_SYSTEM, "state change", SEVERITY_LOW,
-							"state changed to OFF mode");
+							"%s=state changed to OFF mode",MESSAGE);
 	}
 	if (strstr(fetch->payload, CMD_ENABLE)) {
 		handle_engine_start_stop(SR_TRUE);
 		last_is_enabled = SR_TRUE;
 		CEF_log_event(SR_CEF_CID_SYSTEM, "state change", SEVERITY_LOW,
-							"state changed to engine enabled");
+							"%s=state changed to engine enabled",MESSAGE);
 	}
 	if (strstr(fetch->payload, CMD_DISABLE)) {
 		handle_engine_start_stop(SR_FALSE);
 		last_is_enabled = SR_FALSE;
 		CEF_log_event(SR_CEF_CID_SYSTEM, "state change", SEVERITY_LOW,
-							"state changed to engine diabled");
+							"%s=state changed to engine diabled",MESSAGE);
 	}
 
 out:
@@ -149,7 +153,8 @@ static SR_32 command_management(void *p)
 {
 	while (is_run_cmd) { 
 		if (handle_command() != SR_SUCCESS) {
-			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,  "handle_commands:");
+			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+				"%s=handle_commands:",REASON);
 		}
 		sleep(1);
 	}
@@ -161,7 +166,8 @@ SR_32 sr_get_command_start(void)
 {
 	is_run_cmd = SR_TRUE;
 	if (sr_start_task(SR_GET_COMMAND, command_management) != SR_SUCCESS) {
-		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, "failed to start get command");
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+			"%s=failed to start get command",REASON);
 		return SR_ERROR;
 	}
 

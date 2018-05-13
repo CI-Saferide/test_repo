@@ -81,7 +81,7 @@ static void store_file_rules(SR_U32 inode)
 		
 		sysfs_file[rule].rule = rule;
 		sysfs_file[rule].inode = inode;
-		sprintf(sysfs_file[rule].inode_buff,"%d",inode); 
+		sprintf(sysfs_file[rule].inode_buff,"%u",inode); 
 		
 		sysfs_file[rule].action = sr_db->sr_rules_db[SR_FILE_RULES][rule].actions;
 		if (sysfs_file[rule].action & SR_CLS_ACTION_LOG) {
@@ -112,7 +112,7 @@ static void store_file_rules(SR_U32 inode)
 			if(sysfs_file[rule].inode_exe == 0)
 				sprintf(sysfs_file[rule].inode_exe_buff, "%s", "ANY");
 			else
-				sprintf(sysfs_file[rule].inode_exe_buff, "%d", sysfs_file[rule].inode_exe);
+				sprintf(sysfs_file[rule].inode_exe_buff, "%u", sysfs_file[rule].inode_exe);
 		}		
 	}
 }
@@ -126,6 +126,7 @@ static void clone_cls_file_table(struct sr_hash_table_t *table)
 	SR_8 perm_string[4] = {'-','-','-','\0'};
 	
 	sal_memset(&ba_res, 0, sizeof(ba_res));
+	sal_memset(sysfs_file, 0, sizeof(sysfs_file));
 	
 	if (table != NULL) {
 		
@@ -175,7 +176,7 @@ static void clone_cls_file_table(struct sr_hash_table_t *table)
 					if(sysfs_file[rule].inode_exe == 0)
 						sprintf(sysfs_file[rule].inode_exe_buff, "%s", "ANY");
 					else
-						sprintf(sysfs_file[rule].inode_exe_buff, "%d", sysfs_file[rule].inode_exe);
+						sprintf(sysfs_file[rule].inode_exe_buff, "%u", sysfs_file[rule].inode_exe);
 				}
 			}
 	}

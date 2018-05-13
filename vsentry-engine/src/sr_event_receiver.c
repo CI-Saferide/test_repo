@@ -62,11 +62,13 @@ void sr_event_receiver(SR_8 *msg_buff, SR_U32 msg_len)
 				offset += sizeof(struct sr_ec_file_t);
 #ifdef SR_STAT_ANALYSIS_DEBUG
 				CEF_log_debug(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,
-					"File created :%s \n", pNewFile->name ? (char *)(pNewFile->name) : "");
+					"%s=file created :%s",MESSAGE,
+					pNewFile->name ? (char *)(pNewFile->name) : "");
 #endif
 				if ((rc = sr_cls_file_create((char *)(pNewFile->name))) != SR_SUCCESS) {
 					CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-						"failed to handle file create for %s", pNewFile->name);
+						"%s=failed to handle file create for %s",REASON,
+						pNewFile->name);
 				}
 				break;
 #ifdef CONFIG_STAT_ANALYSIS
@@ -76,13 +78,14 @@ void sr_event_receiver(SR_8 *msg_buff, SR_U32 msg_len)
 				spid = (SR_32)(pProcessDied->pid);
 #ifdef SR_STAT_ANALYSIS_DEBUG
 				CEF_log_debug(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,
-					"DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD Process died:%d \n", spid);
+					"%s=Process died:%d",MESSAGE,
+					spid);
 #endif
 				if (spid <= 0)
 					break;
 				if ((rc = sr_stat_analysis_process_died(pProcessDied->pid)) != SR_SUCCESS) {
 					CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-						"failed to handle process died");
+						"%s=failed to handle process died",REASON);
 					break;
 				}
 				break;

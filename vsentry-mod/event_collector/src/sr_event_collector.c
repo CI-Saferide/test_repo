@@ -9,6 +9,8 @@ SR_U32 last_send_sec[TOTAL_BUFS];
 SR_U32 last_send_nsec[TOTAL_BUFS];
 static SR_SLEEPLES_LOCK_T sr_ec_locks[TOTAL_BUFS];
 
+static SR_BOOL collect = SR_FALSE;
+
 static inline SR_32 sr_ec_allocate_buffer(SR_U8 type)
 {
 	SR_U32 size;
@@ -83,6 +85,11 @@ int sr_ec_send_event(SR_U8 buf_type, SR_U8 event_type, void *data)
 				case SR_EVENT_STATS_CONNECTION_TRANSMIT:
 					sr_ec_append_event(buf_type, event_type, data, sizeof(struct sr_ec_connection_transmit_t), SR_FALSE);
 					sal_linux_mng_readbuf_up(SYNC_INFO_GATHER);									
+				case SR_EVENT_STATS_FILE_OPEN:
+					sr_ec_append_event(buf_type, event_type, data, sizeof(struct sr_ec_file_open_t), SR_FALSE);
+					break;
+				case SR_EVENT_CANBUS:
+					sr_ec_append_event(buf_type, event_type, data, sizeof(struct sr_ec_can_t), SR_FALSE);
 					break;
 				default:
 					break;
@@ -159,5 +166,27 @@ out:
 	if (is_lock)
         	SR_SLEEPLES_UNLOCK(&sr_ec_locks[buf_type], flags);
 	return;
+}
+
+SR_32 sr_collector_handle_message(struct sr_ec_msg *msg)
+{
+	collect = SR_FALSE;
+	
+	if (msg->ec_mode  == SR_EC_MODE_ON) {
+		collect = SR_TRUE;
+	} else if (msg->ec_mode == SR_EC_MODE_OFF) {
+		collect = SR_FALSE;
+	}
+	
+	CEF_log_event(SR_CEF_CID_SYSTEM, "info", SEVERITY_LOW,
+		"%s=collection %s",MESSAGE,
+		msg->ec_mode == SR_EC_MODE_ON?"EC_MODE_ON":"EC_MODE_OFF");
+			
+	return SR_SUCCESS;
+}
+
+SR_BOOL get_collector_state(void)
+{
+	return (collect);
 }
 

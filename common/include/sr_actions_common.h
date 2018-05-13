@@ -6,6 +6,8 @@
 #define SR_FILEOPS_READ  (SR_U8)(1<<0)
 #define SR_FILEOPS_WRITE (SR_U8)(1<<1)
 #define SR_FILEOPS_EXEC  (SR_U8)(1<<2)
+#define SR_CLS_NO_MATCH -1
+#define SR_CLS_DEFAULT_RULE 4096
 
 enum sr_rule_type{
         SR_NET_RULES = 0,

@@ -70,6 +70,7 @@ SR_U32 sal_get_host_info(char *host_info, int size);
 void sal_openlog(void);
 void sal_closelog(void);
 void sal_log(char *cef_buffer, SR_32 severity);
+char *sal_get_home_user(void);
 
 SR_32 sal_vsentry_fd_open(void);
 int sal_get_vsentry_fd(void);

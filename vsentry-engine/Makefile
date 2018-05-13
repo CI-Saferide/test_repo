@@ -16,6 +16,7 @@ VPATH 		:=  $(TOP_DIR)/sal/platform/linux/src \
 				$(TOP_DIR)/src \
 				$(TOP_DIR)/../common/src \
 				$(TOP_DIR)/stat_analysis/src \
+				$(TOP_DIR)/white_list/src \
 				$(TOP_DIR)/db/src
 
 # sources to compile
@@ -47,6 +48,9 @@ SRCS 		:=  main.c \
 				sr_config_parse.c \
 				sr_stat_process_connection.c \
 				sr_stat_learn_rule.c \
+				sr_white_list.c \
+				sr_white_list_file.c \
+				sr_white_list_can.c \
 				sr_static_policy.c \
 				sr_command.c \
 				sr_stat_analysis.c \
@@ -72,6 +76,7 @@ INCLUDES 	:=  -I../common/include \
 				-I../vsentry-lib/include \
 				-I../common/stat_analysis/include \
 				-Istat_analysis/include \
+				-Iwhite_list/include \
 				-Idb/include \
 
 OBJS		:=  $(addprefix $(OBJDIR)/,$(SRCS:.c=.o))
@@ -92,6 +97,9 @@ CFLAGS 		+= -DSR_CAN_DEBUG_PRINT
 #CFLAGS 		+= -DSR_RB_DEBUG -DSR_MSG_DEBUG
 CFLAGS 		+= -D__linux
 #CFLAGS 		+= -DUNIT_TEST
+#CFLAGS 		+= -DENBALE_POLICY_UPDATE
+CFLAGS 		+= -DSUPPORT_REMOTE_SERVER
+
 
 ifdef DEBUG
 CFLAGS		+= -g -O0

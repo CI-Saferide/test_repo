@@ -30,6 +30,10 @@ void config_defaults(void)
 	strcpy(config_params.CEF_log_path, "/var/log/");
 	config_params.cef_max_rate = (SR_U8)2;
 	config_params.log_type = (SR_U8)0;
+	
+	config_params.default_file_action = SR_CLS_ACTION_ALLOW;
+	config_params.default_net_action  = SR_CLS_ACTION_ALLOW;
+	config_params.default_can_action  = SR_CLS_ACTION_ALLOW;
 }
 
 #define CONFIG_LINE_BUFFER_SIZE 100
@@ -44,7 +48,8 @@ SR_32 read_vsentry_config(char* config_filename)
 
     if ((fp=fopen(config_filename, "r")) == NULL) {
         CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-			"reason=failed to open config file %s, using defaults\n", config_filename);
+			"%s=failed to open config file %s, using defaults",REASON,
+			config_filename);
         return SR_ERROR;
     }
     while(! feof(fp)) {
@@ -126,19 +131,65 @@ SR_32 read_vsentry_config(char* config_filename)
         if (position) {
             config_params.cef_max_rate = (SR_U8)atoi(position + (strlen("CEF_MAX_RATE ")));
         }
-        position = strstr(buf, "LOG_TYPE ");
-	param = strtok(buf, " ");
-	if (!param)
-		continue;
-	value = strtok(NULL, " ");
-	if (!value)
-		continue;
-	if (!strcmp(param, "LOG_TYPE")) {
-		if (!memcmp(value, "CURL", strlen("CURL")))
-			config_params.log_type |= LOG_TYPE_CURL;
-		if (!memcmp(value, "SYSLOG", strlen("SYSLOG")))
-			config_params.log_type |= LOG_TYPE_SYSLOG;
-	}
+        
+		param = strtok(buf, " ");
+		if (!param)
+			continue;
+		value = strtok(NULL, " ");
+		if (!value)
+			continue;
+		if (!strcmp(param, "LOG_TYPE")) {
+			if (!memcmp(value, "CURL", strlen("CURL")))
+				config_params.log_type |= LOG_TYPE_CURL;
+			if (!memcmp(value, "SYSLOG", strlen("SYSLOG")))
+				config_params.log_type |= LOG_TYPE_SYSLOG;
+		}
+
+		if (!strcmp(param, "DEFAULT_FILE_RULE")) {
+			if (!memcmp(value, "ALLOW", strlen("ALLOW")))
+				config_params.default_file_action = SR_CLS_ACTION_ALLOW;
+			if (!memcmp(value, "DROP", strlen("DROP")))
+				config_params.default_file_action = SR_CLS_ACTION_DROP;
+			if (!memcmp(value, "ALLOW-LOG", strlen("ALLOW-LOG"))){
+				config_params.default_file_action = SR_CLS_ACTION_ALLOW;
+				config_params.default_file_action |= SR_CLS_ACTION_LOG;
+			}
+			if (!memcmp(value, "DROP-LOG", strlen("DROP-LOG"))){
+				config_params.default_file_action = SR_CLS_ACTION_DROP;
+				config_params.default_file_action |= SR_CLS_ACTION_LOG;
+			}
+		}
+
+		if (!strcmp(param, "DEFAULT_CAN_RULE")) {
+			if (!memcmp(value, "ALLOW", strlen("ALLOW")))
+				config_params.default_can_action = SR_CLS_ACTION_ALLOW;
+			if (!memcmp(value, "DROP", strlen("DROP")))
+				config_params.default_can_action = SR_CLS_ACTION_DROP;
+			if (!memcmp(value, "ALLOW-LOG", strlen("DROP-LOG"))){
+				config_params.default_can_action = SR_CLS_ACTION_ALLOW;
+				config_params.default_can_action |= SR_CLS_ACTION_LOG;
+			}
+			if (!memcmp(value, "DROP-LOG", strlen("DROP-LOG"))){
+				config_params.default_can_action = SR_CLS_ACTION_DROP;
+				config_params.default_can_action |= SR_CLS_ACTION_LOG;
+			}
+		}
+
+		if (!strcmp(param, "DEFAULT_NET_RULE")) {
+			if (!memcmp(value, "ALLOW", strlen("ALLOW")))
+				config_params.default_net_action = SR_CLS_ACTION_ALLOW;
+			if (!memcmp(value, "DROP", strlen("DROP")))
+				config_params.default_net_action = SR_CLS_ACTION_DROP;
+			if (!memcmp(value, "ALLOW-LOG", strlen("ALLOW-LOG"))){
+				config_params.default_net_action = SR_CLS_ACTION_ALLOW;
+				config_params.default_net_action |= SR_CLS_ACTION_LOG;
+			}
+			if (!memcmp(value, "DROP-LOG", strlen("DROP-LOG"))){
+				config_params.default_net_action = SR_CLS_ACTION_DROP;
+				config_params.default_net_action |= SR_CLS_ACTION_LOG;
+			}
+		}
+
     }
     fclose(fp);
     return SR_SUCCESS;

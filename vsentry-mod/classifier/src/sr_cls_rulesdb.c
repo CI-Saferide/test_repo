@@ -112,6 +112,9 @@ enum cls_actions sr_cls_rl_check(struct sr_rl_t *rl, SR_U32 timestamp, SR_U32 si
 enum cls_actions sr_cls_network_rule_match(SR_U16 rulenum, SR_U32 size)
 {
 	SR_U16 action = 0;
+#ifdef RL_SUPPORT
+	SR_U16 should_log;
+#endif
 
 	if (sr_db.sr_rules_db[SR_NET_RULES][rulenum].actions & SR_CLS_ACTION_RATE) { 
 		action = sr_cls_rl_check(&sr_db.sr_rules_db[SR_NET_RULES][rulenum].rate, jiffies / HZ, size);
@@ -121,7 +124,6 @@ enum cls_actions sr_cls_network_rule_match(SR_U16 rulenum, SR_U32 size)
 	
 	// if action is drop - set log implicitly
 #ifdef RL_SUPPORT
-	SR_U16 should_log;
 	if (action&(SR_CLS_ACTION_LOG|SR_CLS_ACTION_DROP)) {
 		should_log = (SR_CLS_ACTION_ALLOW == sr_cls_rl_check(&sr_db.sr_rules_db[SR_NET_RULES][rulenum].log_rate, jiffies/HZ, 1));
 		if (should_log) { // set or clear the log bit accordingly
@@ -138,6 +140,9 @@ enum cls_actions sr_cls_network_rule_match(SR_U16 rulenum, SR_U32 size)
 enum cls_actions sr_cls_file_rule_match(SR_8 fileop, SR_U16 rulenum)
 {
 	SR_U16 action;
+#ifdef RL_SUPPORT
+	SR_U16 should_log;
+#endif
 
 	if (!(fileop & (SR_FILEOPS_READ | SR_FILEOPS_WRITE | SR_FILEOPS_EXEC))) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
@@ -148,15 +153,14 @@ enum cls_actions sr_cls_file_rule_match(SR_8 fileop, SR_U16 rulenum)
 		return SR_CLS_ACTION_NOOP;
 	}
 	if (sr_db.sr_rules_db[SR_FILE_RULES][rulenum].actions & SR_CLS_ACTION_RATE) { 
-		action = sr_cls_rl_check(&sr_db.sr_rules_db[SR_FILE_RULES][rulenum].rate, jiffies, 1);
+		action = sr_cls_rl_check(&sr_db.sr_rules_db[SR_FILE_RULES][rulenum].rate, jiffies/HZ, 1);
 	} else {
 		action = sr_db.sr_rules_db[SR_FILE_RULES][rulenum].actions;
 	}
 	// if action is drop - set log implicitly
 #ifdef RL_SUPPORT
-	SR_U16 should_log;
 	if (action&(SR_CLS_ACTION_LOG|SR_CLS_ACTION_DROP)) {
-		should_log = (SR_CLS_ACTION_ALLOW == sr_cls_rl_check(&sr_db.sr_rules_db[SR_NET_RULES][rulenum].log_rate, jiffies/HZ, 1));
+		should_log = (SR_CLS_ACTION_ALLOW == sr_cls_rl_check(&sr_db.sr_rules_db[SR_FILE_RULES][rulenum].log_rate, jiffies/HZ, 1));
 		if (should_log) { // set or clear the log bit accordingly
 			action |= SR_CLS_ACTION_LOG;
 		} else {
@@ -171,17 +175,19 @@ enum cls_actions sr_cls_file_rule_match(SR_8 fileop, SR_U16 rulenum)
 enum cls_actions sr_cls_can_rule_match(SR_U16 rulenum)
 {
 	SR_U16 action;
+#ifdef RL_SUPPORT
+	SR_U16 should_log;
+#endif
 
 	if (sr_db.sr_rules_db[SR_CAN_RULES][rulenum].actions & SR_CLS_ACTION_RATE) { 
-		action = sr_cls_rl_check(&sr_db.sr_rules_db[SR_CAN_RULES][rulenum].rate, jiffies, 1);
+		action = sr_cls_rl_check(&sr_db.sr_rules_db[SR_CAN_RULES][rulenum].rate, jiffies/HZ, 1);
 	} else {
 		action = sr_db.sr_rules_db[SR_CAN_RULES][rulenum].actions;
 	}
-	// if action is drop - set log implicitly
+	// if action is drop - set log implicitly by doing SR_CLS_ACTION_LOG|SR_CLS_ACTION_DROP
 #ifdef RL_SUPPORT
-	SR_U16 should_log;
-	if (action&(SR_CLS_ACTION_LOG|SR_CLS_ACTION_DROP)) {
-		should_log = (SR_CLS_ACTION_ALLOW == sr_cls_rl_check(&sr_db.sr_rules_db[SR_NET_RULES][rulenum].log_rate, jiffies/HZ, 1));
+	if(action&(SR_CLS_ACTION_LOG|SR_CLS_ACTION_DROP)){
+		should_log = (SR_CLS_ACTION_ALLOW == sr_cls_rl_check(&sr_db.sr_rules_db[SR_CAN_RULES][rulenum].log_rate, jiffies/HZ, 1));
 		if (should_log) { // set or clear the log bit accordingly
 			action |= SR_CLS_ACTION_LOG;
 		} else {
@@ -199,12 +205,12 @@ SR_8 sr_cls_rules_msg_dispatch(struct sr_cls_rules_msg *msg)
 	switch (msg->msg_type) {
 		case SR_CLS_RULES_DEL:
 			CEF_log_debug(SR_CEF_CID_SYSTEM, "info", SEVERITY_LOW,
-							"%s=del rule on ruledb",MESSAGE);
+							"%s=del rule on rules database",MESSAGE);
 			sr_cls_rule_del(msg->rule_type, msg->rulenum);
 			break;
 		case SR_CLS_RULES_ADD:
 			CEF_log_debug(SR_CEF_CID_SYSTEM, "info", SEVERITY_LOW,
-							"%s=add rule on ruledb",MESSAGE);
+							"%s=add rule on rules database",MESSAGE);
 			sr_cls_rule_add(msg->rule_type,
 			msg->rulenum,
 			msg->actions,

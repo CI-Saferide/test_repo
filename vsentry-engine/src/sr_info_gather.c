@@ -16,8 +16,8 @@ static SR_32 sr_info_gather_loop(void *data)
 	SR_BOOL is_msg;
 	ssize_t n __attribute__((unused));
 
-        CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,
-						"msg=engine gather_loop started");
+        CEF_log_event(SR_CEF_CID_SYSTEM, "info", SEVERITY_LOW,
+			"%s=engine gather_loop started",MESSAGE);
                 
 	if (!(fd = sal_get_vsentry_fd())) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_LOW,
@@ -28,14 +28,14 @@ static SR_32 sr_info_gather_loop(void *data)
         ret = sr_msg_alloc_buf(ENG2LOG_BUF, MAX_BUFFER_SIZE);
         if (ret != SR_SUCCESS){
                 CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-								"reason=failed to init log buf");
+					"%s=failed to init log buf",REASON);
                 return 0;
         }
          
         ret = sr_msg_alloc_buf(MOD2LOG_BUF, MAX_BUFFER_SIZE);
         if (ret != SR_SUCCESS){
                 CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-								"reason=failed to init log buf");
+					"%s=failed to init log buf",REASON);
                 return 0;
         }               
          
@@ -43,7 +43,7 @@ static SR_32 sr_info_gather_loop(void *data)
         ret = sr_msg_alloc_buf(MOD2STAT_BUF, MAX_BUFFER_SIZE);
         if (ret != SR_SUCCESS){
                 CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-								"reason=failed to init stat buf");
+					"%s=failed to init stat buf",REASON);
                 return 0;
         }               
 #endif
@@ -61,8 +61,9 @@ static SR_32 sr_info_gather_loop(void *data)
                 msg = sr_read_msg(ENG2LOG_BUF, &ret);
                 if (ret > 0) {
 						is_msg = SR_TRUE;
-                        CEF_log_debug(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,
-										"msg=ENG2LOG msg: %s", msg);
+                        CEF_log_debug(SR_CEF_CID_SYSTEM, "info", SEVERITY_LOW,
+							"%s=ENG2LOG msg: %s",MESSAGE,
+							msg);
                         sr_free_msg(ENG2LOG_BUF);
                 }
 
@@ -71,8 +72,9 @@ static SR_32 sr_info_gather_loop(void *data)
                 if (ret > 0) {
 					is_msg = SR_TRUE;
 #ifdef SR_STAT_ANALYSIS_DEBUG
-			CEF_log_debug(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,
-							"msg=got message ret:%d", ret);
+			CEF_log_debug(SR_CEF_CID_SYSTEM, "info", SEVERITY_LOW,
+				"%s=got message ret:%d",MESSAGE,
+				ret);
 #endif
 					sr_event_stats_receiver(msg, ret);
                     sr_free_msg(MOD2STAT_BUF);
@@ -90,20 +92,20 @@ static SR_32 sr_info_gather_loop(void *data)
         sr_msg_free_buf(MOD2STAT_BUF);
 #endif
 
-        CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,
-						"msg=engine gather_loop end");
+        CEF_log_event(SR_CEF_CID_SYSTEM, "info", SEVERITY_LOW,
+			"%s=engine gather_loop end",MESSAGE);
 
         return 0;
 }
 
 SR_32 sr_info_gather_init (void)
 {
-        CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,
-						"msg=starting info gather module");
+        CEF_log_event(SR_CEF_CID_SYSTEM, "info", SEVERITY_LOW,
+			"%s=starting info gather module",MESSAGE);
 
         if (sr_start_task(SR_INFO_GATHER_TASK, sr_info_gather_loop) != SR_SUCCESS) {
                 CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-								"reason=failed to start gather_loop");
+					"%s=failed to start gather_loop",REASON);
                 return SR_ERROR;
         }
 
