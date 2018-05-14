@@ -156,7 +156,7 @@ SR_32 sr_stat_learn_rule_hash_update(char *exec, sr_stat_con_stats_t *con_stats)
 	SR_BOOL is_notify = SR_FALSE;
 
 	/* If the file exists add the rule to the file. */
-        if (!(learn_rule_item = sr_gen_hash_get(learn_rule_hash, exec))) {
+        if (!(learn_rule_item = sr_gen_hash_get(learn_rule_hash, exec, 0))) {
 		SR_Zalloc(learn_rule_item, learn_rule_item_t *, sizeof(learn_rule_item_t));
 		if (!learn_rule_item) {
 			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
@@ -177,7 +177,7 @@ SR_32 sr_stat_learn_rule_hash_update(char *exec, sr_stat_con_stats_t *con_stats)
 		// rule for TX and rule for RX
 		rule_number += 2;
 		/* Add the process */
-		if ((rc = sr_gen_hash_insert(learn_rule_hash, (void *)exec, learn_rule_item)) != SR_SUCCESS) {
+		if ((rc = sr_gen_hash_insert(learn_rule_hash, (void *)exec, learn_rule_item, 0)) != SR_SUCCESS) {
 			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 				"%s=%s: sr_gen_hash_insert failed",REASON, __FUNCTION__);
 			return SR_ERROR;
@@ -225,14 +225,14 @@ SR_32 sr_stat_learn_rule_hash_update(char *exec, sr_stat_con_stats_t *con_stats)
 
 SR_32 sr_stat_learn_rule_hash_exec_for_all(SR_32 (*cb)(void *hash_data, void *data))
 {
-	return sr_gen_hash_exec_for_each(learn_rule_hash, cb, NULL);
+	return sr_gen_hash_exec_for_each(learn_rule_hash, cb, NULL, 0);
 }
 
 SR_32 sr_stat_learn_rule_hash_delete(char *exec)
 {
 	SR_32 rc;
 	
-	if ((rc = sr_gen_hash_delete(learn_rule_hash, exec) != SR_SUCCESS)) {
+	if ((rc = sr_gen_hash_delete(learn_rule_hash, exec, 0) != SR_SUCCESS)) {
 		return rc;
 	}
 
@@ -241,7 +241,7 @@ SR_32 sr_stat_learn_rule_hash_delete(char *exec)
 
 SR_32 sr_stat_learn_rule_delete_all(void)
 {
-	return sr_gen_hash_delete_all(learn_rule_hash);
+	return sr_gen_hash_delete_all(learn_rule_hash, 0);
 }
 
 void sr_learn_rule_connection_hash_print(void)

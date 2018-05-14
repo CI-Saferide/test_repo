@@ -106,7 +106,7 @@ void sr_file_hash_deinit(void)
 
 SR_32 sr_file_hash_delete_all(void)
 {
-	return sr_gen_hash_delete_all(file_hash);
+	return sr_gen_hash_delete_all(file_hash, 0);
 }
 
 static SR_32 update_rule_item(file_rules_item_t *file_rule_item, char *exec, char *user, SR_U32 rulenum, SR_U16 actions, SR_8 file_ops)
@@ -138,14 +138,14 @@ SR_32 sr_file_hash_update_rule(char *filename, char *exec, char *user, SR_U32 ru
 	SR_32 rc;
 
 	/* If the file exists add the rule to the file. */
-        if (!(file_rule_item = sr_gen_hash_get(file_hash, filename))) {
+        if (!(file_rule_item = sr_gen_hash_get(file_hash, filename, 0))) {
 		SR_Zalloc(file_rule_item, file_rules_item_t *, sizeof(file_rules_item_t));
 		if (!file_rule_item)
 			return SR_ERROR;
 		strncpy(file_rule_item->file_path, filename, SR_MAX_PATH_SIZE); 
 		update_rule_item(file_rule_item, exec, user, rulenum, actions, file_ops);
 		/* Add the rule */
-		if ((rc = sr_gen_hash_insert(file_hash, filename, file_rule_item)) != SR_SUCCESS) {
+		if ((rc = sr_gen_hash_insert(file_hash, filename, file_rule_item, 0)) != SR_SUCCESS) {
 			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 				"%s=failed to insert rule to file table",REASON);
 			return SR_ERROR;
@@ -163,7 +163,7 @@ SR_32 sr_file_hash_exec_for_file(char *filename, SR_U32 (*cb)(char *filename, ch
 	file_rules_data_t *iter;
 	SR_U32 rc;
 
-        if (!(file_rule_item = sr_gen_hash_get(file_hash, filename)))
+        if (!(file_rule_item = sr_gen_hash_get(file_hash, filename, 0)))
 		return SR_SUCCESS;
 	for (iter = file_rule_item->file_rules_list; iter; iter = iter->next) {
 		if ((rc = cb(file_rule_item->file_path, iter->exec, iter->user, iter->rulenum, iter->actions, iter->file_ops)) != SR_SUCCESS) {

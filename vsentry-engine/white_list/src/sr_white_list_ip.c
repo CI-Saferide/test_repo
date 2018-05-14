@@ -115,7 +115,7 @@ SR_32 sr_wl_ip_binary_insert(char *exec)
 {
 	sr_wl_ip_binary_t *sr_wl_ip_binary_item;
 
-	if (sr_gen_hash_get(wl_ip_binary_hash, exec)) {
+	if (sr_gen_hash_get(wl_ip_binary_hash, exec, 0)) {
 		return SR_ENTRY_EXISTS;
 	}
 
@@ -127,7 +127,7 @@ SR_32 sr_wl_ip_binary_insert(char *exec)
 	}
 
 	strncpy(sr_wl_ip_binary_item->exec, exec, SR_MAX_PATH_SIZE);
-        if (sr_gen_hash_insert(wl_ip_binary_hash, (void *)exec, sr_wl_ip_binary_item) != SR_SUCCESS) {
+        if (sr_gen_hash_insert(wl_ip_binary_hash, (void *)exec, sr_wl_ip_binary_item, 0) != SR_SUCCESS) {
                 CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
                                "%s=%s: sr_gen_hash_insert failed",REASON, __FUNCTION__);
                 return SR_ERROR;
@@ -151,7 +151,7 @@ SR_32 sr_white_list_ip_delete_all(void)
 	SR_32 rc, rc1;
 
 	rc = white_list_ip_clear_graph();
-        rc1 = sr_gen_hash_delete_all(wl_ip_binary_hash);
+        rc1 = sr_gen_hash_delete_all(wl_ip_binary_hash, 0);
 
 	if (rc != SR_SUCCESS || rc1 != SR_SUCCESS) 
 		return SR_ERROR;
@@ -160,7 +160,7 @@ SR_32 sr_white_list_ip_delete_all(void)
 
 SR_32 sr_wl_ip_exec_for_all(SR_32 (*cb)(void *hash_data, void *data))
 {
-        return sr_gen_hash_exec_for_each(wl_ip_binary_hash, cb, NULL);
+        return sr_gen_hash_exec_for_each(wl_ip_binary_hash, cb, NULL, 0);
 }
 
 SR_32 exec_add_to_list_cb(void *hash_data, void *data)
@@ -287,7 +287,7 @@ static SR_32 white_list_ip_update_pid(struct radix_node *node, SR_U32 pid)
 
 	if (sr_wl_ip_binary_insert(exec) == SR_ERROR) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-			"%s=%s: sr_gen_hash_insert failed",REASON, __FUNCTION__);
+			"%s=%s: ip binary insert failed",REASON, __FUNCTION__);
 		return SR_ERROR;
 	}
 

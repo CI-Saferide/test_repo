@@ -10,6 +10,7 @@ typedef struct hash_item {
 } hash_item_t;
 
 typedef struct hash_bucket {
+	SR_SLEEPLES_LOCK_DEF(s_lock)
 	SR_MUTEX lock;
 	hash_item_t *items;
 } hash_bucket_t;
@@ -48,9 +49,14 @@ struct sr_gen_hash *sr_gen_hash_new(int size, hash_ops_t hash_ops, SR_U8 attrs)
 	}
 
 	/* Locking is required */
-	if ((attrs & SR_GEN_HASH_WRITE_LOCK) || (attrs & SR_GEN_HASH_READ_LOCK)) {
+	if ((attrs & SR_GEN_HASH_SLEEPLES_LOCK)){
 		for (i = 0; i < size; i++) 
-			SR_MUTEX_INIT(&((new_item->table)[i].lock)); 
+			SR_SLEEPLES_LOCK_INIT(&((new_item->table)[i].s_lock)); 
+	} else {
+		if ((attrs & SR_GEN_HASH_WRITE_LOCK) || (attrs & SR_GEN_HASH_READ_LOCK)) {
+			for (i = 0; i < size; i++) 
+				SR_MUTEX_INIT(&((new_item->table)[i].lock)); 
+		}
 	}
 
 	/* Slow delete is required */
@@ -67,11 +73,52 @@ struct sr_gen_hash *sr_gen_hash_new(int size, hash_ops_t hash_ops, SR_U8 attrs)
 	return new_item;
 }
 
-SR_32 sr_gen_hash_insert(struct sr_gen_hash *hash, void *key, void *data)
+static SR_32 gen_hash_lock(hash_bucket_t *bucket, SR_U8 hash_attrs, SR_U8 hash_flags, SR_SLEEPLES_LOCK_FLAGS *flags, SR_BOOL is_update)
+{
+	if ((is_update && !(hash_attrs & SR_GEN_HASH_WRITE_LOCK)) ||
+	    (!is_update && !(hash_attrs & SR_GEN_HASH_READ_LOCK))) {
+		return SR_SUCCESS;
+	}
+
+	if (!(hash_attrs & SR_GEN_HASH_SLEEPLES_LOCK)) {
+		SR_MUTEX_LOCK(&(bucket->lock));
+		return SR_SUCCESS;
+	}
+
+	if (hash_flags & SR_GEN_HASH_TRY_LOCK) {
+		if (!SR_SLEEPLES_TRYLOCK(&(bucket->s_lock), *flags)) {
+			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+				"%s=try lock failed to accuire lock", REASON);
+			return SR_ERROR;
+		}
+	} else
+		SR_SLEEPLES_LOCK(&(bucket->s_lock), *flags);
+
+	return SR_SUCCESS;
+}
+
+static SR_32 gen_hash_unlock(hash_bucket_t *bucket, SR_U8 hash_attrs, SR_U8 hash_flags, SR_SLEEPLES_LOCK_FLAGS flags, SR_BOOL is_update)
+{
+	if ((is_update && !(hash_attrs & SR_GEN_HASH_WRITE_LOCK)) ||
+	    (!is_update && !(hash_attrs & SR_GEN_HASH_READ_LOCK))) {
+		return SR_SUCCESS;
+	}
+
+	if (!(hash_attrs & SR_GEN_HASH_SLEEPLES_LOCK)) {
+		SR_MUTEX_UNLOCK(&(bucket->lock));
+		return SR_SUCCESS;
+	}
+	SR_SLEEPLES_UNLOCK(&(bucket->s_lock), flags);
+
+	return SR_SUCCESS;
+}
+
+SR_32 sr_gen_hash_insert(struct sr_gen_hash *hash, void *key, void *data, SR_U8 hash_flags)
 {
 	SR_U32 ind;
 	SR_32 rc = SR_SUCCESS;
 	hash_item_t **iter, *new_item;
+	SR_SLEEPLES_LOCK_FLAGS flags;
 
 	/* Add new key */
 	SR_Zalloc(new_item, hash_item_t *, sizeof(hash_item_t));
@@ -80,16 +127,15 @@ SR_32 sr_gen_hash_insert(struct sr_gen_hash *hash, void *key, void *data)
 
 	GET_HASH_IND(hash, ind, key, SR_ERROR);
 
-	if (hash->attrs & SR_GEN_HASH_WRITE_LOCK)
-		SR_MUTEX_LOCK(&(hash->table[ind].lock));
-		
+	if (gen_hash_lock(&(hash->table[ind]), hash->attrs, hash_flags, &flags, SR_TRUE) != SR_SUCCESS) {
+		return SR_ERROR;
+	}
+
 	for (iter = &(hash->table[ind].items); *iter; iter = &((*iter)->next)) {
 		if (hash->hash_ops.comp && hash->hash_ops.comp((*iter)->data, key) == 0)
 			break;
 	}
 	if (*iter) {
-		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-			"%s=hash_insert error, key exists",REASON);
 		rc = SR_ERROR;
 		goto out;
 	}
@@ -98,21 +144,24 @@ SR_32 sr_gen_hash_insert(struct sr_gen_hash *hash, void *key, void *data)
 	(*iter)->data = data;
 
 out:
-	if (hash->attrs & SR_GEN_HASH_WRITE_LOCK)
-		SR_MUTEX_UNLOCK(&(hash->table[ind].lock));
+	if (gen_hash_unlock(&(hash->table[ind]), hash->attrs, hash_flags, flags, SR_TRUE) != SR_SUCCESS) {
+		return SR_ERROR;
+	}
 	return rc;
 }
 
-SR_32 sr_gen_hash_delete(struct sr_gen_hash *hash, void *key)
+SR_32 sr_gen_hash_delete(struct sr_gen_hash *hash, void *key, SR_U8 hash_flags)
 {
 	SR_U32 ind;
 	SR_32 rc = SR_SUCCESS;
 	hash_item_t **iter, *help;
+	SR_SLEEPLES_LOCK_FLAGS flags;
 
 	GET_HASH_IND(hash, ind, key, SR_ERROR);
 
-	if (hash->attrs & SR_GEN_HASH_WRITE_LOCK)
-		SR_MUTEX_LOCK(&(hash->table[ind].lock));
+	if (gen_hash_lock(&(hash->table[ind]), hash->attrs, hash_flags, &flags, SR_TRUE) != SR_SUCCESS) {
+		return SR_ERROR;
+	}
 
 	for (iter = &(hash->table[ind].items); *iter; iter = &((*iter)->next)) {
 		if (hash->hash_ops.comp && hash->hash_ops.comp((*iter)->data, key) == 0)
@@ -130,20 +179,25 @@ SR_32 sr_gen_hash_delete(struct sr_gen_hash *hash, void *key)
 	SR_Free(help);
 
 out:
-	if (hash->attrs & SR_GEN_HASH_WRITE_LOCK)
-		SR_MUTEX_UNLOCK(&(hash->table[ind].lock));
+	if (gen_hash_unlock(&(hash->table[ind]), hash->attrs, hash_flags, flags, SR_TRUE) != SR_SUCCESS) {
+		return SR_ERROR;
+	}
 	return rc;
 }
 
-SR_32 sr_gen_hash_delete_all(struct sr_gen_hash *hash)
+SR_32 sr_gen_hash_delete_all(struct sr_gen_hash *hash, SR_U8 hash_flags)
 {
 	int i;
 	hash_item_t *iter, *help;
+	SR_SLEEPLES_LOCK_FLAGS flags;
 
 	if (!hash)
 		return SR_ERROR;
 
 	for (i = 0; i < hash->size; i++) {
+		if (gen_hash_lock(&(hash->table[i]), hash->attrs, hash_flags, &flags, SR_TRUE) != SR_SUCCESS) {
+			return SR_ERROR;
+		}
 		for (iter = hash->table[i].items; iter; ) {
 			if (hash->hash_ops.free)
 				hash->hash_ops.free(iter->data);
@@ -154,6 +208,9 @@ SR_32 sr_gen_hash_delete_all(struct sr_gen_hash *hash)
 			iter = help;
 		}
 		hash->table[i].items = NULL;
+		if (gen_hash_unlock(&(hash->table[i]), hash->attrs, hash_flags, flags, SR_TRUE) != SR_SUCCESS) {
+			return SR_ERROR;
+		}
 	}
 
 	return SR_SUCCESS;
@@ -245,16 +302,23 @@ void sr_gen_hash_print(struct sr_gen_hash *hash)
 		count);
 }
 
-void *sr_gen_hash_get(struct sr_gen_hash *hash, void *key)
+void *sr_gen_hash_get(struct sr_gen_hash *hash, void *key, SR_U8 hash_flags)
 {
 	SR_U32 ind;
 	hash_item_t *iter;
+	SR_SLEEPLES_LOCK_FLAGS flags;
 
 	GET_HASH_IND(hash, ind, key, NULL);
 
+	if (gen_hash_lock(&(hash->table[ind]), hash->attrs, hash_flags, &flags, SR_FALSE) != SR_SUCCESS) {
+		return NULL;
+	}
 	for (iter = hash->table[ind].items; iter; iter = iter->next) {
 		if (hash->hash_ops.comp && hash->hash_ops.comp(iter->data, key) == 0)
 			break;
+	}
+	if (gen_hash_unlock(&(hash->table[ind]), hash->attrs, hash_flags, flags, SR_FALSE) != SR_SUCCESS) {
+		return NULL;
 	}
 
 	return iter ? iter->data : NULL;
@@ -265,21 +329,28 @@ void sr_gen_hash_destroy(struct sr_gen_hash *hash)
 	if (!hash)
 		return;
 
-	sr_gen_hash_delete_all(hash);
+	sr_gen_hash_delete_all(hash, 0);
 	if (hash->attrs & SR_GEN_HASH_SLOW_DELETE)
 		clean_free_repos(hash);
 	SR_Free(hash->table);
 	SR_Free(hash);
 }
 
-SR_32 sr_gen_hash_exec_for_each(struct sr_gen_hash *hash, SR_32 (*cb)(void *hash_data, void *data), void *data)
+SR_32 sr_gen_hash_exec_for_each(struct sr_gen_hash *hash, SR_32 (*cb)(void *hash_data, void *data), void *data, SR_U8 hash_flags)
 {
 	hash_item_t *iter;
 	SR_U32 i;
+	SR_SLEEPLES_LOCK_FLAGS flags;
 
 	for (i = 0 ; i < hash->size; i++) {
+		if (gen_hash_lock(&(hash->table[i]), hash->attrs, hash_flags, &flags, SR_FALSE) != SR_SUCCESS) {
+			return SR_ERROR;
+		}
 		for (iter = hash->table[i].items; iter; iter = iter->next)
 			cb(iter->data, data);
+		if (gen_hash_unlock(&(hash->table[i]), hash->attrs, hash_flags, flags, SR_FALSE) != SR_SUCCESS) {
+			return SR_ERROR;
+		}
 	}
 
 	return SR_SUCCESS;
