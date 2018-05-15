@@ -25,6 +25,6 @@ SR_32 sr_gen_hash_delete_all(struct sr_gen_hash *hash, SR_U8 hash_flags);
 SR_32 sr_gen_hash_exec_for_each(struct sr_gen_hash *hash, SR_32 (*cb)(void *hash_data, void *data), void *data, SR_U8 hash_flags);
 SR_32 sr_gen_hash_delete_all_cb(struct sr_gen_hash *hash, SR_BOOL (*cb)(void *hash_data));
 void sr_gen_hash_print(struct sr_gen_hash *hash);
-SR_32 sr_gen_hash_slow_delete_all(struct sr_gen_hash *hash, SR_BOOL (*cond_cb)(void *hash_data));
+SR_32 sr_gen_hash_cond_delete_all(struct sr_gen_hash *hash, SR_BOOL (*cond_cb)(void *hash_data));
 
 #endif

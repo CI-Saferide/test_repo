@@ -5,6 +5,7 @@
 #include "sr_cls_network_common.h"
 
 #define CON_OBJS_HASH_SIZE 1024
+#define SR_CONN_OBJ_AGED_TIME 30
 static struct sr_gen_hash *conn_obj_hash;
 
 SR_32 conn_obj_comp(void *data_in_hash, void *comp_val)
@@ -52,12 +53,14 @@ static void conn_obj_free(void *data_in_hash)
 
 static SR_BOOL check_aged_cb(void *hash_data)
 {
-	return SR_FALSE;
+	sr_conn_obj_item_t *conn_obj_item = (sr_conn_obj_item_t *)hash_data;
+
+	return (sal_elapsed_time_secs(conn_obj_item->time_stamp) > SR_CONN_OBJ_AGED_TIME);
 }
 
 SR_32 sr_conn_obj_cleanup(void)
 {
-	return sr_gen_hash_slow_delete_all(conn_obj_hash, check_aged_cb);                
+	return sr_gen_hash_cond_delete_all(conn_obj_hash, check_aged_cb);                
 }
 
 SR_32 sr_conn_obj_init(void)
@@ -74,8 +77,6 @@ SR_32 sr_conn_obj_init(void)
 		return SR_ERROR;
 	}
 
-printk("CCCCC Arik conobj p:%p\n", conn_obj_hash);
-
 	return SR_SUCCESS;
 }
 
@@ -89,14 +90,10 @@ SR_32 sr_con_obj_hash_delete_all(void)
 	return sr_gen_hash_delete_all(conn_obj_hash, 0);
 }
 
-SR_32 sr_conn_obj_insert(sr_connection_id_t *con_id, SR_BOOL is_try)
+SR_32 sr_conn_obj_hash_insert(sr_connection_id_t *con_id, SR_BOOL is_try_lock)
 {
 	sr_conn_obj_item_t *conn_obj_item;
 	SR_U8 hash_flags = 0;
-
-        if (sr_gen_hash_get(conn_obj_hash, con_id, 0)) {
-                return SR_ENTRY_EXISTS;
-        }
 
         SR_Zalloc(conn_obj_item, sr_conn_obj_item_t *, sizeof(sr_conn_obj_item_t));
         if (!conn_obj_item) {
@@ -105,7 +102,7 @@ SR_32 sr_conn_obj_insert(sr_connection_id_t *con_id, SR_BOOL is_try)
                 return SR_ERROR;
         }
 
-	if (is_try)
+	if (is_try_lock)
 		hash_flags |= SR_GEN_HASH_TRY_LOCK;
 	memcpy(&(conn_obj_item->con_id), con_id, sizeof(sr_connection_id_t));
 	sal_update_time_counter(&(conn_obj_item->time_stamp));
@@ -118,13 +115,18 @@ SR_32 sr_conn_obj_insert(sr_connection_id_t *con_id, SR_BOOL is_try)
         return SR_SUCCESS;
 }
 
-sr_conn_obj_item_t *sr_con_obj_hash_get(sr_connection_id_t *con_id, SR_BOOL is_try)
+sr_conn_obj_item_t *sr_conn_obj_hash_get(sr_connection_id_t *con_id, SR_BOOL is_try_lock)
 {
 	SR_U8 hash_flags = 0;
+	sr_conn_obj_item_t *conn_obj_item;
 
-	if (is_try)
+	if (is_try_lock)
 		hash_flags |= SR_GEN_HASH_TRY_LOCK;
-	return sr_gen_hash_get(conn_obj_hash, con_id, hash_flags);
+	if (!(conn_obj_item = sr_gen_hash_get(conn_obj_hash, con_id, hash_flags)))
+		return NULL;
+	sal_update_time_counter(&(conn_obj_item->time_stamp));
+	
+	return conn_obj_item;
 }
 
 void sr_conn_obj_hash_print(void)
@@ -132,11 +134,11 @@ void sr_conn_obj_hash_print(void)
 	sr_gen_hash_print(conn_obj_hash);
 }
 
-SR_32 sr_con_obj_exec_for_each(SR_32 (*cb)(void *hash_data, void *data), SR_BOOL is_try)
+SR_32 sr_con_obj_exec_for_each(SR_32 (*cb)(void *hash_data, void *data), SR_BOOL is_try_lock)
 {
 	SR_U8 hash_flags = 0;
 
-	if (is_try)
+	if (is_try_lock)
 		hash_flags |= SR_GEN_HASH_TRY_LOCK;
 
 	return sr_gen_hash_exec_for_each(conn_obj_hash, cb, NULL, hash_flags);

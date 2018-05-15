@@ -247,23 +247,22 @@ static void clean_free_repos(struct sr_gen_hash *hash)
 	}
 }
 
-SR_32 sr_gen_hash_slow_delete_all(struct sr_gen_hash *hash, SR_BOOL (*cond_cb)(void *hash_data))
+SR_32 sr_gen_hash_cond_delete_all(struct sr_gen_hash *hash, SR_BOOL (*cond_cb)(void *hash_data))
 {
 	int i;
 	hash_item_t **iter, *help;
+	SR_SLEEPLES_LOCK_FLAGS flags;
 
 	if (!hash)
 		return SR_ERROR;
-
-	if ((hash->attrs & SR_GEN_HASH_SLOW_DELETE) == 0) 
-		return SR_ERROR; 
 
 	if (!cond_cb)
 		return SR_ERROR; 
 
 	for (i = 0; i < hash->size; i++) {
-		if (hash->attrs & SR_GEN_HASH_WRITE_LOCK)
-			SR_MUTEX_LOCK(&(hash->table[i].lock));
+		if (gen_hash_lock(&(hash->table[i]), hash->attrs, 0, &flags, SR_TRUE) != SR_SUCCESS) {
+			return SR_ERROR;
+		}
 		for (iter = &(hash->table[i].items); *iter; ) {
 			if (!cond_cb((*iter)->data)) {
 				/* Do NOT deletet */
@@ -273,10 +272,14 @@ SR_32 sr_gen_hash_slow_delete_all(struct sr_gen_hash *hash, SR_BOOL (*cond_cb)(v
 			/* Delete */
 			help = *iter;
 			*iter = (*iter)->next;
-			add_object_to_free_repos(hash, help);
+			if (hash->attrs & SR_GEN_HASH_SLOW_DELETE)
+				add_object_to_free_repos(hash, help);
+			else 
+				SR_Free(help);
 		}
-		if (hash->attrs & SR_GEN_HASH_WRITE_LOCK)
-			SR_MUTEX_UNLOCK(&(hash->table[i].lock));
+		if (gen_hash_unlock(&(hash->table[i]), hash->attrs, 0, flags, SR_TRUE) != SR_SUCCESS) {
+			return SR_ERROR;
+		}
 	}
 
 	return SR_SUCCESS;

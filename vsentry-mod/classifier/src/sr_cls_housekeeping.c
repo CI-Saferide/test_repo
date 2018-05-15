@@ -1,7 +1,7 @@
 #include "sr_cls_sk_process.h"
 #include "sr_cls_network.h"
-//#include "sal_mem.h"
 #include "sal_linux.h"
+#include "sr_cls_conn_obj.h"
 
 #define CLS_HOUSEKEEPING_SHCEDULE_USECS 90000000
 static TASK_DESC *cls_housekeeping_task;
@@ -12,6 +12,7 @@ static SR_32 cls_housekeeping_task_func(void *data)
         while (is_run_cls_housekeeping) {
                 sal_schedule_timeout(CLS_HOUSEKEEPING_SHCEDULE_USECS);
 		sr_sk_process_cleanup();
+		sr_conn_obj_cleanup();
 		local_ips_array_init();
         }
 

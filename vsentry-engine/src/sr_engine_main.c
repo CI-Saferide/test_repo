@@ -287,8 +287,10 @@ SR_32 sr_engine_start(void)
 				break;
 			case 'z':
 				printf("print the white list !!!\n");
-				//sr_white_list_hash_print();
+				sr_white_list_hash_print();
 				sr_white_list_ip_print();
+				printf("print connection object:\n");
+				sr_control_util(SR_CONTROL_PRINT);
 				break;
 #endif /* CONFIG_CAN_ML */
 		}

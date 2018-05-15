@@ -53,7 +53,7 @@ static SR_BOOL check_aged_cb(void *hash_data)
 
 SR_32 sr_sk_process_cleanup(void)
 {
-	return sr_gen_hash_slow_delete_all(sk_process_hash, check_aged_cb);                
+	return sr_gen_hash_cond_delete_all(sk_process_hash, check_aged_cb);                
 }
 
 SR_32 sr_cls_sk_process_hash_init(void)
