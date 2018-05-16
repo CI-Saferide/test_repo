@@ -260,11 +260,13 @@ SR_32 sr_white_list_ip_apply(SR_32 is_apply)
 		exec_iter = exec_iter->next;
 		SR_Free(exec_help);
 	}
+	exec_item_list = NULL;
 	for (ip_iter = ip_item_list; ip_iter;) {
 		ip_help = ip_iter;
 		ip_iter = ip_iter->next;
 		SR_Free(ip_help);
 	}
+	ip_item_list = NULL;
 
         if (sys_repo_mng_commit(&sysrepo_handler) != SR_SUCCESS) {
                 CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
