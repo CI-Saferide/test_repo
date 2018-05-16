@@ -949,7 +949,7 @@ static void file_op_convert(SR_U8 file_op, char *perms)
 }
 
 #define ADD_FILE_FIELD(fieldname, fieldvalue) \
-	sprintf(str_param, "%snum='%d']/%s[id='%d']/%s", FILE_PREFIX, rule_id, TUPLE, 0, fieldname); \
+	sprintf(str_param, "%snum='%d']/%s[id='%d']/%s", FILE_PREFIX, rule_id, TUPLE, tuple, fieldname); \
         if (um_set_value(handler->sess, str_param, fieldvalue) != SR_SUCCESS) { \
                 CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, \
                         "%s=after um_set_value str_param:%s: ", REASON, str_param); \
@@ -964,7 +964,7 @@ static void file_op_convert(SR_U8 file_op, char *perms)
                 return SR_ERROR; \
         }
 
-SR_32 sys_repo_mng_create_file_rule(sysrepo_mng_handler_t *handler, SR_32 rule_id, char *file_name, char *exec, char *user, char *action, SR_U8 file_op)
+SR_32 sys_repo_mng_create_file_rule(sysrepo_mng_handler_t *handler, SR_32 rule_id, SR_32 tuple, char *file_name, char *exec, char *user, char *action, SR_U8 file_op)
 {
 	char str_param[MAX_STR_SIZE];
 	char perms[4];
@@ -976,7 +976,7 @@ SR_32 sys_repo_mng_create_file_rule(sysrepo_mng_handler_t *handler, SR_32 rule_i
 			"%s=create rule : um_set_param failed",REASON);
 		return SR_ERROR;
 	}
-	sprintf(str_param, "%snum='%d']/%s[id='%d']", FILE_PREFIX, rule_id, TUPLE, 0);
+	sprintf(str_param, "%snum='%d']/%s[id='%d']", FILE_PREFIX, rule_id, TUPLE, tuple);
 	if (um_set_param(handler->sess, str_param) != SR_SUCCESS) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 			"%s=rule_create : um_set_param failed",REASON);
