@@ -952,19 +952,35 @@ rn_walktree_from(struct radix_head *h, void *a, void *m,
 	struct radix_node *rn, *last = NULL; /* shut up gcc */
 	int stopping = 0;
 	int lastb;
+#ifdef RN_DEBUG
+	struct sockaddr_in *da = (struct sockaddr_in *)a;
+	struct sockaddr_in *dm = (struct sockaddr_in *)m;
+#endif // RN_DEBUG
 
 	if(m == NULL)
 		sal_kernel_print_crit ("%s: mask needs to be specified", __func__);
+
+#ifdef RN_DEBUG
+	sal_kernel_print_info("rn_walktree_from: a = %d.%d.%d.%d, mask = %d.%d.%d.%d\n",
+			da->sin_addr.s_addr & 0xff,
+			(da->sin_addr.s_addr & 0xff00)>> 8,
+			(da->sin_addr.s_addr & 0x00ff0000)>>16,
+			(da->sin_addr.s_addr & 0xff000000)>>24,
+			dm->sin_addr.s_addr & 0xff,
+			(dm->sin_addr.s_addr & 0xff00)>> 8,
+			(dm->sin_addr.s_addr & 0x00ff0000)>>16,
+			(dm->sin_addr.s_addr & 0xff000000)>>24);
+#endif // RN_DEBUG
 
 	/*
 	 * rn_search_m is sort-of-open-coded here. We cannot use the
 	 * function because we need to keep track of the last node seen.
 	 */
-	/* printf("about to search\n"); */
+	//sal_kernel_print_info("about to search\n");
 	for (rn = h->rnh_treetop; rn->rn_bit >= 0; ) {
 		last = rn;
-		/* printf("rn_bit %d, rn_bmask %x, xm[rn_offset] %x\n",
-		       rn->rn_bit, rn->rn_bmask, xm[rn->rn_offset]); */
+		/*sal_kernel_print_info("rn_bit %d, rn_bmask %x, xm[rn_offset] %x\n",
+		rn->rn_bit, rn->rn_bmask, xm[rn->rn_offset]);*/
 		if (!(rn->rn_bmask & xm[rn->rn_offset])) {
 			break;
 		}
@@ -974,7 +990,7 @@ rn_walktree_from(struct radix_head *h, void *a, void *m,
 			rn = rn->rn_left;
 		}
 	}
-	/* printf("done searching\n"); */
+	//sal_kernel_print_info("done searching\n");
 
 	/*
 	 * Two cases: either we stepped off the end of our mask,
@@ -985,7 +1001,7 @@ rn_walktree_from(struct radix_head *h, void *a, void *m,
 		rn = last;
 	lastb = last->rn_bit;
 
-	/* printf("rn %p, lastb %d\n", rn, lastb);*/
+	//sal_kernel_print_info("Two cases: rn 0x%llx, lastb %d\n", (SR_U64)rn & 0xFFFFFFF, lastb);
 
 	/*
 	 * This gets complicated because we may delete the node
@@ -996,7 +1012,7 @@ rn_walktree_from(struct radix_head *h, void *a, void *m,
 		rn = rn->rn_left;
 
 	while (!stopping) {
-		/* printf("node %p (%d)\n", rn, rn->rn_bit); */
+		//sal_kernel_print_info("while (!stopping) 0x%llx\n", (SR_U64)rn & 0xFFFFFFF);
 		base = rn;
 		/* If at right child go back up, otherwise, go right */
 		while (rn->rn_parent->rn_right == rn
@@ -1006,7 +1022,7 @@ rn_walktree_from(struct radix_head *h, void *a, void *m,
 			/* if went up beyond last, stop */
 			if (rn->rn_bit <= lastb) {
 				stopping = 1;
-				/* printf("up too far\n"); */
+				//sal_kernel_print_info("up too far\n");
 				/*
 				 * XXX we should jump to the 'Process leaves'
 				 * part, because the values of 'rn' and 'next'
@@ -1016,6 +1032,7 @@ rn_walktree_from(struct radix_head *h, void *a, void *m,
 				 */
 			}
 		}
+		//sal_kernel_print_info("go back up/go right 0x%llx\n", (SR_U64)rn & 0xFFFFFFF);
 		
 		/* 
 		 * At the top of the tree, no need to traverse the right
@@ -1028,11 +1045,12 @@ rn_walktree_from(struct radix_head *h, void *a, void *m,
 		/* Find the next *leaf* since next node might vanish, too */
 		for (rn = rn->rn_parent->rn_right; rn->rn_bit >= 0;)
 			rn = rn->rn_left;
+		//sal_kernel_print_info("find next leaf 0x%llx\n", (SR_U64)rn & 0xFFFFFFF);
 		next = rn;
 		/* Process leaves */
 		while ((rn = base) != NULL) {
 			base = rn->rn_dupedkey;
-			/* printf("leaf %p\n", rn); */
+			//sal_kernel_print_info("call f() for 0x%llx\n", (SR_U64)rn & 0xFFFFFFF);
 			if (!(rn->rn_flags & RNF_ROOT)
 			    && (error = (*f)(rn, w)))
 				return (error);
@@ -1040,7 +1058,7 @@ rn_walktree_from(struct radix_head *h, void *a, void *m,
 		rn = next;
 
 		if (rn->rn_flags & RNF_ROOT) {
-			/* printf("root, stopping"); */
+			//sal_kernel_print_info("root, stopping");
 			stopping = 1;
 		}
 
@@ -1193,5 +1211,84 @@ rn_detachhead(void **head)
 	*head = NULL;
 
 	return (1);
+}
+
+static void
+rn_printnode(struct radix_node *n, int level)
+{
+	SR_U8 *p;
+#ifdef __KERNEL__
+	bit_array matched_rules;
+	SR_16 rule;
+#endif // __KERNEL__
+
+	if (n != NULL) {
+		printk("**lvl %d** n = 0x%07llx, b = %s%d, f = %s|%s|%s, ",
+				level,
+				(SR_U64)n & 0xFFFFFFF,
+				n->rn_bit > 0 ? " " : "",
+				n->rn_bit,
+				n->rn_flags & RNF_NORMAL ? "N" : " ",
+				n->rn_flags & RNF_ROOT ? "R" : " ",
+				n->rn_flags & RNF_ACTIVE ? "A" : " ");
+		if (n == n->rn_parent) {
+			printk("p = NONE     ");
+		} else {
+			printk("p = 0x%07llx",
+					(SR_U64)n->rn_parent & 0xFFFFFFF);
+		}
+		if (n->rn_flags & RNF_ACTIVE) {
+			if (n->rn_bit >= 0) {
+				// node: print bmask, offset, left, right
+				printk(", bm = 0x%02x, o = %d, l = 0x%07llx, r = 0x%07llx",
+						(SR_U8)n->rn_bmask,
+						n->rn_offset,
+						(SR_U64)n->rn_left & 0xFFFFFFF,
+						(SR_U64)n->rn_right & 0xFFFFFFF);
+			} else {
+				// leaf: print dup, ip, rules
+				// todo should it be if (n->rn_flags & RNF_NORMAL) {
+				if (n->rn_bit != -33) { // not empty
+					p = (SR_U8 *)(n->rn_key + 4);
+					printk(", ip = %d.%d.%d.%d",
+							p[0], p[1], p[2], p[3]);
+					p = (SR_U8 *)(n->rn_mask + 4);
+					printk(", mask = %d.%d.%d.%d",
+							p[0], p[1], p[2], p[3]);
+
+#ifdef __KERNEL__
+					memcpy(&matched_rules, &n->sr_private.rules, sizeof(matched_rules));
+					printk(", rules:");
+					while ((rule = sal_ffs_and_clear_array (&matched_rules)) != -1) {
+						printk(" %d", rule);
+					}
+#endif // __KERNEL__
+				}
+			}
+			printk("\n");
+
+			// for non empty leaf - print duplicated (if exist)
+			if ((n->rn_bit < 0) && (n->rn_bit != -33) && n->rn_dupedkey) {
+				printk("duplicated node:\n");
+				rn_printnode(n->rn_dupedkey, level); // same level
+			}
+
+			// print left and right
+			if (n->rn_bit >= 0) {
+				rn_printnode(n->rn_left, level + 1);
+				rn_printnode(n->rn_right, level + 1);
+			}
+		}
+	}
+}
+
+void
+rn_printtree(struct radix_head *h)
+{
+	int level = 0;
+
+	if (h == NULL)
+		return;
+	rn_printnode(h->rnh_treetop, level);
 }
 
