@@ -251,7 +251,7 @@ SR_32 sr_classifier_file(disp_info_t* info)
 	SR_U16 def_action = SR_CLS_ACTION_NOOP;//just default action
 	int st;
 	struct config_params_t *config_params;
-	
+
 #ifdef ROOT_CLS_IGNORE
 	if (!info->tuple_info.id.uid) return SR_CLS_ACTION_ALLOW; // Don't mess up root access
 #endif
