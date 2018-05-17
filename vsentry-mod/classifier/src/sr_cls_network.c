@@ -161,7 +161,7 @@ int sr_cls_add_ipv4(SR_U32 addr, SR_U32 netmask, int rulenum, SR_8 dir)
 			tree_head = sr_cls_dst_ipv4;
 		}
 
-		//sal_kernel_print_info("add rule %d:\n", rulenum);
+		//sal_kernel_print_info("\nadd rule %d:\n", rulenum);
 		node = rn_addroute((void*)ip, (void*)mask, tree_head, treenodes);
 		if (!node) { // failed to insert or node already exist
 			// free memory - IP will be freed later
@@ -276,6 +276,7 @@ int sr_cls_add_ipv4(SR_U32 addr, SR_U32 netmask, int rulenum, SR_8 dir)
 	}
 
 	//sal_kernel_print_alert("sr_cls_add_ipv4: added node has address %lx\n", (unsigned long)node);
+	//rn_printtree(tree_head);
 	return 0;
 }
 
@@ -318,7 +319,7 @@ int sr_cls_del_ipv4(SR_U32 addr, SR_U32 netmask, int rulenum, SR_8 dir)
 		return SR_ERROR;
 	}
 
-	//sal_kernel_print_info("del rule %d:\n", rulenum);
+	//sal_kernel_print_info("\ndel rule %d:\n", rulenum);
 	addrule_data.add_rule = 0; // delete
 	addrule_data.rulenum = rulenum;
 	addrule_data.node = node;
@@ -334,6 +335,7 @@ int sr_cls_del_ipv4(SR_U32 addr, SR_U32 netmask, int rulenum, SR_8 dir)
 		sal_clear_bit_array((SR_U32)(long)rulenum, (dir==SR_DIR_SRC)?&sr_cls_network_src_any_rules:&sr_cls_network_dst_any_rules);
 	}
 
+	//rn_printtree(tree_head);
 	return 0;
 }
 
@@ -618,12 +620,12 @@ int sr_cls_network_ut2(void)
 	ret |= sr_cls_find_ipv4_verify(htonl(0xABCDEF09), SR_DIR_DST, rules, 6);
 
 	sr_cls_del_ipv4(htonl(0xABCDEF09), htonl(0xffff0000),10, SR_DIR_DST);
-	sr_cls_del_ipv4(htonl(0xABCDEF09), htonl(0xfffffff0),40, SR_DIR_DST);
+	sr_cls_del_ipv4(htonl(0xABCDEF09), htonl(0xfffffff0),40, SR_DIR_DST); // del orig of 2 dups
 
 	rules[0] = 20;
 	rules[1] = 30;
 	rules[2] = 50;
-	ret |= sr_cls_find_ipv4_verify(htonl(0xABCDEF00), SR_DIR_DST, rules, 3);
+	ret |= sr_cls_find_ipv4_verify(htonl(0xABCDEF00), SR_DIR_DST, rules, 3); // still has dups rules
 	rules[3] = 60;
 	ret |= sr_cls_find_ipv4_verify(htonl(0xABCDEF09), SR_DIR_DST, rules, 4);
 
