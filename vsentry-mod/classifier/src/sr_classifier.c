@@ -250,8 +250,8 @@ SR_32 sr_classifier_file(disp_info_t* info)
 	SR_U16 action;
 	SR_U16 def_action = SR_CLS_ACTION_NOOP;//just default action
 	int st;
-	struct config_params_t *config_params;	
-  	     
+	struct config_params_t *config_params;
+	
 #ifdef ROOT_CLS_IGNORE
 	if (!info->tuple_info.id.uid) return SR_CLS_ACTION_ALLOW; // Don't mess up root access
 #endif
@@ -260,7 +260,7 @@ SR_32 sr_classifier_file(disp_info_t* info)
 	config_params = sr_control_config_params();	
 	cls_file_mem_optimization_t dparent_flag = CLS_FILE_MEM_OPT_ONLY_DIR;
 	tmp_info = info;
-	
+
 	sal_or_self_op_arrays(&ba_res, sr_cls_file_any());
 	
 	if (info->fileinfo.current_inode != INODE_ANY) {
@@ -275,9 +275,9 @@ SR_32 sr_classifier_file(disp_info_t* info)
 			sal_or_self_op_arrays(&ba_res, ptr);
 		}
 	}
-	
+
 check_parent:
-	
+
 	if (tmp_info->fileinfo.parent_inode != INODE_ANY) {
 		ptr = sr_cls_file_find(tmp_info->fileinfo.parent_inode);
 		if (ptr) {
