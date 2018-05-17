@@ -244,38 +244,27 @@ result:
 
 SR_32 sr_classifier_file(disp_info_t* info)
 {
+	disp_info_t* tmp_info;
 	bit_array *ptr = NULL, ba_res;
 	SR_16 rule = SR_CLS_NO_MATCH;
 	SR_U16 action;
 	SR_U16 def_action = SR_CLS_ACTION_NOOP;//just default action
 	int st;
-	struct config_params_t *config_params;
-
-        
+	struct config_params_t *config_params;	
+  	     
 #ifdef ROOT_CLS_IGNORE
 	if (!info->tuple_info.id.uid) return SR_CLS_ACTION_ALLOW; // Don't mess up root access
 #endif
 
 	memset(&ba_res, 0, sizeof(bit_array));
 	config_params = sr_control_config_params();	
-	
-	if(info->fileinfo.parent_info){
-		info=(disp_info_t*)sal_get_parent_dir(info);
-		/*	DNG prints for integration - should be removed befor merging to master
-		 * 	
-		printk("CLS FILE INODE=%d\n",info->fileinfo.parent_inode);
-		*/
-	}
+	cls_file_mem_optimization_t dparent_flag = CLS_FILE_MEM_OPT_ONLY_DIR;
+	tmp_info = info;
 	
 	sal_or_self_op_arrays(&ba_res, sr_cls_file_any());
+	
 	if (info->fileinfo.current_inode != INODE_ANY) {
 		ptr = sr_cls_file_find(info->fileinfo.current_inode);
-		if (ptr) {
-			sal_or_self_op_arrays(&ba_res, ptr);
-		}
-	}
-	if (info->fileinfo.parent_inode != INODE_ANY) {
-		ptr = sr_cls_file_find(info->fileinfo.parent_inode);
 		if (ptr) {
 			sal_or_self_op_arrays(&ba_res, ptr);
 		}
@@ -286,10 +275,40 @@ SR_32 sr_classifier_file(disp_info_t* info)
 			sal_or_self_op_arrays(&ba_res, ptr);
 		}
 	}
-	if (info->fileinfo.old_parent_inode != INODE_ANY) {
-		ptr = sr_cls_file_find(info->fileinfo.old_parent_inode);
+	
+check_parent:
+	
+	if (tmp_info->fileinfo.parent_inode != INODE_ANY) {
+		ptr = sr_cls_file_find(tmp_info->fileinfo.parent_inode);
 		if (ptr) {
 			sal_or_self_op_arrays(&ba_res, ptr);
+		}else if(dparent_flag == CLS_FILE_MEM_OPT_ONLY_DIR){		
+			if(tmp_info->fileinfo.parent_info){ //safty check if the "parent_info" ptr is null for some reason...
+				tmp_info=(disp_info_t*)sal_get_parent_dir(tmp_info);
+				if(tmp_info){// check if we in ROOT "/" directory cuz info will be null
+					tmp_info->fileinfo.parent_inode = tmp_info->fileinfo.parent_directory_inode;		
+					goto check_parent;
+				}
+			}		
+		}
+	}
+	
+	tmp_info = info; // restore the info to previous state
+	
+check_old_parent:
+
+	if (tmp_info->fileinfo.old_parent_inode != INODE_ANY) {
+		ptr = sr_cls_file_find(tmp_info->fileinfo.old_parent_inode);
+		if (ptr) {
+			sal_or_self_op_arrays(&ba_res, ptr);
+		}else if(dparent_flag == CLS_FILE_MEM_OPT_ONLY_DIR){		
+			if(tmp_info->fileinfo.parent_info){ //safty check if the "parent_info" ptr is null for some reason...
+				tmp_info=(disp_info_t*)sal_get_parent_dir(tmp_info);
+				if(tmp_info){
+					tmp_info->fileinfo.old_parent_inode = tmp_info->fileinfo.parent_directory_inode;
+					goto check_old_parent;
+				}
+			}		
 		}
 	}
 	

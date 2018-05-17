@@ -217,9 +217,7 @@ void* sal_get_parent_dir(void* info)
 {
     struct dentry *tmp_dir;
     disp_info_t* tmp_info;
-    
-
-       
+  
     tmp_info = (disp_info_t*)info;
     tmp_dir = (struct dentry*)tmp_info->fileinfo.parent_info;
     
@@ -228,21 +226,39 @@ void* sal_get_parent_dir(void* info)
     
 	if(!SR_IS_ROOT(tmp_dir)){
 		tmp_info->fileinfo.parent_info = tmp_dir->d_parent;
-		tmp_info->fileinfo.parent_inode = tmp_dir->d_inode->i_ino;
+		tmp_info->fileinfo.parent_directory_inode = tmp_dir->d_inode->i_ino;
+	/************************************************/
+	/*												*/
+	/*	DBG prints for integration only				*/
+	/*	-> SHOULD BE REMOVED AFTER INTEGRETION		*/
+	/*												*/
+	/************************************************/
+		/*
+		SR_U8 filename[SR_MAX_PATH_SIZE];
+		memset(&filename, 0, sizeof(filename));
+		strncpy(filename, tmp_dir->d_iname,
+				MIN(sizeof(filename), 1+strlen(tmp_dir->d_iname)));	
+		printk("[%s]FILE=%s, INODE=%ld \n",__func__,filename,tmp_dir->d_inode->i_ino);
+		*/
+		return tmp_info;
+	}else{
+		/*
+		SR_U8 filename[SR_MAX_PATH_SIZE];
+		memset(&filename, 0, sizeof(filename));
+		strncpy(filename, tmp_dir->d_iname,
+				MIN(sizeof(filename), 1+strlen(tmp_dir->d_iname)));	
+		//printk("ROOTTTTTT [%s]FILE=%s, INODE=%ld \n",__func__,filename,tmp_dir->d_inode->i_ino);
+		*/
+		return NULL;
 	}
-	
-	/* DBG prints for integration only -> will be removed befor merging to master	
-	SR_U8 filename[SR_MAX_PATH_SIZE];
-	memset(&filename, 0, sizeof(filename));
-	strncpy(filename, tmp_dir->d_iname,
-			MIN(sizeof(filename), 1+strlen(tmp_dir->d_iname)));	
-	printk("[%s]FILE=%s, INODE=%ld \n",__func__,filename,tmp_dir->d_inode->i_ino);
-	*/
-	
-	return tmp_info;
 }
-/* DBG function for printing all parents of a file
- * or dir
+	/************************************************/
+	/*												*/
+	/*	DBG prints for integration only				*/
+	/*	-> SHOULD BE REMOVED AFTER INTEGRETION		*/
+	/*												*/
+	/************************************************/
+/*
 SR_U32 sal_get_parent_dir(void* dir)
 {
     struct dentry *tmp_dir;
@@ -251,20 +267,20 @@ SR_U32 sal_get_parent_dir(void* dir)
     if(!dir) return SR_ERROR;
     
     tmp_dir = (struct dentry*)dir;
-    
+  
     printk("[%s] PATH=",__func__);
-    
+
 	while(!IS_ROOT(tmp_dir)){
 		memset(&filename, 0, sizeof(filename));
 		strncpy(filename, tmp_dir->d_iname,
 			MIN(sizeof(filename), 1+strlen(tmp_dir->d_iname)));
-			
 		printk("%s/",filename);
 		tmp_dir=tmp_dir->d_parent;
 	}
 	printk("\n");
 	return tmp_dir->d_inode->i_ino;
-}*/
+}
+*/
 
 void sal_update_time_counter(SR_TIME_COUNT *time_count)
 {
