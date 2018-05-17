@@ -227,12 +227,12 @@ void* sal_get_parent_dir(void* info)
 	if(!SR_IS_ROOT(tmp_dir)){
 		tmp_info->fileinfo.parent_info = tmp_dir->d_parent;
 		tmp_info->fileinfo.parent_directory_inode = tmp_dir->d_inode->i_ino;
-	/************************************************/
-	/*												*/
-	/*	DBG prints for integration only				*/
-	/*	-> SHOULD BE REMOVED AFTER INTEGRETION		*/
-	/*												*/
-	/************************************************/
+	/******************************************/
+	/*                                        */
+	/* DBG prints for integration only        */
+	/* -> SHOULD BE REMOVED AFTER INTEGRETION */
+	/*                                        */
+	/******************************************/
 		/*
 		SR_U8 filename[SR_MAX_PATH_SIZE];
 		memset(&filename, 0, sizeof(filename));
@@ -252,12 +252,12 @@ void* sal_get_parent_dir(void* info)
 		return NULL;
 	}
 }
-	/************************************************/
-	/*												*/
-	/*	DBG prints for integration only				*/
-	/*	-> SHOULD BE REMOVED AFTER INTEGRETION		*/
-	/*												*/
-	/************************************************/
+	/******************************************/
+	/*                                        */
+	/* DBG prints for integration only        */
+	/* -> SHOULD BE REMOVED AFTER INTEGRETION */
+	/*                                        */
+	/******************************************/
 /*
 SR_U32 sal_get_parent_dir(void* dir)
 {

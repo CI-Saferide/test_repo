@@ -647,7 +647,7 @@ SR_32 vsentry_file_open(struct file *file, const struct cred *cred)
 
 	/* gather metadata */
 	if (file->f_path.dentry->d_inode)
-		disp.fileinfo.current_inode = file->f_path.dentry->d_inode->i_ino;		
+		disp.fileinfo.current_inode = file->f_path.dentry->d_inode->i_ino;
 	else
 		CEF_log_event(SR_CEF_CID_SYSTEM, "Error", SEVERITY_HIGH,
 						"[%s] inode in null\n", hook_event_names[HOOK_FILE_OPEN].name);
@@ -656,7 +656,7 @@ SR_32 vsentry_file_open(struct file *file, const struct cred *cred)
 		disp.fileinfo.parent_info = file->f_path.dentry->d_parent;
 	}else
 		disp.fileinfo.parent_inode = 0;
-		
+
 	disp.fileinfo.id.uid = (int)rcred->uid.val;
 	disp.fileinfo.id.pid = current->pid;
 	if (file->f_mode & FMODE_WRITE)
@@ -717,7 +717,7 @@ SR_32 vsentry_inode_link(struct dentry *old_dentry, struct inode *dir, struct de
 	disp_info_t disp;
 	struct task_struct *ts = current;
 	const struct cred *rcred= ts->real_cred;
-		
+
 	memset(&disp, 0, sizeof(disp_info_t));
 	
 	/* check vsentry state */
@@ -728,7 +728,7 @@ SR_32 vsentry_inode_link(struct dentry *old_dentry, struct inode *dir, struct de
 
 	/* gather metadata */
 	if ((new_dentry->d_parent) && (new_dentry->d_parent->d_inode))
-		disp.fileinfo.parent_inode = new_dentry->d_parent->d_inode->i_ino;		
+		disp.fileinfo.parent_inode = new_dentry->d_parent->d_inode->i_ino;
 	else
 		CEF_log_event(SR_CEF_CID_SYSTEM, "Error", SEVERITY_HIGH,
 						"[%s] parent inode in null\n", hook_event_names[HOOK_INODE_LINK].name);
