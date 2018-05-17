@@ -251,13 +251,22 @@ SR_32 sr_classifier_file(disp_info_t* info)
 	int st;
 	struct config_params_t *config_params;
 
+        
 #ifdef ROOT_CLS_IGNORE
 	if (!info->tuple_info.id.uid) return SR_CLS_ACTION_ALLOW; // Don't mess up root access
 #endif
 
 	memset(&ba_res, 0, sizeof(bit_array));
-	config_params = sr_control_config_params();
-
+	config_params = sr_control_config_params();	
+	
+	if(info->fileinfo.parent_info){
+		info=(disp_info_t*)sal_get_parent_dir(info);
+		/*	DNG prints for integration - should be removed befor merging to master
+		 * 	
+		printk("CLS FILE INODE=%d\n",info->fileinfo.parent_inode);
+		*/
+	}
+	
 	sal_or_self_op_arrays(&ba_res, sr_cls_file_any());
 	if (info->fileinfo.current_inode != INODE_ANY) {
 		ptr = sr_cls_file_find(info->fileinfo.current_inode);

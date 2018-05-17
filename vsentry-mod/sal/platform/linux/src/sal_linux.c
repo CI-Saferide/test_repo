@@ -5,6 +5,7 @@
 #include "sal_linux.h"
 #include "sr_tasks.h"
 #include "sr_sal_common.h"
+#include "dispatcher.h"
 #include <linux/netdevice.h>
 #include <linux/inetdevice.h>
 
@@ -211,6 +212,59 @@ SR_U32 sal_get_exec_inode(SR_32 pid)
 	   return 0;
 	return exe_file->f_path.dentry->d_inode->i_ino;
 }
+
+void* sal_get_parent_dir(void* info)
+{
+    struct dentry *tmp_dir;
+    disp_info_t* tmp_info;
+    
+
+       
+    tmp_info = (disp_info_t*)info;
+    tmp_dir = (struct dentry*)tmp_info->fileinfo.parent_info;
+    
+        if(!tmp_dir)
+			return NULL;
+    
+	if(!SR_IS_ROOT(tmp_dir)){
+		tmp_info->fileinfo.parent_info = tmp_dir->d_parent;
+		tmp_info->fileinfo.parent_inode = tmp_dir->d_inode->i_ino;
+	}
+	
+	/* DBG prints for integration only -> will be removed befor merging to master	
+	SR_U8 filename[SR_MAX_PATH_SIZE];
+	memset(&filename, 0, sizeof(filename));
+	strncpy(filename, tmp_dir->d_iname,
+			MIN(sizeof(filename), 1+strlen(tmp_dir->d_iname)));	
+	printk("[%s]FILE=%s, INODE=%ld \n",__func__,filename,tmp_dir->d_inode->i_ino);
+	*/
+	
+	return tmp_info;
+}
+/* DBG function for printing all parents of a file
+ * or dir
+SR_U32 sal_get_parent_dir(void* dir)
+{
+    struct dentry *tmp_dir;
+    SR_U8 filename[SR_MAX_PATH_SIZE];
+    
+    if(!dir) return SR_ERROR;
+    
+    tmp_dir = (struct dentry*)dir;
+    
+    printk("[%s] PATH=",__func__);
+    
+	while(!IS_ROOT(tmp_dir)){
+		memset(&filename, 0, sizeof(filename));
+		strncpy(filename, tmp_dir->d_iname,
+			MIN(sizeof(filename), 1+strlen(tmp_dir->d_iname)));
+			
+		printk("%s/",filename);
+		tmp_dir=tmp_dir->d_parent;
+	}
+	printk("\n");
+	return tmp_dir->d_inode->i_ino;
+}*/
 
 void sal_update_time_counter(SR_TIME_COUNT *time_count)
 {

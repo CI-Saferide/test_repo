@@ -49,6 +49,7 @@
 #define SR_KFREE kfree
 #define SR_FREE vfree
 #define SR_TIME_COUNT unsigned long
+#define SR_IS_ROOT(x) IS_ROOT(x)
 
 /* kernel print definitions */
 #define pr_fmt(fmt) fmt
@@ -100,5 +101,9 @@ SR_32 sal_get_local_ips(SR_U32 local_ips[], SR_U32 *count, SR_U32 max);
 
 // Process functions
 SR_U32 sal_get_exec_inode(SR_32 pid);
+
+//files and directories functions
+//SR_U32 sal_get_parent_dir(void* dir);
+void* sal_get_parent_dir(void* info);
 
 #endif /* SAL_LINUX_H*/
