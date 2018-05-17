@@ -54,6 +54,7 @@ typedef union {
 		SR_U8 		filename[SR_MAX_PATH_SIZE];
 		SR_U8 		fullpath[SR_MAX_PATH_SIZE];
 		SR_U8 		old_path[SR_MAX_PATH_SIZE];
+		dev_type_t  dev_type;
 	}fileinfo;
 
 /* socket related functions */
@@ -114,6 +115,7 @@ SR_32 disp_inode_symlink(disp_info_t* info);
 SR_32 disp_inode_rename(disp_info_t* info);
 void disp_inode_remove(SR_U32 inode);
 SR_32 disp_file_created(disp_info_t* info);
+SR_32 disp_file_open_report(disp_info_t* info);
 
 SR_32 disp_socket_connect(disp_info_t* info);
 SR_32 disp_socket_accept(disp_info_t* info);

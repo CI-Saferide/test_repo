@@ -2,10 +2,12 @@
 #include "sr_msg.h"
 #include "sr_msg_dispatch.h"
 #include "sr_ec_common.h"
-#include "sr_ml_conngraph.h"
 #include "sr_event_receiver.h"
 #include "sr_stat_analysis.h"
 #include "sr_stat_process_connection.h"
+#include "sr_white_list_file.h"
+#include "sr_white_list_can.h"
+#include "sr_white_list_ip.h"
 
 void sr_event_stats_receiver(SR_8 *msg_buff, SR_U32 msg_len)
 {
@@ -13,6 +15,9 @@ void sr_event_stats_receiver(SR_8 *msg_buff, SR_U32 msg_len)
 	struct sr_ec_connection_stat_t *pConStats;
 	struct sr_ec_connection_transmit_t *pConTran;
 	sr_stat_connection_info_t connection_info = {};
+	struct sr_ec_file_open_t *pFile_open;
+	struct sr_ec_can_t *wl_can;
+	struct sr_ec_new_connection_t *pNewConnection, new_con;
 
 	while (offset < msg_len) {
 		switch  (msg_buff[offset++]) {
@@ -32,7 +37,7 @@ void sr_event_stats_receiver(SR_8 *msg_buff, SR_U32 msg_len)
 #ifdef SR_STAT_ANALYSIS_DEBUG
 				if (pConStats->con_id.sport == 5001 || pConStats->con_id.dport == 5001 ||
 				    pConStats->con_id.sport == 22 || pConStats->con_id.dport == 22) { 
-				CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,
+				CEF_log_event(SR_CEF_CID_SYSTEM, "info", SEVERITY_LOW,
 					"%s=CONN DEBUG proto:%d saddr:%x daddr:%x sport:%d dport:%d pid:%d rx_msgs:%d rx_bytes:%d tx_msgs:%d tx_bytes:%d time:%llu",MESSAGE,
 					pConStats->con_id.ip_proto, 
 					pConStats->con_id.source_addr.v4addr,
@@ -47,6 +52,17 @@ void sr_event_stats_receiver(SR_8 *msg_buff, SR_U32 msg_len)
 					pConStats->curr_time);
 				}
 #endif
+				/* If learn send to conection graph */
+				if (connection_info.con_id.ip_proto == 17 && pConStats->is_outgoing) {
+					new_con.pid = pConStats->pid;
+					new_con.remote_addr = pConStats->con_id.remote_addr;
+					new_con.ip_proto = pConStats->con_id.ip_proto;
+					if (sr_white_list_ip_new_connection(&new_con) != SR_SUCCESS) {
+						CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+							"%s=failed to hash exec for process canbus",REASON);
+					}
+				}
+
 				if ((rc = sr_stat_process_connection_hash_update(pConStats->pid, &connection_info)) != SR_SUCCESS) {
                 			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 								"%s=failed to update hash table for process connection",REASON);
@@ -64,6 +80,34 @@ void sr_event_stats_receiver(SR_8 *msg_buff, SR_U32 msg_len)
 				/* Use this oportunity to check for aging */
 				sr_stat_analysis_handle_aging();
 				break;
+			case SR_EVENT_STATS_FILE_OPEN:
+				pFile_open = (struct sr_ec_file_open_t *) &msg_buff[offset];
+				offset += sizeof(struct sr_ec_file_open_t);
+				if ((rc = sr_white_list_file_open(pFile_open)) != SR_SUCCESS) {
+                			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+								"%s=sr_white_list_open failed",REASON);
+					break;	
+				}
+				break;
+			case SR_EVENT_STATS_CANBUS:
+				wl_can = (struct sr_ec_can_t *) &msg_buff[offset];
+				offset += sizeof(struct sr_ec_can_t);
+				
+				if ((rc = sr_white_list_canbus(wl_can)) != SR_SUCCESS) { // hashing function
+                			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+								"%s=failed to hash exec for process canbus",REASON);
+					break;	
+				}
+				break;					
+			case SR_EVENT_STATS_NEW_CONNECTION:
+				pNewConnection = (struct sr_ec_new_connection_t *) &msg_buff[offset];
+				offset += sizeof(struct sr_ec_new_connection_t);
+				if (sr_white_list_ip_new_connection(pNewConnection) != SR_SUCCESS) {
+                			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+								"%s=failed to hash exec for process ip new connection creation",REASON);
+					break;	
+				}
+                                break;
 			default:
 				break;
 		}

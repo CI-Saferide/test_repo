@@ -18,6 +18,7 @@ typedef struct sr_connection_data {
 	SR_U32 tx_bytes;
 	void *LRU_ptr;
 	SR_TIME_COUNT time_count;
+	SR_BOOL is_outgoing;
 } sr_connection_data_t;
 
 SR_U32 sr_stat_connection_init(void);

@@ -39,7 +39,7 @@ static void ip_rule_print_cb(void *data)
 {
 	ip_rule_t *ip_rule = (ip_rule_t *)data;
 					
-	CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,
+	CEF_log_event(SR_CEF_CID_SYSTEM, "info", SEVERITY_LOW,
 		"%s=%d %s=%d %s=%d %s=%x %s=%d %s=%x %s=%d",
 		RULE_NUM_KEY,ip_rule->rulenum, 
 		"TupleID",ip_rule->tuple.id, 

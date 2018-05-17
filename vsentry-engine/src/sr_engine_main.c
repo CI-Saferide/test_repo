@@ -13,7 +13,6 @@
 #include "sr_cls_rules_control.h"
 #include "sr_event_receiver.h"
 #include "sr_config.h"
-#include "sr_ml_conngraph.h"
 #include "sr_sal_common.h"
 #include "sr_control.h"
 #include "sr_ver.h"
@@ -24,6 +23,7 @@
 #include "sr_info_gather.h"
 #include "sr_static_policy.h"
 #include "sr_white_list.h"
+#include "sr_white_list_ip.h"
 #ifdef CONFIG_STAT_ANALYSIS
 #include "sr_stat_analysis.h"
 #endif
@@ -43,8 +43,10 @@ static SR_32 engine_main_loop(void *data)
 {
 	SR_32 ret;
 	SR_8 *msg;
+	int fd;
+	ssize_t n __attribute__((unused));
 
-	CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,
+	CEF_log_event(SR_CEF_CID_SYSTEM, "info", SEVERITY_LOW,
 		"%s=engine_main_loop started",MESSAGE);
 
 	/* init the module2engine buffer*/
@@ -55,6 +57,12 @@ static SR_32 engine_main_loop(void *data)
 		return SR_ERROR;
 	}
 
+	if (!(fd = sal_get_vsentry_fd())) {
+                CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_LOW,
+                        "%s=sr_info_gather_loop: no vsenbtry fd", REASON);
+                return SR_ERROR;
+	}
+
 	while (!sr_task_should_stop(SR_ENGINE_TASK)) {
 		msg = sr_read_msg(MOD2ENG_BUF, &ret);
 		if (ret > 0) {
@@ -63,7 +71,7 @@ static SR_32 engine_main_loop(void *data)
 		}
 
 		if (ret == 0)
-			sal_schedule_timeout(1);
+			n = read(fd, NULL, SR_SYNC_ENGINE);
 	}
 
 	/* free allocated buffer */
@@ -94,7 +102,7 @@ static void eng2mod_test(void)
 	}
 }
 
-SR_32 sr_engine_start(void)
+SR_32 sr_engine_start(int argc, char *argv[])
 {
 	SR_32 ret;
 	SR_BOOL run = SR_TRUE;
@@ -102,8 +110,35 @@ SR_32 sr_engine_start(void)
 	sr_config_msg_t *msg;
 	struct config_params_t *config_params;
 	struct canTaskParams *can_args;
+	SR_8 *config_file = NULL;
+	SR_32 cmd_line;
 	
-	read_vsentry_config("/etc/sentry/sr_config");
+	while ((cmd_line = getopt (argc, argv, "hc:")) != -1)
+	switch (cmd_line) {
+		case 'h':
+			printf ("param					description\n");
+			printf ("----------------------------------------------------------------------\n");
+			printf ("-c [path]				specifies configuration file full path\n");        
+			printf ("\n");
+			return 0;
+			break;
+		case 'c':
+			config_file = optarg;
+			break;
+	}
+	
+	if (NULL == config_file) {
+		/* no config file parameters passed, using current directory */
+		char cwd[1024];
+		if (getcwd(cwd, sizeof(cwd)) != NULL) {
+			strcat(cwd, "/sr_config");
+			read_vsentry_config(cwd);
+		} else
+			/* try without current directory */
+			read_vsentry_config("sr_config");
+	} else
+		/* using config file from cmd_line */
+		read_vsentry_config(config_file);
 
 	config_params = sr_config_get_param();
 	can_args = sr_can_collector_args();
@@ -113,7 +148,7 @@ SR_32 sr_engine_start(void)
 		printf("failed to init sr_log\n");
 		return SR_ERROR;
 	}
-	CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,
+	CEF_log_event(SR_CEF_CID_SYSTEM, "info", SEVERITY_LOW,
 		"%s=vsentry engine started",MESSAGE);
 
 #ifdef SUPPORT_REMOTE_SERVER
@@ -128,6 +163,13 @@ SR_32 sr_engine_start(void)
 	if (ret != SR_SUCCESS){
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 						"%s=failed to init sr_white_list_init",REASON);
+		return SR_ERROR;
+	}
+
+	ret = sal_vsentry_fd_open();
+	if (ret != SR_SUCCESS){
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+						"%s=failed sal_fd_vsentry_open", REASON);
 		return SR_ERROR;
 	}
 
@@ -156,10 +198,10 @@ SR_32 sr_engine_start(void)
 		return SR_ERROR;
 	}
 
-	ret = sr_ml_conngraph_init();
+	ret = sr_white_list_ip_init();
 	if (ret != SR_SUCCESS){
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-						"%s=failed to init sr_ml_conngraph",REASON);
+						"%s=failed to init sr_white_list_ip_init",REASON);
 		return SR_ERROR;
 	}
 
@@ -213,10 +255,10 @@ SR_32 sr_engine_start(void)
 							"%s=failed to start can-bus collector",REASON);
 			return SR_ERROR;	
 		}	
-		CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,
+		CEF_log_event(SR_CEF_CID_SYSTEM, "info", SEVERITY_LOW,
 						"%s=can-bus collector - enabled!",MESSAGE);
 	} else {
-		CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,
+		CEF_log_event(SR_CEF_CID_SYSTEM, "info", SEVERITY_LOW,
 						"%s=can-bus collector - disabled!",MESSAGE);
 	}
 	/* indicate VPI that we are running */
@@ -267,6 +309,23 @@ SR_32 sr_engine_start(void)
 					printf ("printing debug info for ml_can\n");
 					sr_ml_can_print_hash();
 				break;
+			case 'e':
+					printf ("Move to WL learn mode \n");
+					sr_white_list_set_mode(SR_WL_MODE_LEARN);
+				break;
+			case 'f':
+				printf ("Move to WL prootect mode \n");
+				sr_white_list_set_mode(SR_WL_MODE_APPLY);
+				break;
+			case 'g':
+				printf ("Move to WL OFF mode \n");
+				sr_white_list_set_mode(SR_WL_MODE_OFF);
+				break;
+			case 'z':
+				printf("print the white list !!!\n");
+				//sr_white_list_hash_print();
+				sr_white_list_ip_print();
+				break;
 #endif /* CONFIG_CAN_ML */
 		}
 	}
@@ -283,6 +342,7 @@ SR_32 sr_engine_start(void)
 	sr_stat_analysis_uninit();
 #endif /* CONFIG_STAT_ANALYSIS */
 	sr_white_list_uninit();
+	sr_white_list_ip_uninit();
 #ifdef CONFIG_CAN_ML
 	sr_ml_can_hash_deinit();
 #endif /* CONFIG_CAN_ML */
@@ -291,5 +351,6 @@ SR_32 sr_engine_start(void)
 	sr_db_deinit();
 	sr_log_uploader_deinit();
 	sr_log_deinit();
+	sal_vsentry_fd_close();
 	return 0;
 }

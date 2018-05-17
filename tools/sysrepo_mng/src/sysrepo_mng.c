@@ -1,6 +1,7 @@
 #include <sysrepo_mng.h>
 #include <sysrepo.h>
 #include "sr_cls_network_common.h"
+#include "sr_actions_common.h"
 #include "sr_msg.h"
 #include "sentry.h"
 #include "action.h"
@@ -928,6 +929,229 @@ SR_32 sysrepo_mng_session_end(sysrepo_mng_handler_t *handler)
         if (NULL != handler->conn) {
                 sr_disconnect(handler->conn);
 		handler->conn = NULL;
+	}
+
+	return SR_SUCCESS;
+}
+
+static void file_op_convert(SR_U8 file_op, char *perms)
+{
+	SR_U8 res = 0;
+
+	if (file_op & SR_FILEOPS_READ) 
+		res |= 4;
+	if (file_op & SR_FILEOPS_WRITE) 
+		res |= 2;
+	if (file_op & SR_FILEOPS_EXEC) 
+		res |= 1;
+
+	sprintf(perms, "77%d", res);
+}
+
+#define ADD_FILE_FIELD(fieldname, fieldvalue) \
+	sprintf(str_param, "%snum='%d']/%s[id='%d']/%s", FILE_PREFIX, rule_id, TUPLE, 0, fieldname); \
+        if (um_set_value(handler->sess, str_param, fieldvalue) != SR_SUCCESS) { \
+                CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, \
+                        "%s=after um_set_value str_param:%s: ", REASON, str_param); \
+                return SR_ERROR; \
+        }
+
+#define ADD_NET_FIELD(tuple, fieldname, fieldvalue) \
+	sprintf(str_param, "%snum='%d']/%s[id='%d']/%s", IP_PREFIX, rule_id, TUPLE, tuple, fieldname); \
+        if (um_set_value(handler->sess, str_param, fieldvalue) != SR_SUCCESS) { \
+                CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, \
+                        "%s=after um_set_value str_param:%s: ", REASON, str_param); \
+                return SR_ERROR; \
+        }
+
+SR_32 sys_repo_mng_create_file_rule(sysrepo_mng_handler_t *handler, SR_32 rule_id, char *file_name, char *exec, char *user, char *action, SR_U8 file_op)
+{
+	char str_param[MAX_STR_SIZE];
+	char perms[4];
+
+	file_op_convert(file_op, perms);
+	sprintf(str_param, "%snum='%d']", FILE_PREFIX, rule_id);
+	if (um_set_param(handler->sess, str_param) != SR_SUCCESS) {
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+			"%s=create rule : um_set_param failed",REASON);
+		return SR_ERROR;
+	}
+	sprintf(str_param, "%snum='%d']/%s[id='%d']", FILE_PREFIX, rule_id, TUPLE, 0);
+	if (um_set_param(handler->sess, str_param) != SR_SUCCESS) {
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+			"%s=rule_create : um_set_param failed",REASON);
+		return SR_ERROR;
+	}
+	
+	sprintf(str_param, "%snum='%d']/%s", FILE_PREFIX, rule_id, "action");
+	if (um_set_value(handler->sess, str_param, action) != SR_SUCCESS) {
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+			"%s=after um_set_value str_param:%s: action",REASON, str_param);
+		return SR_ERROR;
+	}
+
+	ADD_FILE_FIELD("filename", file_name) 
+	ADD_FILE_FIELD("program", exec) 
+	ADD_FILE_FIELD("user", user) 
+	ADD_FILE_FIELD("permission", perms) 
+
+	return SR_SUCCESS;
+}
+
+SR_32 sys_repo_mng_create_net_rule(sysrepo_mng_handler_t *handler, SR_32 rule_id, SR_32 tuple, char *src_addr, char *src_netmask,
+	char *dst_addr, char *dst_netmask, SR_U8 ip_proto, SR_U16 src_port, SR_U16 dst_port, char *exec, char *user, char *action)
+{
+	char str_param[MAX_STR_SIZE], str_help[MAX_STR_SIZE];
+
+	sprintf(str_param, "%snum='%d']", IP_PREFIX, rule_id);
+	if (um_set_param(handler->sess, str_param) != SR_SUCCESS) {
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+			"%s=create rule : um_set_param failed",REASON);
+		return SR_ERROR;
+	}
+	
+	sprintf(str_param, "%snum='%d']/%s", IP_PREFIX, rule_id, "action");
+	if (um_set_value(handler->sess, str_param, action) != SR_SUCCESS) {
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+			"%s=after um_set_value str_param:%s: action",REASON, str_param);
+		return SR_ERROR;
+	}
+	
+	sprintf(str_param, "%snum='%d']/%s[id='%d']", IP_PREFIX, rule_id, TUPLE, tuple);
+	if (um_set_param(handler->sess, str_param) != SR_SUCCESS) {
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+			"%s=rule_create : um_set_param failed",REASON);
+		return SR_ERROR;
+	}
+
+	ADD_NET_FIELD(tuple, "srcaddr", src_addr) 
+	ADD_NET_FIELD(tuple, "dstaddr", dst_addr) 
+	ADD_NET_FIELD(tuple, "srcnetmask", src_netmask) 
+	ADD_NET_FIELD(tuple, "dstnetmask", dst_netmask) 
+	ADD_NET_FIELD(tuple, "program", exec) 
+	ADD_NET_FIELD(tuple, "user", user) 
+	sprintf(str_help, "%d", ip_proto);
+	ADD_NET_FIELD(tuple, "proto", str_help) 
+	sprintf(str_help, "%d", src_port);
+	ADD_NET_FIELD(tuple, "srcport", str_help) 
+	sprintf(str_help, "%d", dst_port);
+	ADD_NET_FIELD(tuple, "dstport", str_help) 
+
+	return SR_SUCCESS;
+}
+
+static void can_packet_convert(SR_U32 msg_id,SR_U8 dir, char * msgid_str,char * dir_str)
+{
+	sprintf(msgid_str, "%x", msg_id);
+	sprintf(dir_str, "%s", dir==0?"in":"out");
+}
+
+#define ADD_CAN_FIELD(fieldname, fieldvalue) \
+	sprintf(str_param, "%snum='%d']/%s[id='%d']/%s", CAN_PREFIX, rule_id, TUPLE, 0, fieldname); \
+        if (um_set_value(handler->sess, str_param, fieldvalue) != SR_SUCCESS) { \
+                CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, \
+                        "%s=after um_set_value str_param:%s: ", REASON, str_param); \
+                return SR_ERROR; \
+        }
+
+
+
+SR_32 sys_repo_mng_create_canbus_rule(sysrepo_mng_handler_t *handler, SR_32 rule_id, SR_U32 msg_id, char *exec, char *user, char *action, SR_U8 dir)
+{
+	char str_param[MAX_STR_SIZE];
+	char msgid_str[4];
+	char dir_str[4];
+	can_packet_convert(msg_id,dir, msgid_str,dir_str);
+	
+	sprintf(str_param, "%snum='%d']", CAN_PREFIX, rule_id);
+	if (um_set_param(handler->sess, str_param) != SR_SUCCESS) {
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+			"%s=create rule : um_set_param failed",REASON);
+		return SR_ERROR;
+	}
+	sprintf(str_param, "%snum='%d']/%s[id='%d']", CAN_PREFIX, rule_id, TUPLE, 0);
+	if (um_set_param(handler->sess, str_param) != SR_SUCCESS) {
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+			"%s=rule_create : um_set_param failed",REASON);
+		return SR_ERROR;
+	}
+	
+	sprintf(str_param, "%snum='%d']/%s", CAN_PREFIX, rule_id, "action");
+	if (um_set_value(handler->sess, str_param, action) != SR_SUCCESS) {
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+			"%s=after um_set_value str_param:%s: action",REASON, str_param);
+		return SR_ERROR;
+	}
+
+	ADD_CAN_FIELD("msg_id", msgid_str) 
+	ADD_CAN_FIELD("direction", dir_str) 
+	ADD_CAN_FIELD("user", user) 	
+	ADD_CAN_FIELD("program", exec) 
+	
+	return SR_SUCCESS;
+}
+SR_32 sys_repo_mng_commit(sysrepo_mng_handler_t *handler)
+{
+	SR_32 rc;
+
+	rc = sr_commit(handler->sess);
+	if (SR_ERR_OK != rc) {
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+			"%s=sr_commit: %s",REASON,
+			sr_strerror(rc));
+		return SR_ERROR;
+	}
+
+	rc = sr_copy_config(handler->sess, "saferide", SR_DS_RUNNING, SR_DS_STARTUP);
+	if (SR_ERR_OK != rc) {
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+			"%s=sr_copy_config: %s",REASON,
+			sr_strerror(rc));
+		return SR_ERROR;
+	}
+
+	return SR_SUCCESS;
+}
+
+SR_32 sys_repo_mng_create_action(sysrepo_mng_handler_t *handler, char *action_name, SR_BOOL is_allow, SR_BOOL is_log)
+{
+	char str_param[MAX_STR_SIZE], str_value[MAX_STR_SIZE];
+	SR_32 rc;
+
+	sprintf(str_param, "/%s/%s/%s[name='%s']", DB_PREFIX, SR_ACTIONS, LIST_ACTIONS, action_name);
+	rc = sr_set_item(handler->sess, str_param, NULL, SR_EDIT_DEFAULT);
+	if (SR_ERR_OK != rc) {
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+		"%s=sr_set_item %s: %s", REASON,
+		str_param, sr_strerror(rc));
+		return SR_ERROR;
+	}
+
+	sprintf(str_param, "/%s/%s/%s[name='%s']", DB_PREFIX, SR_ACTIONS, LIST_ACTIONS, action_name);
+	rc = set_default_params(handler->sess, str_param, default_action_params, ARRAYSIZE(default_action_params));
+	if (rc != SR_ERR_OK) {
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+			"%s=setting new item params to default",REASON);
+		return SR_ERROR;
+	}
+	strncpy(str_value, is_allow ? JSON_ACTION_ALLOW : JSON_ACTION_DROP, MAX_STR_SIZE);
+	sprintf(str_param, "/%s/%s/%s[name='%s']/%s", DB_PREFIX, SR_ACTIONS, LIST_ACTIONS, action_name, ACTION);
+	if (um_set_value(handler->sess, str_param, str_value) != SR_SUCCESS)  {
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+			"%s=after um_set_value str_param:%s: str_value:%s:",REASON,
+			str_param, str_value);
+		return SR_ERROR;
+	}
+	if (!is_log)
+		return SR_SUCCESS;
+
+	sprintf(str_param, "/%s/%s/%s[name='%s']/%s", DB_PREFIX, SR_ACTIONS, LIST_ACTIONS, action_name, LOG_FACILITY);
+	strcpy(str_value, "syslog");
+	if (um_set_value(handler->sess, str_param, str_value) != SR_SUCCESS) { 
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+			"%s=after um_set_value str_param:%s: str_value:%s",REASON,
+			str_param, str_value);
+		return SR_ERROR;
 	}
 
 	return SR_SUCCESS;

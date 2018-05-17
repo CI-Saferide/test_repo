@@ -27,7 +27,6 @@ SRCS 		:=  main.c \
 				sr_cls_file_control.c \
 				sr_cls_network_control.c \
 				sr_cls_canbus_control.c \
-				sr_ml_conngraph.c \
 				sr_cls_uid_control.c \
 				sr_radix.c \
 				sr_file_hash.c \
@@ -49,6 +48,9 @@ SRCS 		:=  main.c \
 				sr_stat_process_connection.c \
 				sr_stat_learn_rule.c \
 				sr_white_list.c \
+				sr_white_list_file.c \
+				sr_white_list_can.c \
+				sr_white_list_ip.c \
 				sr_static_policy.c \
 				sr_command.c \
 				sr_stat_analysis.c \

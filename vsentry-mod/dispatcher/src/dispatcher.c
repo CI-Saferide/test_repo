@@ -137,7 +137,7 @@ SR_32 disp_socket_connect(disp_info_t* info)
 	sample_data.ip_proto = info->tuple_info.ip_proto;
 	sample_data.dport = info->tuple_info.dport;
 	sample_data.sport = info->tuple_info.sport;
-	sr_ec_send_event(MOD2ENG_BUF, SR_EVENT_NEW_CONNECTION, &sample_data);
+	sr_ec_send_event(MOD2STAT_BUF, SR_EVENT_STATS_NEW_CONNECTION, &sample_data);
 	return (sr_classifier_network(info));
 }
 
@@ -149,6 +149,20 @@ SR_32 disp_file_created(disp_info_t* info)
 		strncpy(file_data.name, info->fileinfo.fullpath, SR_MAX_PATH_SIZE);
 		sr_ec_send_event(MOD2ENG_BUF, SR_EVENT_FILE_CREATED, &file_data);
 	}
+	return SR_SUCCESS;
+}
+
+/* Report open file for white list, Only when white list is enabled. */
+SR_32 disp_file_open_report(disp_info_t* info)
+{
+	struct sr_ec_file_open_t file_open_data;
+
+	strncpy(file_open_data.file, info->fileinfo.fullpath, SR_MAX_PATH_SIZE); 
+	file_open_data.pid = info->fileinfo.id.pid; 
+	file_open_data.fileop = info->fileinfo.fileop;
+	file_open_data.dev_type = info->fileinfo.dev_type;
+	sr_ec_send_event(MOD2STAT_BUF, SR_EVENT_STATS_FILE_OPEN, &file_open_data);
+
 	return SR_SUCCESS;
 }
 
@@ -164,24 +178,13 @@ SR_32 disp_ipv4_recvmsg(disp_info_t* info)
 
 SR_32 disp_incoming_connection(disp_info_t* info)
 {
-	struct sr_ec_new_connection_t sample_data;
-
-	sample_data.pid = info->tuple_info.id.pid;
-	sample_data.uid = info->tuple_info.id.uid;
-	sample_data.remote_addr.v4addr = info->tuple_info.saddr.v4addr.s_addr;
-	sample_data.source_addr.v4addr = info->tuple_info.daddr.v4addr.s_addr;
-	sample_data.ip_proto = info->tuple_info.ip_proto;
-	sample_data.dport = info->tuple_info.sport;
-	sample_data.sport = info->tuple_info.dport;
-	sr_ec_send_event(MOD2ENG_BUF, SR_EVENT_NEW_CONNECTION, &sample_data);
-
 	return sr_classifier_network(info);
 }
 
 // TODO: might not have full 5-tuple at this stage !?!?!?
 SR_32 disp_socket_create(disp_info_t* info)
 {
-	CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,
+	CEF_log_event(SR_CEF_CID_SYSTEM, "info", SEVERITY_LOW,
 			"Called function %s [DISABLED]\n", __FUNCTION__);
 	//sr_classifier_network(info);
 	return SR_CLS_ACTION_ALLOW;
@@ -192,7 +195,14 @@ SR_32 disp_socket_sendmsg(disp_info_t* info)
 	SR_32		classifier_rc = -EACCES;
 	SR_U8		ml_rc = SR_ML_ALLOW;
 	const event_name *hook_event_names;
+	struct sr_ec_can_t can_data; // event collector data for white list
 	
+	if(get_collector_state() == SR_TRUE){
+		can_data.pid = info->tuple_info.id.pid;
+		can_data.msg_id = info->can_info.msg_id;
+		can_data.dir = SR_CAN_OUT;
+		sr_ec_send_event(MOD2STAT_BUF, SR_EVENT_STATS_CANBUS, &can_data);
+	}
 	/* call classifier */
 	classifier_rc = sr_classifier_canbus(info);
 #ifdef CONFIG_CAN_ML
@@ -205,7 +215,7 @@ SR_32 disp_socket_sendmsg(disp_info_t* info)
 	/* create event message */
 
 #ifdef DEBUG_DISPATCHER
-	CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,
+	CEF_log_event(SR_CEF_CID_SYSTEM, "info", SEVERITY_LOW,
 			"[%s:HOOK %s] family=af_can, msd_id=%x, payload_len=%d, payload= %02x %02x %02x %02x %02x %02x %02x %02x, pid=%d, gid=%d, tid=%d\n", 
 			module_name, 
 			hook_event_names[info->can_info.id.event].name,
@@ -238,7 +248,14 @@ SR_32 disp_can_recvmsg(disp_info_t* info)
 {
 	SR_32		classifier_rc = -EACCES;
 	const event_name *hook_event_names;
-
+	struct sr_ec_can_t can_data; // event collector data for white list
+	
+	if(get_collector_state() == SR_TRUE){
+		can_data.pid = info->tuple_info.id.pid;
+		can_data.msg_id = info->can_info.msg_id;
+		can_data.dir = SR_CAN_IN;
+		sr_ec_send_event(MOD2STAT_BUF, SR_EVENT_STATS_CANBUS, &can_data);
+	}
 	hook_event_names = event_mediator_hooks_event_names();
 
 	/* call classifier */
@@ -247,7 +264,7 @@ SR_32 disp_can_recvmsg(disp_info_t* info)
 	classifier_rc = sr_classifier_canbus(info);
 	
 	#ifdef DEBUG_DISPATCHER
-	CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,
+	CEF_log_event(SR_CEF_CID_SYSTEM, "info", SEVERITY_LOW,
 			"[%s:HOOK %s] family=af_can, msd_id=%x, payload_len=%d, payload= %02x %02x %02x %02x %02x %02x %02x %02x, pid=%d, gid=%d, tid=%d\n", 
 			module_name, 
 			hook_event_names[info->can_info.id.event].name,

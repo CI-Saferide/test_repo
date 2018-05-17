@@ -30,6 +30,8 @@
 #include "sr_scanner_det.h"
 #include "sr_ver.h"
 #include "sr_control.h"
+#include "sal_linux_mng.h"
+#include "sr_ec_common.h"
 
 #ifdef CONFIG_CAN_ML
 #include "ml_can.h"
@@ -119,13 +121,6 @@ static int vsentry_drv_mmap(struct file *file, struct vm_area_struct *vma)
 	return 0;
 }
 
-/* dummy read fops callback */
-static ssize_t vsentry_drv_read(struct file *file, char __user * buffer, size_t length,
-	loff_t * offset)
-{
-	return 0;
-}
-
 /* close fops callback */
 int vsentry_drv_release (struct inode *inode, struct file *file)
 {
@@ -142,6 +137,22 @@ int vsentry_drv_release (struct inode *inode, struct file *file)
 
 	vsentry_set_pid(0);
 
+	return 0;
+}
+
+static ssize_t vsentry_drv_read(struct file *fp, char __user *buf, size_t size, loff_t *offset)
+{
+	switch (size) {
+		case SR_SYNC_GATHER_INFO:
+			sal_linux_mng_readbuf_down(SYNC_INFO_GATHER);
+			break;
+		case SR_SYNC_ENGINE:
+			sal_linux_mng_readbuf_down(SYNC_ENGINE);
+			break;
+		break;
+			break;
+	}
+	
 	return 0;
 }
 
@@ -280,6 +291,8 @@ static int __init vsentry_init(void)
 		unregister_chrdev_region(vsentry_dev, 1);
 		return -EIO;
 	}
+
+	sal_linux_mng_readbuf_init();
 
 	sr_event_collector_init();
 

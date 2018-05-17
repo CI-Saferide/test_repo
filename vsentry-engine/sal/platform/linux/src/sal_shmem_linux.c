@@ -2,20 +2,18 @@
 #include "sal_linux.h"
 #include "sr_sal_common.h"
 
-static int fd = 0;
-
 SR_32 sal_shmem_free(sr_shmem *sr_shmem_ptr)
 {
     if (!sr_shmem_ptr || !sr_shmem_ptr->buffer) {
         CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_LOW,
-			"reason=sal_shmem_alloc: wrong params: 0x%p, %p",
-			sr_shmem_ptr, sr_shmem_ptr->buffer);
+			"%s=sal_shmem_alloc: wrong params: 0x%p, %p",
+			REASON, sr_shmem_ptr, sr_shmem_ptr->buffer);
         return SR_ERROR;
     }
 
-	CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,
-		"msg=sal_shmem_free: freeing 0x%p:%d is",
-		sr_shmem_ptr->buffer, sr_shmem_ptr->buffer_size);
+	CEF_log_event(SR_CEF_CID_SYSTEM, "info", SEVERITY_LOW,
+		"%s=sal_shmem_free: freeing 0x%p:%d is",
+		MESSAGE, sr_shmem_ptr->buffer, sr_shmem_ptr->buffer_size);
 
 	munmap(sr_shmem_ptr->buffer, sr_shmem_ptr->buffer_size);
 
@@ -27,11 +25,11 @@ SR_32 sal_shmem_free(sr_shmem *sr_shmem_ptr)
 
 SR_32 sal_shmem_alloc(sr_shmem *sr_shmem_ptr, SR_32 length, SR_32 type)
 {
-	int offset;
+	int offset, fd;
 
     if (!sr_shmem_ptr || (length <= 0) || (length > MAX_BUFFER_SIZE)) {
         CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_LOW,
-			"reason=sal_shmem_alloc: wrong params: 0x%p, %d", sr_shmem_ptr, length);
+			"%s=sal_shmem_alloc: wrong params: 0x%p, %d", REASON, sr_shmem_ptr, length);
         return -EIO;
     }
 
@@ -53,17 +51,14 @@ SR_32 sal_shmem_alloc(sr_shmem *sr_shmem_ptr, SR_32 length, SR_32 type)
 			break;
 		default:
 			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_LOW,
-				"reason=sal_shmem_alloc: wrong buf type %d", type);
+				"%s=sal_shmem_alloc: wrong buf type %d", REASON, type);
 			return SR_ERROR;
 	}
 
-	if (fd == 0 ) {
-		fd = open(VS_FILE_NAME, O_RDWR|O_SYNC);
-		if (fd < 0) {
-			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_LOW,
-				"reason=sal_shmem_alloc: faield to open %s", VS_FILE_NAME);
-			return SR_ERROR;
-		}
+	if (!(fd = sal_get_vsentry_fd())) {
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_LOW,
+			"%s=sal_shmem_alloc: no vsenbtry fd", REASON);
+		return SR_ERROR;
 	}
 
 	sr_shmem_ptr->buffer = mmap(NULL, length, (PROT_READ | PROT_WRITE),
@@ -71,15 +66,15 @@ SR_32 sal_shmem_alloc(sr_shmem *sr_shmem_ptr, SR_32 length, SR_32 type)
 	if (sr_shmem_ptr->buffer == (void*)(-1)) {
 		perror("");
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_LOW,
-			"reason=sal_shmem_alloc: failed to mmap type %d %d", type, length);
+			"%s=sal_shmem_alloc: failed to mmap type %d %d", REASON, type, length);
 		return SR_ERROR;
 	}
 
 	sr_shmem_ptr->buffer_size = length;
 
-	CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,
-		"msg=sal_shmem_alloc: allocated 0x%p size 0x%08x",
-		sr_shmem_ptr->buffer, sr_shmem_ptr->buffer_size);
+	CEF_log_event(SR_CEF_CID_SYSTEM, "info", SEVERITY_LOW,
+		"%s=sal_shmem_alloc: allocated 0x%p size 0x%08x",
+		MESSAGE, sr_shmem_ptr->buffer, sr_shmem_ptr->buffer_size);
 
 	return SR_SUCCESS;
 }

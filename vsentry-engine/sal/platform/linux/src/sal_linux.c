@@ -6,13 +6,36 @@
 
 #define SAFERIDE_PREFIX "saferide"
 
+static int fd_vsentry;
+
+SR_32 sal_vsentry_fd_open(void)
+{
+	if ((fd_vsentry = open(VS_FILE_NAME, O_RDWR|O_SYNC)) < 0) {
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_LOW,
+				"%s=sal_shmem_alloc: faield to open %s", REASON, VS_FILE_NAME);
+				return SR_ERROR;
+	}
+	return SR_SUCCESS;
+}
+
+int sal_get_vsentry_fd(void)
+{
+	return fd_vsentry;
+}
+
+void sal_vsentry_fd_close(void)
+{
+	close(fd_vsentry);
+}
+
+
 SR_32 sal_task_stop(void *data)
 {
 	pthread_t *thread = (pthread_t*)data;
 
 	if (!thread) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_LOW,
-			"reason=sal_task_stop: invalid argument %p", data);
+			"%s=sal_task_stop: invalid argument %p", REASON, data);
 		return SR_ERROR;
 	}
 
@@ -39,15 +62,15 @@ SR_32 sal_task_start(void **data, SR_32 (*task_func)(void *data))
 
 	if (pthread_create(thread, NULL, sal_wrapper_func, task_func) != 0) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_LOW,
-			"reason=sal_task_start: failed to create new thread");
+			"%s=sal_task_start: failed to create new thread", REASON);
 		free(thread);
 		return SR_ERROR;
 	}
 
 	*data = (void*)thread;
 
-	CEF_log_event(SR_CEF_CID_SYSTEM, "Info", SEVERITY_LOW,
-		"msg=sal_task_start: new task was created");
+	CEF_log_event(SR_CEF_CID_SYSTEM, "info", SEVERITY_LOW,
+		"%s=sal_task_start: new task was created", MESSAGE);
 
 	return SR_SUCCESS;
 }
@@ -84,7 +107,7 @@ SR_32 sal_get_uid(char *user_name)
 	struct passwd *pwd;
 	 
 	if (!(pwd = getpwnam(user_name))) {
-		fprintf(stderr, "Failed to allocate struct passwd for getpwnam_r.\n");
+		//fprintf(stderr, "Failed to allocate struct passwd for getpwnam_r.\n");
 		return -1;
 	}
 
@@ -102,12 +125,12 @@ SR_U32 sal_get_os(sal_os_t *os)
 
 	if (!(fin = fopen("/proc/version", "r"))) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_LOW,
-			"reason=failed opening /proc/version");
+			"%s=failed opening /proc/version", REASON);
 		return SR_ERROR;
 	}
 	if (!fgets(line, PROC_LEN, fin)) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_LOW,
-			"reason=failed reading from /proc/version");
+			"%s=failed reading from /proc/version", REASON);
 		return SR_ERROR;
 	}
 	if (strstr(line, UBUNTU)) {
@@ -133,7 +156,7 @@ SR_64 sal_gets_space(const SR_8* path)
 	
 	if (statvfs(path, &stat) != 0){
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_LOW,
-			"reason=Failed statvfs");
+			"%s=Failed statvfs", REASON);
 		return -1;
 	}
 	//the size in bytes
@@ -305,4 +328,20 @@ void sal_log(char *cef_buffer, SR_32 severity)
 	}
 
 	syslog(syslog_severity, "%s", cef_buffer);
+}
+
+char *sal_get_home_user(void)
+{
+	return getenv("HOME");
+}
+
+char *sal_get_str_ip_address(SR_U32 ip)
+{
+	static char str_address[INET_ADDRSTRLEN];
+
+	// Assuming host order 
+	ip = htonl(ip);
+	inet_ntop(AF_INET, &ip, str_address, INET_ADDRSTRLEN);
+
+	return str_address;
 }

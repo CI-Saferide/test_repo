@@ -47,7 +47,7 @@ static void learn_rule_print(void *data_in_hash)
 {
 	learn_rule_item_t *learn_rule_item = (learn_rule_item_t *)data_in_hash;
 
-	CEF_log_event(SR_CEF_CID_STAT_IP, "Info", SEVERITY_LOW,
+	CEF_log_event(SR_CEF_CID_STAT_IP, "info", SEVERITY_LOW,
 		"%s=learn rule %d : updated:%d  %s RX p:%d b:%d TX p:%d b:%d",MESSAGE,
 		learn_rule_item->rule_num,
 		learn_rule_item->is_updated,

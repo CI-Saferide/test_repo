@@ -20,6 +20,7 @@
 #include "sr_stat_analysis.h"
 #endif
 #include "sr_cls_sk_process.h"
+#include "sr_event_collector.h"
 
 //#define DEBUG_EVENT_MEDIATOR
 /* Protocol families, same as address families */
@@ -170,7 +171,7 @@ SR_32 vsentry_inode_mkdir(struct inode *dir, struct dentry *dentry, umode_t mask
 	if (SR_SUCCESS != get_path(dentry->d_parent, fullpath, sizeof(fullpath)))
 		strncpy(fullpath, "NA", 3);
 	
-	CEF_log_event(SR_CEF_CID_SYSTEM, "Info" , SEVERITY_LOW, 
+	CEF_log_event(SR_CEF_CID_SYSTEM, "info" , SEVERITY_LOW, 
 					"[HOOK %s] parent inode=%u, file=%s, path=%s, pid=%d, uid=%d\n", 
 					hook_event_names[HOOK_MKDIR].name,
 					disp.fileinfo.parent_inode,
@@ -185,7 +186,7 @@ SR_32 vsentry_inode_mkdir(struct inode *dir, struct dentry *dentry, umode_t mask
 	if (rc == 0) {
 		if (get_path(dentry, disp.fileinfo.fullpath, sizeof(disp.fileinfo.fullpath)) != SR_SUCCESS) {
 			CEF_log_event(SR_CEF_CID_SYSTEM, "Error", SEVERITY_HIGH, 
-							"File operation denied, file path it to long");
+							"File operation denied, file path it too long");
 			return -EACCES;
 		}
 		if (!sr_cls_filter_path_is_match(disp.fileinfo.fullpath) && disp_file_created(&disp) != SR_SUCCESS) {
@@ -239,7 +240,7 @@ SR_32 vsentry_inode_unlink(struct inode *dir, struct dentry *dentry)
 		MIN(sizeof(filename), 1+strlen(dentry->d_iname)));
 	get_path(dentry, fullpath, sizeof(fullpath));
 
-	CEF_log_event(SR_CEF_CID_SYSTEM, "Info" , SEVERITY_LOW, 
+	CEF_log_event(SR_CEF_CID_SYSTEM, "info" , SEVERITY_LOW, 
 					"[HOOK %s] inode=%u, parent_inode=%u, file=%s, path=%s, pid=%d, uid=%d\n", 
 					hook_event_names[HOOK_UNLINK].name,
 					disp.fileinfo.current_inode,
@@ -290,7 +291,7 @@ int vsentry_inode_rename(struct inode *old_dir, struct dentry *old_dentry, struc
 	disp.fileinfo.fileop = SR_FILEOPS_WRITE | SR_FILEOPS_READ;
 
 #ifdef DEBUG_EVENT_MEDIATOR
-        CEF_log_event(SR_CEF_CID_SYSTEM, "Info" , SEVERITY_LOW,
+        CEF_log_event(SR_CEF_CID_SYSTEM, "info" , SEVERITY_LOW,
 						"[HOOK %s] old inode=%d, new inode=%d, pid=%d, uid=%d\n",
                         hook_event_names[HOOK_INODE_RENAME].name,
                         old_dentry->d_inode ? old_dentry->d_inode->i_ino : -1,
@@ -359,7 +360,7 @@ SR_32 vsentry_inode_symlink(struct inode *dir, struct dentry *dentry, const SR_8
 	strncpy(disp.fileinfo.filename, (char *)name,
 		MIN(sizeof(filename), 1+strlen(name)));
 	get_path(dentry, fullpath, sizeof(fullpath));
-		CEF_log_event(SR_CEF_CID_SYSTEM, "Info" , SEVERITY_LOW,
+		CEF_log_event(SR_CEF_CID_SYSTEM, "info" , SEVERITY_LOW,
 				"[HOOK %s] parent_inode=%u, file=%s, path=%s, pid=%d, uid=%d\n", 
 				hook_event_names[HOOK_SYMLINK].name,
 				disp.fileinfo.parent_inode,
@@ -413,7 +414,7 @@ SR_32 vsentry_inode_rmdir(struct inode *dir, struct dentry *dentry)
 	strncpy(filename, dentry->d_iname,
 		MIN(sizeof(filename), 1+strlen(dentry->d_iname)));
 	get_path(dentry->d_parent, fullpath, sizeof(fullpath));
-	CEF_log_event(SR_CEF_CID_SYSTEM, "Info" , SEVERITY_LOW,
+	CEF_log_event(SR_CEF_CID_SYSTEM, "info" , SEVERITY_LOW,
 					"[HOOK %s] inode=%u, parent_inode=%u, file=%s, path=%s, pid=%d, uid=%d\n", 
 					hook_event_names[HOOK_RMDIR].name,
 					disp.fileinfo.current_inode,
@@ -464,7 +465,7 @@ SR_32 vsentry_socket_connect(struct socket *sock, struct sockaddr *address, SR_3
 	disp.tuple_info.ip_proto = sock->sk->sk_protocol;
 
 #ifdef DEBUG_EVENT_MEDIATOR
-	CEF_log_event(SR_CEF_CID_SYSTEM, "Info" , SEVERITY_LOW,
+	CEF_log_event(SR_CEF_CID_SYSTEM, "info" , SEVERITY_LOW,
 					"vsentry_socket_connect=%lx[%d] -> %lx[%d]\n",
 					(unsigned long)disp.tuple_info.saddr.v4addr.s_addr,
 					disp.tuple_info.sport,
@@ -501,7 +502,7 @@ SR_32 vsentry_incoming_connection(struct sk_buff *skb)
 	disp.tuple_info.ip_proto = sal_packet_ip_proto(skb);
 
 //#ifdef DEBUG_EVENT_MEDIATOR
-	CEF_log_event(SR_CEF_CID_SYSTEM, "Info" , SEVERITY_LOW,
+	CEF_log_event(SR_CEF_CID_SYSTEM, "info" , SEVERITY_LOW,
 					"vsentry_incoming_connection=%lx[%d] -> %lx[%d]\n",
 					(unsigned long)disp.tuple_info.saddr.v4addr.s_addr,
 					disp.tuple_info.sport,
@@ -545,7 +546,7 @@ SR_32 vsentry_path_chmod(struct path *path, umode_t mode)
 	SR_U8 		fullpath[SR_MAX_PATH_SIZE];
 #pragma GCC diagnostic pop	
 	get_path(path->dentry, fullpath, sizeof(fullpath));
-	CEF_log_event(SR_CEF_CID_SYSTEM, "Info" , SEVERITY_LOW,
+	CEF_log_event(SR_CEF_CID_SYSTEM, "info" , SEVERITY_LOW,
 					"[HOOK %s] inode=%u, parent_inode=%u, path=%s, pid=%d, uid=%d\n", 
 					hook_event_names[HOOK_CHMOD].name,
 					disp.fileinfo.current_inode,
@@ -593,7 +594,7 @@ SR_32 vsentry_inode_create(struct inode *dir, struct dentry *dentry, umode_t mod
 	strncpy(disp.fileinfo.filename, dentry->d_iname,
 		MIN(sizeof(filename), 1+strlen(dentry->d_iname)));
 	get_path(dentry->d_parent, fullpath, sizeof(fullpath));
-	CEF_log_event(SR_CEF_CID_SYSTEM, "Info" , SEVERITY_LOW,
+	CEF_log_event(SR_CEF_CID_SYSTEM, "info" , SEVERITY_LOW,
 					"[HOOK %s] parent_inode=%u, path=%s, pid=%d, uid=%d\n", 
 					hook_event_names[HOOK_INODE_CREATE].name,
 					disp.fileinfo.parent_inode,
@@ -623,6 +624,7 @@ SR_32 vsentry_file_open(struct file *file, const struct cred *cred)
 	disp_info_t disp;
 	struct task_struct *ts = current;
 	const struct cred *rcred= ts->real_cred;
+	SR_32 rc;
 	
 	memset(&disp, 0, sizeof(disp_info_t));
 	
@@ -638,7 +640,10 @@ SR_32 vsentry_file_open(struct file *file, const struct cred *cred)
 	else
 		CEF_log_event(SR_CEF_CID_SYSTEM, "Error", SEVERITY_HIGH,
 						"[%s] inode in null\n", hook_event_names[HOOK_FILE_OPEN].name);
-	disp.fileinfo.parent_inode = 0;
+	if ((file->f_path.dentry->d_parent) && (file->f_path.dentry->d_parent->d_inode))
+		disp.fileinfo.parent_inode = file->f_path.dentry->d_parent->d_inode->i_ino;
+	else
+		disp.fileinfo.parent_inode = 0;
 		
 	disp.fileinfo.id.uid = (int)rcred->uid.val;
 	disp.fileinfo.id.pid = current->pid;
@@ -654,7 +659,7 @@ SR_32 vsentry_file_open(struct file *file, const struct cred *cred)
 	SR_U8 		filename[SR_MAX_PATH_SIZE];
 #pragma GCC diagnostic pop
 	get_path(file->f_path.dentry, filename, sizeof(filename));
-	CEF_log_event(SR_CEF_CID_SYSTEM, "Info" , SEVERITY_LOW,
+	CEF_log_event(SR_CEF_CID_SYSTEM, "info" , SEVERITY_LOW,
 					"[HOOK %s] inode=%u, parent_inode=%u, file=%s, pid=%d, uid=%d\n", 
 					hook_event_names[HOOK_FILE_OPEN].name,
 					disp.fileinfo.current_inode,
@@ -663,9 +668,36 @@ SR_32 vsentry_file_open(struct file *file, const struct cred *cred)
 					disp.fileinfo.id.pid,
 					disp.fileinfo.id.uid);
 #endif /* DEBUG_EVENT_MEDIATOR */
-	
+
+	if (file->f_path.dentry->d_inode && file->f_path.dentry->d_inode->i_sb) { 
+		switch (file->f_path.dentry->d_inode->i_sb->s_dev) {
+			case 4:
+				disp.fileinfo.dev_type = DEV_TYPE_PROC;
+				break;
+			case 19:
+				disp.fileinfo.dev_type = DEV_TYPE_SYS;
+				break;
+			default:
+				disp.fileinfo.dev_type = DEV_TYPE_UNKOWN;
+				break;
+		}
+	}
+
 	/* call dispatcher */
-	return (disp_file_open(&disp));
+	rc = disp_file_open(&disp);
+
+	if (rc == 0) {
+		if(get_collector_state() == SR_TRUE){		
+			if (get_path(file->f_path.dentry, disp.fileinfo.fullpath, sizeof(disp.fileinfo.fullpath)) != SR_SUCCESS) {
+				CEF_log_event(SR_CEF_CID_SYSTEM, "Error", SEVERITY_HIGH,
+															"File operation denied, file path it to long");
+				return 0;
+			}
+			disp_file_open_report(&disp);
+		}
+	}
+
+	return rc;
 }
 
 SR_32 vsentry_inode_link(struct dentry *old_dentry, struct inode *dir, struct dentry *new_dentry)
@@ -918,6 +950,7 @@ SR_32 vsentry_socket_sendmsg(struct socket *sock,struct msghdr *msg,SR_32 size)
 			con.con_id.sport = sock->sk->sk_num;
 			con.con_id.dport = ntohs(sock->sk->sk_dport);
 			con.pid = current->tgid;
+			con.is_outgoing = SR_TRUE;
 
 			if ((conp = sr_stat_connection_lookup(&con.con_id))) {
 				if ((rc = sr_stat_connection_update_counters(conp, current->tgid, 0, 0, size, 1)) != SR_SUCCESS) {
@@ -948,7 +981,7 @@ SR_32 vsentry_socket_sendmsg(struct socket *sock,struct msghdr *msg,SR_32 size)
 			}
 
 #ifdef DEBUG_EVENT_MEDIATOR
-        		CEF_log_event(SR_CEF_CID_SYSTEM, "Info" , SEVERITY_LOW,
+        		CEF_log_event(SR_CEF_CID_SYSTEM, "info" , SEVERITY_LOW,
 								"vsentry_socket_connect=%lx[%d] -> %lx[%d]\n",
                         		(unsigned long)disp.tuple_info.saddr.v4addr.s_addr,
                         		disp.tuple_info.sport,
@@ -1051,7 +1084,7 @@ int vsentry_socket_recvmsg(struct socket *sock,struct msghdr *msg,int size,int f
 #endif
 				
 #ifdef DEBUG_EVENT_MEDIATOR
-        		CEF_log_event(SR_CEF_CID_SYSTEM, "Info" , SEVERITY_LOW,
+        		CEF_log_event(SR_CEF_CID_SYSTEM, "info" , SEVERITY_LOW,
 								"vsentry_socket_connect=%lx[%d] -> %lx[%d]\n",
                         		(unsigned long)disp.tuple_info.saddr.v4addr.s_addr,
                         		disp.tuple_info.sport,
@@ -1092,7 +1125,7 @@ SR_32 vsentry_bprm_check_security(struct linux_binprm *bprm)
 #ifdef DEBUG_EVENT_MEDIATOR
 #pragma GCC diagnostic ignored "-Wdeclaration-after-statement"
 #pragma GCC diagnostic pop
-	CEF_log_event(SR_CEF_CID_SYSTEM, "Info" , SEVERITY_LOW,
+	CEF_log_event(SR_CEF_CID_SYSTEM, "info" , SEVERITY_LOW,
 			"[HOOK %s] inode=%u, file=%s, pid=%d, uid=%d\n", 
 			hook_event_names[HOOK_BINPERM].name,
 			disp.fileinfo.current_inode,
