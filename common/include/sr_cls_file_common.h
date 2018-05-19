@@ -28,4 +28,10 @@ struct sr_cls_file_msg {
 	SR_32   uid;
 };
 
+typedef enum {
+        CLS_FILE_MEM_OPT_ALL_FILES,
+        CLS_FILE_MEM_OPT_ONLY_DIR,
+        CLS_FILE_MEM_OPT_TOTAL = (CLS_FILE_MEM_OPT_ONLY_DIR + 1),
+} cls_file_mem_optimization_t;
+
 #endif /* SR_CLS_FILE_COMMON_H */

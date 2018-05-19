@@ -1,5 +1,6 @@
 #include "sr_sal_common.h"
 #include "sr_cls_file_common.h"
+#include "sr_cls_file_control.h"
 #include "sr_cls_filter_path_common.h"
 #include "sr_shmem.h"
 #include "sr_msg.h"
@@ -9,6 +10,8 @@
 #include "sr_cls_rules_control.h"
 
 #define NUM_OF_LSTAT_ITERS 3
+
+static cls_file_mem_optimization_t mem_opt;
 
 //#include "sr_cls_file.h"
 
@@ -41,29 +44,33 @@ int sr_cls_file_add_rule(char *filename, char *exec, char *user, SR_U32 rulenum,
 				"%s=cannot add classification rules for hard links",REASON);
 			return SR_ERROR;
 		}
-		// sr_cls_inode_add_rule(buf.st_ino, rulenum)
-		msg = (sr_file_msg_cls_t*)sr_get_msg(ENG2MOD_BUF, ENG2MOD_MSG_MAX_SIZE);
-		if (msg) {
-			msg->msg_type = SR_MSG_TYPE_CLS_FILE;
-			msg->sub_msg.msg_type = SR_CLS_INODE_ADD_RULE;
-			msg->sub_msg.rulenum = rulenum;
-			msg->sub_msg.inode1=buf.st_ino;
-			msg->sub_msg.exec_inode= exec_inode;
-			msg->sub_msg.uid= uid;
-			sr_send_msg(ENG2MOD_BUF, (SR_32)sizeof(msg));
+		if (treetop || buf.st_nlink > 1) {
+			// sr_cls_inode_add_rule(buf.st_ino, rulenum)
+			msg = (sr_file_msg_cls_t*)sr_get_msg(ENG2MOD_BUF, ENG2MOD_MSG_MAX_SIZE);
+			if (msg) {
+				msg->msg_type = SR_MSG_TYPE_CLS_FILE;
+				msg->sub_msg.msg_type = SR_CLS_INODE_ADD_RULE;
+				msg->sub_msg.rulenum = rulenum;
+				msg->sub_msg.inode1=buf.st_ino;
+				msg->sub_msg.exec_inode= exec_inode;
+				msg->sub_msg.uid= uid;
+				sr_send_msg(ENG2MOD_BUF, (SR_32)sizeof(msg));
+			}
 		}
 	}
 	if (S_ISDIR(buf.st_mode))  {
 		// first update the directory itself
-		msg = (sr_file_msg_cls_t*)sr_get_msg(ENG2MOD_BUF, ENG2MOD_MSG_MAX_SIZE);
-		if (msg) {
-			msg->msg_type = SR_MSG_TYPE_CLS_FILE;
-			msg->sub_msg.msg_type = SR_CLS_INODE_ADD_RULE;
-			msg->sub_msg.rulenum = rulenum;
-			msg->sub_msg.inode1=buf.st_ino;
-			msg->sub_msg.exec_inode=exec_inode;
-			msg->sub_msg.uid=uid;
-			sr_send_msg(ENG2MOD_BUF, (SR_32)sizeof(msg));
+		if (mem_opt == CLS_FILE_MEM_OPT_ALL_FILES || treetop) {
+			msg = (sr_file_msg_cls_t*)sr_get_msg(ENG2MOD_BUF, ENG2MOD_MSG_MAX_SIZE);
+			if (msg) {
+				msg->msg_type = SR_MSG_TYPE_CLS_FILE;
+				msg->sub_msg.msg_type = SR_CLS_INODE_ADD_RULE;
+				msg->sub_msg.rulenum = rulenum;
+				msg->sub_msg.inode1=buf.st_ino;
+				msg->sub_msg.exec_inode=exec_inode;
+				msg->sub_msg.uid=uid;
+				sr_send_msg(ENG2MOD_BUF, (SR_32)sizeof(msg));
+			}
 		}
 		// Now iterate subtree
 		DIR * dir = NULL;
@@ -92,22 +99,25 @@ int sr_cls_file_add_rule(char *filename, char *exec, char *user, SR_U32 rulenum,
 			closedir(dir);
 	}
 	if (S_ISLNK(buf.st_mode))  {
-		// first update the link itself
-		// sr_cls_inode_add_rule(buf.st_ino, rulenum)
-		msg = (sr_file_msg_cls_t*)sr_get_msg(ENG2MOD_BUF, ENG2MOD_MSG_MAX_SIZE);
-		if (msg) {
-			msg->msg_type = SR_MSG_TYPE_CLS_FILE;
-			msg->sub_msg.msg_type = SR_CLS_INODE_ADD_RULE;
-			msg->sub_msg.rulenum = rulenum;
-			msg->sub_msg.inode1=buf.st_ino;
-			msg->sub_msg.exec_inode=exec_inode;
-			msg->sub_msg.uid=uid;
-			sr_send_msg(ENG2MOD_BUF, (SR_32)sizeof(msg));
+		if (treetop) {
+			// first update the link itself
+			// sr_cls_inode_add_rule(buf.st_ino, rulenum)
+			msg = (sr_file_msg_cls_t*)sr_get_msg(ENG2MOD_BUF, ENG2MOD_MSG_MAX_SIZE);
+			if (msg) {
+				msg->msg_type = SR_MSG_TYPE_CLS_FILE;
+				msg->sub_msg.msg_type = SR_CLS_INODE_ADD_RULE;
+				msg->sub_msg.rulenum = rulenum;
+				msg->sub_msg.inode1=buf.st_ino;
+				msg->sub_msg.exec_inode=exec_inode;
+				msg->sub_msg.uid=uid;
+				sr_send_msg(ENG2MOD_BUF, (SR_32)sizeof(msg));
+			}
+			//TODO: Do I need to update the destination file as well ???
+			//Can use realpath() to resolve target filename.
+			//I believe we should not modify the target file in this case.
 		}
-		//TODO: Do I need to update the destination file as well ???
-		//Can use realpath() to resolve target filename.
-		//I believe we should not modify the target file in this case.
 	}
+
 	return SR_SUCCESS;
 }
 
@@ -347,4 +357,14 @@ void sr_cls_control_ut(void)
 	sr_cls_file_add_rule("/home/hilik/Desktop/git/vsentry/", "ls", "*", 10, 1);
 	sr_cls_file_create("/usr/lib/shotwell");
 	return ;
+}
+
+cls_file_mem_optimization_t sr_cls_file_control_get_mem_opt(void)
+{
+	return mem_opt;
+}
+
+void sr_cls_file_control_set_mem_opt(cls_file_mem_optimization_t i_mem_opt)
+{
+	mem_opt = i_mem_opt;
 }

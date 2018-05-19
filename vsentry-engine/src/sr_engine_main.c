@@ -102,6 +102,77 @@ static void eng2mod_test(void)
 	}
 }
 
+static SR_32 handle_mem_opt(cls_file_mem_optimization_t mem_opt)
+{
+	sr_cls_file_control_set_mem_opt(mem_opt);
+
+ 	// Send the memory optimization value to the Kernel
+ 	if (sr_control_set_mem_opt(mem_opt) != SR_SUCCESS) {
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+			"%s Failed to set memory optimization flag to Kernel", REASON);
+ 		return SR_ERROR;
+	}
+
+	return SR_SUCCESS;
+}
+
+
+static SR_32 sr_engine_read_conf(char *vsentry_config_file)
+{
+	FILE *f_conf;
+	char buf[CONFIG_LINE_BUFFER_SIZE], *param, *value;
+
+	if (!vsentry_config_file || !*vsentry_config_file)
+		return SR_SUCCESS;
+
+	if (!(f_conf = fopen(vsentry_config_file, "r"))) {
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+						"%s=to open conf file :%s",REASON, vsentry_config_file);
+		return SR_SUCCESS;
+	}
+
+	while (fgets(buf, CONFIG_LINE_BUFFER_SIZE, f_conf)) {
+		if (buf[0] == '#')
+			continue;
+		param = strtok(buf, " ");
+		if (!param)
+			continue;
+		value = strtok(NULL, " \n");
+		if (!value)
+			continue;
+		if (!strcmp(param, "FILE_CLS_MEM_OPTIMIZE")) {
+			if (handle_mem_opt(atoi(value)) != SR_SUCCESS) {
+				CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+					"%s= failed to handle mem opt :%s",REASON);
+				return SR_SUCCESS;
+			}
+		}
+	}
+
+	fclose(f_conf);
+
+	return SR_SUCCESS;
+}
+
+SR_32 sr_engine_write_conf(char *param, char *value)
+{
+	struct config_params_t *config_params;
+	FILE *f_conf;
+
+	config_params = sr_config_get_param();
+	if (!(f_conf = fopen(config_params->vsentry_config_file, "w"))) {
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+						"%s=failed to open conf file :%s",REASON, config_params->vsentry_config_file);
+		return SR_ERROR;
+	}
+	// TODO : Add real logic to this function which overide the file now.
+	fprintf(f_conf, "%s %s\n", param, value);
+
+	fclose(f_conf);
+
+	return SR_SUCCESS;
+}
+
 SR_32 sr_engine_start(int argc, char *argv[])
 {
 	SR_32 ret;
@@ -173,6 +244,21 @@ SR_32 sr_engine_start(int argc, char *argv[])
 		return SR_ERROR;
 	}
 
+	ret = sr_msg_alloc_buf(ENG2MOD_BUF, MAX_BUFFER_SIZE);
+	if (ret != SR_SUCCESS){
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+						"%s=failed to init ENG2MOD msg_buf",REASON);
+		return SR_ERROR;
+	}
+
+	ret = sr_engine_read_conf(config_params->vsentry_config_file);
+	if (ret != SR_SUCCESS){
+		printf("failed to read conf  sr_engine\n");
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+						"%s=No read conf sr_engine", REASON);
+		return SR_ERROR;
+	}
+
 #ifdef CONFIG_STAT_ANALYSIS
 	ret = sr_stat_analysis_init();
 	if (ret != SR_SUCCESS){
@@ -211,13 +297,6 @@ SR_32 sr_engine_start(int argc, char *argv[])
 						"%s=failed to start engine_main_loop",REASON);
 		sr_stop_task(SR_INFO_GATHER_TASK);
 
-		return SR_ERROR;
-	}
-
-	ret = sr_msg_alloc_buf(ENG2MOD_BUF, MAX_BUFFER_SIZE);
-	if (ret != SR_SUCCESS){
-		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-						"%s=failed to init ENG2MOD msg_buf",REASON);
 		return SR_ERROR;
 	}
 

@@ -79,5 +79,6 @@ SR_32 sal_vsentry_fd_open(void);
 int sal_get_vsentry_fd(void);
 void sal_vsentry_fd_close(void);
 
+SR_32 sal_get_memory(SR_U64 *mem, SR_U64 *free_mem);
 
 #endif /* SAL_LINUX_ENGINE_H*/

@@ -9,11 +9,13 @@ typedef enum {
 	SR_CONTROL_TRANSMIT_CONNECTIONS,
 	SR_CONTROL_GARBAGE_COLLECTION,
 #endif
+	SR_CONTROL_SET_MEM_OPT,
 } sr_control_verb_t;
 
 struct sr_control_msg {
 	sr_control_verb_t msg_type;
 	SR_BOOL	state;
+	SR_U8 mem_opt;
 };
 
 #endif /* SR_CONTROL_COMMON_H */

@@ -3,14 +3,23 @@
 #include "sr_white_list_file.h"
 #include "engine_sal.h"
 #include <string.h>
+#include "sr_cls.h"
 #include "sr_cls_file_control.h"
 #include "sr_actions_common.h"
 #include "sr_cls_rules_control.h"
 #include "sysrepo_mng.h"
+#include "sr_config_parse.h"
+#include "sr_engine_main.h"
+#include "sr_control.h"
 
 static SR_32 rule_id; 
 static sysrepo_mng_handler_t sysrepo_handler;
 static char *home_dir;
+
+typedef struct wl_learn_file_item {
+        char file[SR_MAX_PATH_SIZE];
+        struct wl_learn_file_item *next;
+} wl_learn_file_item_t;
 
 #define CHECK_DIR(dir_name) \
 	if (!memcmp(file, dir_name, strlen(dir_name))) { \
@@ -117,6 +126,122 @@ void sr_white_list_file_cleanup(sr_white_list_file_t *white_list_file)
 	}
 }
 
+static wl_learn_file_item_t *learn_files_list;
+
+static SR_32 wl_file_count_cb(void *hash_data, void *data)
+{
+	sr_white_list_item_t *wl_item = (sr_white_list_item_t *)hash_data;
+	sr_white_list_file_t *iter;
+	wl_learn_file_item_t *learn_file_iter, *new_item;
+
+	if (!hash_data)
+		return SR_ERROR;
+
+	for (iter = wl_item->white_list_file; iter; iter = iter->next) {
+		for (learn_file_iter = learn_files_list; learn_file_iter && strcmp(iter->file, learn_file_iter->file); learn_file_iter = learn_file_iter->next);
+		if (learn_file_iter) // If file exists
+			continue;  
+		SR_Zalloc(new_item, wl_learn_file_item_t *, sizeof(wl_learn_file_item_t));
+		if (!new_item) {
+			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+				"%s=learn hash update: memory allocation failed",REASON);
+			return SR_ERROR;
+		}
+		new_item->next = learn_files_list;
+		strcpy(new_item->file, iter->file);
+		learn_files_list = new_item;
+	}
+
+	return SR_SUCCESS;
+}
+
+static void count_files(char *filename, SR_U32 *count)
+{
+	struct stat buf = {};
+	DIR * dir = NULL;
+	struct dirent * dir_buf = NULL, *de;
+	long name_max;
+
+	if (lstat(filename, &buf))
+		return;
+
+	(*count)++;
+
+	if (!S_ISDIR(buf.st_mode))
+		return;
+
+	if ((dir = opendir(filename))
+		&& (name_max = pathconf(filename, _PC_NAME_MAX)) > 0
+		&& (dir_buf = (struct dirent *)malloc(
+		offsetof(struct dirent, d_name) + name_max + 1))) {
+			char fullpath[SR_MAX_PATH];
+
+			while (readdir_r(dir, dir_buf, &de) == 0 && de) {
+				if ((!strcmp(de->d_name, ".")) || (!strcmp(de->d_name, "..")))
+					continue;
+				snprintf(fullpath, SR_MAX_PATH, "%s/%s", filename, de->d_name);
+				count_files(fullpath, count);
+			}
+			if (dir_buf)
+				free(dir_buf);
+	}
+	if (dir)
+		closedir(dir);
+}
+
+static SR_32 sr_white_list_count_files(SR_U32 *counter)
+{
+	wl_learn_file_item_t *iter, *help;
+	
+	*counter = 0;
+
+	if (sr_white_list_hash_exec_for_all(wl_file_count_cb) != SR_SUCCESS) {
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+			"%s=file wl hash exec failed",REASON);
+		return SR_ERROR;
+	}
+	
+	for (iter = learn_files_list; iter; iter = iter->next) {
+		count_files(iter->file, counter);
+	}
+
+	// Delete the list
+	for (iter = learn_files_list; iter;) {
+		help = iter;
+		iter = iter->next;
+		SR_Free(help);
+	}
+	learn_files_list = NULL;
+
+	return SR_SUCCESS;
+}
+
+static SR_32 sr_white_list_calculate_mem_optimization(cls_file_mem_optimization_t *mem_opt)
+{
+	SR_U32 files_counter;
+	struct config_params_t *config_params;
+	SR_U64 free_memory;
+
+	config_params = sr_config_get_param();
+	if (sal_get_memory(NULL, &free_memory) != SR_SUCCESS) {
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+				"%s=Ger free memory failed", REASON);
+		return SR_ERROR;
+	}
+	if (sr_white_list_count_files(&files_counter) != SR_SUCCESS) {
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+				"%s=Counter fiels has failed", REASON);
+		return SR_ERROR;
+	}
+
+	*mem_opt = (files_counter * CLS_UNIT_SIZE > free_memory * config_params->file_cls_mem_optimize / 100) ? CLS_FILE_MEM_OPT_ONLY_DIR : CLS_FILE_MEM_OPT_ALL_FILES ;
+#ifndef DEBUG
+	printf("DEBUG CALCULATE MEM OPT Counter :%d  mem_port:%d mem_opt:%d !!!\n", files_counter, config_params->file_cls_mem_optimize, *mem_opt);
+#endif
+
+	return SR_SUCCESS;
+}
+
 static SR_32 file_apply_cb(void *hash_data, void *data)
 {
 	sr_white_list_item_t *wl_item = (sr_white_list_item_t *)hash_data;
@@ -155,6 +280,28 @@ static SR_32 wl_file_delete_cb(void *hash_data, void *data)
 SR_32 sr_white_list_file_apply(SR_BOOL is_apply)
 {
 	SR_32 rc;
+	cls_file_mem_optimization_t mem_opt;
+	char str_mem_opt[10];
+
+	if (sr_white_list_calculate_mem_optimization(&mem_opt)) {
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+			"%s=wl file:fail to get mem optimizer",REASON);
+		return SR_ERROR;
+	}
+	sr_cls_file_control_set_mem_opt(mem_opt);
+	snprintf(str_mem_opt, sizeof(str_mem_opt), "%d", mem_opt);
+	if (sr_engine_write_conf("FILE_CLS_MEM_OPTIMIZE", str_mem_opt) != SR_SUCCESS) {
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+			"%s failed writing the vsentry conf file", REASON);
+		return SR_ERROR;
+	}
+
+	// Send the memory optimization value to the Kernel
+	if (sr_control_set_mem_opt(mem_opt) != SR_SUCCESS) {
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+			"%s Failed to set memory optimization flag to Kernel", REASON);
+		return SR_ERROR;
+	}
 	
 	if (sysrepo_mng_session_start(&sysrepo_handler)) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,

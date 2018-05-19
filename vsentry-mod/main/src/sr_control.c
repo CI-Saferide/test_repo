@@ -65,6 +65,8 @@ SR_8 sr_control_msg_dispatch(struct sr_control_msg *msg)
 		case SR_CONTROL_GARBAGE_COLLECTION:
 			sr_stat_analysis_garbage_collector();			
 			break;
+		case SR_CONTROL_SET_MEM_OPT:
+			break;
 #endif
 		default:
 			break;
