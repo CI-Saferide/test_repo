@@ -10,6 +10,8 @@
 #include "sr_cls_housekeeping.h"
 #include "sr_control.h"
 
+static cls_file_mem_optimization_t dparent_flag = CLS_FILE_MEM_OPT_ALL_FILES;
+
 SR_32 sr_classifier_init(void)
 {
 	sr_cls_network_init();
@@ -49,6 +51,11 @@ void sr_classifier_empty_tables(SR_BOOL is_lock)
 	sr_cls_uid_empty_table(is_lock);
 	sr_cls_network_uninit();
 	sr_cls_network_init();
+}
+
+void sr_classifier_set_dparent_flags(cls_file_mem_optimization_t i_dparent_flag)
+{
+	dparent_flag = i_dparent_flag;
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -251,15 +258,6 @@ SR_32 sr_classifier_file(disp_info_t* info)
 	SR_U16 def_action = SR_CLS_ACTION_NOOP;//just default action
 	int st;
 	struct config_params_t *config_params;
-	
-	
-	/*******************************************/
-	/*                                         */
-	/*cls_file_mem_optimization_t dparent_flag */
-	/* will be set from the userspace!         */
-	/*                                         */
-	/*******************************************/
-	cls_file_mem_optimization_t dparent_flag = CLS_FILE_MEM_OPT_ONLY_DIR;
 
 #ifdef ROOT_CLS_IGNORE
 	if (!info->tuple_info.id.uid) return SR_CLS_ACTION_ALLOW; // Don't mess up root access
