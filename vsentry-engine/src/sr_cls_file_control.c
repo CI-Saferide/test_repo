@@ -150,28 +150,32 @@ int sr_cls_file_del_rule(char *filename, char *exec, char *user, SR_U32 rulenum,
 				"%s=cannot del classification rules for hard links",REASON);
 			return SR_ERROR;
 		}
-		msg = (sr_file_msg_cls_t*)sr_get_msg(ENG2MOD_BUF, ENG2MOD_MSG_MAX_SIZE);
-		if (msg) {
-			msg->msg_type = SR_MSG_TYPE_CLS_FILE;
-			msg->sub_msg.msg_type = SR_CLS_INODE_DEL_RULE;
-			msg->sub_msg.rulenum = rulenum;
-			msg->sub_msg.inode1=buf.st_ino;
-			msg->sub_msg.exec_inode=exec_inode;
-			msg->sub_msg.uid=uid;
-			sr_send_msg(ENG2MOD_BUF, (SR_32)sizeof(msg));
+		if (treetop || buf.st_nlink > 1) {
+			msg = (sr_file_msg_cls_t*)sr_get_msg(ENG2MOD_BUF, ENG2MOD_MSG_MAX_SIZE);
+			if (msg) {
+				msg->msg_type = SR_MSG_TYPE_CLS_FILE;
+				msg->sub_msg.msg_type = SR_CLS_INODE_DEL_RULE;
+				msg->sub_msg.rulenum = rulenum;
+				msg->sub_msg.inode1=buf.st_ino;
+				msg->sub_msg.exec_inode=exec_inode;
+				msg->sub_msg.uid=uid;
+				sr_send_msg(ENG2MOD_BUF, (SR_32)sizeof(msg));
+			}
 		}
 	}
 	if (S_ISDIR(buf.st_mode))  {
 		// first update the directory itself
-		msg = (sr_file_msg_cls_t*)sr_get_msg(ENG2MOD_BUF, ENG2MOD_MSG_MAX_SIZE);
-		if (msg) {
-			msg->msg_type = SR_MSG_TYPE_CLS_FILE;
-			msg->sub_msg.msg_type = SR_CLS_INODE_DEL_RULE;
-			msg->sub_msg.rulenum = rulenum;
-			msg->sub_msg.inode1=buf.st_ino;
-			msg->sub_msg.exec_inode=exec_inode;
-			msg->sub_msg.uid=uid;
-			sr_send_msg(ENG2MOD_BUF, (SR_32)sizeof(msg));
+		if (mem_opt == CLS_FILE_MEM_OPT_ALL_FILES || treetop) {
+			msg = (sr_file_msg_cls_t*)sr_get_msg(ENG2MOD_BUF, ENG2MOD_MSG_MAX_SIZE);
+			if (msg) {
+				msg->msg_type = SR_MSG_TYPE_CLS_FILE;
+				msg->sub_msg.msg_type = SR_CLS_INODE_DEL_RULE;
+				msg->sub_msg.rulenum = rulenum;
+				msg->sub_msg.inode1=buf.st_ino;
+				msg->sub_msg.exec_inode=exec_inode;
+				msg->sub_msg.uid=uid;
+				sr_send_msg(ENG2MOD_BUF, (SR_32)sizeof(msg));
+			}
 		}
 		// Now iterate subtree
 		DIR * dir = NULL;
@@ -201,16 +205,18 @@ int sr_cls_file_del_rule(char *filename, char *exec, char *user, SR_U32 rulenum,
 	}
 	if (S_ISLNK(buf.st_mode))  {
 		// first update the link itself
-		msg = (sr_file_msg_cls_t*)sr_get_msg(ENG2MOD_BUF, ENG2MOD_MSG_MAX_SIZE);
-		if (msg) {
-			msg->msg_type = SR_MSG_TYPE_CLS_FILE;
-			msg->sub_msg.msg_type = SR_CLS_INODE_DEL_RULE;
-			msg->sub_msg.rulenum = rulenum;
-			msg->sub_msg.inode1=buf.st_ino;
-			sr_send_msg(ENG2MOD_BUF, (SR_32)sizeof(msg));
+		if (treetop) {
+			msg = (sr_file_msg_cls_t*)sr_get_msg(ENG2MOD_BUF, ENG2MOD_MSG_MAX_SIZE);
+			if (msg) {
+				msg->msg_type = SR_MSG_TYPE_CLS_FILE;
+				msg->sub_msg.msg_type = SR_CLS_INODE_DEL_RULE;
+				msg->sub_msg.rulenum = rulenum;
+				msg->sub_msg.inode1=buf.st_ino;
+				sr_send_msg(ENG2MOD_BUF, (SR_32)sizeof(msg));
 		}
 		//Can use realpath() to resolve target filename.
 		//I believe we should not modify the target file in this case.
+		}
 	}
 	return SR_SUCCESS;
 }
