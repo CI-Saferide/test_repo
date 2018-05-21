@@ -45,6 +45,10 @@ static struct radix_node *rn_addmask(void *, struct radix_mask_head *, int,int);
 
 static void rn_detachhead_internal(struct radix_head *);
 
+#ifndef __KERNEL__
+#define min(x,y) (x<y)?x:y
+#endif
+
 #define	RADIX_MAX_KEY_LEN	32
 
 static char rn_zeros[RADIX_MAX_KEY_LEN];
@@ -623,11 +627,13 @@ rn_addroute(void *v_arg, void *n_arg, struct radix_head *head,
 				} while (tt && t->rn_mask == tt->rn_mask);
 				break;
 			}
-#endif
+#endif // RADIX_MPATH
 			if (tt->rn_mask == netmask){
+#ifdef __KERNEL__
 				sal_or_self_op_arrays(&tt[1].sr_private.rules, &treenodes[1].sr_private.rules);
+#endif // __KERNEL__
 				return (0);
-}
+			}
 			if (netmask == 0 ||
 			    (tt->rn_mask &&
 			     ((b_leaf < tt->rn_bit) /* index(netmask) > node */
@@ -1134,8 +1140,10 @@ static void
 rn_detachhead_internal(struct radix_head *head)
 {
 
-	if(head == NULL)
+	if(head == NULL) {
 	    sal_kernel_print_crit("%s: head already freed", __func__);
+	    return;
+	}
 	
 	/* Free <left,root,right> nodes. */
 	R_Free(head);
@@ -1199,8 +1207,10 @@ rn_detachhead(void **head)
 {
 	struct radix_node_head *rnh;
 
-	if(!(head != NULL && *head != NULL))
+	if(!(head != NULL && *head != NULL)) {
 	    sal_kernel_print_crit("%s: head already freed", __func__);
+	    return(1);
+	}
 
 	rnh = (struct radix_node_head *)(*head);
 
@@ -1223,7 +1233,7 @@ rn_printnode(struct radix_node *n, int level)
 #endif // __KERNEL__
 
 	if (n != NULL) {
-		printk("**lvl %d** n = 0x%07llx, b = %s%d, f = %s|%s|%s, ",
+		sal_kernel_print_info("**lvl %d** n = 0x%07llx, b = %s%d, f = %s|%s|%s, ",
 				level,
 				(SR_U64)n & 0xFFFFFFF,
 				n->rn_bit > 0 ? " " : "",
@@ -1232,15 +1242,15 @@ rn_printnode(struct radix_node *n, int level)
 				n->rn_flags & RNF_ROOT ? "R" : " ",
 				n->rn_flags & RNF_ACTIVE ? "A" : " ");
 		if (n == n->rn_parent) {
-			printk("p = NONE     ");
+			sal_kernel_print_info("p = NONE     ");
 		} else {
-			printk("p = 0x%07llx",
+			sal_kernel_print_info("p = 0x%07llx",
 					(SR_U64)n->rn_parent & 0xFFFFFFF);
 		}
 		if (n->rn_flags & RNF_ACTIVE) {
 			if (n->rn_bit >= 0) {
 				// node: print bmask, offset, left, right
-				printk(", bm = 0x%02x, o = %d, l = 0x%07llx, r = 0x%07llx",
+				sal_kernel_print_info(", bm = 0x%02x, o = %d, l = 0x%07llx, r = 0x%07llx",
 						(SR_U8)n->rn_bmask,
 						n->rn_offset,
 						(SR_U64)n->rn_left & 0xFFFFFFF,
@@ -1250,26 +1260,26 @@ rn_printnode(struct radix_node *n, int level)
 				// todo should it be if (n->rn_flags & RNF_NORMAL) {
 				if (n->rn_bit != -33) { // not empty
 					p = (SR_U8 *)(n->rn_key + 4);
-					printk(", ip = %d.%d.%d.%d",
+					sal_kernel_print_info(", ip = %d.%d.%d.%d",
 							p[0], p[1], p[2], p[3]);
 					p = (SR_U8 *)(n->rn_mask + 4);
-					printk(", mask = %d.%d.%d.%d",
+					sal_kernel_print_info(", mask = %d.%d.%d.%d",
 							p[0], p[1], p[2], p[3]);
 
 #ifdef __KERNEL__
 					memcpy(&matched_rules, &n->sr_private.rules, sizeof(matched_rules));
-					printk(", rules:");
+					sal_kernel_print_info(", rules:");
 					while ((rule = sal_ffs_and_clear_array (&matched_rules)) != -1) {
-						printk(" %d", rule);
+						sal_kernel_print_info(" %d", rule);
 					}
 #endif // __KERNEL__
 				}
 			}
-			printk("\n");
+			sal_kernel_print_info("\n");
 
 			// for non empty leaf - print duplicated (if exist)
 			if ((n->rn_bit < 0) && (n->rn_bit != -33) && n->rn_dupedkey) {
-				printk("duplicated node:\n");
+				sal_kernel_print_info("duplicated node:\n");
 				rn_printnode(n->rn_dupedkey, level); // same level
 			}
 

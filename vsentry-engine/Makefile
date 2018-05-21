@@ -15,6 +15,7 @@ TARGET 		:= sr_engine
 VPATH 		:=  $(TOP_DIR)/sal/platform/linux/src \
 				$(TOP_DIR)/src \
 				$(TOP_DIR)/../common/src \
+				$(TOP_DIR)/../tools/radix/src \
 				$(TOP_DIR)/stat_analysis/src \
 				$(TOP_DIR)/white_list/src \
 				$(TOP_DIR)/db/src

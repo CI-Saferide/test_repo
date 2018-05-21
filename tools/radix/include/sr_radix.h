@@ -39,6 +39,12 @@
 #include "sal_bitops.h"
 #endif // __KERNEL__
 
+#ifndef __KERNEL__
+#define sal_kernel_print_err	printf
+#define sal_kernel_print_crit	printf
+#define sal_kernel_print_info	printf
+#endif
+
 #ifdef MALLOC_DECLARE
 MALLOC_DECLARE(M_RTABLE);
 #endif
