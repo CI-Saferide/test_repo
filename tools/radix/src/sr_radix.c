@@ -907,8 +907,9 @@ on1:
 				if (m == x->rn_mklist) {
 					struct radix_mask *mm = m->rm_mklist;
 					x->rn_mklist = 0;
-					if (--(m->rm_refs) < 0)
+					if (--(m->rm_refs) < 0) {
 						R_Free(m);
+					}
 					m = mm;
 				}
 			if (m)
@@ -1166,10 +1167,12 @@ rn_inithead(void **head, int off)
 	R_Zalloc(rnh, struct radix_node_head *, sizeof (*rnh));
 	R_Zalloc(rmh, struct radix_mask_head *, sizeof (*rmh));
 	if (rnh == NULL || rmh == NULL) {
-		if (rnh != NULL)
+		if (rnh != NULL) {
 			R_Free(rnh);
-		if (rmh != NULL)
+		}
+		if (rmh != NULL) {
 			R_Free(rmh);
+		}
 		return (0);
 	}
 
@@ -1197,8 +1200,9 @@ rn_freeentry(struct radix_node *rn, void *arg)
 	struct radix_node *x;
 
 	x = (struct radix_node *)rn_delete(rn + 2, NULL, rnh);
-	if (x != NULL)
+	if (x != NULL) {
 		R_Free(x);
+	}
 	return (0);
 }
 

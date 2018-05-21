@@ -163,11 +163,7 @@ int sr_cls_add_ipv4(SR_U32 addr, SR_U32 netmask, int rulenum, SR_8 dir)
 
 		//sal_kernel_print_info("\nadd rule %d:\n", rulenum);
 		node = rn_addroute((void*)ip, (void*)mask, tree_head, treenodes);
-		if (!node) { // failed to insert or node already exist
-			// free memory - IP will be freed later
-			SR_FREE(treenodes);
-			SR_FREE(mask);
-		} else { // new node, inherit from ancestors and duplicates
+		if (node) { // new node, inherit from ancestors and duplicates
 
 			/*  to inherit from ancestors:
 			 * 	start at parent
@@ -246,7 +242,7 @@ int sr_cls_add_ipv4(SR_U32 addr, SR_U32 netmask, int rulenum, SR_8 dir)
 			}
 		}
 
-		if (!node) {
+		if (!node) { // failed to insert or node already exist
 			//sal_kernel_print_info("no node\n");
 
 			/* in case we add key & netmask that already exist - node will be NULL
@@ -255,7 +251,10 @@ int sr_cls_add_ipv4(SR_U32 addr, SR_U32 netmask, int rulenum, SR_8 dir)
 			node = rn_lookup((void*)ip, (void*)mask, tree_head);
 			//sal_kernel_print_info("lookup ret 0x%llx\n", (SR_U64)node & 0xFFFFFFF);
 			free_ip = 1;
+			SR_FREE(treenodes);
 		}
+		SR_FREE(mask);
+
 		if (node) { // check again in case rn_lookup() succeeded
 			addrule_data.add_rule = 1;
 			addrule_data.rulenum = rulenum;
@@ -509,7 +508,8 @@ int sr_cls_walker_update_rule(struct radix_node *node, void *data)
 					"%s=failed to del ipv4, node not found!",REASON);
 			return SR_ERROR;
 		}
-		SR_FREE(del_node); // TODO: do I need to free the original ip and netmasks ?
+		SR_FREE(del_node->rn_key);
+		SR_FREE(del_node);
 	}
 	return 0;
 }
