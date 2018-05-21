@@ -45,6 +45,10 @@ static struct radix_node *rn_addmask(void *, struct radix_mask_head *, int,int);
 
 static void rn_detachhead_internal(struct radix_head *);
 
+#ifndef __KERNEL__
+#define min(x,y) (x<y)?x:y
+#endif
+
 #define	RADIX_MAX_KEY_LEN	32
 
 static char rn_zeros[RADIX_MAX_KEY_LEN];
@@ -954,9 +958,25 @@ rn_walktree_from(struct radix_head *h, void *a, void *m,
 	struct radix_node *rn, *last = NULL; /* shut up gcc */
 	int stopping = 0;
 	int lastb;
+#ifdef RN_DEBUG
+	struct sockaddr_in *da = (struct sockaddr_in *)a;
+	struct sockaddr_in *dm = (struct sockaddr_in *)m;
+#endif // RN_DEBUG
 
 	if(m == NULL)
 		sal_kernel_print_crit ("%s: mask needs to be specified", __func__);
+
+#ifdef RN_DEBUG
+	sal_kernel_print_info("rn_walktree_from: a = %d.%d.%d.%d, mask = %d.%d.%d.%d\n",
+			da->sin_addr.s_addr & 0xff,
+			(da->sin_addr.s_addr & 0xff00)>> 8,
+			(da->sin_addr.s_addr & 0x00ff0000)>>16,
+			(da->sin_addr.s_addr & 0xff000000)>>24,
+			dm->sin_addr.s_addr & 0xff,
+			(dm->sin_addr.s_addr & 0xff00)>> 8,
+			(dm->sin_addr.s_addr & 0x00ff0000)>>16,
+			(dm->sin_addr.s_addr & 0xff000000)>>24);
+#endif // RN_DEBUG
 
 	/*
 	 * rn_search_m is sort-of-open-coded here. We cannot use the
