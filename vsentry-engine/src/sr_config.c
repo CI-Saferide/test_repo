@@ -205,13 +205,13 @@ static SR_32 update_ip_rule(ip_rule_t *rule)
 		old_rule->tuple.dstport = rule->tuple.dstport;
 	}	
 	if (old_rule->tuple.srcaddr.s_addr != rule->tuple.srcaddr.s_addr ||
-	    old_rule->tuple.srcnetmask.s_addr != old_rule->tuple.srcnetmask.s_addr) {
+	    old_rule->tuple.srcnetmask.s_addr != rule->tuple.srcnetmask.s_addr) {
 		sr_cls_del_ipv4(old_rule->tuple.srcaddr.s_addr, old_program, old_user, old_rule->tuple.srcnetmask.s_addr, old_rule->rulenum, SR_DIR_SRC);
 		sr_cls_add_ipv4(rule->tuple.srcaddr.s_addr, program, user, rule->tuple.srcnetmask.s_addr, rule->rulenum, SR_DIR_SRC);
 		old_rule->tuple.srcaddr.s_addr = rule->tuple.srcaddr.s_addr;
 	}	
 	if (old_rule->tuple.dstaddr.s_addr != rule->tuple.dstaddr.s_addr ||
-	    old_rule->tuple.dstnetmask.s_addr != old_rule->tuple.dstnetmask.s_addr) {
+	    old_rule->tuple.dstnetmask.s_addr != rule->tuple.dstnetmask.s_addr) {
 		sr_cls_del_ipv4(old_rule->tuple.dstaddr.s_addr, old_program, old_user, old_rule->tuple.dstnetmask.s_addr, old_rule->rulenum, SR_DIR_DST);
 		sr_cls_add_ipv4(rule->tuple.dstaddr.s_addr, program, user, rule->tuple.dstnetmask.s_addr, rule->rulenum, SR_DIR_DST);
 		old_rule->tuple.dstaddr.s_addr = rule->tuple.dstaddr.s_addr;
