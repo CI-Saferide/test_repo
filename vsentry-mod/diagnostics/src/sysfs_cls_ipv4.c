@@ -144,7 +144,7 @@ static void store_table(struct radix_head** table)
 	for(i = 0; i < SR_MAX_RULES; i++){
 		if(sysfs_network[i].rule){
 			
-			sal_sprintf(buffer_RULE,"%d\t%s/%s\t\t%s/%s\t%d\t%d\t%s\t%s\t%s\t\t%s\n",
+			sal_sprintf(buffer_RULE,"%d\t%015s/%015s\t\t%015s/%015s\t\t%d\t%d\t%s\t%s\t%s\t\t%s\n",
 				sysfs_network[i].rule,
 				sysfs_network[i].src_ipv4,
 				sysfs_network[i].src_netmask,
@@ -211,7 +211,9 @@ static void fetch_cls_ipv4(void)
 	rn_walktree(sr_cls_ipv4_table[SR_DIR_DST], walktree_sysfs_print_rule, &dir);
 	
 	sal_sprintf(buffer,
-		"rule\tsrc_ip/mask\t\t\t\tdst_ip/mask\t\t\ts_port\td_port\tproto\tuid\tbinary\t\taction\n------------------------------------------------------------------------------------------------------------------------------\n");
+		"rule\t\tsrc_ip/mask\t\t\t\tdst_ip/mask\t\t\ts_port\td_port\tproto\tuid\tbinary\t\taction\n"
+		"-----------------------------------------------------------------------------------------"
+		"-------------------------------------------------------\n");
 }
 
 void set_sysfs_ipv4(unsigned char * buff)
