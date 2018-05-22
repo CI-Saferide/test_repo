@@ -132,7 +132,6 @@ void sr_cls_exec_file_uninit(void)
 
 	for(i = 0; i < EXEC_FILE_HASH_TABLE_SIZE; i++) {
 		if (sr_cls_exec_file_table->buckets[i].head != NULL){
-			sal_kernel_print_info("hash_index[%d] - DELETEING\n",i);
 			curr = sr_cls_exec_file_table->buckets[i].head;				
 			while (curr != NULL){
 				sal_kernel_print_info("\t\texec file inode : %u\n",curr->key);
