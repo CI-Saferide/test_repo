@@ -34,7 +34,7 @@ void config_defaults(void)
 	config_params.default_file_action = SR_CLS_ACTION_ALLOW;
 	config_params.default_net_action  = SR_CLS_ACTION_ALLOW;
 	config_params.default_can_action  = SR_CLS_ACTION_ALLOW;
-	strcpy(config_params.vsentry_config_file, "/etc/sentry/vsentry_config_file");
+	strcpy(config_params.vsentry_config_file, "vsentry_config_file");
 }
 
 SR_32 read_vsentry_config(char* config_filename)
