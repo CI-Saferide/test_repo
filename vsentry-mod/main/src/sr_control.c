@@ -3,6 +3,8 @@
 #ifdef CONFIG_STAT_ANALYSIS
 #include "sr_stat_analysis.h"
 #endif
+
+#include "sr_classifier.h"
 #include "sr_cls_conn_obj.h"
 
 static SR_BOOL vsentry_state = SR_TRUE;
@@ -65,6 +67,9 @@ SR_8 sr_control_msg_dispatch(struct sr_control_msg *msg)
 			break;
 		case SR_CONTROL_GARBAGE_COLLECTION:
 			sr_stat_analysis_garbage_collector();			
+			break;
+		case SR_CONTROL_SET_MEM_OPT:
+			sr_classifier_set_dparent_flags(msg->mem_opt);
 			break;
 #endif
 		case SR_CONTROL_PRINT:

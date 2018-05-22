@@ -85,7 +85,7 @@ SR_32 disp_file_open(disp_info_t* info)
 }
 
 SR_32 disp_inode_link(disp_info_t* info)
-{
+{	
 	if (unlikely(sr_classifier_file(info) == SR_CLS_ACTION_DROP)) {
 		return -EACCES;
 	} else {

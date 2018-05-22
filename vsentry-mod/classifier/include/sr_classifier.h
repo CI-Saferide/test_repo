@@ -20,6 +20,7 @@ SR_32 sr_cls_inode_inherit(SR_U32 from, SR_U32 to);
 void sr_cls_inode_remove(SR_U32 inode);
 void sr_classifier_uninit(void);
 void sr_cls_rules_init(void);
+void sr_classifier_set_dparent_flags(cls_file_mem_optimization_t i_dparent_flag);
 
 SR_32 sr_classifier_network(disp_info_t* info);
 SR_32 sr_classifier_file(disp_info_t* info);

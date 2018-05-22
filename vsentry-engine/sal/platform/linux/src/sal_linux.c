@@ -238,6 +238,23 @@ static SR_U32 sal_get_cpu_util()
 }
 #endif
 
+SR_32 sal_get_memory(SR_U64 *mem, SR_U64 *free_mem)
+{
+	struct sysinfo info = {};
+
+	if (sysinfo(&info)) {
+		perror("Get memory");
+		return SR_ERROR;
+	}
+
+	if (mem)
+		*mem = info.totalram; 
+	if (free_mem)
+		*free_mem = info.freeram; 
+
+	return  SR_SUCCESS ;
+}
+
 SR_U32 sal_get_host_info(char *host_info, int size)
 {
 	struct ifaddrs *ifaddr, *ifa;

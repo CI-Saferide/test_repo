@@ -116,7 +116,7 @@ const event_name *event_mediator_hooks_event_names(void)
 static SR_32 hook_filter(void)
 {
 	//TODO: get sr_engine pid from chdrv open fops
-	if ((vsentry_get_pid()) == (current->pid)-1)
+	if ((vsentry_get_pid()) == (current->tgid))
 		return SR_TRUE;
 		
 	return SR_FALSE;
@@ -150,9 +150,10 @@ SR_32 vsentry_inode_mkdir(struct inode *dir, struct dentry *dentry, umode_t mask
 	HOOK_FILTER
 
 	/* gather metadata */
-	if ((dentry->d_parent) && (dentry->d_parent->d_inode))
+	if ((dentry->d_parent) && (dentry->d_parent->d_inode)){
 		disp.fileinfo.parent_inode = dentry->d_parent->d_inode->i_ino;
-	else
+		disp.fileinfo.parent_info = dentry->d_parent;
+	}else
 		CEF_log_event(SR_CEF_CID_SYSTEM, "Error reading parent inode" , SEVERITY_HIGH, 
 						"[%s] parent inode in null\n", hook_event_names[HOOK_MKDIR].name);
 	disp.fileinfo.id.uid = (SR_32)rcred->uid.val;
@@ -219,9 +220,10 @@ SR_32 vsentry_inode_unlink(struct inode *dir, struct dentry *dentry)
 	else
 		CEF_log_event(SR_CEF_CID_SYSTEM, "Error", SEVERITY_HIGH,
 						"[%s] parent inode in null\n", hook_event_names[HOOK_UNLINK].name);
-	if ((dentry->d_parent) && (dentry->d_parent->d_inode))
+	if ((dentry->d_parent) && (dentry->d_parent->d_inode)){
 		disp.fileinfo.parent_inode = dentry->d_parent->d_inode->i_ino;
-	else
+		disp.fileinfo.parent_info = dentry->d_parent;
+	}else
 		CEF_log_event(SR_CEF_CID_SYSTEM, "Error", SEVERITY_HIGH,
 						"[%s] parent inode in null\n", hook_event_names[HOOK_UNLINK].name);
 
@@ -277,9 +279,10 @@ int vsentry_inode_rename(struct inode *old_dir, struct dentry *old_dentry, struc
 	HOOK_FILTER
 	
 	/* gather metadata */
-	if (old_dentry->d_inode)
+	if (old_dentry->d_inode){
 	    disp.fileinfo.old_inode = old_dentry->d_inode->i_ino;
-	if (new_dentry->d_inode)
+		disp.fileinfo.parent_info = old_dentry->d_parent;
+	}if (new_dentry->d_inode)
 	    disp.fileinfo.current_inode = new_dentry->d_inode->i_ino;
 	if (old_dir)
            disp.fileinfo.old_parent_inode = old_dir->i_ino;
@@ -341,9 +344,10 @@ SR_32 vsentry_inode_symlink(struct inode *dir, struct dentry *dentry, const SR_8
 	HOOK_FILTER
 
 	/* gather metadata */
-	if ((dentry->d_parent) && (dentry->d_parent->d_inode))
+	if ((dentry->d_parent) && (dentry->d_parent->d_inode)){
 		disp.fileinfo.parent_inode = dentry->d_parent->d_inode->i_ino;
-	else
+		disp.fileinfo.parent_info = dentry->d_parent;
+	}else
 		CEF_log_event(SR_CEF_CID_SYSTEM, "Error", SEVERITY_HIGH,
 						"[%s] parent inode in null\n", hook_event_names[HOOK_SYMLINK].name);
 
@@ -396,9 +400,10 @@ SR_32 vsentry_inode_rmdir(struct inode *dir, struct dentry *dentry)
 	else
 		CEF_log_event(SR_CEF_CID_SYSTEM, "Error", SEVERITY_HIGH,
 						"[%s] inode in null\n", hook_event_names[HOOK_RMDIR].name);
-	if ((dentry->d_parent) && (dentry->d_parent->d_inode))
+	if ((dentry->d_parent) && (dentry->d_parent->d_inode)){
 		disp.fileinfo.parent_inode = dentry->d_parent->d_inode->i_ino;
-	else
+		disp.fileinfo.parent_info = dentry->d_parent;
+	}else
 		CEF_log_event(SR_CEF_CID_SYSTEM, "Error", SEVERITY_HIGH,
 						"[%s] parent inode in null\n", hook_event_names[HOOK_RMDIR].name);
 		
@@ -535,7 +540,12 @@ SR_32 vsentry_path_chmod(struct path *path, umode_t mode)
 	else
 		CEF_log_event(SR_CEF_CID_SYSTEM, "Error", SEVERITY_HIGH,
 						"[%s] inode in null\n", hook_event_names[HOOK_CHMOD].name);
-	disp.fileinfo.parent_inode = 0;
+						
+	if ((path->dentry->d_parent) && (path->dentry->d_parent->d_inode)){
+		disp.fileinfo.parent_inode = path->dentry->d_parent->d_inode->i_ino;
+		disp.fileinfo.parent_info = path->dentry->d_parent;	
+	}else						
+		disp.fileinfo.parent_inode = 0;
 		
 	disp.fileinfo.id.uid = (int)rcred->uid.val;
 	disp.fileinfo.id.pid = current->pid;
@@ -576,9 +586,10 @@ SR_32 vsentry_inode_create(struct inode *dir, struct dentry *dentry, umode_t mod
 	HOOK_FILTER
 
 	/* gather metadata */
-	if ((dentry->d_parent) && (dentry->d_parent->d_inode))
+	if ((dentry->d_parent) && (dentry->d_parent->d_inode)){
 		disp.fileinfo.parent_inode = dentry->d_parent->d_inode->i_ino;
-	else
+		disp.fileinfo.parent_info = dentry->d_parent;
+	}else
 		CEF_log_event(SR_CEF_CID_SYSTEM, "Error", SEVERITY_HIGH,
 						"[%s] parent inode in null\n", hook_event_names[HOOK_INODE_CREATE].name);
 		
@@ -623,7 +634,7 @@ SR_32 vsentry_file_open(struct file *file, const struct cred *cred)
 {
 	disp_info_t disp;
 	struct task_struct *ts = current;
-	const struct cred *rcred= ts->real_cred;
+	const struct cred *rcred = ts->real_cred;
 	SR_32 rc;
 	
 	memset(&disp, 0, sizeof(disp_info_t));
@@ -640,11 +651,12 @@ SR_32 vsentry_file_open(struct file *file, const struct cred *cred)
 	else
 		CEF_log_event(SR_CEF_CID_SYSTEM, "Error", SEVERITY_HIGH,
 						"[%s] inode in null\n", hook_event_names[HOOK_FILE_OPEN].name);
-	if ((file->f_path.dentry->d_parent) && (file->f_path.dentry->d_parent->d_inode))
+	if ((file->f_path.dentry->d_parent) && (file->f_path.dentry->d_parent->d_inode)){
 		disp.fileinfo.parent_inode = file->f_path.dentry->d_parent->d_inode->i_ino;
-	else
+		disp.fileinfo.parent_info = file->f_path.dentry->d_parent;
+	}else
 		disp.fileinfo.parent_inode = 0;
-		
+
 	disp.fileinfo.id.uid = (int)rcred->uid.val;
 	disp.fileinfo.id.pid = current->pid;
 	if (file->f_mode & FMODE_WRITE)
@@ -703,10 +715,9 @@ SR_32 vsentry_file_open(struct file *file, const struct cred *cred)
 SR_32 vsentry_inode_link(struct dentry *old_dentry, struct inode *dir, struct dentry *new_dentry)
 {
 	disp_info_t disp;
-	
 	struct task_struct *ts = current;
-	const struct cred *rcred= ts->real_cred;		
-	
+	const struct cred *rcred= ts->real_cred;
+
 	memset(&disp, 0, sizeof(disp_info_t));
 	
 	/* check vsentry state */
@@ -721,9 +732,11 @@ SR_32 vsentry_inode_link(struct dentry *old_dentry, struct inode *dir, struct de
 	else
 		CEF_log_event(SR_CEF_CID_SYSTEM, "Error", SEVERITY_HIGH,
 						"[%s] parent inode in null\n", hook_event_names[HOOK_INODE_LINK].name);
-	if ((old_dentry->d_parent) && (old_dentry->d_parent->d_inode))
+						
+	if ((old_dentry->d_parent) && (old_dentry->d_parent->d_inode)){
 		disp.fileinfo.old_parent_inode = old_dentry->d_parent->d_inode->i_ino;
-	else
+		disp.fileinfo.parent_info = old_dentry->d_parent;		
+	}else
 		CEF_log_event(SR_CEF_CID_SYSTEM, "Error", SEVERITY_HIGH,
 						"[%s] old parent inode in null\n", hook_event_names[HOOK_INODE_LINK].name);
 	if (old_dentry->d_inode)
