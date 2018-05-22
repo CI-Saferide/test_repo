@@ -73,7 +73,7 @@ SR_32 sr_conn_obj_init(void)
 	conn_obj_hash_ops.free = conn_obj_free;
 	if (!(conn_obj_hash = sr_gen_hash_new(CON_OBJS_HASH_SIZE, conn_obj_hash_ops, SR_GEN_HASH_WRITE_LOCK | SR_GEN_HASH_READ_LOCK | SR_GEN_HASH_SLEEPLES_LOCK))) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-		"%s=failed to gen new hash table for sk process",REASON);
+		"%s=failed to create hash table for connection objects",REASON);
 		return SR_ERROR;
 	}
 
