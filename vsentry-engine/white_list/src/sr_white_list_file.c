@@ -146,7 +146,7 @@ static SR_32 file_apply_cb(void *hash_data, void *data)
 	if (!hash_data)
 		return SR_ERROR;
 
-#ifdef DEUG
+#ifdef DEBUG
 	fprintf(f_app, "------------- Exec:%s \n", wl_item->exec);
 #endif
 	for (iter = wl_item->white_list_file; iter; iter = iter->next) {
