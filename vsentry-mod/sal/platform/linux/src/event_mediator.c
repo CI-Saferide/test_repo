@@ -116,7 +116,7 @@ const event_name *event_mediator_hooks_event_names(void)
 static SR_32 hook_filter(void)
 {
 	//TODO: get sr_engine pid from chdrv open fops
-	if ((vsentry_get_pid()) == (current->pid)-1)
+	if ((vsentry_get_pid()) == (current->tgid))
 		return SR_TRUE;
 		
 	return SR_FALSE;
