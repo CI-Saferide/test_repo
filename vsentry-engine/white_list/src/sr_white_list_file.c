@@ -125,7 +125,7 @@ static void write_file_rule(char *file_name, char *exec, SR_U8 file_op, SR_32 *r
 {
 	if (*op_rule == -1) 
 		*op_rule = (*rule_id)++;
-#ifdef DEUG
+#ifdef DEBUG
 	fprintf(f_app, "rule:%d tuple:%d exec:%s file:%s perm:%d \n", *op_rule, *op_tuple, exec, file_name, file_op);
 #endif
 	if (sys_repo_mng_create_file_rule(&sysrepo_handler, *op_rule, *op_tuple, file_name, exec, "*", WHITE_LIST_ACTION, file_op) != SR_SUCCESS) {
