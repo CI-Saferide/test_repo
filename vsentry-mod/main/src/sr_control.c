@@ -3,6 +3,7 @@
 #ifdef CONFIG_STAT_ANALYSIS
 #include "sr_stat_analysis.h"
 #endif
+#include "sr_cls_conn_obj.h"
 
 static SR_BOOL vsentry_state = SR_TRUE;
 static struct config_params_t config_params;
@@ -66,6 +67,9 @@ SR_8 sr_control_msg_dispatch(struct sr_control_msg *msg)
 			sr_stat_analysis_garbage_collector();			
 			break;
 #endif
+		case SR_CONTROL_PRINT:
+			sr_conn_obj_hash_print();
+			break;
 		default:
 			break;
 	}

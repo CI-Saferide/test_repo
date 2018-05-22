@@ -53,7 +53,7 @@ static SR_BOOL check_aged_cb(void *hash_data)
 
 SR_32 sr_sk_process_cleanup(void)
 {
-	return sr_gen_hash_slow_delete_all(sk_process_hash, check_aged_cb);                
+	return sr_gen_hash_cond_delete_all(sk_process_hash, check_aged_cb);                
 }
 
 SR_32 sr_cls_sk_process_hash_init(void)
@@ -79,14 +79,14 @@ void sr_cls_sk_process_hash_uninit(void)
 
 SR_32 sr_cls_sk_process_hash_delete_all(void)
 {
-	return sr_gen_hash_delete_all(sk_process_hash);
+	return sr_gen_hash_delete_all(sk_process_hash, 0);
 }
 
 SR_32 sr_cls_sk_process_hash_update(void *sk, sk_process_info_t *process_info)
 {
 	sk_process_item_t *sk_process_item;
 
-	if (!(sk_process_item = sr_gen_hash_get(sk_process_hash, sk))) {
+	if (!(sk_process_item = sr_gen_hash_get(sk_process_hash, sk, 0))) {
 		SR_Zalloc(sk_process_item, sk_process_item_t *, sizeof(sk_process_item_t));
 		if (!sk_process_item) {
 			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
@@ -97,7 +97,7 @@ SR_32 sr_cls_sk_process_hash_update(void *sk, sk_process_info_t *process_info)
 		sk_process_item->process_info.pid = process_info->pid;
 		sk_process_item->process_info.uid = process_info->uid;
 		sal_update_time_counter(&(sk_process_item->process_info.time_stamp));
-		if ((sr_gen_hash_insert(sk_process_hash, sk , sk_process_item)) != SR_SUCCESS) {
+		if ((sr_gen_hash_insert(sk_process_hash, sk , sk_process_item, 0)) != SR_SUCCESS) {
 			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 				"%s=failed to insert mid to sk_process enforce table",REASON);
 				return SR_ERROR;
@@ -113,7 +113,7 @@ SR_32 sr_cls_sk_process_hash_update(void *sk, sk_process_info_t *process_info)
 
 sk_process_item_t *sr_cls_sk_process_hash_get(void *sk)
 {
-	return sr_gen_hash_get(sk_process_hash, sk);
+	return sr_gen_hash_get(sk_process_hash, sk, 0);
 }
 
 void sr_cls_sk_process_hash_print(void)
@@ -136,5 +136,5 @@ SR_32 ut_cb(void *hash_data, void *data)
 
 SR_32 sr_cls_sk_process_exec_for_each(SR_32 (*cb)(void *hash_data, void *data))
 {
-	return sr_gen_hash_exec_for_each(sk_process_hash, cb, NULL);
+	return sr_gen_hash_exec_for_each(sk_process_hash, cb, NULL, 0);
 }
