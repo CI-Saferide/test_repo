@@ -64,7 +64,7 @@ void sr_ml_can_hash_deinit(void)
 
 static SR_32 sr_ml_can_hash_delete_all(void)
 {
-	return sr_gen_hash_delete_all(can_ml_hash);
+	return sr_gen_hash_delete_all(can_ml_hash, 0);
 }
 
 
@@ -127,7 +127,7 @@ static SR_32 update_can_item(disp_info_t* info, struct sr_ml_can_msg *msg)
 	ml_can_item_t 	*can_ml_item;
 	SR_U8			index;
 
-	if (!(can_ml_item = sr_gen_hash_get(can_ml_hash, (void *)(long)info->can_info.msg_id))) {
+	if (!(can_ml_item = sr_gen_hash_get(can_ml_hash, (void *)(long)info->can_info.msg_id, 0))) {
 			/* new mid, allocate new buffer */
 			SR_Zalloc(can_ml_item, ml_can_item_t *, sizeof(ml_can_item_t));
 			if (!can_ml_item) {
@@ -149,7 +149,7 @@ static SR_32 update_can_item(disp_info_t* info, struct sr_ml_can_msg *msg)
 				can_ml_item->h = msg->h;
 				can_ml_item->mean_delta = msg->mean_delta;
 			}
-			if ((sr_gen_hash_insert(can_ml_hash, (void *)(long)info->can_info.msg_id , can_ml_item)) != SR_SUCCESS) {
+			if ((sr_gen_hash_insert(can_ml_hash, (void *)(long)info->can_info.msg_id , can_ml_item, 0)) != SR_SUCCESS) {
 					CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 						"%s=failed to insert mid 0x%x to can_ml enforce table",REASON,
 						can_ml_item->msg_id);

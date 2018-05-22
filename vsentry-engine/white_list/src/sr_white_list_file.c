@@ -242,29 +242,54 @@ static SR_32 sr_white_list_calculate_mem_optimization(cls_file_mem_optimization_
 	return SR_SUCCESS;
 }
 
+#ifdef DEBUG
+FILE *f_app;
+#endif
+static void write_file_rule(char *file_name, char *exec, SR_U8 file_op, SR_32 *rule_id, SR_32 *op_rule, SR_32 *op_tuple)
+{
+	if (*op_rule == -1) 
+		*op_rule = (*rule_id)++;
+#ifdef DEBUG
+	fprintf(f_app, "rule:%d tuple:%d exec:%s file:%s perm:%d \n", *op_rule, *op_tuple, exec, file_name, file_op);
+#endif
+	if (sys_repo_mng_create_file_rule(&sysrepo_handler, *op_rule, *op_tuple, file_name, exec, "*", WHITE_LIST_ACTION, file_op) != SR_SUCCESS) {
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+			"%s=fail to create file rule in persistent db. rule id:%d ",
+				REASON, *rule_id);
+	}
+	(*op_tuple)++;
+}
+
 static SR_32 file_apply_cb(void *hash_data, void *data)
 {
 	sr_white_list_item_t *wl_item = (sr_white_list_item_t *)hash_data;
 	sr_white_list_file_t *iter;
+	SR_32 r_rule = -1, w_rule = -1, x_rule = -1;
+	SR_32 r_tuple = 0, w_tuple = 0, x_tuple = 0;
 
 	if (!hash_data)
 		return SR_ERROR;
 
+#ifdef DEBUG
+	fprintf(f_app, "------------- Exec:%s \n", wl_item->exec);
+#endif
 	for (iter = wl_item->white_list_file; iter; iter = iter->next) {
-		//printf("rule#%d file:%s: fileop:%x exec:%s \n", rule_id, iter->file, iter->fileop, wl_item->exec);
 		if (rule_id > SR_FILE_WL_END_RULE_NO) {
 			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 				"%s=file learn rule exeeds list boundary. file:%s exec:%s",
 					REASON, iter->file, wl_item->exec);
 			continue; /* we do not break since we want to have log per any rule that we cannot accomodate in the persistent storage */
 		}
-    
-		if (sys_repo_mng_create_file_rule(&sysrepo_handler, rule_id, iter->file, wl_item->exec, "*", WHITE_LIST_ACTION, iter->fileop) != SR_SUCCESS) {
-			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-				"%s=fail to create file rule in persistent db. rule id:%d ",
-					REASON, rule_id);
+
+		if (iter->fileop & SR_FILEOPS_READ) {
+			write_file_rule(iter->file, wl_item->exec, SR_FILEOPS_READ, &rule_id, &r_rule, &r_tuple);
 		}
-		rule_id++;
+		if (iter->fileop & SR_FILEOPS_WRITE) {
+			write_file_rule(iter->file, wl_item->exec, SR_FILEOPS_WRITE, &rule_id, &w_rule, &w_tuple);
+		}
+		if (iter->fileop & SR_FILEOPS_EXEC) {
+			write_file_rule(iter->file, wl_item->exec, SR_FILEOPS_EXEC, &rule_id, &x_rule, &x_tuple);
+		}
 	}
 
 	return SR_SUCCESS;
@@ -302,7 +327,11 @@ SR_32 sr_white_list_file_apply(SR_BOOL is_apply)
 			"%s Failed to set memory optimization flag to Kernel", REASON);
 		return SR_ERROR;
 	}
-	
+
+#ifdef DEBUG
+	f_app = fopen("/tmp/app.txt", "w");
+#endif
+
 	if (sysrepo_mng_session_start(&sysrepo_handler)) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 			"%s=wl file:fail to init persistent db",REASON);
@@ -323,6 +352,10 @@ SR_32 sr_white_list_file_apply(SR_BOOL is_apply)
 	}
 
 	sysrepo_mng_session_end(&sysrepo_handler);
+
+#ifdef DEBUG
+	fclose(f_app);
+#endif
 
 	return SR_SUCCESS;
 }

@@ -3,7 +3,9 @@
 #ifdef CONFIG_STAT_ANALYSIS
 #include "sr_stat_analysis.h"
 #endif
+
 #include "sr_classifier.h"
+#include "sr_cls_conn_obj.h"
 
 static SR_BOOL vsentry_state = SR_TRUE;
 static struct config_params_t config_params;
@@ -70,6 +72,9 @@ SR_8 sr_control_msg_dispatch(struct sr_control_msg *msg)
 			sr_classifier_set_dparent_flags(msg->mem_opt);
 			break;
 #endif
+		case SR_CONTROL_PRINT:
+			sr_conn_obj_hash_print();
+			break;
 		default:
 			break;
 	}

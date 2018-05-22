@@ -134,7 +134,7 @@ SR_32 can_ml_learn_info_task(void *data)
 
 	while (!sr_task_should_stop(SR_CAN_ML_POLICY)) {
 		if (learning) {
-			sr_gen_hash_exec_for_each(can_ml_hash, update_learning_info, NULL);
+			sr_gen_hash_exec_for_each(can_ml_hash, update_learning_info, NULL, 0);
 			//printf ("buf = %s\n", learning_info);
 			can_ml_send_dynamic_data(curl);
 			learning_ptr = 0;
@@ -216,7 +216,7 @@ void sr_ml_can_hash_deinit(void)
 
 static SR_32 sr_ml_can_hash_delete_all(void)
 {
-	return sr_gen_hash_delete_all(can_ml_hash);
+	return sr_gen_hash_delete_all(can_ml_hash, 0);
 }
 
 static SR_32 update_can_item(SR_U64 ts, SR_U32 msg_id)
@@ -225,7 +225,7 @@ static SR_32 update_can_item(SR_U64 ts, SR_U32 msg_id)
 	SR_32 			rc;
 	SR_U64			tmp_delta;
 
-	if (!(can_ml_item = sr_gen_hash_get(can_ml_hash, (void *)(long)msg_id))) {
+	if (!(can_ml_item = sr_gen_hash_get(can_ml_hash, (void *)(long)msg_id, 0))) {
 			/* new mid, allocate new buffer */
 			SR_Zalloc(can_ml_item, ml_can_item_t *, sizeof(ml_can_item_t));
 			if (!can_ml_item)
@@ -237,7 +237,7 @@ static SR_32 update_can_item(SR_U64 ts, SR_U32 msg_id)
 			can_ml_item->K = 0;
 			can_ml_item->sum_delta = 0;
 			can_ml_item->samples = 0;
-			if ((rc = sr_gen_hash_insert(can_ml_hash, (void *)(long)msg_id , can_ml_item)) != SR_SUCCESS) {
+			if ((rc = sr_gen_hash_insert(can_ml_hash, (void *)(long)msg_id , can_ml_item, 0)) != SR_SUCCESS) {
 					CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 						"%s=failed to insert mid 0x%x to can_ml table",REASON,
 						msg_id);
@@ -301,7 +301,7 @@ void ml_can_set_state(sr_ml_can_mode_t state)
 			break;
 		case SR_ML_CAN_MODE_PROTECT:
 			learning = 0;
-			sr_gen_hash_exec_for_each(can_ml_hash, calc_learn_values, NULL);
+			sr_gen_hash_exec_for_each(can_ml_hash, calc_learn_values, NULL, 0);
 			/* learnign finished, transmit the info to the kernel - start protect */
 			msg = (sr_ml_can_msg_t*)sr_get_msg(ENG2MOD_BUF, ENG2MOD_MSG_MAX_SIZE);
 			if (msg) {

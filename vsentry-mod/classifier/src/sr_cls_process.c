@@ -88,7 +88,6 @@ void sr_cls_process_uninit(void)
 
 	for(i = 0; i < PROCESS_HASH_TABLE_SIZE; i++) {
 		if (sr_cls_process_table->buckets[i].head != NULL){
-			sal_kernel_print_info("hash_index[%d] - DELETEING\n",i);
 			curr = sr_cls_process_table->buckets[i].head;				
 			while (curr != NULL){
 				sal_kernel_print_info("\t\tDelete process : %u\n",curr->key);

@@ -1,5 +1,5 @@
 #vehicle ID (VIN)
-VIN supercar
+VIN DEFAULT-VIN-000000
 
 #CAN params
 NUM_OF_CAN_IF 1

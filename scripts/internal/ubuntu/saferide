@@ -1,0 +1,83 @@
+#! /bin/sh
+### BEGIN INIT INFO
+# Provides:          saferide
+# Required-Start:    $remote_fs $syslog
+# Required-Stop:     $remote_fs $syslog
+# Default-Start:     2 3 4 5
+# Default-Stop:      0 1 6
+# Short-Description: SafeRide vSentry Service
+# Description:       this service provides the ability to start and stop vSentry
+### END INIT INFO
+
+# Author: Shay Daniel (shayd@saferide.io)
+
+# PATH should only include /usr/* if it runs after the mountnfs.sh script
+
+INSTALL_DIR=NA
+PATH=/sbin:/usr/sbin:/bin:/usr/bin:$INSTALL_DIR
+DESC="SafeRide Service"
+NAME=vSentry
+DAEMON=#$INSTALL_DIR/$NAME
+SCRIPTNAME=/etc/init.d/$NAME
+
+. /lib/lsb/init-functions
+
+do_start()
+{
+	$INSTALL_DIR/vsentry/init_vsentry.sh || return 2
+	$INSTALL_DIR/vsentry/sr_engine || return 2
+	return 0
+}
+
+do_stop()
+{
+	pid=`ps -ef |grep sr_engine |grep -v grep | awk '{print $2}'`
+	kill -9 $pid
+	rmmod vsentry
+	return 0
+}
+
+#
+# Function that sends a SIGHUP to the daemon/service
+#
+do_reload() {
+	do_stop
+	do_start
+}
+
+case "$1" in
+  start)
+	log_daemon_msg "Starting $DESC" "$NAME"
+	do_start
+	case "$?" in
+		0|1) log_end_msg 0 ;;
+		2) log_end_msg 1 ;;
+	esac
+	;;
+  stop)
+	log_daemon_msg "Stopping $DESC" "$NAME"
+	do_stop
+	case "$?" in
+		0|1) log_end_msg 0 ;;
+		2) log_end_msg 1 ;;
+	esac
+	;;
+  restart)
+	do_reload
+	;;
+  status)
+	is_run=`ps -ef | grep sr_engine | wc -l`
+	if [ "$is_run" -gt 1 ]; then
+		pid=`ps -ef |grep sr_engine |grep -v grep | awk '{print $2}'`
+		echo ""$DESC" "$NAME" is running (pid $pid)"
+	else
+		echo ""$DESC" "$NAME" is not running"
+	fi
+	;;
+  *)
+	echo "Usage: $SCRIPTNAME {start|stop|status|restart}" >&2
+	exit 3
+	;;
+esac
+
+:

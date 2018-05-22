@@ -29,7 +29,7 @@ void config_defaults(void)
 	config_params.cef_file_cycling = 10; /*amount of cef files*/
 	strcpy(config_params.CEF_log_path, "/var/log/");
 	config_params.cef_max_rate = (SR_U8)2;
-	config_params.log_type = (SR_U8)0;
+	config_params.log_type = LOG_TYPE_SYSLOG;
 	
 	config_params.default_file_action = SR_CLS_ACTION_ALLOW;
 	config_params.default_net_action  = SR_CLS_ACTION_ALLOW;
@@ -49,6 +49,7 @@ SR_32 read_vsentry_config(char* config_filename)
         CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 			"%s=failed to open config file %s, using defaults",REASON,
 			config_filename);
+		config_defaults();
         return SR_ERROR;
     }
     while(! feof(fp)) {

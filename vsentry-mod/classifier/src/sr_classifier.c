@@ -8,6 +8,7 @@
 #include "sr_actions_common.h"
 #include "sr_cls_sk_process.h"
 #include "sr_cls_housekeeping.h"
+#include "sr_cls_conn_obj.h"
 #include "sr_control.h"
 
 static cls_file_mem_optimization_t dparent_flag = CLS_FILE_MEM_OPT_ALL_FILES;
@@ -23,8 +24,8 @@ SR_32 sr_classifier_init(void)
 	sr_cls_exec_file_init();
 	sr_cls_process_init();
 	sr_cls_sk_process_hash_init();
+	sr_conn_obj_init();
 	sr_cls_housekeeping_init();
-		
 
 	return 0;
 }
@@ -32,6 +33,7 @@ SR_32 sr_classifier_init(void)
 void sr_classifier_uninit(void)
 {
 	sr_cls_housekeeping_uninit();
+	sr_conn_obj_uninit();
 	sr_cls_sk_process_hash_uninit();
 	sr_cls_network_uninit();
 	sr_cls_fs_uninit();

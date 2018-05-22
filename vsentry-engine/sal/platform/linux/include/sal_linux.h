@@ -62,6 +62,13 @@ SR_U32 sal_get_os(sal_os_t *os);
 #define SR_MUTEX_UNLOCK(l) pthread_mutex_unlock(l)
 #define SR_MUTEX_INIT_VALUE PTHREAD_MUTEX_INITIALIZER
 
+#define SR_SLEEPLES_LOCK_DEF(name)
+#define SR_SLEEPLES_LOCK_INIT(lock) 
+#define SR_SLEEPLES_LOCK_FLAGS unsigned long
+#define SR_SLEEPLES_LOCK(lock, flags) 
+#define SR_SLEEPLES_UNLOCK(lock, flags)
+#define SR_SLEEPLES_TRYLOCK(lock, flags) 1
+
 #define IPV4_STR_MAX_LEN INET_ADDRSTRLEN
 
 SR_U64 sal_get_time(void);
