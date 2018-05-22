@@ -184,7 +184,11 @@ static int create_file_setup(void)
 	rc = system(cmd);
 	sprintf(cmd, "echo kkkk > %s/da2/db/dc/dd/filew2", test_area);
 	rc = system(cmd);
+	sprintf(cmd, "echo kkkk > %s/da2/db/dc/dd/filew22", test_area);
+	rc = system(cmd);
 	sprintf(cmd, "ln %s/da2/db/dc/dd/filew2 %s/da1/db/dc/dd/filew12", test_area, test_area);
+	rc = system(cmd);
+	sprintf(cmd, "ln %s/da2/db/dc/dd/filew22 %s/da1/db/dc/dd/filew122", test_area, test_area);
 	rc = system(cmd);
 	sprintf(cmd, "mkdir -p %s/dirrp", test_area);
 	rc = system(cmd);
@@ -241,25 +245,24 @@ static int handle_file(sysrepo_mng_handler_t *handler)
 
 	create_file_setup();
 
-	/* Read a read protected file that its grandfather has a rule */
 	sprintf(cmd, "cat %s/da/db/dc/dd/filer", test_area);
-	file_test_case(handler, "da/db/dc", 11, 4, "*", "*", "drop", cmd , &test_count, &err_count, 0, "Read a file that is gandparent is protected");
+	file_test_case(handler, "da/db/dc", 1, 4, "*", "*", "drop", cmd , &test_count, &err_count, 0, "Read a file that is gandparent is protected");
 
 	/* Read a read protected file that its grandfather father has a rule */
 	sprintf(cmd, "cat %s/da/db1/dc/dd/filer1", test_area);
-	file_test_case(handler, "da/db1", 11, 4, "*", "*", "drop", cmd , &test_count, &err_count, 0, "Read a file that is gandparent father is protected");
+	file_test_case(handler, "da/db1", 2, 4, "*", "*", "drop", cmd , &test_count, &err_count, 0, "Read a file that is gandparent father is protected");
 
 	/* Read a read protected file that its grandfather father father has a rule */
 	sprintf(cmd, "cat %s/da1/db/dc/dd/filer1", test_area);
-	file_test_case(handler, "da1", 11, 4, "*", "*", "drop", cmd , &test_count, &err_count, 0, "Read a file that is gandparent father is protected");
+	file_test_case(handler, "da1", 3, 4, "*", "*", "drop", cmd , &test_count, &err_count, 0, "Read a file that is gandparent father is protected");
 
 	/* Write to a write protected file that its grandfather father has a rule */
 	sprintf(cmd, "echo llll > %s/da1/db/dc/dd/filew1", test_area);
-	file_test_case(handler, "da1/db", 11, 2, "*", "*", "drop", cmd , &test_count, &err_count, 0, "Write to a file that is gandparent father father is protected");
+	file_test_case(handler, "da1/db", 4, 2, "*", "*", "drop", cmd , &test_count, &err_count, 0, "Write to a file that is gandparent father father is protected");
 
 	/* Write to a write protected file that its grandfather father father has a rule */
 	sprintf(cmd, "echo llll > %s/da2/db/dc/dd/filew1", test_area);
-	file_test_case(handler, "da2", 11, 2, "*", "*", "drop", cmd , &test_count, &err_count, 0, "Write to a file that is gandparent father father is protected");
+	file_test_case(handler, "da2", 5, 2, "*", "*", "drop", cmd , &test_count, &err_count, 0, "Write to a file that is gandparent father father is protected");
 
 	/* Write again to a write protected file that its grandfather father father has a rule  after deleting the rule */
 	sysrepo_mng_parse_json(handler, FIXED_PART_START FIXED_PART_END, NULL, 0);
@@ -268,7 +271,7 @@ static int handle_file(sysrepo_mng_handler_t *handler)
 
 	/* ls a directory that its grand parent has a rule. */
 	sprintf(cmd, "ls %s/da/db/dc/dd", test_area);
-	file_test_case(handler, "da/db", 11, 4, "*", "*", "drop", cmd , &test_count, &err_count, 0, " ls a directory that its grand parent has a rule.");
+	file_test_case(handler, "da/db", 6, 4, "*", "*", "drop", cmd , &test_count, &err_count, 0, " ls a directory that its grand parent has a rule.");
 
 	/* Delete the rule above and retry to ls the file. */
 	sysrepo_mng_parse_json(handler, FIXED_PART_START FIXED_PART_END, NULL, 0);
@@ -277,7 +280,7 @@ static int handle_file(sysrepo_mng_handler_t *handler)
 
 	/* ls a directory that its grand parent father has a rule. */
 	sprintf(cmd, "ls %s/da/db/dc/dd", test_area);
-	file_test_case(handler, "da", 11, 4, "*", "*", "drop", cmd , &test_count, &err_count, 0, " ls a directory that its grand parent has a rule.");
+	file_test_case(handler, "da", 7, 4, "*", "*", "drop", cmd , &test_count, &err_count, 0, " ls a directory that its grand parent has a rule.");
 
 	/* Delete the rule above and retry to ls the file. */
 	sysrepo_mng_parse_json(handler, FIXED_PART_START FIXED_PART_END, NULL, 0);
@@ -286,7 +289,7 @@ static int handle_file(sysrepo_mng_handler_t *handler)
 
 	/*  Create a file into a directory that its grand parent is  write protected */
 	sprintf(cmd, "echo kkkk > %s/da2/db/dc/dd/filew3", test_area);
-	file_test_case(handler, "da2/db/dc", 11, 2, "*", "*", "drop", cmd , &test_count, &err_count, 0, "Create a file into a directory that its grand parent is  write protected");
+	file_test_case(handler, "da2/db/dc", 8, 2, "*", "*", "drop", cmd , &test_count, &err_count, 0, "Create a file into a directory that its grand parent is  write protected");
 
 	/* Delete the rule above and retry the write*/
 	sysrepo_mng_parse_json(handler, FIXED_PART_START FIXED_PART_END, NULL, 0);
@@ -295,19 +298,31 @@ static int handle_file(sysrepo_mng_handler_t *handler)
 
 	/* Create a file into a directory that its grand parent father is write protected */
 	sprintf(cmd, "echo kkkk > %s/da2/db/dc/dd/filew3", test_area);
-	file_test_case(handler, "da2/db", 11, 2, "*", "*", "drop", cmd , &test_count, &err_count, 0, "Create a file into a directory that its grand parent father is write protected");
+	file_test_case(handler, "da2/db", 9, 2, "*", "*", "drop", cmd , &test_count, &err_count, 0, "Create a file into a directory that its grand parent father is write protected");
 
 	/* A file has a grand parent that has write permission. There is hardlink to it. try to update it via hard link */
 	sprintf(cmd, "echo kkkk > %s/da2/db/dc/dd/filew2", test_area);
-	file_test_case(handler, "da1/db/dc", 12, 2, "*", "*", "drop", cmd , &test_count, &err_count, 0, "Update a file that has a grandparent with write protect via  hard link");
+	file_test_case(handler, "da1/db/dc", 10, 2, "*", "*", "drop", cmd , &test_count, &err_count, 0, "Update a file that has a grandparent with write protect via  hard link");
 
 	/* A file has a grand parent that has read permission. There is hardlink to it. try to read it via hard link */
 	sprintf(cmd, "cat %s/da2/db/dc/dd/filew2", test_area);
-	file_test_case(handler, "da1/db/dc", 12, 4, "*", "*", "drop", cmd , &test_count, &err_count, 0, "Read a file that has a grandparent with read protect via  hard link");
+	file_test_case(handler, "da1/db/dc", 11, 4, "*", "*", "drop", cmd , &test_count, &err_count, 0, "Read a file that has a grandparent with read protect via  hard link");
 
 	/* A file has a grand parent father that has read permission. There is hardlink to it. try to read it via hard link */
-	sprintf(cmd, "cat %s/da2/db/dc/dd/filew2", test_area);
-	file_test_case(handler, "da1/db", 12, 4, "*", "*", "drop", cmd , &test_count, &err_count, 0, "Read a file that has a grandparent father with read protect via  hard link");
+	sprintf(cmd, "cat %s/da2/db/dc/dd/filew22", test_area);
+	file_test_case(handler, "da1/db/dc", 12, 4, "*", "*", "drop", cmd , &test_count, &err_count, 0, "1xxx1 Read a file that has a grandparent father with read protect via hard link");
+
+	/* Remove a file where its grandparent directory is write protected */
+	sprintf(cmd, "rm %s/da2/db/dc/dd/filew2", test_area);
+	file_test_case(handler, "da2/db/dc", 13, 2, "*", "*", "drop", cmd , &test_count, &err_count, 0, "Remove a file where its grandparent directory is write protected");
+
+	/* Remove a file where its grandparent directory is write protected throu its hard link, the hard link is not write protected*/
+	sprintf(cmd, "rm %s/da2/db/dc/dd/filew2", test_area);
+	file_test_case(handler, "da1/db/dc", 14, 2, "*", "*", "drop", cmd , &test_count, &err_count, 0, "Remove a file where its grandparent directory is write protected throu its hard link");
+
+	/* Move a file where its grandparent directory is write protected throu its hard link the hard link is not write proteced. */
+	sprintf(cmd, "mv %s/da2/db/dc/dd/filew2 %s/da3/db/dc/dd/", test_area, test_area);
+	file_test_case(handler, "da1/db/dc", 15, 2, "*", "*", "drop", cmd , &test_count, &err_count, 0, "meove a file where its grandparent directory is write protected throu its hard link");
 
 	/* >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> LS a protected dir */
 	sprintf(cmd, "ls %s/dirrp", test_area);
@@ -650,6 +665,8 @@ int main(int argc, char **argv)
 	sysrepo_mng_handler_t handler;
 	int rc = 0, opt;
 	char *type = NULL;
+
+printf(" PID:%d\n", getpid());
 
 	if (getenv("TEST_AREA_HOME"))
 		home = strdup(getenv("TEST_AREA_HOME"));
