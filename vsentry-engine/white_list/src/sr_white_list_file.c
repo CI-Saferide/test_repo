@@ -183,7 +183,7 @@ SR_32 sr_white_list_file_apply(SR_BOOL is_apply)
 	SR_32 rc;
 
 #ifdef DEBUG
-	f_app = fopen("/home/arik/tmp/app.txt", "w");
+	f_app = fopen("/tmp/app.txt", "w");
 #endif
 	
 	if (sysrepo_mng_session_start(&sysrepo_handler)) {
