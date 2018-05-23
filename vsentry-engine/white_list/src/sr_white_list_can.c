@@ -7,6 +7,7 @@
 #include "sr_actions_common.h"
 #include "sr_cls_rules_control.h"
 #include "sysrepo_mng.h"
+#include "sr_cls_wl_common.h"
 
 static SR_32 rule_id; 
 static sysrepo_mng_handler_t sysrepo_handler;

@@ -18,5 +18,9 @@ SR_32 sys_repo_mng_create_net_rule(sysrepo_mng_handler_t *handler, SR_32 rule_id
         char *dst_addr, char *dst_netmsk, SR_U8 ip_proto, SR_U16 src_port, SR_U16 dst_port, char *exec, char *user, char *action);
 SR_32 sys_repo_mng_commit(sysrepo_mng_handler_t *handler);
 SR_32 sys_repo_mng_create_action(sysrepo_mng_handler_t *handler, char *action_name, SR_BOOL is_allow, SR_BOOL is_log);
+SR_32 sys_repo_mng_delete_ip_rules(sysrepo_mng_handler_t *handler, SR_32 start, SR_32 end);
+SR_32 sys_repo_mng_delete_file_rules(sysrepo_mng_handler_t *handler, SR_32 start, SR_32 end);
+SR_32 sys_repo_mng_delete_can_rules(sysrepo_mng_handler_t *handler, SR_32 start, SR_32 end);
+SR_32 sysrepo_mng_delete_all(sysrepo_mng_handler_t *handler);
 
 #endif

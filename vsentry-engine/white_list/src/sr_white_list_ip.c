@@ -13,6 +13,7 @@
 #include "sr_gen_hash.h"
 #include "engine_sal.h"
 #include "sysrepo_mng.h"
+#include "sr_cls_wl_common.h"
 
 #define HASH_SIZE 500
 

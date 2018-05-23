@@ -2,6 +2,7 @@
 #include "sr_white_list.h"
 #include "sal_mem.h"
 #include "sysrepo_mng.h"
+#include "sr_cls_wl_common.h"
 
 #define HASH_SIZE 500
 
@@ -106,6 +107,39 @@ SR_32 sr_white_list_init(void)
 	return SR_SUCCESS;
 }
 
+static SR_32 sr_white_list_delete_rules(void)
+{
+	sysrepo_mng_handler_t sysrepo_handler;
+
+	if (sysrepo_mng_session_start(&sysrepo_handler)) {
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+                        "%s=wl file:fail to init persistent db",REASON);
+		return SR_ERROR;
+	}
+
+	if (sys_repo_mng_delete_ip_rules(&sysrepo_handler, SR_IP_WL_START_RULE_NO, SR_IP_WL_END_RULE_NO + 1) != SR_SUCCESS) {
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, "%s=wl file:fail to delete ip rules",REASON);
+                return SR_ERROR;
+	}
+	if (sys_repo_mng_delete_file_rules(&sysrepo_handler, SR_FILE_WL_START_RULE_NO, SR_FILE_WL_END_RULE_NO + 1) != SR_SUCCESS) {
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, "%s=wl file:fail to delete ip rules",REASON);
+                return SR_ERROR;
+	}
+	if (sys_repo_mng_delete_can_rules(&sysrepo_handler, SR_CAN_WL_START_RULE_NO, SR_CAN_WL_END_RULE_NO + 1) != SR_SUCCESS) {
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, "%s=wl file:fail to delete ip rules",REASON);
+                return SR_ERROR;
+	}
+
+	if (sys_repo_mng_commit(&sysrepo_handler) != SR_SUCCESS) {
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+		"%s=failed to commit wl file rules from persistent db", REASON);
+	}
+
+	sysrepo_mng_session_end(&sysrepo_handler);
+
+	return SR_SUCCESS;
+}
+
 SR_32 sr_white_list_set_mode(sr_wl_mode_t new_wl_mode)
 {
 	SR_32 rc;
@@ -138,6 +172,7 @@ SR_32 sr_white_list_set_mode(sr_wl_mode_t new_wl_mode)
 		case SR_WL_MODE_LEARN:
 			sr_white_list_delete_all();
 			sr_white_list_ip_delete_all();
+			sr_white_list_delete_rules();
 			break;
 		case SR_WL_MODE_APPLY:
 			sr_white_list_create_action();

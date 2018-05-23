@@ -11,6 +11,7 @@
 #include "jsmn.h"
 #include <string.h>
 #include <ctype.h>
+#include "sr_cls_wl_common.h"
 
 #ifdef NO_CEF
 #define REASON 		"reason" // shut up GCC
@@ -469,12 +470,18 @@ static void handle_actions(sr_session_ctx_t *sess, char *buf, jsmntok_t *t, int 
         }
 }
 
-static SR_32 create_rule(sr_session_ctx_t *sess, char *buf, jsmntok_t *t, char *prefix, SR_32 *rule_id)
+static SR_32 create_rule(sr_session_ctx_t *sess, char *buf, jsmntok_t *t, char *prefix, SR_32 *rule_id, SR_U32 max_id)
 {
 	SR_32 id;
 	char str_param[MAX_STR_SIZE];
 
 	id = json_get_int(t, buf);
+	if (id > max_id) {
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+			"%s=Create rule failed id is bigger then max.",REASON); 
+		*rule_id = id;
+		return SR_ERROR;
+	}
 	sprintf(str_param, "%snum='%d']", prefix, id);
 	if (um_set_param(sess, str_param) != SR_SUCCESS) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
@@ -551,7 +558,7 @@ static void handle_ip_policies(sr_session_ctx_t *sess, char *buf, jsmntok_t *t, 
 			/* Expect priority to be the ifrst item in JSON object !!!*/
                         if (jsoneq(buf, &t[*i], JSON_PRIORITY) == 0) {
                                 (*i)++;
-				create_rule(sess, buf, &t[*i], IP_PREFIX, &id);
+			create_rule(sess, buf, &t[*i], IP_PREFIX, &id, SR_IP_WL_START_RULE_NO - 1);
                                 continue;
                         }
 			if (id == -1) {
@@ -560,6 +567,13 @@ static void handle_ip_policies(sr_session_ctx_t *sess, char *buf, jsmntok_t *t, 
 					"%s=rule is corrupted",REASON);
                                 (*i)++;
                                 continue;
+			}
+			if (id >= SR_IP_WL_START_RULE_NO) {
+				/* Rule id exceed max value */
+				CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, 
+					"%s= IP rule id :%d exceeds max value (%d)",REASON, id, SR_IP_WL_START_RULE_NO - 1);
+				(*i)++;
+				continue;
 			}
                         if (jsoneq(buf, &t[*i], JSON_SRCIP) == 0) {
                                 (*i)++;
@@ -658,7 +672,7 @@ static void handle_system_policies(sr_session_ctx_t *sess, char *buf, jsmntok_t 
 			/* Expect priority to be the ifrst item in JSON object !!!*/
                         if (jsoneq(buf, &t[*i], JSON_PRIORITY) == 0) {
                                 (*i)++;
-				create_rule(sess, buf, &t[*i], FILE_PREFIX, &id);
+				create_rule(sess, buf, &t[*i], FILE_PREFIX, &id, SR_FILE_WL_START_RULE_NO - 1);
                                 continue;
                         }
 			if (id == -1) {
@@ -667,6 +681,13 @@ static void handle_system_policies(sr_session_ctx_t *sess, char *buf, jsmntok_t 
 					"%s=rule is correpted",REASON);
                                 (*i)++;
                                 continue;
+			}
+			if (id >= SR_FILE_WL_START_RULE_NO) {
+				/* Rule id exceed max value */
+				CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, 
+					"%s= FILE rule id :%d exceeds max value (%d)",REASON, id, SR_CAN_WL_START_RULE_NO - 1);
+				(*i)++;
+				continue;
 			}
                         if (jsoneq(buf, &t[*i], JSON_ACTION) == 0) {
                                 (*i)++;
@@ -732,7 +753,7 @@ static void handle_can_policies(sr_session_ctx_t *sess, char *buf, jsmntok_t *t,
 			}
 			if (jsoneq(buf, &t[*i], JSON_PRIORITY) == 0) {
 				(*i)++;
-				create_rule(sess, buf, &t[*i], CAN_PREFIX, &id);
+				create_rule(sess, buf, &t[*i], CAN_PREFIX, &id, SR_CAN_WL_START_RULE_NO - 1);
 				continue;
 			}
 			if (id == -1) {
@@ -741,6 +762,13 @@ static void handle_can_policies(sr_session_ctx_t *sess, char *buf, jsmntok_t *t,
 					"%s=rule is correpted",REASON);
 				(*i)++;
 				continue;
+			}
+			if (id >= SR_CAN_WL_START_RULE_NO) {
+				/* Rule id exceed max value */
+				CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, 
+					"%s= CAN rule id :%d exceeds max value (%d)",REASON, id, SR_CAN_WL_START_RULE_NO - 1);
+                                (*i)++;
+                                continue;
 			}
 			if (jsoneq(buf, &t[*i], JSON_ACTION) == 0) {
 				(*i)++;
@@ -789,6 +817,98 @@ static void handle_can_policies(sr_session_ctx_t *sess, char *buf, jsmntok_t *t,
 	}
 }
 
+static SR_32 sysrepo_mng_delete_rules(sysrepo_mng_handler_t *handler, char *prefix, SR_U32 start, SR_U32 end)
+{
+	SR_32 i, rc;
+	char str_param[MAX_STR_SIZE];
+
+	for (i = start; i < end; i++) {
+		sprintf(str_param, "%snum='%d']", prefix, i);
+		if ((rc = sr_delete_item(handler->sess, str_param, SR_EDIT_DEFAULT)) != SR_ERR_OK) {
+			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+				"%s=sr_delete_item: %s", REASON, sr_strerror(rc));
+		}
+	}
+
+	return SR_SUCCESS;
+}
+
+SR_32 sys_repo_mng_delete_ip_rules(sysrepo_mng_handler_t *handler, SR_32 start, SR_32 end)
+{
+	return sysrepo_mng_delete_rules(handler, IP_PREFIX, start, end); 
+}
+
+SR_32 sys_repo_mng_delete_file_rules(sysrepo_mng_handler_t *handler, SR_32 start, SR_32 end)
+{
+	return sysrepo_mng_delete_rules(handler, FILE_PREFIX, start, end); 
+}
+
+SR_32 sys_repo_mng_delete_can_rules(sysrepo_mng_handler_t *handler, SR_32 start, SR_32 end)
+{
+	return sysrepo_mng_delete_rules(handler, CAN_PREFIX, start, end); 
+}
+
+SR_32 sysrepo_mng_delete_db(sysrepo_mng_handler_t *handler)
+{
+	SR_32 rc;
+	char str_param[MAX_STR_SIZE];
+	
+	/* Delete all actions, recrate WL action */
+	sprintf(str_param, "/%s/%s/%s", DB_PREFIX, SR_ACTIONS, LIST_ACTIONS);
+	rc = sr_delete_item(handler->sess, str_param, SR_EDIT_DEFAULT);
+	if (SR_ERR_OK != rc) {
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+			"%s=sr_delete_item: %s", REASON, sr_strerror(rc));
+		return SR_ERROR;
+	}
+	if (sys_repo_mng_create_action(handler, WHITE_LIST_ACTION, SR_TRUE, SR_TRUE) != SR_ERR_OK) {
+                CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+                        "%s=sr_white_list_create_action: sys_repo_mng_create_action failed",REASON);
+                return SR_ERROR;
+        }
+
+	sysrepo_mng_delete_rules(handler, FILE_PREFIX, 0, SR_FILE_WL_START_RULE_NO);
+	sysrepo_mng_delete_rules(handler, IP_PREFIX, 0, SR_IP_WL_START_RULE_NO);
+	sysrepo_mng_delete_rules(handler, CAN_PREFIX, 0, SR_CAN_WL_START_RULE_NO);
+
+	sprintf(str_param, "%snum='%d']", FILE_PREFIX, 12);
+
+	return SR_SUCCESS;
+}
+
+SR_32 sysrepo_mng_delete_all(sysrepo_mng_handler_t *handler)
+{
+	SR_32 rc;
+
+	rc = sr_delete_item(handler->sess, "/saferide:config", SR_EDIT_DEFAULT);
+	if (SR_ERR_OK != rc) {
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+			"%s= Delete all failed : %s", REASON, sr_strerror(rc));
+		return SR_ERROR;
+	}
+	rc = sr_commit(handler->sess);
+	if (SR_ERR_OK != rc) {
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+			"%s=sr_commit: %s",REASON,
+			sr_strerror(rc));
+		rc = SR_ERROR;
+		goto out;
+	}
+
+	rc = sr_copy_config(handler->sess, "saferide", SR_DS_RUNNING, SR_DS_STARTUP);
+	if (SR_ERR_OK != rc) {
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+			"%s=sr_copy_config: %s",REASON,
+			sr_strerror(rc));
+		rc = SR_ERROR;
+		goto out;
+	}
+
+out:
+	return SR_SUCCESS;
+}
+
+
 SR_32 sysrepo_mng_parse_json(sysrepo_mng_handler_t *handler, char *buf, SR_U32 *version, SR_U32 old_version)
 {
 	SR_32 i, r, rc;
@@ -836,7 +956,7 @@ SR_32 sysrepo_mng_parse_json(sysrepo_mng_handler_t *handler, char *buf, SR_U32 *
 				CEF_log_event(SR_CEF_CID_SYSTEM, "info", SEVERITY_LOW,
 					"%s=new version :%d version:%d buf:%s",MESSAGE,*version, old_version, buf);
 			}
-			rc = sr_delete_item(sess, "/saferide:config", SR_EDIT_DEFAULT);
+			rc = sysrepo_mng_delete_db(handler);
 			if (SR_ERR_OK != rc) {
 				CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 					"%s=sr_delete_item: %s", REASON,
