@@ -57,7 +57,7 @@ SR_32 get_port_for_rule(SR_16 rule, SR_U8 dir)
 int walktree_sysfs_print_rule(struct radix_node *node, void *data)
 {
 	SR_U8 *dir = (SR_U8 *)data;
-	char *cp,*cp_mask;
+	char *cp;
 	bit_array matched_rules;
 	SR_16 rule;
 
@@ -67,7 +67,6 @@ int walktree_sysfs_print_rule(struct radix_node *node, void *data)
 	while ((rule = sal_ffs_and_clear_array (&matched_rules)) != -1) {
 
 		cp = (char *)node->rn_key + 4;
-		cp_mask = (char *)node->rn_mask + 4;
 
 		// put some work to fetch the DST/SRC port OR any
 		// need to check if its TCP or UDP <---- redundant to check again
@@ -79,10 +78,9 @@ int walktree_sysfs_print_rule(struct radix_node *node, void *data)
 			}
 			sysfs_network[rule].rule = rule;
 			sysfs_network[rule].src_flag = 1;
+			sysfs_network[rule].src_netmask_len = abs(node->rn_bit + 33);
 			sysfs_network[rule].s_port = get_port_for_rule(rule, *dir);
 
-			sprintf(sysfs_network[rule].src_netmask ,"%u.%u.%u.%u",
-					(unsigned char)cp_mask[0],(unsigned char)cp_mask[1],(unsigned char)cp_mask[2],(unsigned char)cp_mask[3]);
 			sprintf(sysfs_network[rule].src_ipv4,"%u.%u.%u.%u",
 					(unsigned char)cp[0], (unsigned char)cp[1], (unsigned char)cp[2], (unsigned char)cp[3]);
 
@@ -94,9 +92,7 @@ int walktree_sysfs_print_rule(struct radix_node *node, void *data)
 			sysfs_network[rule].rule = rule;
 			sysfs_network[rule].dst_flag = 1;
 			sysfs_network[rule].d_port = get_port_for_rule(rule, *dir);
-
-			sprintf(sysfs_network[rule].dst_netmask ,"%u.%u.%u.%u",
-					(unsigned char)cp_mask[0],(unsigned char)cp_mask[1],(unsigned char)cp_mask[2],(unsigned char)cp_mask[3]);
+			sysfs_network[rule].dst_netmask_len = abs(node->rn_bit + 33);
 			sprintf(sysfs_network[rule].dst_ipv4,"%u.%u.%u.%u",
 					(unsigned char)cp[0], (unsigned char)cp[1], (unsigned char)cp[2], (unsigned char)cp[3]);
 		}
@@ -144,12 +140,12 @@ static void store_table(struct radix_head** table)
 	for(i = 0; i < SR_MAX_RULES; i++){
 		if(sysfs_network[i].rule){
 			
-			sal_sprintf(buffer_RULE,"%d\t%015s/%015s\t\t%015s/%015s\t\t%d\t%d\t%s\t%s\t%s\t\t%s\n",
+			sal_sprintf(buffer_RULE,"%d\t%015s/%d\t%015s/%d\t%d\t%d\t%s\t%s\t%s\t\t%s\n",
 				sysfs_network[i].rule,
 				sysfs_network[i].src_ipv4,
-				sysfs_network[i].src_netmask,
+				sysfs_network[i].src_netmask_len,
 				sysfs_network[i].dst_ipv4,
-				sysfs_network[i].dst_netmask,
+				sysfs_network[i].dst_netmask_len,
 				sysfs_network[i].s_port,
 				sysfs_network[i].d_port,
 				sysfs_network[i].proto,
@@ -167,12 +163,12 @@ static void store_rule(struct radix_head** table,SR_16 rule_find)
 {
 		
 	if(sysfs_network[rule_find].rule == rule_find ){
-		sal_sprintf(buffer_RULE,"%d\t%s/%s\t\t\t\t%s/%s\t%d\t%d\t%s\t%s\t%s\t\t%s\n",
+		sal_sprintf(buffer_RULE,"%d\t%015s/%d\t%015s/%d\t%d\t%d\t%s\t%s\t%s\t\t%s\n",
 			sysfs_network[rule_find].rule,
 			sysfs_network[rule_find].src_ipv4,
-			sysfs_network[rule_find].src_netmask,
+			sysfs_network[rule_find].src_netmask_len,
 			sysfs_network[rule_find].dst_ipv4,
-			sysfs_network[rule_find].dst_netmask,
+			sysfs_network[rule_find].dst_netmask_len,
 			sysfs_network[rule_find].s_port,
 			sysfs_network[rule_find].d_port,
 			sysfs_network[rule_find].proto,
@@ -211,9 +207,9 @@ static void fetch_cls_ipv4(void)
 	rn_walktree(sr_cls_ipv4_table[SR_DIR_DST], walktree_sysfs_print_rule, &dir);
 	
 	sal_sprintf(buffer,
-		"rule\t\tsrc_ip/mask\t\t\t\tdst_ip/mask\t\t\ts_port\td_port\tproto\tuid\tbinary\t\taction\n"
-		"-----------------------------------------------------------------------------------------"
-		"-------------------------------------------------------\n");
+		"rule\t\tsrc_ip/mask\t\tdst_ip/mask\ts_port\td_port\tproto\tuid\tbinary\t\taction\n"
+		"----------------------------------------------------------------------------------"
+		"----------------------------\n");
 }
 
 void set_sysfs_ipv4(unsigned char * buff)
@@ -237,4 +233,5 @@ void dump_ipv4_rule(SR_16 rule)
 	fetch_cls_ipv4();
 	store_rule(sr_cls_ipv4_table,rule);
 }
+
 #endif /* SYSFS_SUPPORT */

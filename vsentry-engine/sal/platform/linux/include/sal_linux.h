@@ -64,6 +64,12 @@ SR_U32 sal_get_os(sal_os_t *os);
 
 #define IPV4_STR_MAX_LEN INET_ADDRSTRLEN
 
+#define sal_print_crit(fmt, ...) \
+	CEF_log_event(SR_CEF_CID_SYSTEM, "crit", SEVERITY_VERY_HIGH, fmt, ##__VA_ARGS__)
+#define sal_print_err(fmt, ...) \
+	CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, fmt, ##__VA_ARGS__)
+#define sal_print_info(fmt, ...)
+
 SR_U64 sal_get_time(void);
 SR_32 sal_get_process_name(SR_U32 pid, char *exe, SR_U32 size);
 SR_U32 sal_get_ip_for_interface(char *interface);
