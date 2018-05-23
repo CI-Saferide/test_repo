@@ -29,14 +29,13 @@ void config_defaults(void)
 	config_params.cef_file_cycling = 10; /*amount of cef files*/
 	strcpy(config_params.CEF_log_path, "/var/log/");
 	config_params.cef_max_rate = (SR_U8)2;
-	config_params.log_type = (SR_U8)0;
+	config_params.log_type = LOG_TYPE_SYSLOG;
 	
 	config_params.default_file_action = SR_CLS_ACTION_ALLOW;
 	config_params.default_net_action  = SR_CLS_ACTION_ALLOW;
 	config_params.default_can_action  = SR_CLS_ACTION_ALLOW;
+	strcpy(config_params.vsentry_config_file, "vsentry_config_file");
 }
-
-#define CONFIG_LINE_BUFFER_SIZE 100
 
 SR_32 read_vsentry_config(char* config_filename)
 {
@@ -50,6 +49,7 @@ SR_32 read_vsentry_config(char* config_filename)
         CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 			"%s=failed to open config file %s, using defaults",REASON,
 			config_filename);
+		config_defaults();
         return SR_ERROR;
     }
     while(! feof(fp)) {
@@ -135,7 +135,7 @@ SR_32 read_vsentry_config(char* config_filename)
 		param = strtok(buf, " ");
 		if (!param)
 			continue;
-		value = strtok(NULL, " ");
+		value = strtok(NULL, " \n");
 		if (!value)
 			continue;
 		if (!strcmp(param, "LOG_TYPE")) {
@@ -188,6 +188,12 @@ SR_32 read_vsentry_config(char* config_filename)
 				config_params.default_net_action = SR_CLS_ACTION_DROP;
 				config_params.default_net_action |= SR_CLS_ACTION_LOG;
 			}
+		}
+		if (!strcmp(param, "FILE_CLS_MEM_OPTIMIZE")) {
+			config_params.file_cls_mem_optimize = atoi(value);
+		}
+		if (!strcmp(param, "VSENTRY_CONFIG_FILE")) {
+			strncpy(config_params.vsentry_config_file, value, sizeof(config_params.vsentry_config_file));
 		}
 
     }

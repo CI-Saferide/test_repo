@@ -208,7 +208,7 @@ SR_32 sr_stat_process_connection_hash_update(SR_U32 process_id, sr_stat_connecti
 	is_connection_update_in_progress = SR_TRUE;
 
 	/* If the file exists add the rule to the file. */
-        if (!(process_connection_item = sr_gen_hash_get(process_connection_hash, (void *)(long int)process_id))) {
+        if (!(process_connection_item = sr_gen_hash_get(process_connection_hash, (void *)(long int)process_id, 0))) {
 		SR_Zalloc(process_connection_item, process_connection_item_t *, sizeof(process_connection_item_t));
 		if (!process_connection_item) {
 			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
@@ -219,7 +219,7 @@ SR_32 sr_stat_process_connection_hash_update(SR_U32 process_id, sr_stat_connecti
 		process_connection_item->process_id = process_id;
 		update_connection_item(process_connection_item, connection_info);
 		/* Add the process */
-		if ((rc = sr_gen_hash_insert(process_connection_hash, (void *)(long int)process_id, process_connection_item)) != SR_SUCCESS) {
+		if ((rc = sr_gen_hash_insert(process_connection_hash, (void *)(long int)process_id, process_connection_item, 0)) != SR_SUCCESS) {
 			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 				"%s=stat conn update sr_gen_hash_insert failed",REASON);
 			rc = SR_ERROR;
@@ -236,7 +236,7 @@ out:
 
 SR_32 sr_stat_process_connection_hash_delete(SR_U32 process_id)
 {
-	return sr_gen_hash_delete(process_connection_hash, (void *)(long int)process_id);
+	return sr_gen_hash_delete(process_connection_hash, (void *)(long int)process_id, 0);
 }
 
 SR_32 sr_stat_process_connection_hash_exec_for_process(SR_U32 process_id, SR_32 (*cb)(SR_U32 process_id, sr_stat_connection_info_t *connection_info))
@@ -245,7 +245,7 @@ SR_32 sr_stat_process_connection_hash_exec_for_process(SR_U32 process_id, SR_32 
 	process_connection_data_t *iter;
 	SR_U32 rc;
 
-        if (!(process_connection_item = sr_gen_hash_get(process_connection_hash, (void *)(long int)process_id)))
+        if (!(process_connection_item = sr_gen_hash_get(process_connection_hash, (void *)(long int)process_id, 0)))
 		return SR_SUCCESS;
 	for (iter = process_connection_item->process_connection_list; iter; iter = iter->next) {
 		if ((rc = cb(process_id, &(iter->connection_info))) != SR_SUCCESS) {
@@ -263,7 +263,7 @@ SR_32 sr_stat_process_connection_delete_socket(SR_U32 process_id, sr_connection_
         process_connection_item_t *process_connection_item;
 	process_connection_data_t **iter, *help;
 
-        if (!(process_connection_item = sr_gen_hash_get(process_connection_hash, (void *)(long int)process_id)))
+        if (!(process_connection_item = sr_gen_hash_get(process_connection_hash, (void *)(long int)process_id, 0)))
 		return SR_NOT_FOUND;
 	for (iter = &(process_connection_item->process_connection_list);
 		 *iter && comp_con_id(&((*iter)->connection_info.con_id), con_id) ; iter = &((*iter)->next));
@@ -305,7 +305,7 @@ SR_32 sr_stat_process_connection_delete_aged_connections(void)
 	cur_time = sal_get_time();
 
 	// Delete all aged connection
-	sr_gen_hash_exec_for_each(process_connection_hash, delete_aged_cb, NULL);
+	sr_gen_hash_exec_for_each(process_connection_hash, delete_aged_cb, NULL, 0);
 
 	// Delete all process entry with no connections. 
 	sr_stat_process_connection_delete_empty_process();
@@ -508,7 +508,7 @@ SR_32 sr_stat_process_connection_hash_finish_transmit(SR_U32 count)
 {
 	counters_t system_counters = {};
 
-	sr_gen_hash_exec_for_each(process_connection_hash, finish_transmit, (void *)&system_counters);
+	sr_gen_hash_exec_for_each(process_connection_hash, finish_transmit, (void *)&system_counters, 0);
 
 	if (system_counters.cons_count > system_max.cons_count)
 		system_max.cons_count = system_counters.cons_count;
@@ -541,7 +541,7 @@ SR_32 st_stats_process_connection_learn(void)
 		usleep(100000);
 
 	// clean up all learning rules fron kernel
-	sr_gen_hash_delete_all(process_connection_hash);
+	sr_gen_hash_delete_all(process_connection_hash, 0);
 	sr_stat_learn_rule_cleanup_process_rules();
 	memset(&system_max, 0, sizeof(system_max));
 	

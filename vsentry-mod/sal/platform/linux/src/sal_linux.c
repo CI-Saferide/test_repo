@@ -5,6 +5,7 @@
 #include "sal_linux.h"
 #include "sr_tasks.h"
 #include "sr_sal_common.h"
+#include "dispatcher.h"
 #include <linux/netdevice.h>
 #include <linux/inetdevice.h>
 
@@ -210,6 +211,26 @@ SR_U32 sal_get_exec_inode(SR_32 pid)
 	if (!exe_file)
 	   return 0;
 	return exe_file->f_path.dentry->d_inode->i_ino;
+}
+
+void* sal_get_parent_dir(void* info)
+{
+    struct dentry *tmp_dir;
+    disp_info_t* tmp_info;
+  
+    tmp_info = (disp_info_t*)info;
+    tmp_dir = (struct dentry*)tmp_info->fileinfo.parent_info;
+    
+        if(!tmp_dir)
+			return NULL;
+    
+	if(!SR_IS_ROOT(tmp_dir)){
+		tmp_info->fileinfo.parent_info = tmp_dir->d_parent;
+		tmp_info->fileinfo.parent_directory_inode = tmp_dir->d_inode->i_ino;
+		return tmp_info;
+	}else{
+		return NULL;
+	}
 }
 
 void sal_update_time_counter(SR_TIME_COUNT *time_count)

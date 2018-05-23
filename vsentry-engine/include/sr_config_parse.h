@@ -9,6 +9,7 @@
 #define LOG_TYPE_CURL (1 << 0)
 #define LOG_TYPE_SYSLOG (1 << 1)
 
+#define CONFIG_LINE_BUFFER_SIZE 100 
 
 struct config_params_t {
 	/* vin paramas */
@@ -39,6 +40,9 @@ struct config_params_t {
 	SR_U16	default_file_action;
 	SR_U16  default_net_action;
 	SR_U16	default_can_action;
+
+	SR_U8	file_cls_mem_optimize;
+	SR_8	vsentry_config_file[PATH_BUFF];
 };
 
 SR_32 read_vsentry_config(char* config_filename);

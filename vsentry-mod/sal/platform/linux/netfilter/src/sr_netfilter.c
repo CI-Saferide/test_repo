@@ -17,6 +17,7 @@
 #include "sr_stat_port.h"
 #endif
 #include "sr_cls_sk_process.h"
+#include "sr_cls_conn_obj.h"
 
 #ifdef CONFIG_NETFILTER
 
@@ -28,6 +29,8 @@ unsigned int sr_netfilter_hook_fn(void *priv,
 {
 	struct iphdr *ip_header = (struct iphdr *)skb_network_header(skb);
 	disp_info_t disp = {};
+	struct tcphdr *tcp_header;
+	sr_connection_id_t con_id;
 #ifdef SR_STAT_ANALYSIS_DEBUG
 	static int non_uc;
 #endif
@@ -40,7 +43,20 @@ unsigned int sr_netfilter_hook_fn(void *priv,
 			return NF_DROP;
 	}*/
 	if ((ip_header->protocol == IPPROTO_TCP) && (((struct tcphdr *)skb_transport_header(skb))->syn)&&!(((struct tcphdr *)skb_transport_header(skb))->ack)) {
+		tcp_header = (struct tcphdr *)skb_transport_header(skb);
+		con_id.daddr.v4addr = ntohl(ip_header->saddr); // This is the remote address
+		con_id.saddr.v4addr = ntohl(ip_header->daddr); // This is the local address
+		con_id.dport = ntohs(tcp_header->source); // This is the remote port
+		con_id.sport = ntohs(tcp_header->dest); // This is the local port
+		con_id.ip_proto = IPPROTO_TCP;
+
+		if (sr_conn_obj_hash_get(&con_id, SR_TRUE)) {
+			return NF_ACCEPT;
+		}
 		if (vsentry_incoming_connection(skb) == SR_CLS_ACTION_DROP) {
+			return NF_DROP;
+		}
+		if (sr_conn_obj_hash_insert(&con_id, SR_TRUE) == SR_ERROR) {
 			return NF_DROP;
 		}
 	}
@@ -58,15 +74,28 @@ unsigned int sr_netfilter_hook_fn(void *priv,
 #ifdef CONFIG_STAT_ANALYSIS
 		disp.tuple_info.id.pid = sr_stat_port_find_pid(disp.tuple_info.dport);
 #endif
+		con_id.daddr.v4addr = ntohl(ip_header->saddr); // This is the remote address
+		con_id.saddr.v4addr = ntohl(ip_header->daddr); // This is the local address
+		con_id.dport = ntohs(udp_header->source); // This is the remote port
+		con_id.sport = ntohs(udp_header->dest); // This is the local port
+		con_id.ip_proto = IPPROTO_UDP;
+
+		if (sr_conn_obj_hash_get(&con_id, SR_TRUE)) {
+			return NF_ACCEPT;
+		}
+
 		if (disp_ipv4_recvmsg(&disp) != SR_CLS_ACTION_ALLOW)
 			return NF_DROP;
+
+		if (sr_conn_obj_hash_insert(&con_id, SR_TRUE) == SR_ERROR) {
+			return NF_DROP;
+		}
 	}
 
 #ifdef CONFIG_STAT_ANALYSIS
 	if ((ip_header->protocol == IPPROTO_TCP && !((struct tcphdr *)skb_transport_header(skb))->syn) ||
 		ip_header->protocol == IPPROTO_UDP) {
 		sr_connection_data_t *conp, con = {};
-		struct tcphdr *tcp_header;
 		struct udphdr *udp_header;
 
 		con.con_id.saddr.v4addr = ntohl(ip_header->saddr);
@@ -135,6 +164,7 @@ unsigned int sr_netfilter_out_hook_fn(void *priv,
 	struct udphdr *udp_header;
 	disp_info_t disp = {};
 	sk_process_item_t *process_info_p;
+	sr_connection_id_t con_id;
 
 	if (SR_FALSE == vsentry_get_state()) 
 		return NF_ACCEPT;
@@ -158,8 +188,22 @@ unsigned int sr_netfilter_out_hook_fn(void *priv,
 			disp.tuple_info.id.pid = process_info_p->process_info.pid;
 			disp.tuple_info.id.uid = process_info_p->process_info.uid;
 		}
+		con_id.daddr.v4addr = ntohl(ip_header->daddr); 
+		con_id.saddr.v4addr = ntohl(ip_header->saddr);
+		con_id.dport = ntohs(udp_header->dest); 
+		con_id.sport = ntohs(udp_header->source);
+		con_id.ip_proto = IPPROTO_UDP;
+
+		if (sr_conn_obj_hash_get(&con_id, SR_TRUE)) {
+			return NF_ACCEPT;
+		}
+
 		if (disp_ipv4_sendmsg(&disp) != SR_CLS_ACTION_ALLOW)
 			return NF_DROP;
+
+		if (sr_conn_obj_hash_insert(&con_id, SR_TRUE) == SR_ERROR) {
+			return NF_DROP;
+		}
 	}
 
 	return NF_ACCEPT;

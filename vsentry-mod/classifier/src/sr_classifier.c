@@ -8,7 +8,10 @@
 #include "sr_actions_common.h"
 #include "sr_cls_sk_process.h"
 #include "sr_cls_housekeeping.h"
+#include "sr_cls_conn_obj.h"
 #include "sr_control.h"
+
+static cls_file_mem_optimization_t dparent_flag = CLS_FILE_MEM_OPT_ALL_FILES;
 
 SR_32 sr_classifier_init(void)
 {
@@ -21,8 +24,8 @@ SR_32 sr_classifier_init(void)
 	sr_cls_exec_file_init();
 	sr_cls_process_init();
 	sr_cls_sk_process_hash_init();
+	sr_conn_obj_init();
 	sr_cls_housekeeping_init();
-		
 
 	return 0;
 }
@@ -30,6 +33,7 @@ SR_32 sr_classifier_init(void)
 void sr_classifier_uninit(void)
 {
 	sr_cls_housekeeping_uninit();
+	sr_conn_obj_uninit();
 	sr_cls_sk_process_hash_uninit();
 	sr_cls_network_uninit();
 	sr_cls_fs_uninit();
@@ -49,6 +53,11 @@ void sr_classifier_empty_tables(SR_BOOL is_lock)
 	sr_cls_uid_empty_table(is_lock);
 	sr_cls_network_uninit();
 	sr_cls_network_init();
+}
+
+void sr_classifier_set_dparent_flags(cls_file_mem_optimization_t i_dparent_flag)
+{
+	dparent_flag = i_dparent_flag;
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -244,6 +253,7 @@ result:
 
 SR_32 sr_classifier_file(disp_info_t* info)
 {
+	disp_info_t* tmp_info;
 	bit_array *ptr = NULL, ba_res;
 	SR_16 rule = SR_CLS_NO_MATCH;
 	SR_U16 action;
@@ -256,17 +266,13 @@ SR_32 sr_classifier_file(disp_info_t* info)
 #endif
 
 	memset(&ba_res, 0, sizeof(bit_array));
-	config_params = sr_control_config_params();
+	config_params = sr_control_config_params();	
+	tmp_info = info;
 
 	sal_or_self_op_arrays(&ba_res, sr_cls_file_any());
+	
 	if (info->fileinfo.current_inode != INODE_ANY) {
 		ptr = sr_cls_file_find(info->fileinfo.current_inode);
-		if (ptr) {
-			sal_or_self_op_arrays(&ba_res, ptr);
-		}
-	}
-	if (info->fileinfo.parent_inode != INODE_ANY) {
-		ptr = sr_cls_file_find(info->fileinfo.parent_inode);
 		if (ptr) {
 			sal_or_self_op_arrays(&ba_res, ptr);
 		}
@@ -277,10 +283,40 @@ SR_32 sr_classifier_file(disp_info_t* info)
 			sal_or_self_op_arrays(&ba_res, ptr);
 		}
 	}
-	if (info->fileinfo.old_parent_inode != INODE_ANY) {
-		ptr = sr_cls_file_find(info->fileinfo.old_parent_inode);
+
+check_parent:
+
+	if (tmp_info->fileinfo.parent_inode != INODE_ANY) {
+		ptr = sr_cls_file_find(tmp_info->fileinfo.parent_inode);
 		if (ptr) {
 			sal_or_self_op_arrays(&ba_res, ptr);
+		}else if(dparent_flag == CLS_FILE_MEM_OPT_ONLY_DIR){		
+			if(tmp_info->fileinfo.parent_info){ //safty check if the "parent_info" ptr is null for some reason...
+				tmp_info=(disp_info_t*)sal_get_parent_dir(tmp_info);
+				if(tmp_info){// check if we in ROOT "/" directory cuz info will be null
+					tmp_info->fileinfo.parent_inode = tmp_info->fileinfo.parent_directory_inode;		
+					goto check_parent;
+				}
+			}		
+		}
+	}
+	
+	tmp_info = info; // restore the info to previous state
+	
+check_old_parent:
+
+	if (tmp_info->fileinfo.old_parent_inode != INODE_ANY) {
+		ptr = sr_cls_file_find(tmp_info->fileinfo.old_parent_inode);
+		if (ptr) {
+			sal_or_self_op_arrays(&ba_res, ptr);
+		}else if(dparent_flag == CLS_FILE_MEM_OPT_ONLY_DIR){		
+			if(tmp_info->fileinfo.parent_info){ //safty check if the "parent_info" ptr is null for some reason...
+				tmp_info=(disp_info_t*)sal_get_parent_dir(tmp_info);
+				if(tmp_info){
+					tmp_info->fileinfo.old_parent_inode = tmp_info->fileinfo.parent_directory_inode;
+					goto check_old_parent;
+				}
+			}		
 		}
 	}
 	

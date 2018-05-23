@@ -5,6 +5,12 @@
 #define INODE_ANY 0
 
 typedef enum {
+        CLS_FILE_MEM_OPT_ALL_FILES,
+        CLS_FILE_MEM_OPT_ONLY_DIR,
+        CLS_FILE_MEM_OPT_TOTAL = (CLS_FILE_MEM_OPT_ONLY_DIR + 1),
+} cls_file_mem_optimization_t;
+
+typedef enum {
 	SR_CLS_INODE_INHERIT=0,
 	SR_CLS_INODE_DEL_RULE,
 	SR_CLS_INODE_ADD_RULE,

@@ -187,7 +187,7 @@ SR_32 sr_white_list_hash_insert(char *exec, sr_white_list_item_t **new_item)
 	sr_white_list_item_t *white_list_item;
 	SR_32 rc;
 
-	if (sr_gen_hash_get(white_list_hash, exec)) {
+	if (sr_gen_hash_get(white_list_hash, exec, 0)) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
                                 "%s=whilte list insert - item failed",REASON);
 		return SR_ERROR;
@@ -203,7 +203,7 @@ SR_32 sr_white_list_hash_insert(char *exec, sr_white_list_item_t **new_item)
 		*new_item = white_list_item;
 		
 	strncpy(white_list_item->exec, exec, SR_MAX_PATH_SIZE);
-	if ((rc = sr_gen_hash_insert(white_list_hash, (void *)exec, white_list_item)) != SR_SUCCESS) {
+	if ((rc = sr_gen_hash_insert(white_list_hash, (void *)exec, white_list_item, 0)) != SR_SUCCESS) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
                                "%s=%s: sr_gen_hash_insert failed",REASON, __FUNCTION__);
 		return SR_ERROR;
@@ -216,7 +216,7 @@ sr_white_list_item_t *sr_white_list_hash_get(char *exec)
 {
 	sr_white_list_item_t *item;
 
-	if (!(item = sr_gen_hash_get(white_list_hash, exec)))
+	if (!(item = sr_gen_hash_get(white_list_hash, exec, 0)))
 		return NULL;
 
 	return item;
@@ -249,14 +249,14 @@ void sr_white_list_uninit(void)
 
 SR_32 sr_white_list_hash_exec_for_all(SR_32 (*cb)(void *hash_data, void *data))
 {
-	return sr_gen_hash_exec_for_each(white_list_hash, cb, NULL);
+	return sr_gen_hash_exec_for_each(white_list_hash, cb, NULL, 0);
 }
 
 SR_32 sr_white_list_hash_delete(char *exec)
 {
 	SR_32 rc;
 	
-	if ((rc = sr_gen_hash_delete(white_list_hash, exec) != SR_SUCCESS)) {
+	if ((rc = sr_gen_hash_delete(white_list_hash, exec, 0) != SR_SUCCESS)) {
 		return rc;
 	}
 
@@ -265,7 +265,7 @@ SR_32 sr_white_list_hash_delete(char *exec)
 
 SR_32 sr_white_list_delete_all(void)
 {
-	return sr_gen_hash_delete_all(white_list_hash);
+	return sr_gen_hash_delete_all(white_list_hash, 0);
 }
 
 void sr_white_list_hash_print(void)
