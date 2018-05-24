@@ -35,6 +35,9 @@ void config_defaults(void)
 	config_params.default_net_action  = SR_CLS_ACTION_ALLOW;
 	config_params.default_can_action  = SR_CLS_ACTION_ALLOW;
 	strcpy(config_params.vsentry_config_file, "vsentry_config_file");
+
+	config_params.remote_server_support_enable = SR_FALSE;
+	config_params.policy_update_enable = SR_FALSE;
 }
 
 SR_32 read_vsentry_config(char* config_filename)
@@ -195,7 +198,12 @@ SR_32 read_vsentry_config(char* config_filename)
 		if (!strcmp(param, "VSENTRY_CONFIG_FILE")) {
 			strncpy(config_params.vsentry_config_file, value, sizeof(config_params.vsentry_config_file));
 		}
-
+		if (!strcmp(param, "REMOTE_SERVER_SUPPORT_ENABLE")) {
+			config_params.remote_server_support_enable = (SR_BOOL)atoi(value);
+		}
+		if (!strcmp(param, "POLICY_UPDATE_ENABLE")) {
+			config_params.policy_update_enable = (SR_BOOL)atoi(value);
+		}
     }
     fclose(fp);
     return SR_SUCCESS;
