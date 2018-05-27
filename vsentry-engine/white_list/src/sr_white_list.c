@@ -3,6 +3,7 @@
 #include "sal_mem.h"
 #include "sysrepo_mng.h"
 #include "sr_cls_wl_common.h"
+#include "sr_config_parse.h"
 
 #define HASH_SIZE 500
 
@@ -144,6 +145,10 @@ SR_32 sr_white_list_set_mode(sr_wl_mode_t new_wl_mode)
 {
 	SR_32 rc;
 	sr_ec_msg_t *msg;
+	struct config_params_t *config_params;
+	sr_config_msg_t *conf_msg;
+
+	config_params = sr_config_get_param();
 
 	if (wl_mode == new_wl_mode)
 		return SR_SUCCESS;
@@ -170,6 +175,19 @@ SR_32 sr_white_list_set_mode(sr_wl_mode_t new_wl_mode)
 	}
 	switch (new_wl_mode) { 
 		case SR_WL_MODE_LEARN:
+			/* Set default rule to be allow */
+			conf_msg = (sr_config_msg_t*)sr_get_msg(ENG2MOD_BUF, ENG2MOD_MSG_MAX_SIZE);
+        		if (conf_msg) {
+				conf_msg->msg_type = SR_MSG_TYPE_CONFIG;
+				conf_msg->sub_msg.cef_max_rate = config_params->cef_max_rate;
+				conf_msg->sub_msg.def_file_action = SR_CLS_ACTION_ALLOW;
+				conf_msg->sub_msg.def_can_action = SR_CLS_ACTION_ALLOW;
+				conf_msg->sub_msg.def_net_action = SR_CLS_ACTION_ALLOW;
+				sr_send_msg(ENG2MOD_BUF, (SR_32)sizeof(conf_msg));
+			} else
+ 				CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+					"%s=failed to transfer config info to kernel",REASON);
+
 			sr_white_list_delete_all();
 			sr_white_list_ip_delete_all();
 			sr_white_list_delete_rules();
@@ -192,6 +210,18 @@ SR_32 sr_white_list_set_mode(sr_wl_mode_t new_wl_mode)
 					"%s=sr_white_list_ip_apply failed",REASON);
 				return SR_ERROR;
 			}
+			/* Set default rule to be as defined in sr_config */
+			conf_msg = (sr_config_msg_t*)sr_get_msg(ENG2MOD_BUF, ENG2MOD_MSG_MAX_SIZE);
+        		if (conf_msg) {
+				conf_msg->msg_type = SR_MSG_TYPE_CONFIG;
+				conf_msg->sub_msg.cef_max_rate = config_params->cef_max_rate;
+				conf_msg->sub_msg.def_file_action = config_params->default_file_action;
+				conf_msg->sub_msg.def_can_action = config_params->default_can_action;
+				conf_msg->sub_msg.def_net_action = config_params->default_net_action;
+				sr_send_msg(ENG2MOD_BUF, (SR_32)sizeof(conf_msg));
+			} else
+ 				CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+					"%s=failed to transfer config info to kernel",REASON);
 			break;
 		case SR_WL_MODE_OFF:
 			break;
