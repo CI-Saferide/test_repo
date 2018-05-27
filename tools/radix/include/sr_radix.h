@@ -190,7 +190,7 @@ int rn_walktree_from(struct radix_head *h, void *a, void *m,
     walktree_f_t *f, void *w);
 int rn_walktree(struct radix_head *, walktree_f_t *, void *);
 
-void rn_printnode(SR_8 *, struct radix_node *, int);
-void rn_printtree(SR_8 *, struct radix_head *);
+void rn_printnode(struct radix_node *, int);
+void rn_printtree(struct radix_head *);
 
 #endif /* _RADIX_H_ */

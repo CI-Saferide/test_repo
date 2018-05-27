@@ -1227,7 +1227,7 @@ rn_detachhead(void **head)
 }
 
 void
-rn_printnode(SR_8 *str, struct radix_node *n, int level)
+rn_printnode(struct radix_node *n, int level)
 {
 #ifdef __KERNEL__
 	bit_array matched_rules;
@@ -1236,28 +1236,25 @@ rn_printnode(SR_8 *str, struct radix_node *n, int level)
 
 	if (n != NULL) {
 		if (level != -1) { // -1 is for a single node
-			sal_sprintf(str, "**lvl %d** ",
-					level);
+			sal_print_info("**lvl %d** ", level);
 		}
-		sal_sprintf(str, "n = 0x%07llx, ",
-				(SR_U64)n & 0xFFFFFFF);
+		sal_print_info("n = 0x%07llx, ", (SR_U64)n & 0xFFFFFFF);
 #ifdef DEBUG
-			sal_print_info(str, "b = %s%d, f = %s|%s, ",
+		sal_print_info("b = %s%d, f = %s|%s, ",
 					n->rn_bit > 0 ? " " : "",
 					n->rn_bit,
 					n->rn_flags & RNF_NORMAL ? "N" : " ",
 					n->rn_flags & RNF_ROOT ? "R" : " ");
 #endif // DEBUG
 		if (n == n->rn_parent) {
-			sal_sprintf(str, "p = NONE     ");
+			sal_print_info("p = NONE     ");
 		} else {
-			sal_sprintf(str, "p = 0x%07llx",
-					(SR_U64)n->rn_parent & 0xFFFFFFF);
+			sal_print_info("p = 0x%07llx", (SR_U64)n->rn_parent & 0xFFFFFFF);
 		}
 		if (n->rn_flags & RNF_ACTIVE) {
 			if (n->rn_bit >= 0) {
 				// node: print bmask, offset, left, right
-				sal_sprintf(str, ", bm = 0x%02x, o = %d, l = 0x%07llx, r = 0x%07llx",
+				sal_print_info(", bm = 0x%02x, o = %d, l = 0x%07llx, r = 0x%07llx",
 						(SR_U8)n->rn_bmask,
 						n->rn_offset,
 						(SR_U64)n->rn_left & 0xFFFFFFF,
@@ -1265,44 +1262,46 @@ rn_printnode(SR_8 *str, struct radix_node *n, int level)
 			} else {
 				// leaf: print dup, ip, rules
 				if (n->rn_bit != -33) { // not empty
-					SR_U8 *p = (SR_U8 *)(n->rn_key + 4);
-					sal_sprintf(str, ", ip = %d.%d.%d.%d/%lu",
-							p[0], p[1], p[2], p[3],
+					sal_print_info(", ip = %d.%d.%d.%d/%lu",
+							*((SR_U8 *)(n->rn_key + 4)),
+							*((SR_U8 *)(n->rn_key + 4) + 1),
+							*((SR_U8 *)(n->rn_key + 4) + 2),
+							*((SR_U8 *)(n->rn_key + 4)+ 3),
 							abs(n->rn_bit + 33));
 
 #ifdef __KERNEL__
 					memcpy(&matched_rules, &n->sr_private.rules, sizeof(matched_rules));
-					sal_sprintf(str, ", rules:");
+					sal_print_info(", rules:");
 					while ((rule = sal_ffs_and_clear_array (&matched_rules)) != -1) {
-						sal_sprintf(str, " %d", rule);
+						sal_print_info(" %d", rule);
 					}
 #endif // __KERNEL__
 				}
 			}
-			sal_sprintf(str, "\n");
+			sal_print_info("\n");
 
 			// for non empty leaf - print duplicated (if exist)
 			if ((n->rn_bit < 0) && (n->rn_bit != -33) && n->rn_dupedkey) {
-				sal_sprintf(str, "duplicated node:\n");
-				rn_printnode(str, n->rn_dupedkey, level); // same level
+				sal_print_info("duplicated node:\n");
+				rn_printnode(n->rn_dupedkey, level); // same level
 			}
 
 			// print left and right
 			if (n->rn_bit >= 0) {
-				rn_printnode(str, n->rn_left, level + 1);
-				rn_printnode(str, n->rn_right, level + 1);
+				rn_printnode(n->rn_left, level + 1);
+				rn_printnode(n->rn_right, level + 1);
 			}
 		}
 	}
 }
 
 void
-rn_printtree(SR_8 *str, struct radix_head *h)
+rn_printtree(struct radix_head *h)
 {
 	int level = 0;
 
 	if (h == NULL)
 		return;
-	rn_printnode(str, h->rnh_treetop, level);
+	rn_printnode(h->rnh_treetop, level);
 }
 
