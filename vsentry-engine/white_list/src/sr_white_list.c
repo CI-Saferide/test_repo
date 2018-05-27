@@ -68,7 +68,7 @@ static SR_32 sr_white_list_create_action(void)
                 return SR_ERROR;
         }
                         
-	if (sys_repo_mng_create_action(&sysrepo_handler, WHITE_LIST_ACTION, SR_TRUE, SR_TRUE) != SR_ERR_OK) {
+	if (sys_repo_mng_create_action(&sysrepo_handler, WHITE_LIST_ACTION, SR_TRUE, SR_FALSE) != SR_ERR_OK) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 			"%s=sr_white_list_create_action: sys_repo_mng_create_action failed",REASON);
 		return SR_ERROR;
@@ -195,21 +195,25 @@ SR_32 sr_white_list_set_mode(sr_wl_mode_t new_wl_mode)
 		case SR_WL_MODE_APPLY:
 			sr_white_list_create_action();
 			wl_mode = SR_WL_MODE_APPLY;
+			printf("Applying file rules ..... \n");
 			if ((rc = sr_white_list_file_apply(SR_TRUE)) != SR_SUCCESS) {
                			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 					"%s=sr_white_list_file_apply failed",REASON);
                 		return SR_ERROR;
 			}
+			printf("Applying file CAN rules ..... \n");
 			if ((rc = sr_white_list_canbus_apply(SR_TRUE)) != SR_SUCCESS) {
                			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 					"%s=sr_white_list_canbus_apply failed",REASON);
                 		return SR_ERROR;
 			}
+			printf("Applying file IP rules ..... \n");
 			if (sr_white_list_ip_apply(SR_TRUE) != SR_SUCCESS) {
                			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 					"%s=sr_white_list_ip_apply failed",REASON);
 				return SR_ERROR;
 			}
+			printf("Finish applying rules.\n");
 			/* Set default rule to be as defined in sr_config */
 			conf_msg = (sr_config_msg_t*)sr_get_msg(ENG2MOD_BUF, ENG2MOD_MSG_MAX_SIZE);
         		if (conf_msg) {

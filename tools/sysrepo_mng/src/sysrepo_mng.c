@@ -1263,11 +1263,9 @@ SR_32 sys_repo_mng_create_action(sysrepo_mng_handler_t *handler, char *action_na
 			str_param, str_value);
 		return SR_ERROR;
 	}
-	if (!is_log)
-		return SR_SUCCESS;
 
 	sprintf(str_param, "/%s/%s/%s[name='%s']/%s", DB_PREFIX, SR_ACTIONS, LIST_ACTIONS, action_name, LOG_FACILITY);
-	strcpy(str_value, "syslog");
+	strcpy(str_value, is_log ? "syslog" : "none");
 	if (um_set_value(handler->sess, str_param, str_value) != SR_SUCCESS) { 
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 			"%s=after um_set_value str_param:%s: str_value:%s",REASON,
