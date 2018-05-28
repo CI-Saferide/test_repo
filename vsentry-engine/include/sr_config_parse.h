@@ -43,6 +43,9 @@ struct config_params_t {
 
 	SR_U8	file_cls_mem_optimize;
 	SR_8	vsentry_config_file[PATH_BUFF];
+
+	SR_BOOL	remote_server_support_enable;
+	SR_BOOL	policy_update_enable;
 };
 
 SR_32 read_vsentry_config(char* config_filename);
