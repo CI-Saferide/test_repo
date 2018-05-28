@@ -867,12 +867,13 @@ SR_32 sysrepo_mng_delete_db(sysrepo_mng_handler_t *handler)
                 return SR_ERROR;
         }
 
-	printf("Delete rules 0%% ... \n");
+	printf("Delete rules 0%% ...");
 	sysrepo_mng_delete_rules(handler, FILE_PREFIX, 0, SR_FILE_WL_START_RULE_NO);
-	printf("Delete rules 50%% ... \n");
+	printf("\rDelete rules 33%% ...");
 	sysrepo_mng_delete_rules(handler, IP_PREFIX, 0, SR_IP_WL_START_RULE_NO);
+	printf("\rDelete rules 66%% ...");
 	sysrepo_mng_delete_rules(handler, CAN_PREFIX, 0, SR_CAN_WL_START_RULE_NO);
-	printf("Delete rules 100%% \n");
+	printf("\rDelete rules 100%% \n");
 
 	return SR_SUCCESS;
 }
