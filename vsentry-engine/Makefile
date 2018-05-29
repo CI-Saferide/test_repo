@@ -84,7 +84,7 @@ OBJS		:=  $(addprefix $(OBJDIR)/,$(SRCS:.c=.o))
 DEPS		:=  $(OBJS:.o=.d)
 
 # libs to link with
-LIBS		:= -lpthread -lsr_log -lsr_hash -lsysrepo_mng -ljsmn -lsentry -lsysrepo -lcurl -larchive -lcrypto
+LIBS		:= -Wl,--start-group -l$(TARGET) -lsr_hash -lsr_log -lsysrepo_mng -Wl,--end-group -lpthread -ljsmn -lsentry -lsysrepo -lcurl -larchive -lcrypto
 # and where to search them 
 LIB_PATH 	:= -L$(LIBDIR) -L../vsentry-lib/lib
 
@@ -110,11 +110,16 @@ all: $(TARGET)
 build_ver:
 	@echo "/*@unused@*/ static const char SR_GIT_BUILD[] = \"`git log --pretty=format:'%h' -n 1`\"; " > $(TOP_DIR)/../common/include/sr_build_ver.h
 
-$(TARGET): build_ver $(OBJDIR) $(OBJS) libsr_log libsr_hash libjsmn libsysrepo_mng
+$(TARGET): libsr_log libsr_hash libjsmn libsysrepo_mng lib$(TARGET)
 	@echo "linking $(notdir $@)"
-	@$(CC) $(LDFLAGS) $(OBJS) -o $(BINDIR)/$(TARGET) $(LIB_PATH) $(LIBS)
+	$(CC) $(LDFLAGS) -o $(BINDIR)/$(TARGET) $(LIB_PATH) $(LIBS)
 
-$(OBJDIR):
+lib$(TARGET): build_ver OBJSDIR $(OBJS)
+	@echo "linking $(notdir $@)"
+	$(AR) rc $(LIBDIR)/$@.a $(OBJS)
+
+OBJSDIR:
+	@echo "creating $(OBJDIR) $(LIBDIR) $(BINDIR)"
 	@mkdir -p $(OBJDIR)
 	@mkdir -p $(LIBDIR)
 	@mkdir -p $(BINDIR)
