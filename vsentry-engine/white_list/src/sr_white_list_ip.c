@@ -13,6 +13,7 @@
 #include "sr_gen_hash.h"
 #include "engine_sal.h"
 #include "sysrepo_mng.h"
+#include "sr_cls_wl_common.h"
 
 #define HASH_SIZE 500
 
@@ -246,7 +247,7 @@ SR_32 sr_white_list_ip_apply(SR_32 is_apply)
 	// In case ip iter was left 
 	for (; ip_iter; ip_iter = ip_iter->next) {
 		if (sys_repo_mng_create_net_rule(&sysrepo_handler, WL_IP_RULE_ID, tuple_id, "0.0.0.0", "0.0.0.0", sal_get_str_ip_address(ip_iter->ip), "255.255.255.255",
-			0, 0, 0, exec_item_list->exec, "*", "allow_log") != SR_SUCCESS) {
+			0, 0, 0, exec_item_list->exec, "*", WHITE_LIST_ACTION) != SR_SUCCESS) {
 			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 				"%s=sys_repo_mng_create_file_rule failed rule id:%d ",
 					REASON, WL_IP_RULE_ID);
@@ -331,12 +332,6 @@ SR_32 sr_white_list_ip_new_connection(struct sr_ec_new_connection_t *pNewConnect
 			break;
 		case SR_WL_MODE_APPLY:
 			free(ip);
-			if (!node) { // detected connection to unknown destination
-				CEF_log_event(SR_CEF_CID_SYSTEM, "info", SEVERITY_LOW,
-					"%s=detected suspicious connection to %x[%d]",MESSAGE,
-					pNewConnection->remote_addr.v4addr,
-					pNewConnection->dport); // TODO: this needs to be properly logged
-			}
 			break;
 		default:
 			free(ip);
