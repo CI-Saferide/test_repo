@@ -45,10 +45,6 @@ static struct radix_node *rn_addmask(void *, struct radix_mask_head *, int,int);
 
 static void rn_detachhead_internal(struct radix_head *);
 
-#ifndef __KERNEL__
-#define min(x,y) (x<y)?x:y
-#endif
-
 #define	RADIX_MAX_KEY_LEN	32
 
 static char rn_zeros[RADIX_MAX_KEY_LEN];
@@ -242,12 +238,12 @@ rn_satisfies_leaf(char *trial, struct radix_node *leaf, int skip)
 {
 	char *cp = trial, *cp2 = leaf->rn_key, *cp3 = leaf->rn_mask;
 	char *cplim;
-	int length = min(LEN(cp), LEN(cp2));
+	int length = MIN(LEN(cp), LEN(cp2));
 
 	if (cp3 == NULL)
 		cp3 = rn_ones;
 	else
-		length = min(length, LEN(cp3));
+		length = MIN(length, LEN(cp3));
 	cplim = cp + length; cp3 += skip; cp2 += skip;
 	for (cp += skip; cp < cplim; cp++, cp2++, cp3++)
 		if ((*cp ^ *cp2) & *cp3)
@@ -346,7 +342,7 @@ on1:
 				if (rn_bit <= m->rm_bit)
 					return (m->rm_leaf);
 			} else {
-				off = min(t->rn_offset, matched_off);
+				off = MIN(t->rn_offset, matched_off);
 				x = rn_search_m(v, t, m->rm_mask);
 				while (x && x->rn_mask != m->rm_mask)
 					x = x->rn_dupedkey;
