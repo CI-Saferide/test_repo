@@ -222,13 +222,13 @@ SR_32 sr_engine_start(int argc, char *argv[])
 	CEF_log_event(SR_CEF_CID_SYSTEM, "info", SEVERITY_LOW,
 		"%s=vsentry engine started",MESSAGE);
 
-#ifdef SUPPORT_REMOTE_SERVER
-	ret = sr_log_uploader_init();
-	if (ret != SR_SUCCESS){
-		printf("failed to init_log_uploader\n");
-		return SR_ERROR;
+	if (config_params->remote_server_support_enable) {
+		ret = sr_log_uploader_init();
+		if (ret != SR_SUCCESS){
+			printf("failed to init_log_uploader\n");
+			return SR_ERROR;
+		}
 	}
-#endif /* SUPPORT_REMOTE_SERVER */
 
 	ret = sr_white_list_init();
 	if (ret != SR_SUCCESS){
@@ -317,12 +317,11 @@ SR_32 sr_engine_start(int argc, char *argv[])
 	sr_db_init();
 	sentry_init(sr_config_vsentry_db_cb);
 	
-#ifdef SUPPORT_REMOTE_SERVER
-#ifdef ENBALE_POLICY_UPDATE
-	/* enbale automatic policy updates from server */
-	sr_static_policy_db_mng_start();
-#endif /* ENBALE_POLICY_UPDATE */
-#endif /* SUPPORT_REMOTE_SERVER */
+	/* policy update depends on remote server support */
+	if (config_params->remote_server_support_enable && config_params->policy_update_enable) {
+		/* enable automatic policy updates from server */
+		sr_static_policy_db_mng_start();
+	}
 
 	sr_get_command_start();
 

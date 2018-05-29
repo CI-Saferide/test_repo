@@ -15,6 +15,7 @@ TARGET 		:= sr_engine
 VPATH 		:=  $(TOP_DIR)/sal/platform/linux/src \
 				$(TOP_DIR)/src \
 				$(TOP_DIR)/../common/src \
+				$(TOP_DIR)/../tools/radix/src \
 				$(TOP_DIR)/stat_analysis/src \
 				$(TOP_DIR)/white_list/src \
 				$(TOP_DIR)/db/src
@@ -97,9 +98,6 @@ CFLAGS 		+= -DSR_CAN_DEBUG_PRINT
 #CFLAGS 		+= -DSR_RB_DEBUG -DSR_MSG_DEBUG
 CFLAGS 		+= -D__linux
 #CFLAGS 		+= -DUNIT_TEST
-#CFLAGS 		+= -DENBALE_POLICY_UPDATE
-CFLAGS 		+= -DSUPPORT_REMOTE_SERVER
-
 
 ifdef DEBUG
 CFLAGS		+= -g -O0
