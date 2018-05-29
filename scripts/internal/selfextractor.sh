@@ -49,7 +49,7 @@ check_md5(){
         pr_log ERROR "=== end of bundle $0 checksum failed ==="
         exit 1
     else
-        echo -e "[  ${green}OK${nc}  ]"
+        echo -e "[  ${green} OK ${nc}  ]"
     fi
 }
 
@@ -69,6 +69,22 @@ extract_bundle(){
 #echo -ne '\e[1;1H'
 if [ -z $1 ]; then
     usage
+fi
+
+# Make sure only root can run our script
+if [ "$(id -u)" != "0" ]; then
+	echo "This script must be run as root" 1>&2
+	exit 1
+fi
+
+#check if saferide directory already exists
+if [ -d "saferide" ]; then
+	read -p "saferide folder already exist. override? (y/n)?" choice
+	case "$choice" in 
+	  y|Y ) rm -rf saferide ;;
+	  n|N ) exit 1;;
+	  * ) echo "invalid selection";;
+	esac
 fi
 
 if [ "extract" == $1 ]; then 
