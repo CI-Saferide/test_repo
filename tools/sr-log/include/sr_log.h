@@ -90,7 +90,7 @@ enum SR_CEF_CLASS_ID {
 #define DEVICE_TIMEZONE		 		"dtz"
 
 /*Hash of a file. (or inode number in UNIX)*/
-#define INODE_NUMBER 				"fileHash"
+#define INODE_NUMBER 				"inodeNumber"
 
 /*Full path to the file, including file name itself. 
  * Example: C:\ProgramFiles\WindowsNT\Accessories\wordpad.exe or /usr/bin/zip*/

@@ -30,6 +30,7 @@ typedef struct wl_learn_file_item {
 
 static char *get_file_to_learn(char *file, char *new_file, dev_type_t dev_type)
 {
+	char *p, *help;
 	CHECK_DIR("/tmp")
 	CHECK_DIR("/var/spool")
 	if (home_dir)
@@ -37,7 +38,13 @@ static char *get_file_to_learn(char *file, char *new_file, dev_type_t dev_type)
 
 	switch (dev_type) {
 		case DEV_TYPE_PROC:
-			sprintf(new_file, "/proc%s", file);
+			help = strdup(file);
+			p = strtok(help, "/");
+			if (p && sal_is_string_numeric(p))
+				strcpy(new_file, "/proc");
+			else
+				sprintf(new_file, "/proc%s", file);
+			free(help);
 			return new_file;
 		case DEV_TYPE_SYS:
 			sprintf(new_file, "/sys%s", file);
@@ -79,6 +86,12 @@ SR_32 sr_white_list_file_open(struct sr_ec_file_open_t *file_open_info)
 
         if (sal_get_process_name(file_open_info->pid, exec, SR_MAX_PATH_SIZE) != SR_SUCCESS)
                 strcpy(exec, "*");
+
+	if (!sal_is_valid_file_name(file_open_info->file)) {
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+				"%s=Invalid file :%s ",REASON, file_open_info->file);
+		return SR_ERROR;
+	}
 
 	// The file to learn might be changed.
 	file_to_learn = get_file_to_learn(file_open_info->file, new_file, file_open_info->dev_type);
@@ -243,16 +256,17 @@ static SR_32 sr_white_list_calculate_mem_optimization(cls_file_mem_optimization_
 	return SR_SUCCESS;
 }
 
-#ifdef DEBUG
+#ifndef DEBUG
 FILE *f_app;
 #endif
 static void write_file_rule(char *file_name, char *exec, SR_U8 file_op, SR_32 *rule_id, SR_32 *op_rule, SR_32 *op_tuple)
 {
 	if (*op_rule == -1) 
 		*op_rule = (*rule_id)++;
-#ifdef DEBUG
+#ifndef DEBUG
 	fprintf(f_app, "rule:%d tuple:%d exec:%s file:%s perm:%d \n", *op_rule, *op_tuple, exec, file_name, file_op);
 #endif
+	//printf("rule:%d tuple:%d exec:%s file:%s perm:%d \n", *op_rule, *op_tuple, exec, file_name, file_op);
 	if (sys_repo_mng_create_file_rule(&sysrepo_handler, *op_rule, *op_tuple, file_name, exec, "*", WHITE_LIST_ACTION, file_op) != SR_SUCCESS) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 			"%s=fail to create file rule in persistent db. rule id:%d ",
@@ -271,9 +285,10 @@ static SR_32 file_apply_cb(void *hash_data, void *data)
 	if (!hash_data)
 		return SR_ERROR;
 
-#ifdef DEBUG
+#ifndef DEBUG
 	fprintf(f_app, "------------- Exec:%s \n", wl_item->exec);
 #endif
+	//printf("-XXXXXXXXXXXXXxxx ------------ Exec:%s \n", wl_item->exec);
 	for (iter = wl_item->white_list_file; iter; iter = iter->next) {
 		if (rule_id > SR_FILE_WL_END_RULE_NO) {
 			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
@@ -329,7 +344,7 @@ SR_32 sr_white_list_file_apply(SR_BOOL is_apply)
 		return SR_ERROR;
 	}
 
-#ifdef DEBUG
+#ifndef DEBUG
 	f_app = fopen("/tmp/app.txt", "w");
 #endif
 
@@ -354,7 +369,7 @@ SR_32 sr_white_list_file_apply(SR_BOOL is_apply)
 
 	sysrepo_mng_session_end(&sysrepo_handler);
 
-#ifdef DEBUG
+#ifndef DEBUG
 	fclose(f_app);
 #endif
 

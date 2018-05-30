@@ -36,6 +36,7 @@
 #include <ifaddrs.h>
 #include <linux/if_link.h>
 #include <sys/sysinfo.h>
+#include <ctype.h>
 
 #define VS_FILE_NAME 	"/dev/vsentry"
 
@@ -87,5 +88,8 @@ int sal_get_vsentry_fd(void);
 void sal_vsentry_fd_close(void);
 
 SR_32 sal_get_memory(SR_U64 *mem, SR_U64 *free_mem);
+
+SR_BOOL sal_is_string_numeric(char *s);
+SR_BOOL sal_is_valid_file_name(char *file_name);
 
 #endif /* SAL_LINUX_ENGINE_H*/
