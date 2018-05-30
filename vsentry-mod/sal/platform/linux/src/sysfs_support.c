@@ -159,9 +159,9 @@ int sysfs_init(void){
 		return rc;
 	}
 
-	root = debugfs_create_dir("rules_check", NULL);
+	root = debugfs_create_dir("vsentry", NULL);
 	if (!root) {
-		pr_err("%s failed to create rules_check directory\n",__func__);
+		pr_err("%s failed to create vsentry directory\n",__func__);
 		return -ENXIO;
 	}
 	if (!debugfs_create_file("cls_ipv4", 0644, root, NULL, &sysfs_ipv4_ops)) {
