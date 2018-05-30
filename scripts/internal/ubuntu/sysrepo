@@ -23,7 +23,7 @@ SCRIPTNAME=/etc/init.d/$NAME
 
 do_start()
 {
-	setsid sysrepod -d &
+	LIBYANG_EXTENSIONS_PLUGINS_DIR=$INSTALL_DIR/lib/x86_64-linux-gnu/libyang sysrepod -d &
 	return 0
 }
 

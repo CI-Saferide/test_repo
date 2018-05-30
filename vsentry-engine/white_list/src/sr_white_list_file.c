@@ -11,6 +11,7 @@
 #include "sr_config_parse.h"
 #include "sr_engine_main.h"
 #include "sr_control.h"
+#include "sr_cls_wl_common.h"
 
 static SR_32 rule_id; 
 static sysrepo_mng_handler_t sysrepo_handler;

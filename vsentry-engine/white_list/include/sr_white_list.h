@@ -9,13 +9,6 @@
 #include "sr_white_list_can.h"
 #include "sr_white_list_ip.h"
 
-#define WHITE_LIST_ACTION "allow_wl"
-
-#define SR_CAN_WL_START_RULE_NO 	3072
-#define SR_CAN_WL_END_RULE_NO 		4095
-#define SR_FILE_WL_START_RULE_NO 	3072
-#define SR_FILE_WL_END_RULE_NO 		4095
-
 typedef enum {
         SR_WL_MODE_LEARN,
         SR_WL_MODE_APPLY,

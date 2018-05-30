@@ -226,8 +226,8 @@ result:
 			
 			sprintf(sip, "%d.%d.%d.%d", (sip_t&0xff000000)>>24, (sip_t&0x00ff0000)>>16, (sip_t&0xff00)>> 8, sip_t&0xff);
 			sprintf(dip, "%d.%d.%d.%d", (dip_t&0xff000000)>>24, (dip_t&0x00ff0000)>>16, (dip_t&0xff00)>> 8, dip_t&0xff);
-			sprintf(ext, "%s=%d %s=%s %s=%s %s=%s %s=%d %s=%s %s=%d",
-				RULE_NUM_KEY,rule,
+			sprintf(ext, "%s=%d%s %s=%s %s=%s %s=%s %s=%d %s=%s %s=%d",
+				RULE_NUM_KEY,rule, rule == SR_CLS_DEFAULT_RULE ? "(Default)" : "",
 				DEVICE_ACTION,actionstring,
 				TRANSPORT_PROTOCOL,info->tuple_info.ip_proto == IPPROTO_TCP?"TCP":"UDP",
 				DEVICE_SRC_IP,sip,
@@ -376,8 +376,8 @@ result:
 		if (action & SR_CLS_ACTION_LOG) {
 			char ext[64];
 			
-			sprintf(ext, "%s=%d %s=%u %s=%s",
-				RULE_NUM_KEY,rule,
+			sprintf(ext, "%s=%d%s %s=%u %s=%s",
+				RULE_NUM_KEY,rule, rule == SR_CLS_DEFAULT_RULE ? "(Default)" : "", 
 				INODE_NUMBER,info->fileinfo.parent_inode?info->fileinfo.parent_inode:info->fileinfo.current_inode,
 				FILE_PERMISSION,(info->fileinfo.fileop&SR_FILEOPS_WRITE)?"Write":(info->fileinfo.fileop&SR_FILEOPS_READ)?"Read":"Execute"); 
 			
@@ -491,8 +491,8 @@ result:
 			}
 
 			CEF_log_event(SR_CEF_CID_CAN, msg , severity, 
-				"%s=%d %s=%s %s=%x %s=%d",
-				RULE_NUM_KEY,rule,
+				"%s=%d%s %s=%s %s=%x %s=%d",
+				RULE_NUM_KEY,rule,rule == SR_CLS_DEFAULT_RULE ? "(Default)" : "",
 				DEVICE_ACTION,actionstring,
 				CAN_MSG_ID,info->can_info.msg_id,
 				DEVICE_DIRECTION,info->can_info.dir == SR_CAN_OUT?SR_CAN_OUT:SR_CAN_IN); /* "0" for inbound or "1" for outbound*/

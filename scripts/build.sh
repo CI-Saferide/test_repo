@@ -21,11 +21,11 @@ check_status(){
 	fi
 }
 
-#TARGET=$1
-#if [ -z "${TARGET}" ]; then
-#    TARGET="/usr"
-#fi
-TARGET=$TOPDIR/saferide/
+TARGET=$1
+if [ -z "${TARGET}" ]; then
+    TARGET="/usr"
+fi
+#TARGET=$TOPDIR/saferide/
 
 sudo apt-get install -y git cmake build-essential libpcre3-dev libev-dev autoconf unzip libtool curl libcurl4-openssl-dev libarchive-dev libssl-dev git
 
@@ -97,7 +97,7 @@ then
                git clone https://github.com/sysrepo/sysrepo.git
                cd sysrepo
                git checkout v0.7.0
-               mkdir build && cd build
+               #mkdir build && cd build
                cmake -DCMAKE_INSTALL_PREFIX=${TARGET} -DCMAKE_PREFIX_PATH=${TARGET} -DBUILD_CPP_EXAMPLES:BOOL=FALSE -DCMAKE_BUILD_TYPE:String="Release" -DREPOSITORY_LOC:PATH=/etc/sysrepo ..
                make -j4
                check_status
@@ -114,10 +114,11 @@ cd open-sentry/libsentry/
 make
 sudo cp -rva build/lib/* ${TARGET}/lib/
 
-#copy saferide.yang
-mkdir -p $TARGET/sysrepo/yang/
-cp -rva  $TOPDIR/open-sentry/yang/saferide.yang $TARGET/sysrepo/yang/
-chmod 644 $TARGET/sysrepo/yang/saferide.yang
+#now install saferide.yang
+sudo ${TARGET}/bin/sysrepoctl --install --yang=$TOPDIR/open-sentry/yang/saferide.yang --permissions=644
+
+#now copy /etc/sysrepo folder to our $TARGET
+sudo cp -rav /etc/sysrepo ${TARGET}
 
 #now let make update-manager
 cd $TOPDIR

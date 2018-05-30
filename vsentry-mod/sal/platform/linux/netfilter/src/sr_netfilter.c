@@ -164,7 +164,7 @@ unsigned int sr_netfilter_out_hook_fn(void *priv,
 	struct udphdr *udp_header;
 	disp_info_t disp = {};
 	sk_process_item_t *process_info_p;
-	sr_connection_id_t con_id;
+	sr_connection_data_t *conp, con = {};
 
 	if (SR_FALSE == vsentry_get_state()) 
 		return NF_ACCEPT;
@@ -188,20 +188,29 @@ unsigned int sr_netfilter_out_hook_fn(void *priv,
 			disp.tuple_info.id.pid = process_info_p->process_info.pid;
 			disp.tuple_info.id.uid = process_info_p->process_info.uid;
 		}
-		con_id.daddr.v4addr = ntohl(ip_header->daddr); 
-		con_id.saddr.v4addr = ntohl(ip_header->saddr);
-		con_id.dport = ntohs(udp_header->dest); 
-		con_id.sport = ntohs(udp_header->source);
-		con_id.ip_proto = IPPROTO_UDP;
+		con.con_id.daddr.v4addr = ntohl(ip_header->daddr); 
+		con.con_id.saddr.v4addr = ntohl(ip_header->saddr);
+		con.con_id.dport = ntohs(udp_header->dest); 
+		con.con_id.sport = ntohs(udp_header->source);
+		con.con_id.ip_proto = IPPROTO_UDP;
+		con.is_outgoing = SR_TRUE;
 
-		if (sr_conn_obj_hash_get(&con_id, SR_TRUE)) {
+		if ((con.con_id.dport == 53 || con.con_id.sport == 53)) {
+			if ((conp = sr_stat_connection_lookup(&con.con_id))) {
+				sr_stat_connection_update_counters(conp, 0, con.rx_bytes, con.rx_msgs, 0, 0);
+			} else {
+				sr_stat_connection_insert(&con, SR_CONNECTION_NONBLOCKING | SR_CONNECTION_ATOMIC);
+			}
+		}
+
+		if (sr_conn_obj_hash_get(&con.con_id, SR_TRUE)) {
 			return NF_ACCEPT;
 		}
 
 		if (disp_ipv4_sendmsg(&disp) != SR_CLS_ACTION_ALLOW)
 			return NF_DROP;
 
-		if (sr_conn_obj_hash_insert(&con_id, SR_TRUE) == SR_ERROR) {
+		if (sr_conn_obj_hash_insert(&con.con_id, SR_TRUE) == SR_ERROR) {
 			return NF_DROP;
 		}
 	}

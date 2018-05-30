@@ -696,6 +696,8 @@ printf(" PID:%d\n", getpid());
 		goto cleanup;
         }
 
+	sysrepo_mng_delete_all(&handler);
+
 	if (!strcmp(type, "file")) {
 		rc = handle_file(&handler);
 		goto cleanup;
