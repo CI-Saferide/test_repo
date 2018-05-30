@@ -5,6 +5,7 @@
 #define SYSFS_SUPPORT_H
 
 #include <linux/fs.h>
+#include <linux/debugfs.h>
 #include <linux/sysfs.h>
 
 #include "sr_types.h"
