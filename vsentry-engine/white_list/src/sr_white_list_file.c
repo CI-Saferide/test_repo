@@ -33,6 +33,9 @@ static char *get_file_to_learn(char *file, char *new_file, dev_type_t dev_type)
 	char *p, *help;
 	CHECK_DIR("/tmp")
 	CHECK_DIR("/var/spool")
+	CHECK_DIR("/var/cache")
+	CHECK_DIR("/var/log")
+	CHECK_DIR("/usr/share/dbus-1")
 	if (home_dir)
 		CHECK_DIR(home_dir)
 
@@ -249,21 +252,21 @@ static SR_32 sr_white_list_calculate_mem_optimization(cls_file_mem_optimization_
 	}
 
 	*mem_opt = (files_counter * CLS_UNIT_SIZE > free_memory * config_params->file_cls_mem_optimize / 100) ? CLS_FILE_MEM_OPT_ONLY_DIR : CLS_FILE_MEM_OPT_ALL_FILES ;
-#ifndef DEBUG
+#ifdef DEBUG
 	printf("DEBUG CALCULATE MEM OPT Counter :%d  mem_port:%d mem_opt:%d !!!\n", files_counter, config_params->file_cls_mem_optimize, *mem_opt);
 #endif
 
 	return SR_SUCCESS;
 }
 
-#ifndef DEBUG
+#ifdef DEBUG
 FILE *f_app;
 #endif
 static void write_file_rule(char *file_name, char *exec, SR_U8 file_op, SR_32 *rule_id, SR_32 *op_rule, SR_32 *op_tuple)
 {
 	if (*op_rule == -1) 
 		*op_rule = (*rule_id)++;
-#ifndef DEBUG
+#ifdef DEBUG
 	fprintf(f_app, "rule:%d tuple:%d exec:%s file:%s perm:%d \n", *op_rule, *op_tuple, exec, file_name, file_op);
 #endif
 	//printf("rule:%d tuple:%d exec:%s file:%s perm:%d \n", *op_rule, *op_tuple, exec, file_name, file_op);
@@ -285,7 +288,7 @@ static SR_32 file_apply_cb(void *hash_data, void *data)
 	if (!hash_data)
 		return SR_ERROR;
 
-#ifndef DEBUG
+#ifdef DEBUG
 	fprintf(f_app, "------------- Exec:%s \n", wl_item->exec);
 #endif
 	//printf("-XXXXXXXXXXXXXxxx ------------ Exec:%s \n", wl_item->exec);
@@ -344,7 +347,7 @@ SR_32 sr_white_list_file_apply(SR_BOOL is_apply)
 		return SR_ERROR;
 	}
 
-#ifndef DEBUG
+#ifdef DEBUG
 	f_app = fopen("/tmp/app.txt", "w");
 #endif
 
@@ -369,7 +372,7 @@ SR_32 sr_white_list_file_apply(SR_BOOL is_apply)
 
 	sysrepo_mng_session_end(&sysrepo_handler);
 
-#ifndef DEBUG
+#ifdef DEBUG
 	fclose(f_app);
 #endif
 
