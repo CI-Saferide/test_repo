@@ -24,21 +24,18 @@
 /saferide:config/net/can/rule[num='2']/tuple[id='1']
 /saferide:config/net/can/rule[num='2']/tuple[id='1']/msg_id = any
 /saferide:config/net/can/rule[num='2']/tuple[id='1']/direction = both
-/saferide:config/net/can/rule[num='2']/tuple[id='1']/max_rate = 30
 
 /saferide:config/net/can/rule[num='3']
 /saferide:config/net/can/rule[num='3']/action = drop_log
 /saferide:config/net/can/rule[num='3']/tuple[id='1']
 /saferide:config/net/can/rule[num='3']/tuple[id='1']/msg_id = 123
 /saferide:config/net/can/rule[num='3']/tuple[id='1']/direction = out
-/saferide:config/net/can/rule[num='3']/tuple[id='1']/max_rate = 30
 
 /saferide:config/system/file/rule[num='6']
 /saferide:config/system/file/rule[num='6']/action = drop_log
 /saferide:config/system/file/rule[num='6']/tuple[id='5']
 /saferide:config/system/file/rule[num='6']/tuple[id='5']/filename = /home/yael/yael
-/saferide:config/system/file/rule[num='6']/tuple[id='5']/permission = 666
-/saferide:config/system/file/rule[num='6']/tuple[id='5']/max_rate = 70
+/saferide:config/system/file/rule[num='6']/tuple[id='5']/permission = 6
 
 /saferide:config/net/ip/rule[num='1111']
 /saferide:config/net/ip/rule[num='1111']/action = drop_log
@@ -48,4 +45,3 @@
 /saferide:config/net/ip/rule[num='1111']/tuple[id='2']/dstaddr = 35.157.36.123 
 /saferide:config/net/ip/rule[num='1111']/tuple[id='2']/dstnetmask = 255.255.255.255
 /saferide:config/net/ip/rule[num='1111']/tuple[id='2']/proto = 0
-/saferide:config/net/ip/rule[num='1111']/tuple[id='2']/max_rate = 0
