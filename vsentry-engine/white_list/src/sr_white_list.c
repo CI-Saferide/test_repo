@@ -2,6 +2,8 @@
 #include "sr_white_list.h"
 #include "sal_mem.h"
 #include "sysrepo_mng.h"
+#include "sr_cls_wl_common.h"
+#include "sr_config_parse.h"
 
 #define HASH_SIZE 500
 
@@ -66,7 +68,7 @@ static SR_32 sr_white_list_create_action(void)
                 return SR_ERROR;
         }
                         
-	if (sys_repo_mng_create_action(&sysrepo_handler, WHITE_LIST_ACTION, SR_TRUE, SR_TRUE) != SR_ERR_OK) {
+	if (sys_repo_mng_create_action(&sysrepo_handler, WHITE_LIST_ACTION, SR_TRUE, SR_FALSE) != SR_ERR_OK) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 			"%s=sr_white_list_create_action: sys_repo_mng_create_action failed",REASON);
 		return SR_ERROR;
@@ -106,10 +108,47 @@ SR_32 sr_white_list_init(void)
 	return SR_SUCCESS;
 }
 
+static SR_32 sr_white_list_delete_rules(void)
+{
+	sysrepo_mng_handler_t sysrepo_handler;
+
+	if (sysrepo_mng_session_start(&sysrepo_handler)) {
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+                        "%s=wl file:fail to init persistent db",REASON);
+		return SR_ERROR;
+	}
+
+	if (sys_repo_mng_delete_ip_rules(&sysrepo_handler, SR_IP_WL_START_RULE_NO, SR_IP_WL_END_RULE_NO + 1) != SR_SUCCESS) {
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, "%s=wl file:fail to delete ip rules",REASON);
+                return SR_ERROR;
+	}
+	if (sys_repo_mng_delete_file_rules(&sysrepo_handler, SR_FILE_WL_START_RULE_NO, SR_FILE_WL_END_RULE_NO + 1) != SR_SUCCESS) {
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, "%s=wl file:fail to delete ip rules",REASON);
+                return SR_ERROR;
+	}
+	if (sys_repo_mng_delete_can_rules(&sysrepo_handler, SR_CAN_WL_START_RULE_NO, SR_CAN_WL_END_RULE_NO + 1) != SR_SUCCESS) {
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, "%s=wl file:fail to delete ip rules",REASON);
+                return SR_ERROR;
+	}
+
+	if (sys_repo_mng_commit(&sysrepo_handler) != SR_SUCCESS) {
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+		"%s=failed to commit wl file rules from persistent db", REASON);
+	}
+
+	sysrepo_mng_session_end(&sysrepo_handler);
+
+	return SR_SUCCESS;
+}
+
 SR_32 sr_white_list_set_mode(sr_wl_mode_t new_wl_mode)
 {
 	SR_32 rc;
 	sr_ec_msg_t *msg;
+	struct config_params_t *config_params;
+	sr_config_msg_t *conf_msg;
+
+	config_params = sr_config_get_param();
 
 	if (wl_mode == new_wl_mode)
 		return SR_SUCCESS;
@@ -136,27 +175,57 @@ SR_32 sr_white_list_set_mode(sr_wl_mode_t new_wl_mode)
 	}
 	switch (new_wl_mode) { 
 		case SR_WL_MODE_LEARN:
+			/* Set default rule to be allow */
+			conf_msg = (sr_config_msg_t*)sr_get_msg(ENG2MOD_BUF, ENG2MOD_MSG_MAX_SIZE);
+        		if (conf_msg) {
+				conf_msg->msg_type = SR_MSG_TYPE_CONFIG;
+				conf_msg->sub_msg.cef_max_rate = config_params->cef_max_rate;
+				conf_msg->sub_msg.def_file_action = SR_CLS_ACTION_ALLOW;
+				conf_msg->sub_msg.def_can_action = SR_CLS_ACTION_ALLOW;
+				conf_msg->sub_msg.def_net_action = SR_CLS_ACTION_ALLOW;
+				sr_send_msg(ENG2MOD_BUF, (SR_32)sizeof(conf_msg));
+			} else
+ 				CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+					"%s=failed to transfer config info to kernel",REASON);
+
 			sr_white_list_delete_all();
 			sr_white_list_ip_delete_all();
+			sr_white_list_delete_rules();
 			break;
 		case SR_WL_MODE_APPLY:
 			sr_white_list_create_action();
 			wl_mode = SR_WL_MODE_APPLY;
+			printf("Applying file rules ..... \n");
 			if ((rc = sr_white_list_file_apply(SR_TRUE)) != SR_SUCCESS) {
                			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 					"%s=sr_white_list_file_apply failed",REASON);
                 		return SR_ERROR;
 			}
+			printf("Applying file CAN rules ..... \n");
 			if ((rc = sr_white_list_canbus_apply(SR_TRUE)) != SR_SUCCESS) {
                			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 					"%s=sr_white_list_canbus_apply failed",REASON);
                 		return SR_ERROR;
 			}
+			printf("Applying file IP rules ..... \n");
 			if (sr_white_list_ip_apply(SR_TRUE) != SR_SUCCESS) {
                			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 					"%s=sr_white_list_ip_apply failed",REASON);
 				return SR_ERROR;
 			}
+			printf("Finish applying rules.\n");
+			/* Set default rule to be as defined in sr_config */
+			conf_msg = (sr_config_msg_t*)sr_get_msg(ENG2MOD_BUF, ENG2MOD_MSG_MAX_SIZE);
+        		if (conf_msg) {
+				conf_msg->msg_type = SR_MSG_TYPE_CONFIG;
+				conf_msg->sub_msg.cef_max_rate = config_params->cef_max_rate;
+				conf_msg->sub_msg.def_file_action = config_params->default_file_action;
+				conf_msg->sub_msg.def_can_action = config_params->default_can_action;
+				conf_msg->sub_msg.def_net_action = config_params->default_net_action;
+				sr_send_msg(ENG2MOD_BUF, (SR_32)sizeof(conf_msg));
+			} else
+ 				CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+					"%s=failed to transfer config info to kernel",REASON);
 			break;
 		case SR_WL_MODE_OFF:
 			break;

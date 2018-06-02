@@ -107,6 +107,7 @@ SR_32 sr_conn_obj_hash_insert(sr_connection_id_t *con_id, SR_BOOL is_try_lock)
 	memcpy(&(conn_obj_item->con_id), con_id, sizeof(sr_connection_id_t));
 	sal_update_time_counter(&(conn_obj_item->time_stamp));
         if (sr_gen_hash_insert(conn_obj_hash, (void *)con_id, conn_obj_item, hash_flags) != SR_SUCCESS) {
+				SR_Free(conn_obj_item);
                 CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
                                "%s=%s: sr_gen_hash_insert failed",REASON, __FUNCTION__);
                 return SR_ERROR;
