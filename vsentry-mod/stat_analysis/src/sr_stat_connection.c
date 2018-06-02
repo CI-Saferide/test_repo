@@ -21,6 +21,7 @@ typedef struct LRU_container {
 
 static LRU_container_t *LRU_update, *LRU_transmit;
 static SR_BOOL LRU_allocate_more, LRU_allocate_more2;
+static SR_U32 num_of_transmissions;
 
 #ifdef SR_STAT_ANALYSIS_DEBUG
 void con_debug_print(sr_connection_id_t *con)
@@ -153,6 +154,12 @@ SR_U32 sr_connection_transmit(void)
 		LRU_allocate_more2 = SR_TRUE;
 	} else {
 		memset(LRU_transmit->objects, 0, sizeof(sr_connection_data_t *) * LRU_transmit->size);
+	}
+
+	num_of_transmissions++;
+	if (num_of_transmissions >= SR_CONNECTIOLN_AGED_THRESHHOLD) {
+		num_of_transmissions = 0;
+		sr_stat_connection_aging_cleanup();
 	}
 	
 	return SR_SUCCESS;
