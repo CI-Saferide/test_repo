@@ -54,6 +54,9 @@
 #define SR_TIME_COUNT unsigned long
 #define SR_IS_ROOT(x) IS_ROOT(x)
 
+#define SR_PROC_INODE 1
+#define SR_SYS_INODE 1
+
 /* kernel print definitions */
 #define pr_fmt(fmt) fmt
 #define sal_kernel_print_emerg(fmt, ...) \
