@@ -10,18 +10,14 @@
 #define STAT_ANALYSIS_AGED_CLEANUP_SCHEDULE_USECS (SR_CONNECTIOLN_AGED_THRESHHOLD * 1000000)
 
 static TASK_DESC *transmit_task;
-static TASK_DESC *garbage_collector_task;
 #if 0
 static TASK_DESC *watchdog_task;
 #endif
-static TASK_DESC *aged_cleanup_task;
 static SR_BOOL is_run_transmit = SR_FALSE;
-static SR_BOOL is_run_garbage_collector = SR_FALSE;
 #if 0
 static SR_BOOL is_run_watchdog = SR_FALSE;
 static TASK_DESC *watchdog_task;
 #endif
-static SR_BOOL is_run_aged_cleanup = SR_FALSE;
 static SR_TIME_COUNT last_time_message_recived;
 static SR_BOOL is_stat_analysis_um_running = SR_TRUE;
 
@@ -44,16 +40,6 @@ static SR_32 sr_stat_analysis_transmit_task(void *data)
 	return SR_SUCCESS;
 }
 
-static SR_32 sr_stat_analysis_garbage_collector_task(void *data)
-{
-	while (is_run_garbage_collector) {
-        	sal_schedule_timeout(STAT_ANALYSIS_GC_SCHEDULE_USECS);
-		sr_stat_analysis_garbage_collector();
-	}
-
-	return SR_SUCCESS;
-}
-
 #if 0
 static SR_32 sr_stat_analysis_watchdog_task(void *data)
 {
@@ -68,16 +54,6 @@ static SR_32 sr_stat_analysis_watchdog_task(void *data)
 	return SR_SUCCESS;
 }
 #endif
-
-static SR_32 sr_stat_analysis_aged_cleanup_task(void *data)
-{
-        while (is_run_aged_cleanup) {
-                sal_schedule_timeout(STAT_ANALYSIS_AGED_CLEANUP_SCHEDULE_USECS);
-		sr_stat_connection_aging_cleanup();
-        }
-
-        return SR_SUCCESS;
-}   
 
 SR_32 sr_stat_analysis_init(void)
 {
@@ -102,15 +78,6 @@ SR_32 sr_stat_analysis_init(void)
 		sal_kernel_print_err("sr_stat_analysis_init sal_task_start for sr_stat_analysis_transmit_task FAILED\n");
 		goto error_transmit_wakeup;
 	}
-	if ((rc = sal_task_start((void **)&garbage_collector_task, sr_stat_analysis_garbage_collector_task)) != SR_SUCCESS) {
-		sal_kernel_print_err("sr_stat_analysis_init sal_task_start for sr_stat_analysis_garbage_collector_task FAILED\n");
-		goto error_transmit_wakeup;
-	}
-	is_run_garbage_collector = SR_TRUE;
-	if ((rc = sal_wake_up_process(garbage_collector_task)) != SR_SUCCESS) {
-		sal_kernel_print_err("sr_stat_analysis_init sal_task_start for sr_stat_analysis_garbage_collector_task FAILED\n");
-		goto error_gc_wakeup;
-	}
 	is_stat_analysis_um_running = SR_TRUE;
 #if 0
 	is_run_watchdog = SR_TRUE;
@@ -123,29 +90,14 @@ SR_32 sr_stat_analysis_init(void)
 		goto error_watchdog_wakeup;
 	}
 #endif
-	is_run_aged_cleanup = SR_TRUE;
-	if ((rc = sal_task_start((void **)&aged_cleanup_task, sr_stat_analysis_aged_cleanup_task)) != SR_SUCCESS) {
-		sal_kernel_print_err("sr_stat_analysis_init sal_task_start for sr_stat_analysis_aged_cleanup_task FAILED\n");
-		goto error_gc_wakeup;
-	}
-	if ((rc = sal_wake_up_process(aged_cleanup_task)) != SR_SUCCESS) {
-		sal_kernel_print_err("sr_stat_analysis_init sal_task_start for sr_stat_analysis_aged_cleanup_task FAILED\n");
-		goto error_aged_wakeup;
-	}
 
 	goto out;
 
-error_aged_wakeup:
-	is_run_aged_cleanup = SR_FALSE;
-	sal_task_stop(aged_cleanup_task);
 #if 0
 error_watchdog_wakeup:
 	is_run_watchdog = SR_FALSE;
 	sal_task_stop(watchdog_task);
 #endif
-error_gc_wakeup:
-	is_run_garbage_collector = SR_FALSE;
-	sal_task_stop(garbage_collector_task);
 error_transmit_wakeup:
 	is_run_transmit = SR_FALSE;
 	sal_task_stop(transmit_task);
@@ -160,16 +112,12 @@ out:
 
 void sr_stat_analysis_uninit(void)
 {
-	is_run_aged_cleanup = SR_FALSE;
-	sal_task_stop(aged_cleanup_task);
 #if 0
 	is_run_watchdog = SR_FALSE;
 	sal_task_stop(watchdog_task);
 #endif
 	is_run_transmit = SR_FALSE;
 	sal_task_stop(transmit_task);
-	is_run_garbage_collector = SR_FALSE;
-	sal_task_stop(garbage_collector_task);
 	sr_stat_connection_uninit();
 }
 
@@ -213,10 +161,5 @@ SR_32 sr_stat_analysis_handle_message(struct sr_stat_analysis_msg *msg)
 	}
 
 	return SR_SUCCESS;
-}
-
-void sr_stat_analysis_garbage_collector(void)
-{
-	sr_stat_connection_garbage_collection();
 }
 
