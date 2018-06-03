@@ -176,6 +176,7 @@ SR_32 sr_white_list_set_mode(sr_wl_mode_t new_wl_mode)
 	switch (new_wl_mode) { 
 		case SR_WL_MODE_LEARN:
 			/* Set default rule to be allow */
+			printf("Move to mode learn\n");
 			conf_msg = (sr_config_msg_t*)sr_get_msg(ENG2MOD_BUF, ENG2MOD_MSG_MAX_SIZE);
         		if (conf_msg) {
 				conf_msg->msg_type = SR_MSG_TYPE_CONFIG;
@@ -193,6 +194,7 @@ SR_32 sr_white_list_set_mode(sr_wl_mode_t new_wl_mode)
 			sr_white_list_delete_rules();
 			break;
 		case SR_WL_MODE_APPLY:
+			printf("Move to mode protect\n");
 			sr_white_list_create_action();
 			wl_mode = SR_WL_MODE_APPLY;
 			printf("Applying file rules ..... \n");

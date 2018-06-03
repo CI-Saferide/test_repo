@@ -38,6 +38,7 @@
 #include "sr_config_common.h"
 #include "sr_can_collector.h"
 #include "sr_config_parse.h"
+#include "sal_third_party_interface.h"
 
 static SR_32 engine_main_loop(void *data)
 {
@@ -314,6 +315,13 @@ SR_32 sr_engine_start(int argc, char *argv[])
 		return SR_ERROR;
 	}
 
+	ret = sal_third_party_interface_init();
+	if (ret != SR_SUCCESS){
+	CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+		"%s=failed to init trird partry interface",REASON);
+		return SR_ERROR;
+	}
+
 	sr_db_init();
 	sentry_init(sr_config_vsentry_db_cb);
 	
@@ -410,6 +418,7 @@ SR_32 sr_engine_start(int argc, char *argv[])
 #endif /* CONFIG_CAN_ML */
 		}
 	}
+	sal_third_party_interface_uninit();
 	sr_get_command_stop();
 #ifdef SUPPORT_REMOTE_SERVER
 #ifdef ENBALE_POLICY_UPDATE
