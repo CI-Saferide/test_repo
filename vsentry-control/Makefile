@@ -8,7 +8,7 @@ OBJDIR		:= $(BUILD_DIR)/objs
 BINDIR 		:= $(BUILD_DIR)/bin
 
 CPPFLAGS += -Iinclude
-CONTROL_TOOL = $(BINDIR)/control_tool
+CONTROL_TOOL = $(BINDIR)/vsentry-ctrl
 
 all: $(CONTROL_TOOL)
 
