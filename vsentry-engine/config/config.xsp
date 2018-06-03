@@ -1,0 +1,47 @@
+/saferide:control/engine = start
+
+/saferide:config/sr_actions/list_actions[name='allow']
+/saferide:config/sr_actions/list_actions[name='allow']/log/log_facility = none
+/saferide:config/sr_actions/list_actions[name='allow']/log/log_severity = none
+
+/saferide:config/sr_actions/list_actions[name='log']
+/saferide:config/sr_actions/list_actions[name='log']/action = allow
+/saferide:config/sr_actions/list_actions[name='log']/log/log_facility = syslog
+/saferide:config/sr_actions/list_actions[name='log']/log/log_severity = debug
+
+/saferide:config/sr_actions/list_actions[name='log_warn']
+/saferide:config/sr_actions/list_actions[name='log_warn']/action = allow
+/saferide:config/sr_actions/list_actions[name='log_warn']/log/log_facility = syslog
+/saferide:config/sr_actions/list_actions[name='log_warn']/log/log_severity = warning
+
+/saferide:config/sr_actions/list_actions[name='drop_log']
+/saferide:config/sr_actions/list_actions[name='drop_log']/action = drop
+/saferide:config/sr_actions/list_actions[name='drop_log']/log/log_facility = syslog
+/saferide:config/sr_actions/list_actions[name='drop_log']/log/log_severity = error
+
+/saferide:config/net/can/rule[num='2']
+/saferide:config/net/can/rule[num='2']/action = log
+/saferide:config/net/can/rule[num='2']/tuple[id='1']
+/saferide:config/net/can/rule[num='2']/tuple[id='1']/msg_id = any
+/saferide:config/net/can/rule[num='2']/tuple[id='1']/direction = both
+
+/saferide:config/net/can/rule[num='3']
+/saferide:config/net/can/rule[num='3']/action = drop_log
+/saferide:config/net/can/rule[num='3']/tuple[id='1']
+/saferide:config/net/can/rule[num='3']/tuple[id='1']/msg_id = 123
+/saferide:config/net/can/rule[num='3']/tuple[id='1']/direction = out
+
+/saferide:config/system/file/rule[num='6']
+/saferide:config/system/file/rule[num='6']/action = drop_log
+/saferide:config/system/file/rule[num='6']/tuple[id='5']
+/saferide:config/system/file/rule[num='6']/tuple[id='5']/filename = /home/yael/yael
+/saferide:config/system/file/rule[num='6']/tuple[id='5']/permission = 6
+
+/saferide:config/net/ip/rule[num='1111']
+/saferide:config/net/ip/rule[num='1111']/action = drop_log
+/saferide:config/net/ip/rule[num='1111']/tuple[id='2']
+/saferide:config/net/ip/rule[num='1111']/tuple[id='2']/srcaddr = 0.0.0.0
+/saferide:config/net/ip/rule[num='1111']/tuple[id='2']/srcnetmask = 0.0.0.0
+/saferide:config/net/ip/rule[num='1111']/tuple[id='2']/dstaddr = 35.157.36.123 
+/saferide:config/net/ip/rule[num='1111']/tuple[id='2']/dstnetmask = 255.255.255.255
+/saferide:config/net/ip/rule[num='1111']/tuple[id='2']/proto = 0

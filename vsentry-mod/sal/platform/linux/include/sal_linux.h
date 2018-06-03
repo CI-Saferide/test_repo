@@ -2,6 +2,7 @@
 #define SAL_LINUX_H
 
 #include "sr_types.h"
+#include "sr_log.h"
 #include <linux/kernel.h>
 #include <linux/kthread.h>
 #include <linux/vmalloc.h>
@@ -73,6 +74,13 @@
 	printk(KERN_NOTICE pr_fmt(fmt), ##__VA_ARGS__)
 #define sal_kernel_print_info(fmt, ...) \
 	printk(KERN_INFO pr_fmt(fmt), ##__VA_ARGS__)
+
+#define sal_print_crit(fmt, ...) \
+	CEF_log_event(SR_CEF_CID_SYSTEM, "crit", SEVERITY_VERY_HIGH, fmt, ##__VA_ARGS__)
+#define sal_print_err(fmt, ...) \
+	CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, fmt, ##__VA_ARGS__)
+#define sal_print_info(fmt, ...) \
+	printk(fmt, ##__VA_ARGS__)
 
 #ifdef DEBUG_NETWORK	
 #define sal_debug_network(fmt, ...) \

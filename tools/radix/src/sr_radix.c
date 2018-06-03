@@ -238,12 +238,12 @@ rn_satisfies_leaf(char *trial, struct radix_node *leaf, int skip)
 {
 	char *cp = trial, *cp2 = leaf->rn_key, *cp3 = leaf->rn_mask;
 	char *cplim;
-	int length = min(LEN(cp), LEN(cp2));
+	int length = MIN(LEN(cp), LEN(cp2));
 
 	if (cp3 == NULL)
 		cp3 = rn_ones;
 	else
-		length = min(length, LEN(cp3));
+		length = MIN(length, LEN(cp3));
 	cplim = cp + length; cp3 += skip; cp2 += skip;
 	for (cp += skip; cp < cplim; cp++, cp2++, cp3++)
 		if ((*cp ^ *cp2) & *cp3)
@@ -342,7 +342,7 @@ on1:
 				if (rn_bit <= m->rm_bit)
 					return (m->rm_leaf);
 			} else {
-				off = min(t->rn_offset, matched_off);
+				off = MIN(t->rn_offset, matched_off);
 				x = rn_search_m(v, t, m->rm_mask);
 				while (x && x->rn_mask != m->rm_mask)
 					x = x->rn_dupedkey;
@@ -444,7 +444,7 @@ on1:
 				/* x->rn_bit < b && x->rn_bit >= 0 */
 #ifdef RN_DEBUG
 	if (rn_debug)
-		sal_kernel_print_info( "rn_insert: Going In:\n"), traverse(p);
+		sal_print_info( "rn_insert: Going In:\n"), traverse(p);
 #endif
 	t = rn_newpair(v_arg, b, nodes); 
 	tt = t->rn_left;
@@ -462,7 +462,7 @@ on1:
 	}
 #ifdef RN_DEBUG
 	if (rn_debug)
-		sal_kernel_print_info( "rn_insert: Coming Out:\n"), traverse(p);
+		sal_print_info( "rn_insert: Coming Out:\n"), traverse(p);
 #endif
 	return (tt);
 }
@@ -510,7 +510,7 @@ rn_addmask(void *n_arg, struct radix_mask_head *maskhead, int search, int skip)
 	memcpy(cp, addmask_key, mlen);
 	x = rn_insert(cp, &maskhead->head, &maskduplicated, x);
 	if (maskduplicated) {
-		sal_kernel_print_err( "rn_addmask: mask impossibly already in tree");
+		sal_print_err("rn_addmask: mask impossibly already in tree");
 		R_Free(saved_x);
 		return (x);
 	}
@@ -560,7 +560,7 @@ rn_new_radix_mask(struct radix_node *tt, struct radix_mask *next)
 
 	R_Malloc(m, struct radix_mask *, sizeof (struct radix_mask));
 	if (m == NULL) {
-		sal_kernel_print_err( "Failed to allocate route mask\n");
+		sal_print_err("Failed to allocate route mask");
 		return (0);
 	}
 	memset(m, 0, sizeof(*m));
@@ -623,11 +623,13 @@ rn_addroute(void *v_arg, void *n_arg, struct radix_head *head,
 				} while (tt && t->rn_mask == tt->rn_mask);
 				break;
 			}
-#endif
+#endif // RADIX_MPATH
 			if (tt->rn_mask == netmask){
+#ifdef __KERNEL__
 				sal_or_self_op_arrays(&tt[1].sr_private.rules, &treenodes[1].sr_private.rules);
+#endif // __KERNEL__
 				return (0);
-}
+			}
 			if (netmask == 0 ||
 			    (tt->rn_mask &&
 			     ((b_leaf < tt->rn_bit) /* index(netmask) > node */
@@ -733,8 +735,7 @@ on2:
 			mmask = m->rm_leaf->rn_mask;
 			if (tt->rn_flags & RNF_NORMAL) {
 #if !defined(RADIX_MPATH)
-			    sal_kernel_print_err(
-			        "Non-unique normal route, mask not entered\n");
+			    sal_print_err("Non-unique normal route, mask not entered");
 #endif
 				return (tt);
 			}
@@ -789,12 +790,12 @@ rn_delete(void *v_arg, void *netmask_arg, struct radix_head *head)
 		goto on1;
 	if (tt->rn_flags & RNF_NORMAL) {
 		if (m->rm_leaf != tt || m->rm_refs > 0) {
-			sal_kernel_print_err( "rn_delete: inconsistent annotation\n");
+			sal_print_err("rn_delete: inconsistent annotation");
 			return (0);  /* dangling ref could cause disaster */
 		}
 	} else {
 		if (m->rm_mask != tt->rn_mask) {
-			sal_kernel_print_err( "rn_delete: inconsistent annotation\n");
+			sal_print_err("rn_delete: inconsistent annotation");
 			goto on1;
 		}
 		if (--m->rm_refs >= 0)
@@ -815,7 +816,7 @@ rn_delete(void *v_arg, void *netmask_arg, struct radix_head *head)
 			break;
 		}
 	if (m == NULL) {
-		sal_kernel_print_err( "rn_delete: couldn't find our annotation\n");
+		sal_print_err("rn_delete: couldn't find our annotation\n");
 		if (tt->rn_flags & RNF_NORMAL)
 			return (0); /* Dangling ref to us */
 	}
@@ -853,7 +854,8 @@ on1:
 				if (tt->rn_dupedkey)		/* parent */
 					tt->rn_dupedkey->rn_parent = p;
 								/* parent */
-			} else sal_kernel_print_err( "rn_delete: couldn't find us\n");
+			} else
+				sal_print_err("rn_delete: couldn't find us");
 		}
 		t = tt + 1;
 		if  (t->rn_flags & RNF_ACTIVE) {
@@ -901,14 +903,13 @@ on1:
 				if (m == x->rn_mklist) {
 					struct radix_mask *mm = m->rm_mklist;
 					x->rn_mklist = 0;
-					if (--(m->rm_refs) < 0)
+					if (--(m->rm_refs) < 0) {
 						R_Free(m);
+					}
 					m = mm;
 				}
 			if (m)
-				sal_kernel_print_err(
-				    "rn_delete: Orphaned Mask %p at %p\n",
-				    m, x);
+				sal_print_err("rn_delete: Orphaned Mask %p at %p", m, x);
 		}
 	}
 	/*
@@ -952,19 +953,35 @@ rn_walktree_from(struct radix_head *h, void *a, void *m,
 	struct radix_node *rn, *last = NULL; /* shut up gcc */
 	int stopping = 0;
 	int lastb;
+#ifdef RN_DEBUG
+	struct sockaddr_in *da = (struct sockaddr_in *)a;
+	struct sockaddr_in *dm = (struct sockaddr_in *)m;
+#endif // RN_DEBUG
 
 	if(m == NULL)
-		sal_kernel_print_crit ("%s: mask needs to be specified", __func__);
+		sal_print_crit("%s: mask needs to be specified", __func__);
+
+#ifdef RN_DEBUG
+	sal_print_info("rn_walktree_from: a = %d.%d.%d.%d, mask = %d.%d.%d.%d\n",
+			da->sin_addr.s_addr & 0xff,
+			(da->sin_addr.s_addr & 0xff00)>> 8,
+			(da->sin_addr.s_addr & 0x00ff0000)>>16,
+			(da->sin_addr.s_addr & 0xff000000)>>24,
+			dm->sin_addr.s_addr & 0xff,
+			(dm->sin_addr.s_addr & 0xff00)>> 8,
+			(dm->sin_addr.s_addr & 0x00ff0000)>>16,
+			(dm->sin_addr.s_addr & 0xff000000)>>24);
+#endif // RN_DEBUG
 
 	/*
 	 * rn_search_m is sort-of-open-coded here. We cannot use the
 	 * function because we need to keep track of the last node seen.
 	 */
-	/* printf("about to search\n"); */
+	//sal_print_info("about to search\n");
 	for (rn = h->rnh_treetop; rn->rn_bit >= 0; ) {
 		last = rn;
-		/* printf("rn_bit %d, rn_bmask %x, xm[rn_offset] %x\n",
-		       rn->rn_bit, rn->rn_bmask, xm[rn->rn_offset]); */
+		/*sal_print_info("rn_bit %d, rn_bmask %x, xm[rn_offset] %x\n",
+			rn->rn_bit, rn->rn_bmask, xm[rn->rn_offset]);*/
 		if (!(rn->rn_bmask & xm[rn->rn_offset])) {
 			break;
 		}
@@ -974,7 +991,7 @@ rn_walktree_from(struct radix_head *h, void *a, void *m,
 			rn = rn->rn_left;
 		}
 	}
-	/* printf("done searching\n"); */
+	//sal_print_info("done searching\n");
 
 	/*
 	 * Two cases: either we stepped off the end of our mask,
@@ -985,7 +1002,7 @@ rn_walktree_from(struct radix_head *h, void *a, void *m,
 		rn = last;
 	lastb = last->rn_bit;
 
-	/* printf("rn %p, lastb %d\n", rn, lastb);*/
+	//sal_print_info("Two cases: rn 0x%llx, lastb %d\n", (SR_U64)rn & 0xFFFFFFF, lastb);
 
 	/*
 	 * This gets complicated because we may delete the node
@@ -996,7 +1013,7 @@ rn_walktree_from(struct radix_head *h, void *a, void *m,
 		rn = rn->rn_left;
 
 	while (!stopping) {
-		/* printf("node %p (%d)\n", rn, rn->rn_bit); */
+		//sal_print_info("while (!stopping) 0x%llx\n", (SR_U64)rn & 0xFFFFFFF);
 		base = rn;
 		/* If at right child go back up, otherwise, go right */
 		while (rn->rn_parent->rn_right == rn
@@ -1006,7 +1023,7 @@ rn_walktree_from(struct radix_head *h, void *a, void *m,
 			/* if went up beyond last, stop */
 			if (rn->rn_bit <= lastb) {
 				stopping = 1;
-				/* printf("up too far\n"); */
+				//sal_print_info("up too far\n");
 				/*
 				 * XXX we should jump to the 'Process leaves'
 				 * part, because the values of 'rn' and 'next'
@@ -1016,6 +1033,7 @@ rn_walktree_from(struct radix_head *h, void *a, void *m,
 				 */
 			}
 		}
+		//sal_print_info("go back up/go right 0x%llx\n", (SR_U64)rn & 0xFFFFFFF);
 		
 		/* 
 		 * At the top of the tree, no need to traverse the right
@@ -1028,11 +1046,12 @@ rn_walktree_from(struct radix_head *h, void *a, void *m,
 		/* Find the next *leaf* since next node might vanish, too */
 		for (rn = rn->rn_parent->rn_right; rn->rn_bit >= 0;)
 			rn = rn->rn_left;
+		//sal_print_info("find next leaf 0x%llx\n", (SR_U64)rn & 0xFFFFFFF);
 		next = rn;
 		/* Process leaves */
 		while ((rn = base) != NULL) {
 			base = rn->rn_dupedkey;
-			/* printf("leaf %p\n", rn); */
+			//sal_print_info("call f() for 0x%llx\n", (SR_U64)rn & 0xFFFFFFF);
 			if (!(rn->rn_flags & RNF_ROOT)
 			    && (error = (*f)(rn, w)))
 				return (error);
@@ -1040,7 +1059,7 @@ rn_walktree_from(struct radix_head *h, void *a, void *m,
 		rn = next;
 
 		if (rn->rn_flags & RNF_ROOT) {
-			/* printf("root, stopping"); */
+			//sal_print_info("root, stopping");
 			stopping = 1;
 		}
 
@@ -1054,6 +1073,7 @@ rn_walktree(struct radix_head *h, walktree_f_t *f, void *w)
 	int error;
 	struct radix_node *base, *next;
 	struct radix_node *rn = h->rnh_treetop;
+
 	/*
 	 * This gets complicated because we may delete the node
 	 * while applying the function f to it, so we need to calculate
@@ -1116,8 +1136,10 @@ static void
 rn_detachhead_internal(struct radix_head *head)
 {
 
-	if(head == NULL)
-	    sal_kernel_print_crit("%s: head already freed", __func__);
+	if (head == NULL) {
+	    sal_print_crit("%s: head already freed", __func__);
+	    return;
+	}
 	
 	/* Free <left,root,right> nodes. */
 	R_Free(head);
@@ -1140,10 +1162,12 @@ rn_inithead(void **head, int off)
 	R_Zalloc(rnh, struct radix_node_head *, sizeof (*rnh));
 	R_Zalloc(rmh, struct radix_mask_head *, sizeof (*rmh));
 	if (rnh == NULL || rmh == NULL) {
-		if (rnh != NULL)
+		if (rnh != NULL) {
 			R_Free(rnh);
-		if (rmh != NULL)
+		}
+		if (rmh != NULL) {
 			R_Free(rmh);
+		}
 		return (0);
 	}
 
@@ -1171,8 +1195,9 @@ rn_freeentry(struct radix_node *rn, void *arg)
 	struct radix_node *x;
 
 	x = (struct radix_node *)rn_delete(rn + 2, NULL, rnh);
-	if (x != NULL)
+	if (x != NULL) {
 		R_Free(x);
+	}
 	return (0);
 }
 
@@ -1181,8 +1206,10 @@ rn_detachhead(void **head)
 {
 	struct radix_node_head *rnh;
 
-	if(!(head != NULL && *head != NULL))
-	    sal_kernel_print_crit("%s: head already freed", __func__);
+	if (!(head != NULL && *head != NULL)) {
+	    sal_print_crit("%s: head already freed", __func__);
+	    return(1);
+	}
 
 	rnh = (struct radix_node_head *)(*head);
 
@@ -1193,5 +1220,84 @@ rn_detachhead(void **head)
 	*head = NULL;
 
 	return (1);
+}
+
+void
+rn_printnode(struct radix_node *n, int level)
+{
+#ifdef __KERNEL__
+	bit_array matched_rules;
+	SR_16 rule;
+#endif // __KERNEL__
+
+	if (n != NULL) {
+		if (level != -1) { // -1 is for a single node
+			sal_print_info("**lvl %d** ", level);
+		}
+		sal_print_info("n = 0x%07llx, ", (SR_U64)n & 0xFFFFFFF);
+#ifdef DEBUG
+		sal_print_info("b = %s%d, f = %s|%s, ",
+					n->rn_bit > 0 ? " " : "",
+					n->rn_bit,
+					n->rn_flags & RNF_NORMAL ? "N" : " ",
+					n->rn_flags & RNF_ROOT ? "R" : " ");
+#endif // DEBUG
+		if (n == n->rn_parent) {
+			sal_print_info("p = NONE     ");
+		} else {
+			sal_print_info("p = 0x%07llx", (SR_U64)n->rn_parent & 0xFFFFFFF);
+		}
+		if (n->rn_flags & RNF_ACTIVE) {
+			if (n->rn_bit >= 0) {
+				// node: print bmask, offset, left, right
+				sal_print_info(", bm = 0x%02x, o = %d, l = 0x%07llx, r = 0x%07llx",
+						(SR_U8)n->rn_bmask,
+						n->rn_offset,
+						(SR_U64)n->rn_left & 0xFFFFFFF,
+						(SR_U64)n->rn_right & 0xFFFFFFF);
+			} else {
+				// leaf: print dup, ip, rules
+				if (n->rn_bit != -33) { // not empty
+					sal_print_info(", ip = %d.%d.%d.%d/%lu",
+							*((SR_U8 *)(n->rn_key + 4)),
+							*((SR_U8 *)(n->rn_key + 4) + 1),
+							*((SR_U8 *)(n->rn_key + 4) + 2),
+							*((SR_U8 *)(n->rn_key + 4)+ 3),
+							abs(n->rn_bit + 33));
+
+#ifdef __KERNEL__
+					memcpy(&matched_rules, &n->sr_private.rules, sizeof(matched_rules));
+					sal_print_info(", rules:");
+					while ((rule = sal_ffs_and_clear_array (&matched_rules)) != -1) {
+						sal_print_info(" %d", rule);
+					}
+#endif // __KERNEL__
+				}
+			}
+			sal_print_info("\n");
+
+			// for non empty leaf - print duplicated (if exist)
+			if ((n->rn_bit < 0) && (n->rn_bit != -33) && n->rn_dupedkey) {
+				sal_print_info("duplicated node:\n");
+				rn_printnode(n->rn_dupedkey, level); // same level
+			}
+
+			// print left and right
+			if (n->rn_bit >= 0) {
+				rn_printnode(n->rn_left, level + 1);
+				rn_printnode(n->rn_right, level + 1);
+			}
+		}
+	}
+}
+
+void
+rn_printtree(struct radix_head *h)
+{
+	int level = 0;
+
+	if (h == NULL)
+		return;
+	rn_printnode(h->rnh_treetop, level);
 }
 

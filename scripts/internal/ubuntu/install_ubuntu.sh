@@ -87,14 +87,14 @@ insatll_sysrepo_service(){
 }
 
 install_yang(){
-    operation="Install yang db"
-    run_cmd echo `$install_dir/bin/sysrepoctl --install --yang=$install_dir/sysrepo/yang/saferide.yang --permissions=644`
+    #operation="Install yang db"
+    #run_cmd echo `$install_dir/bin/sysrepoctl --install --yang=$install_dir/sysrepo/yang/saferide.yang --permissions=644`
     operation="Install /var related files"
     run_cmd `cp -ra $install_dir/var/run/* /var/run/`
 	operation="Install /etc related files"
-	run_cmd `echo cp -ra $install_dir/etc/*   /etc/`
+	run_cmd `cp -ra $install_dir/sysrepo/   /etc/`
 	rm -rf $install_dir/var
-	rm -rf $install_dir/etc
+	rm -rf $install_dir/sysrepo
 }
 
 remove_tmp_files(){

@@ -54,111 +54,83 @@ SR_32 get_port_for_rule(SR_16 rule, SR_U8 dir)
 	return -1;
 }
 
-int rn_walktree_sysfs(struct radix_head *h, SR_U8 dir)
+int walktree_sysfs_print_rule(struct radix_node *node, void *data)
 {
-	struct radix_node *base, *next;
-	struct radix_node *rn = h->rnh_treetop;
-	char *cp,*cp_mask;
+	SR_U8 *dir = (SR_U8 *)data;
+	char *cp;
 	bit_array matched_rules;
 	SR_16 rule;
 
-	// First time through node, go left 
-	while (rn->rn_bit >= 0)
-		rn = rn->rn_left;
-		
-	for (;;) {
-		base = rn;
-		
-		// If at right child go back up, otherwise, go right 
-		while (rn->rn_parent->rn_right == rn && (rn->rn_flags & RNF_ROOT) == 0)
-			rn = rn->rn_parent;
-		// Find the next *leaf* since next node might vanish, too 
-		for (rn = rn->rn_parent->rn_right; rn->rn_bit >= 0;)
-			rn = rn->rn_left;
-			
-		memset(&matched_rules, 0, sizeof(matched_rules));
-		memcpy(&matched_rules, &rn->sr_private.rules, sizeof(matched_rules)); 
-				
-		while ((rule = sal_ffs_and_clear_array (&matched_rules)) != -1) {
-			
-			base = rn->rn_dupedkey;
-			cp = (char *)rn->rn_key + 4;
-			cp_mask=(char *)rn->rn_mask + 4;
-			
-			//put some work to fetch the DST/SRC port OR any
-			//need to check if its TCP or UDP <---- redundent to check again
-			
-			if(dir == SR_DIR_SRC){
-				
-				if(sysfs_network[rule].rule == rule && sysfs_network[rule].src_flag == 1 ){
-					continue;	
-				}
-				sysfs_network[rule].rule = rule; // <== might be redundent, not sure - check later if it's really usefull.	
-				sprintf(sysfs_network[rule].src_netmask ,"%u.%u.%u.%u",
-					(unsigned char)cp_mask[0],(unsigned char)cp_mask[1],(unsigned char)cp_mask[2],(unsigned char)cp_mask[3]);
-				sprintf(sysfs_network[rule].src_ipv4,"%u.%u.%u.%u",
+	memset(&matched_rules, 0, sizeof(matched_rules));
+	memcpy(&matched_rules, &node->sr_private.rules, sizeof(matched_rules));
+
+	while ((rule = sal_ffs_and_clear_array (&matched_rules)) != -1) {
+
+		cp = (char *)node->rn_key + 4;
+
+		// put some work to fetch the DST/SRC port OR any
+		// need to check if its TCP or UDP <---- redundant to check again
+
+		if (*dir == SR_DIR_SRC) {
+
+			if (sysfs_network[rule].rule == rule && sysfs_network[rule].src_flag == 1) {
+				continue;
+			}
+			sysfs_network[rule].rule = rule;
+			sysfs_network[rule].src_flag = 1;
+			sysfs_network[rule].src_netmask_len = abs(node->rn_bit + 33);
+			sysfs_network[rule].s_port = get_port_for_rule(rule, *dir);
+
+			sprintf(sysfs_network[rule].src_ipv4,"%u.%u.%u.%u",
 					(unsigned char)cp[0], (unsigned char)cp[1], (unsigned char)cp[2], (unsigned char)cp[3]);
-					
-				sysfs_network[rule].s_port = get_port_for_rule(rule,dir);
-				sysfs_network[rule].src_flag = 1;
-			}else{
-				
-				if(sysfs_network[rule].rule == rule && sysfs_network[rule].dst_flag == 1){
-					continue;	
-				}
-				sprintf(sysfs_network[rule].dst_netmask ,"%u.%u.%u.%u",
-					(unsigned char)cp_mask[0],(unsigned char)cp_mask[1],(unsigned char)cp_mask[2],(unsigned char)cp_mask[3]);
-				sprintf(sysfs_network[rule].dst_ipv4,"%u.%u.%u.%u",
+
+		} else { // DST
+
+			if (sysfs_network[rule].rule == rule && sysfs_network[rule].dst_flag == 1) {
+				continue;
+			}
+			sysfs_network[rule].rule = rule;
+			sysfs_network[rule].dst_flag = 1;
+			sysfs_network[rule].d_port = get_port_for_rule(rule, *dir);
+			sysfs_network[rule].dst_netmask_len = abs(node->rn_bit + 33);
+			sprintf(sysfs_network[rule].dst_ipv4,"%u.%u.%u.%u",
 					(unsigned char)cp[0], (unsigned char)cp[1], (unsigned char)cp[2], (unsigned char)cp[3]);
-					
-				sysfs_network[rule].d_port = get_port_for_rule(rule,dir);
-				sysfs_network[rule].dst_flag = 1;
-			}
-			
-			sprintf(sysfs_network[rule].proto,"%s","N/A");
-			
-			//putting some work for the UID...
-			sysfs_network[rule].uid = get_uid_for_rule(sr_cls_uid_table,rule,UID_HASH_TABLE_SIZE,SR_NET_RULES);
-			if(sysfs_network[rule].uid != -1){
-				
-				if(sysfs_network[rule].uid == 0){
-					sprintf(sysfs_network[rule].uid_buff, "%s", "ANY");
-				}else
-					sprintf(sysfs_network[rule].uid_buff, "%d", sysfs_network[rule].uid);
-					
-			}else{
-				sprintf(sysfs_network[rule].uid_buff, "%s", "N/A");
-			}
-					
-			//putting work for the BIN
-			sysfs_network[rule].inode = get_exec_for_rule(sr_cls_exec_file_table,rule,EXEC_FILE_HASH_TABLE_SIZE,SR_NET_RULES);
-			if(sysfs_network[rule].inode != -1){
-				
-				if(sysfs_network[rule].inode == 0){
-					sprintf(sysfs_network[rule].inode_buff, "%s", "ANY");
-				}else
-					sprintf(sysfs_network[rule].inode_buff, "%u", sysfs_network[rule].inode);
-					
-			}
-					
-			sysfs_network[rule].action = sr_db->sr_rules_db[SR_NET_RULES][rule].actions;
-			if (sysfs_network[rule].action & SR_CLS_ACTION_LOG) {
-					
-				if (sysfs_network[rule].action & SR_CLS_ACTION_DROP) {
-					sprintf(sysfs_network[rule].actionstring, "Drop");
-				}else if(sysfs_network[rule].action & SR_CLS_ACTION_ALLOW) {
-					sprintf(sysfs_network[rule].actionstring, "Allow");
-				}else{
-					sprintf(sysfs_network[rule].actionstring, "log-only"); 
-				}
+		}
+
+		sprintf(sysfs_network[rule].proto,"%s","N/A");
+
+		// putting some work for the UID...
+		sysfs_network[rule].uid = get_uid_for_rule(sr_cls_uid_table,rule,UID_HASH_TABLE_SIZE,SR_NET_RULES);
+		if (sysfs_network[rule].uid != -1) {
+			if (sysfs_network[rule].uid == 0) {
+				sprintf(sysfs_network[rule].uid_buff, "%s", "ANY");
+			} else
+				sprintf(sysfs_network[rule].uid_buff, "%d", sysfs_network[rule].uid);
+		} else {
+			sprintf(sysfs_network[rule].uid_buff, "%s", "N/A");
+		}
+
+		// putting work for the BIN
+		sysfs_network[rule].inode = get_exec_for_rule(sr_cls_exec_file_table,rule,EXEC_FILE_HASH_TABLE_SIZE,SR_NET_RULES);
+		if (sysfs_network[rule].inode != -1) {
+			if (sysfs_network[rule].inode == 0) {
+				sprintf(sysfs_network[rule].inode_buff, "%s", "ANY");
+			} else
+				sprintf(sysfs_network[rule].inode_buff, "%u", sysfs_network[rule].inode);
+		}
+
+		sysfs_network[rule].action = sr_db->sr_rules_db[SR_NET_RULES][rule].actions;
+		if (sysfs_network[rule].action & SR_CLS_ACTION_LOG) {
+			if (sysfs_network[rule].action & SR_CLS_ACTION_DROP) {
+				sprintf(sysfs_network[rule].actionstring, "Drop");
+			} else if (sysfs_network[rule].action & SR_CLS_ACTION_ALLOW) {
+				sprintf(sysfs_network[rule].actionstring, "Allow");
+			} else {
+				sprintf(sysfs_network[rule].actionstring, "log-only");
 			}
 		}
-		next = rn;		
-		rn = next;
-		if (rn->rn_flags & RNF_ROOT)
-			return (0);
 	}
-	//NOTREACHED
+	return 0;
 }
 
 static void store_table(struct radix_head** table)
@@ -168,12 +140,12 @@ static void store_table(struct radix_head** table)
 	for(i = 0; i < SR_MAX_RULES; i++){
 		if(sysfs_network[i].rule){
 			
-			sal_sprintf(buffer_RULE,"%d\t%s/%s\t\t%s/%s\t%d\t%d\t%s\t%s\t%s\t\t%s\n",
+			sal_sprintf(buffer_RULE,"%d\t%015s/%d\t%015s/%d\t%d\t%d\t%s\t%s\t%s\t\t%s\n",
 				sysfs_network[i].rule,
 				sysfs_network[i].src_ipv4,
-				sysfs_network[i].src_netmask,
+				sysfs_network[i].src_netmask_len,
 				sysfs_network[i].dst_ipv4,
-				sysfs_network[i].dst_netmask,
+				sysfs_network[i].dst_netmask_len,
 				sysfs_network[i].s_port,
 				sysfs_network[i].d_port,
 				sysfs_network[i].proto,
@@ -191,12 +163,12 @@ static void store_rule(struct radix_head** table,SR_16 rule_find)
 {
 		
 	if(sysfs_network[rule_find].rule == rule_find ){
-		sal_sprintf(buffer_RULE,"%d\t%s/%s\t\t\t\t%s/%s\t%d\t%d\t%s\t%s\t%s\t\t%s\n",
+		sal_sprintf(buffer_RULE,"%d\t%015s/%d\t%015s/%d\t%d\t%d\t%s\t%s\t%s\t\t%s\n",
 			sysfs_network[rule_find].rule,
 			sysfs_network[rule_find].src_ipv4,
-			sysfs_network[rule_find].src_netmask,
+			sysfs_network[rule_find].src_netmask_len,
 			sysfs_network[rule_find].dst_ipv4,
-			sysfs_network[rule_find].dst_netmask,
+			sysfs_network[rule_find].dst_netmask_len,
 			sysfs_network[rule_find].s_port,
 			sysfs_network[rule_find].d_port,
 			sysfs_network[rule_find].proto,
@@ -212,6 +184,8 @@ static void store_rule(struct radix_head** table,SR_16 rule_find)
 
 static void fetch_cls_ipv4(void)
 {
+	SR_U8 dir;
+
 	sal_memset(buffer, 0, PAGE_SIZE);
 	sal_memset(sysfs_network, 0, sizeof(sysfs_network));
 
@@ -227,11 +201,15 @@ static void fetch_cls_ipv4(void)
 	sr_cls_port_table[SR_DST_UDP] = get_cls_port_table(SR_DST_UDP);
 	sr_cls_protocol_table = get_cls_protocol_table();
 	
-	rn_walktree_sysfs(sr_cls_ipv4_table[SR_DIR_SRC],SR_DIR_SRC);
-	rn_walktree_sysfs(sr_cls_ipv4_table[SR_DIR_DST],SR_DIR_DST);
+	dir = SR_DIR_SRC;
+	rn_walktree(sr_cls_ipv4_table[SR_DIR_SRC], walktree_sysfs_print_rule, &dir);
+	dir = SR_DIR_DST;
+	rn_walktree(sr_cls_ipv4_table[SR_DIR_DST], walktree_sysfs_print_rule, &dir);
 	
 	sal_sprintf(buffer,
-		"rule\tsrc_ip/mask\t\t\t\tdst_ip/mask\t\t\ts_port\td_port\tproto\tuid\tbinary\t\taction\n------------------------------------------------------------------------------------------------------------------------------\n");
+		"rule\t\tsrc_ip/mask\t\tdst_ip/mask\ts_port\td_port\tproto\tuid\tbinary\t\taction\n"
+		"----------------------------------------------------------------------------------"
+		"----------------------------\n");
 }
 
 void set_sysfs_ipv4(unsigned char * buff)
@@ -255,4 +233,5 @@ void dump_ipv4_rule(SR_16 rule)
 	fetch_cls_ipv4();
 	store_rule(sr_cls_ipv4_table,rule);
 }
+
 #endif /* SYSFS_SUPPORT */
