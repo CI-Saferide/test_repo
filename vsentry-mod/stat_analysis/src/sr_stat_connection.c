@@ -159,6 +159,7 @@ SR_U32 sr_connection_transmit(void)
 	num_of_transmissions++;
 	if (num_of_transmissions >= SR_CONNECTIOLN_AGED_THRESHHOLD) {
 		num_of_transmissions = 0;
+		sr_stat_connection_garbage_collection();
 		sr_stat_connection_aging_cleanup();
 	}
 	
