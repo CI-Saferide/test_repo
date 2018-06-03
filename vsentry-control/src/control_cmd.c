@@ -12,6 +12,11 @@
 #include <sys/un.h>
 #include <errno.h>
 
+static is_valid_cmd(char *cmd)
+{
+	return !strcmp(cmd, "learn") || !strcmp(cmd, "apply");
+}
+
 int main(int argc, char **argv)
 {
 	struct sockaddr_un addr = {};
@@ -32,9 +37,9 @@ int main(int argc, char **argv)
 				return -1;
      		}
 	}
-	if (!cmd[0]) {
+	if (!is_valid_cmd(cmd)) {
 		printf("usage: %s -c [learn,apply]\n", argv[0]);
-		return 0;
+		return -1; 
 	}
 
 	if ( (fd = socket(AF_UNIX, SOCK_STREAM, 0)) == -1) { 
