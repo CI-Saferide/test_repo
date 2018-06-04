@@ -14,7 +14,7 @@
 
 static is_valid_cmd(char *cmd)
 {
-	return !strcmp(cmd, "learn") || !strcmp(cmd, "apply");
+	return !strcmp(cmd, "wl_learn") || !strcmp(cmd, "wl_apply") || !strcmp(cmd, "wl_print");
 }
 
 int main(int argc, char **argv)
@@ -30,7 +30,7 @@ int main(int argc, char **argv)
 				strcpy(cmd, optarg);
           			break;
 			case 'h':
-				printf("usage: %s -c [learn,apply]\n", argv[0]);
+				printf("usage: %s -c [wl_learn,wl_apply,wl_print]\n", argv[0]);
 				return 0;
         		default:
 				printf("Invalid option %c ignored\n", opt);
@@ -38,7 +38,7 @@ int main(int argc, char **argv)
      		}
 	}
 	if (!is_valid_cmd(cmd)) {
-		printf("usage: %s -c [learn,apply]\n", argv[0]);
+		printf("usage: %s -c [wl_learn,wl_apply,wl_print]\n", argv[0]);
 		return -1; 
 	}
 
