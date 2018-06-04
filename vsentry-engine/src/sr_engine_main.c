@@ -341,7 +341,9 @@ SR_32 sr_engine_start(int argc, char *argv[])
 		sr_static_policy_db_mng_start();
 	}
 
-	sr_get_command_start();
+	if (config_params->remote_server_support_enable) {
+		sr_get_command_start();
+	}
 
 	strncpy(can_args->can_interface, config_params->can0_interface, CAN_NAME);
 	if(config_params->collector_enable){
@@ -435,8 +437,9 @@ SR_32 sr_engine_start(int argc, char *argv[])
 	}
 
 	sal_third_party_interface_uninit();
-
-	sr_get_command_stop();
+	if (config_params->remote_server_support_enable) {
+		sr_get_command_stop();
+	}
 	if (config_params->remote_server_support_enable && config_params->policy_update_enable) {
 		sr_static_policy_db_mng_stop();
 	}
