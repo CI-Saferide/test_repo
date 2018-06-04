@@ -7,6 +7,7 @@
 #include "sr_log.h"
 #include "sr_types.h"
 #include "sr_white_list.h"
+#include "sr_control.h"
 
 static SR_BOOL is_run;
 static pthread_t t;
@@ -14,11 +15,16 @@ static pthread_t t;
 static void handle_data(char *buf)
 {
 	printf("Got buf:%s: \n", buf);
-	if (!memcmp(buf, "learn", strlen("learn"))) {
+	if (!memcmp(buf, "wl_learn", strlen("wl_learn")))
 		sr_white_list_set_mode(SR_WL_MODE_LEARN);
-	}
-	if (!memcmp(buf, "apply", strlen("apply")))
+	if (!memcmp(buf, "wl_apply", strlen("wl_apply")))
 		sr_white_list_set_mode(SR_WL_MODE_APPLY);
+	if (!memcmp(buf, "wl_print", strlen("wl_ptint"))) {
+    	sr_white_list_hash_print();
+   		sr_white_list_ip_print();
+   		printf("print connection object:\n");
+		sr_control_util(SR_CONTROL_PRINT);
+	}
 }
 
 static void *third_party_server(void *p)
