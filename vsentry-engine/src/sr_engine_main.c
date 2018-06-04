@@ -410,9 +410,13 @@ SR_32 sr_engine_start(int argc, char *argv[])
 				break;
 			case 'z':
 				printf("print the white list !!!\n");
+				CEF_log_event(SR_CEF_CID_SYSTEM, "info", SEVERITY_LOW,
+                        			"%s= print the white list !!! ",REASON);
 				sr_white_list_hash_print();
 				sr_white_list_ip_print();
 				printf("print connection object:\n");
+				CEF_log_event(SR_CEF_CID_SYSTEM, "info", SEVERITY_LOW,
+					"%s=print connection object ",REASON);
 				sr_control_util(SR_CONTROL_PRINT);
 				break;
 #endif /* CONFIG_CAN_ML */

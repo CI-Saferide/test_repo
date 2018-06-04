@@ -26,6 +26,8 @@ static void white_list_print(void *data_in_hash)
 {
 	sr_white_list_item_t *white_list_item = (sr_white_list_item_t *)data_in_hash;
 
+	CEF_log_event(SR_CEF_CID_SYSTEM, "info", SEVERITY_LOW,
+		"%s=white list exec:%s ",REASON, white_list_item->exec);
 	printf("exec:%s: \n", white_list_item->exec);
 
 	sr_white_list_file_print(white_list_item->white_list_file);
@@ -190,9 +192,13 @@ SR_32 sr_white_list_set_mode(sr_wl_mode_t new_wl_mode)
  				CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 					"%s=failed to transfer config info to kernel",REASON);
 
+ 			CEF_log_event(SR_CEF_CID_SYSTEM, "info", SEVERITY_LOW,
+					"%s=Delete WL rules ....", REASON);
 			sr_white_list_delete_all();
 			sr_white_list_ip_delete_all();
 			sr_white_list_delete_rules();
+ 			CEF_log_event(SR_CEF_CID_SYSTEM, "info", SEVERITY_LOW,
+					"%s=Finish delete WL rules ....", REASON);
 			break;
 		case SR_WL_MODE_APPLY:
  			CEF_log_event(SR_CEF_CID_SYSTEM, "info", SEVERITY_LOW,
@@ -200,24 +206,32 @@ SR_32 sr_white_list_set_mode(sr_wl_mode_t new_wl_mode)
 			sr_white_list_create_action();
 			wl_mode = SR_WL_MODE_APPLY;
 			printf("Applying file rules ..... \n");
+ 			CEF_log_event(SR_CEF_CID_SYSTEM, "info", SEVERITY_LOW,
+					"%s= Applying file rules .....", REASON);
 			if ((rc = sr_white_list_file_apply(SR_TRUE)) != SR_SUCCESS) {
                			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 					"%s=sr_white_list_file_apply failed",REASON);
                 		return SR_ERROR;
 			}
 			printf("Applying file CAN rules ..... \n");
+ 			CEF_log_event(SR_CEF_CID_SYSTEM, "info", SEVERITY_LOW,
+					"%s= Applying CAN rules .....", REASON);
 			if ((rc = sr_white_list_canbus_apply(SR_TRUE)) != SR_SUCCESS) {
                			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 					"%s=sr_white_list_canbus_apply failed",REASON);
                 		return SR_ERROR;
 			}
 			printf("Applying file IP rules ..... \n");
+ 			CEF_log_event(SR_CEF_CID_SYSTEM, "info", SEVERITY_LOW,
+					"%s= Applying IP rules .....", REASON);
 			if (sr_white_list_ip_apply(SR_TRUE) != SR_SUCCESS) {
                			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 					"%s=sr_white_list_ip_apply failed",REASON);
 				return SR_ERROR;
 			}
 			printf("Finish applying rules.\n");
+ 			CEF_log_event(SR_CEF_CID_SYSTEM, "info", SEVERITY_LOW,
+					"%s= Finish applying rules.", REASON);
 			/* Set default rule to be as defined in sr_config */
 			conf_msg = (sr_config_msg_t*)sr_get_msg(ENG2MOD_BUF, ENG2MOD_MSG_MAX_SIZE);
         		if (conf_msg) {

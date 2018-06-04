@@ -362,6 +362,8 @@ void sr_wl_conngraph_print_tree(void)
 void sr_white_list_ip_print(void)
 {
 	printf("Radix tree:\n");
+	CEF_log_event(SR_CEF_CID_SYSTEM, "info", SEVERITY_LOW,
+					"%s= Radix tree",MESSAGE);
 	sr_wl_conngraph_print_tree();
 	printf("\nBinary hash:\n");
 	sr_wl_ip_binary_print();
