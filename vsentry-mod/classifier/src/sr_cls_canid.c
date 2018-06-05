@@ -283,9 +283,18 @@ SR_8 sr_cls_canid_msg_dispatch(struct sr_cls_canbus_msg *msg)
 				"%s=Delete %s=%d %s=%x %s=%d",MESSAGE,
 				RULE_NUM_KEY,msg->rulenum, 
 				CAN_MSG_ID,msg->canid, 
-				DEVICE_DIRECTION,(msg->dir==SR_CAN_OUT)? SR_CAN_OUT : SR_CAN_IN);
-			if ((st =  sr_cls_canid_del_rule(msg->canid, msg->rulenum,msg->dir)) != SR_SUCCESS)
-			   return st;
+				DEVICE_DIRECTION,(msg->dir==SR_CAN_OUT)? SR_CAN_OUT : ((msg->dir==SR_CAN_IN)? SR_CAN_IN : SR_CAN_BOTH));
+			if (msg->dir==SR_CAN_BOTH) {
+				// del IN
+				if ((st =  sr_cls_canid_del_rule(msg->canid, msg->rulenum, SR_CAN_IN)) != SR_SUCCESS)
+					return st;
+				// del OUT
+				if ((st =  sr_cls_canid_del_rule(msg->canid, msg->rulenum, SR_CAN_OUT)) != SR_SUCCESS)
+					return st;
+			} else { // IN/OUT
+				if ((st =  sr_cls_canid_del_rule(msg->canid, msg->rulenum, msg->dir)) != SR_SUCCESS)
+					return st;
+			}
 			if ((st = sr_cls_exec_inode_del_rule(SR_CAN_RULES, msg->exec_inode, msg->rulenum)) != SR_SUCCESS)
 			   return st;
 			return sr_cls_uid_del_rule(SR_CAN_RULES, msg->uid, msg->rulenum);
@@ -295,11 +304,20 @@ SR_8 sr_cls_canid_msg_dispatch(struct sr_cls_canbus_msg *msg)
 				RULE_NUM_KEY,msg->rulenum, 
 				DEVICE_UID,msg->uid, 
 				CAN_MSG_ID,msg->canid, 
-				DEVICE_DIRECTION,(msg->dir==SR_CAN_OUT)? SR_CAN_OUT : SR_CAN_IN);
-			if ((st = sr_cls_canid_add_rule(msg->canid, msg->rulenum,msg->dir)) != SR_SUCCESS)
-			   return st;
+				DEVICE_DIRECTION,(msg->dir==SR_CAN_OUT)? SR_CAN_OUT : ((msg->dir==SR_CAN_IN)? SR_CAN_IN : SR_CAN_BOTH));
+			if (msg->dir==SR_CAN_BOTH) {
+				// add IN
+				if ((st = sr_cls_canid_add_rule(msg->canid, msg->rulenum, SR_CAN_IN)) != SR_SUCCESS)
+					return st;
+				// add OUT
+				if ((st = sr_cls_canid_add_rule(msg->canid, msg->rulenum,SR_CAN_OUT)) != SR_SUCCESS)
+					return st;
+			} else { // IN/OUT
+				if ((st = sr_cls_canid_add_rule(msg->canid, msg->rulenum, msg->dir)) != SR_SUCCESS)
+					return st;
+			}
 			if ((st =  sr_cls_exec_inode_add_rule(SR_CAN_RULES, msg->exec_inode, msg->rulenum)) != SR_SUCCESS)
-			   return st;
+				return st;
 			return sr_cls_uid_add_rule(SR_CAN_RULES, msg->uid, msg->rulenum);
 			break;
 		default:

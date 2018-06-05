@@ -38,6 +38,7 @@
 #include "sr_config_common.h"
 #include "sr_can_collector.h"
 #include "sr_config_parse.h"
+#include "sal_third_party_interface.h"
 
 static SR_32 engine_main_loop(void *data)
 {
@@ -176,28 +177,38 @@ SR_32 sr_engine_write_conf(char *param, char *value)
 SR_32 sr_engine_start(int argc, char *argv[])
 {
 	SR_32 ret;
-	SR_BOOL run = SR_TRUE;
 	FILE *f;
 	sr_config_msg_t *msg;
 	struct config_params_t *config_params;
 	struct canTaskParams *can_args;
 	SR_8 *config_file = NULL;
 	SR_32 cmd_line;
+	SR_BOOL run = SR_TRUE;
+	SR_BOOL background = SR_FALSE;
 	
-	while ((cmd_line = getopt (argc, argv, "hc:")) != -1)
+	while ((cmd_line = getopt (argc, argv, "bhc:")) != -1)
 	switch (cmd_line) {
 		case 'h':
 			printf ("param					description\n");
 			printf ("----------------------------------------------------------------------\n");
 			printf ("-c [path]				specifies configuration file full path\n");        
+			printf ("-b 					run in background\n");
 			printf ("\n");
 			return 0;
+			break;
+		case 'b':
+			background = SR_TRUE;
 			break;
 		case 'c':
 			config_file = optarg;
 			break;
 	}
-	
+
+	if (background && (daemon(0, 0) < 0)) {
+		fprintf(stderr, "failed to run in background .. exiting ...\n");
+		exit (-1);
+	}
+
 	if (NULL == config_file) {
 		/* no config file parameters passed, using current directory */
 		char cwd[1024];
@@ -314,6 +325,13 @@ SR_32 sr_engine_start(int argc, char *argv[])
 		return SR_ERROR;
 	}
 
+	ret = sal_third_party_interface_init();
+	if (ret != SR_SUCCESS){
+	CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+		"%s=failed to init trird partry interface",REASON);
+		return SR_ERROR;
+	}
+
 	sr_db_init();
 	sentry_init(sr_config_vsentry_db_cb);
 	
@@ -323,7 +341,9 @@ SR_32 sr_engine_start(int argc, char *argv[])
 		sr_static_policy_db_mng_start();
 	}
 
-	sr_get_command_start();
+	if (config_params->remote_server_support_enable) {
+		sr_get_command_start();
+	}
 
 	strncpy(can_args->can_interface, config_params->can0_interface, CAN_NAME);
 	if(config_params->collector_enable){
@@ -360,7 +380,13 @@ SR_32 sr_engine_start(int argc, char *argv[])
 	} else
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 						"%s=failed to transfer config info to kernel",REASON);
+
 	while (run) {
+		if (background) {
+			sleep (1);
+			continue;
+		}
+
 		SR_32 input = getchar();
 
 		switch (input) {
@@ -401,20 +427,26 @@ SR_32 sr_engine_start(int argc, char *argv[])
 				break;
 			case 'z':
 				printf("print the white list !!!\n");
+				CEF_log_event(SR_CEF_CID_SYSTEM, "info", SEVERITY_LOW,
+                        			"%s=print the white list",MESSAGE);
 				sr_white_list_hash_print();
 				sr_white_list_ip_print();
-				printf("print connection object:\n");
-				sr_control_util(SR_CONTROL_PRINT);
+				//printf("print connection object:\n");
+				//CEF_log_event(SR_CEF_CID_SYSTEM, "info", SEVERITY_LOW,
+				//	"%s=print connection object",MESSAGE);
+				//sr_control_util(SR_CONTROL_PRINT);
 				break;
 #endif /* CONFIG_CAN_ML */
 		}
 	}
-	sr_get_command_stop();
-#ifdef SUPPORT_REMOTE_SERVER
-#ifdef ENBALE_POLICY_UPDATE
-	sr_static_policy_db_mng_stop();
-#endif /* ENBALE_POLICY_UPDATE */
-#endif /* SUPPORT_REMOTE_SERVER */
+
+	sal_third_party_interface_uninit();
+	if (config_params->remote_server_support_enable) {
+		sr_get_command_stop();
+	}
+	if (config_params->remote_server_support_enable && config_params->policy_update_enable) {
+		sr_static_policy_db_mng_stop();
+	}
 	sr_stop_task(SR_CAN_COLLECT_TASK);
 	sr_stop_task(SR_ENGINE_TASK);
 	sentry_stop();

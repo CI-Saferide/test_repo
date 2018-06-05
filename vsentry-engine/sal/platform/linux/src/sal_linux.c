@@ -85,6 +85,25 @@ SR_8 *sal_strcpy(SR_8 *dest, SR_8 *src)
 	return strcpy(dest, src);
 }
 
+SR_BOOL sal_is_string_numeric(char *s)
+{
+	for (; *s; s++) {
+		if (!isdigit(*s))
+			return SR_FALSE;
+	}
+	return SR_TRUE;
+}
+
+SR_BOOL sal_is_valid_file_name(char *file_name)
+{
+	for (; *file_name; file_name++) {
+		if (!isprint(*file_name))
+			return SR_FALSE;
+	}
+
+	return SR_TRUE;
+}
+
 SR_32 sal_sprintf(SR_8 *str, SR_8 *fmt, ...)
 {
 	int i;

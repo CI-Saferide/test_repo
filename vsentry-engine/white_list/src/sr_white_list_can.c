@@ -70,8 +70,11 @@ void sr_white_list_canbus_print(sr_wl_can_item_t *wl_canbus)
 {
 	sr_wl_can_item_t *iter;
 	
-	for (iter = wl_canbus; iter; iter = iter->next)
+	for (iter = wl_canbus; iter; iter = iter->next) {
+		CEF_log_event(SR_CEF_CID_SYSTEM, "info", SEVERITY_LOW,
+			"%s= MsgID=%03x dir=%s ",REASON, iter->msg_id,iter->dir==SR_CAN_OUT? "OUT":"IN");
 		printf("MsgID=%03x dir=%s\n", iter->msg_id,iter->dir==SR_CAN_OUT? "OUT":"IN");
+	}
 	
 }
 

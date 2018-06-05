@@ -296,6 +296,19 @@ check_parent:
 				if(tmp_info){// check if we in ROOT "/" directory cuz info will be null
 					tmp_info->fileinfo.parent_inode = tmp_info->fileinfo.parent_directory_inode;		
 					goto check_parent;
+				} else {
+					switch (info->fileinfo.dev_type) {
+						case DEV_TYPE_PROC:
+							if ((ptr = sr_cls_file_find(SR_PROC_INODE)))
+								sal_or_self_op_arrays(&ba_res, ptr);
+							break;
+						case DEV_TYPE_SYS:
+							if ((ptr = sr_cls_file_find(SR_SYS_INODE)))
+								sal_or_self_op_arrays(&ba_res, ptr);
+							break;
+						default:
+							break;
+					}
 				}
 			}		
 		}
