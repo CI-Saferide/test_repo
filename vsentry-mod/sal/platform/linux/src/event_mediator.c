@@ -79,7 +79,7 @@ static SR_8 get_path(struct dentry *dentry, SR_8 *buffer, SR_32 len)
 	SR_8 path[SR_MAX_PATH_SIZE], *path_ptr;
 	
 	path_ptr = dentry_path_raw(dentry, path, SR_MAX_PATH_SIZE);
-	if (IS_ERR(path))
+	if (IS_ERR(path_ptr))
 		return SR_ERROR;
 
 	if (strlen(path_ptr) > SR_MAX_PATH_SIZE) { 
@@ -618,8 +618,8 @@ SR_32 vsentry_inode_create(struct inode *dir, struct dentry *dentry, umode_t mod
 	rc = disp_inode_create(&disp);
 	if (rc == 0) {
 		if (get_path(dentry, disp.fileinfo.fullpath, sizeof(disp.fileinfo.fullpath)) != SR_SUCCESS) {
-			CEF_log_event(SR_CEF_CID_SYSTEM, "Error" , SEVERITY_HIGH, "File operation denied, file path it to long");
-			return -EACCES;
+			CEF_log_event(SR_CEF_CID_SYSTEM, "Error" , SEVERITY_HIGH, "get path failed, file path it to long");
+			return 0;
 		}
 		if (!sr_cls_filter_path_is_match(disp.fileinfo.fullpath) && disp_file_created(&disp) != SR_SUCCESS) {
 			CEF_log_event(SR_CEF_CID_SYSTEM, "Error" , SEVERITY_HIGH, 
