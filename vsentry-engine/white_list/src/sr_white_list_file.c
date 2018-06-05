@@ -91,9 +91,12 @@ SR_32 sr_white_list_file_open(struct sr_ec_file_open_t *file_open_info)
                 strcpy(exec, "*");
 
 	if (!sal_is_valid_file_name(file_open_info->file)) {
+#if 0
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 				"%s=Invalid file :%s ",REASON, file_open_info->file);
-		return SR_ERROR;
+#endif
+		// TODO check why kernel provides invalid paths
+		return SR_SUCCESS;
 	}
 
 	// The file to learn might be changed.
