@@ -7,6 +7,13 @@
 #include "cls_helper.h"
 #include "sysfs_cls_ipv4.h"
 
+struct sysfs_buf_list_node_t
+{
+	struct sysfs_buf_list_node_t *next;
+	size_t len;
+	unsigned char *buf;
+};
+
 static unsigned char buf[SR_MAX_PATH];
 static struct rule_database* sr_db;
 static struct sr_hash_table_t *sr_cls_uid_table; // the uid table for NETWORK
@@ -15,6 +22,9 @@ static struct radix_head  *sr_cls_ipv4_table[2]; //index 0 SRC , 1 DST
 static struct sr_hash_table_t *sr_cls_port_table[4]; // 0 - SR_SRC_TCP, 1 - SR_SRC_UDP, 2 - SR_DST_TCP, 3 - SR_DST_UDP
 static struct sr_hash_table_t *sr_cls_protocol_table;
 static struct sysfs_network_ent_t sysfs_network[SR_MAX_RULES];
+
+static SR_U16 store_table_rule_num;
+static struct sysfs_buf_list_node_t *buf_list_head;
 
 SR_32 get_port_for_rule(SR_16 rule, SR_U8 dir)
 {
@@ -30,7 +40,7 @@ SR_32 get_port_for_rule(SR_16 rule, SR_U8 dir)
 					while (curr != NULL){
 						if(sal_test_bit_array(rule,&curr->rules)){
 							//according to the iteration the match was positive we know the proto
-							sprintf(sysfs_network[rule].proto,"%s",((j == 0) || (j == 2)) ? "TCP":"UDP");
+							sal_sprintf(sysfs_network[rule].proto,"%s",((j == 0) || (j == 2)) ? "TCP":"UDP");
 							
 							if(dir == SR_DIR_SRC && (j == 1 || j == 0))
 								return curr->key;
@@ -59,26 +69,29 @@ SR_32 get_port_for_rule(SR_16 rule, SR_U8 dir)
  * len = number of Bytes to write
  * used_count = number of Bytes already written to user_buf
  */
-static SR_U8 sysfs_write_to_user(char __user *user_buf, size_t count, loff_t *ppos,
+static size_t sysfs_write_to_user(char __user *user_buf, size_t count, loff_t *ppos,
 		size_t len, size_t *used_count)
 {
 	size_t rt;
 
 	*ppos = 0; // always read from start of buf
 	if (*used_count + len > count) {
-		pr_err("%s not enough space in user\n",__func__);
-		return -EFBIG;
+		pr_debug("%s not enough space in user. call again\n",__func__);
+		/* return used_count to update the amount written so far
+		 * the func will be called again to write the rest
+		 * pos is 0 so it will continue */
+		return *used_count;
 	}
 
 	rt = simple_read_from_buffer(user_buf + *used_count, count, ppos, buf, len);
 	if ((rt != len) || (*ppos != len))
 		return rt;
-	*used_count += len; // since it may be called several times
 
+	*used_count += len; // since it may be called several times
 	return 0;
 }
 
-static SR_U8 sysfs_write_ipv4_table_title(char __user *user_buf, size_t count, loff_t *ppos,
+static size_t sysfs_write_ipv4_table_title(char __user *user_buf, size_t count, loff_t *ppos,
 		size_t *used_count)
 {
 	size_t len = sal_sprintf(buf,
@@ -88,17 +101,22 @@ static SR_U8 sysfs_write_ipv4_table_title(char __user *user_buf, size_t count, l
 	return sysfs_write_to_user(user_buf, count, ppos, len, used_count);
 }
 
-static size_t store_table(char __user *user_buf, size_t count, loff_t *ppos)
+static size_t store_table(char __user *user_buf, size_t count, loff_t *ppos, SR_U8 first_call)
 {
-	SR_U32 i;
-	SR_U8 rt;
-	size_t len, used_count = 0;
+	SR_U16 i;
+	size_t rt, len, used_count = 0;
 	
-	rt = sysfs_write_ipv4_table_title(user_buf, count, ppos, &used_count);
-	if (rt)
-		return rt;
+	if (first_call) {
+		rt = sysfs_write_ipv4_table_title(user_buf, count, ppos, &used_count); // title
+		if (rt)
+			return rt;
 
-	for (i = 0; i < SR_MAX_RULES; i++) {
+		i = 0; // start from first rule
+	} else {
+		i = store_table_rule_num; // start from where we stopped
+	}
+
+	for (; i < SR_MAX_RULES; i++) {
 		if (sysfs_network[i].rule) {
 			
 			len = sal_sprintf(buf,"%d\t%015s/%d\t%015s/%d\t%d\t%d\t%s\t%s\t%s\t\t%s\n",
@@ -115,8 +133,11 @@ static size_t store_table(char __user *user_buf, size_t count, loff_t *ppos)
 				sysfs_network[i].actionstring);
 
 			rt = sysfs_write_to_user(user_buf, count, ppos, len, &used_count);
-			if (rt)
+			if (rt) {
+				// table has acceded 64k, save current rule number and continue when called again
+				store_table_rule_num = i;
 				return rt;
+			}
 		}
 	}
 	*ppos = used_count;
@@ -125,8 +146,7 @@ static size_t store_table(char __user *user_buf, size_t count, loff_t *ppos)
 
 static size_t store_rule(SR_16 rule_find, char __user *user_buf, size_t count, loff_t *ppos)
 {
-	SR_U8 rt;
-	size_t len, used_count = 0;
+	size_t rt, len, used_count = 0;
 
 	rt = sysfs_write_ipv4_table_title(user_buf, count, ppos, &used_count);
 	if (rt)
@@ -156,26 +176,15 @@ static size_t store_rule(SR_16 rule_find, char __user *user_buf, size_t count, l
 	return used_count;
 }
 
-static SR_U8 rn_printnode(struct radix_node *n, SR_U32 level, char __user *user_buf, size_t count,
-		loff_t *ppos, size_t *used_count)
+static size_t rn_printnode_single(struct radix_node *n, char __user *user_buf, size_t count, loff_t *ppos,
+		size_t *used_count)
 {
-	SR_U8 rt = 0;
-	size_t len  = 0;
+	size_t rt = 0, len = 0;
 	bit_array matched_rules;
 	SR_16 rule;
 
 	if (n != NULL) {
-		if (level != -1) { // -1 is for a single node
-			len += sal_sprintf(buf + len, "**lvl %d** ", level);
-		}
 		len += sal_sprintf(buf + len, "n = 0x%07llx, ", (SR_U64)n & 0xFFFFFFF);
-#ifdef DEBUG
-		len += sal_sprintf(buf + len, "b = %s%d, f = %s|%s, ",
-				n->rn_bit > 0 ? " " : "",
-				n->rn_bit,
-				n->rn_flags & RNF_NORMAL ? "N" : " ",
-				n->rn_flags & RNF_ROOT ? "R" : " ");
-#endif // DEBUG
 		if (n == n->rn_parent) {
 			len += sal_sprintf(buf + len, "p = NONE     ");
 		} else {
@@ -219,41 +228,186 @@ static SR_U8 rn_printnode(struct radix_node *n, SR_U32 level, char __user *user_
 				if (rt)
 					return rt;
 
-				rt = rn_printnode(n->rn_dupedkey, level, user_buf, count, ppos, used_count); // same level
+				rt = rn_printnode_single(n->rn_dupedkey, user_buf, count, ppos, used_count);
 				if (rt)
 					return rt;
-			}
-
-			// print left and right
-			if (n->rn_bit >= 0) {
-				rt = rn_printnode(n->rn_left, level + 1, user_buf, count, ppos, used_count);
-				if (rt)
-					return rt;
-
-				rt = rn_printnode(n->rn_right, level + 1, user_buf, count, ppos, used_count);
-				if (rt)
-					return rt;
-
 			}
 		}
 	}
 	return rt;
 }
 
-static size_t rn_printtree(struct radix_head *h, char __user *user_buf, size_t count, loff_t *ppos)
+static size_t rn_printnode(struct radix_node *n, SR_U32 level, struct sysfs_buf_list_node_t **pknode,
+		size_t count, size_t *used_count)
 {
-	SR_U8 rt;
+	size_t rt = 0;
+	bit_array matched_rules;
+	SR_16 rule;
+	struct sysfs_buf_list_node_t *new_node;
+	char *kbuf;
+
+	if (n != NULL && pknode != NULL && *pknode != NULL) {
+
+		if (*used_count + SR_MAX_PATH > count) {
+			/* kbuf is out of space
+			 * allocate new knode and add to list */
+			new_node = SR_ZALLOC(sizeof(struct sysfs_buf_list_node_t));
+			if (!new_node) {
+				pr_warn("%s failed to allocate memory\n",__func__);
+				return -ENOMEM;
+			}
+			new_node->buf = SR_ZALLOC(count);
+			if (!new_node->buf) {
+				pr_warn("%s failed to allocate memory\n",__func__);
+				SR_FREE(new_node);
+				return -ENOMEM;
+			}
+			// update current node length and reset
+			(*pknode)->len = *used_count;
+			*used_count = 0;
+			// add new to list
+			new_node->next = NULL;
+			(*pknode)->next = new_node;
+			// move to next
+			*pknode = new_node;
+		}
+		kbuf = (*pknode)->buf;
+
+		*used_count += sal_sprintf(kbuf + *used_count, "|level %d| n = 0x%07llx, ", level, (SR_U64)n & 0xFFFFFFF);
+#ifdef DEBUG
+		*used_count += sal_sprintf(kbuf + *used_count, "b = %s%d, f = %s|%s, ",
+				n->rn_bit > 0 ? " " : "",
+				n->rn_bit,
+				n->rn_flags & RNF_NORMAL ? "N" : " ",
+				n->rn_flags & RNF_ROOT ? "R" : " ");
+#endif // DEBUG
+		if (n == n->rn_parent) {
+			*used_count += sal_sprintf(kbuf + *used_count, "p = NONE     ");
+		} else {
+			*used_count += sal_sprintf(kbuf + *used_count, "p = 0x%07llx", (SR_U64)n->rn_parent & 0xFFFFFFF);
+		}
+		if (n->rn_flags & RNF_ACTIVE) {
+			if (n->rn_bit >= 0) {
+				// node: print bmask, offset, left, right
+				*used_count += sal_sprintf(kbuf + *used_count, ", bm = 0x%02x, o = %d, l = 0x%07llx, r = 0x%07llx",
+						(SR_U8)n->rn_bmask,
+						n->rn_offset,
+						(SR_U64)n->rn_left & 0xFFFFFFF,
+						(SR_U64)n->rn_right & 0xFFFFFFF);
+			} else {
+				// leaf: print dup, ip, rules
+				if (n->rn_bit != -33) { // not empty
+					*used_count += sal_sprintf(kbuf + *used_count, ", ip = %d.%d.%d.%d/%lu",
+							*((SR_U8 *)(n->rn_key + 4)),
+							*((SR_U8 *)(n->rn_key + 4) + 1),
+							*((SR_U8 *)(n->rn_key + 4) + 2),
+							*((SR_U8 *)(n->rn_key + 4)+ 3),
+							abs(n->rn_bit + 33));
+
+					memcpy(&matched_rules, &n->sr_private.rules, sizeof(matched_rules));
+					*used_count += sal_sprintf(kbuf + *used_count, ", rules:");
+					while ((rule = sal_ffs_and_clear_array (&matched_rules)) != -1) {
+						*used_count += sal_sprintf(kbuf + *used_count, " %d", rule);
+					}
+				}
+			}
+			*used_count += sal_sprintf(kbuf + *used_count, "\n");
+
+			// for non empty leaf - print duplicated (if exist)
+			if ((n->rn_bit < 0) && (n->rn_bit != -33) && n->rn_dupedkey) {
+				*used_count += sal_sprintf(kbuf + *used_count, "duplicated node:\n");
+				rt = rn_printnode(n->rn_dupedkey, level, pknode, count, used_count); // same level
+				if (rt)
+					return rt;
+			}
+
+			// print left and right
+			if (n->rn_bit >= 0) {
+				rt = rn_printnode(n->rn_left, level + 1, pknode, count, used_count);
+				if (rt)
+					return rt;
+
+				rt = rn_printnode(n->rn_right, level + 1, pknode, count, used_count);
+				if (rt)
+					return rt;
+			}
+		}
+	}
+	return rt;
+}
+
+static size_t rn_printtree(struct radix_head *h, char __user *user_buf, size_t count, loff_t *ppos, SR_U8 first_call)
+{
 	SR_U32 level = 0;
-	size_t used_count = 0;
+	size_t rt, used_count = 0;
+	struct sysfs_buf_list_node_t *temp;
 
 	if (h == NULL)
 		return 0;
-	rt = rn_printnode(h->rnh_treetop, level, user_buf, count, ppos, &used_count);
-	if (rt)
-		return rt;
 
-	*ppos = used_count;
-	return used_count;
+	if (first_call) {
+
+		// allocate first knode
+		buf_list_head = SR_ZALLOC(sizeof(struct sysfs_buf_list_node_t));
+		if (!buf_list_head) {
+			pr_warn("%s failed to allocate memory\n",__func__);
+			return -ENOMEM;
+		}
+		buf_list_head->buf = SR_ZALLOC(count);
+		if (!buf_list_head->buf) {
+			pr_warn("%s failed to allocate memory\n",__func__);
+			SR_FREE(buf_list_head);
+			return -ENOMEM;
+		}
+		buf_list_head->next = NULL;
+
+		// prepare print tree in knodes
+		temp = buf_list_head;
+		rt = rn_printnode(h->rnh_treetop, level, &temp, count, &used_count);
+		if (rt) {
+			// free all and return
+			while (buf_list_head->next) {
+				temp = buf_list_head->next;
+				SR_FREE(buf_list_head->buf);
+				SR_FREE(buf_list_head);
+				buf_list_head = temp;
+			}
+			SR_FREE(buf_list_head->buf);
+			SR_FREE(buf_list_head);
+			return rt;
+		}
+
+		// update last knode length
+		temp->len = used_count;
+	}
+
+	// start/continue coping from knodes to user_buf
+	rt = simple_read_from_buffer(user_buf, count, ppos, buf_list_head->buf, buf_list_head->len);
+	if ((rt != buf_list_head->len) || (*ppos != buf_list_head->len)) {
+		pr_err("%s call to simple_read_from_buffer failed\n",__func__);
+		// free all and return
+		while (buf_list_head->next) {
+			temp = buf_list_head->next;
+			SR_FREE(buf_list_head->buf);
+			SR_FREE(buf_list_head);
+			buf_list_head = temp;
+		}
+		SR_FREE(buf_list_head->buf);
+		SR_FREE(buf_list_head);
+		return rt;
+	}
+
+	if (buf_list_head->next) {
+		temp = buf_list_head->next;
+		*ppos = 0; // so that func will be called again to continue
+	} else { // done coping to user
+		temp = NULL;
+		*ppos = rt; // to avoid calling again
+	}
+	SR_FREE(buf_list_head->buf);
+	SR_FREE(buf_list_head);
+	buf_list_head = temp;
+	return rt; // equal to buf_list_head->len, which has been freed
 }
 
 int walktree_sysfs_print_rule(struct radix_node *node, void *data)
@@ -283,7 +437,7 @@ int walktree_sysfs_print_rule(struct radix_node *node, void *data)
 			sysfs_network[rule].src_netmask_len = abs(node->rn_bit + 33);
 			sysfs_network[rule].s_port = get_port_for_rule(rule, *dir);
 
-			sprintf(sysfs_network[rule].src_ipv4,"%u.%u.%u.%u",
+			sal_sprintf(sysfs_network[rule].src_ipv4,"%u.%u.%u.%u",
 					(unsigned char)cp[0], (unsigned char)cp[1], (unsigned char)cp[2], (unsigned char)cp[3]);
 
 		} else { // DST
@@ -295,41 +449,41 @@ int walktree_sysfs_print_rule(struct radix_node *node, void *data)
 			sysfs_network[rule].dst_flag = 1;
 			sysfs_network[rule].d_port = get_port_for_rule(rule, *dir);
 			sysfs_network[rule].dst_netmask_len = abs(node->rn_bit + 33);
-			sprintf(sysfs_network[rule].dst_ipv4,"%u.%u.%u.%u",
+			sal_sprintf(sysfs_network[rule].dst_ipv4,"%u.%u.%u.%u",
 					(unsigned char)cp[0], (unsigned char)cp[1], (unsigned char)cp[2], (unsigned char)cp[3]);
 		}
 
-		sprintf(sysfs_network[rule].proto,"%s","N/A");
+		sal_sprintf(sysfs_network[rule].proto,"%s","N/A");
 
 		// putting some work for the UID...
 		sysfs_network[rule].uid = get_uid_for_rule(sr_cls_uid_table,rule,UID_HASH_TABLE_SIZE,SR_NET_RULES);
 		if (sysfs_network[rule].uid != -1) {
 			if (sysfs_network[rule].uid == 0) {
-				sprintf(sysfs_network[rule].uid_buff, "%s", "ANY");
+				sal_sprintf(sysfs_network[rule].uid_buff, "%s", "ANY");
 			} else
-				sprintf(sysfs_network[rule].uid_buff, "%d", sysfs_network[rule].uid);
+				sal_sprintf(sysfs_network[rule].uid_buff, "%d", sysfs_network[rule].uid);
 		} else {
-			sprintf(sysfs_network[rule].uid_buff, "%s", "N/A");
+			sal_sprintf(sysfs_network[rule].uid_buff, "%s", "N/A");
 		}
 
 		// putting work for the BIN
 		sysfs_network[rule].inode = get_exec_for_rule(sr_cls_exec_file_table,rule,EXEC_FILE_HASH_TABLE_SIZE,SR_NET_RULES);
 		if (sysfs_network[rule].inode != -1) {
 			if (sysfs_network[rule].inode == 0) {
-				sprintf(sysfs_network[rule].inode_buff, "%s", "ANY");
+				sal_sprintf(sysfs_network[rule].inode_buff, "%s", "ANY");
 			} else
-				sprintf(sysfs_network[rule].inode_buff, "%u", sysfs_network[rule].inode);
+				sal_sprintf(sysfs_network[rule].inode_buff, "%u", sysfs_network[rule].inode);
 		}
 
 		sysfs_network[rule].action = sr_db->sr_rules_db[SR_NET_RULES][rule].actions;
 		if (sysfs_network[rule].action & SR_CLS_ACTION_DROP) {
-			sprintf(sysfs_network[rule].actionstring, "Drop");
+			sal_sprintf(sysfs_network[rule].actionstring, "Drop");
 		} else if (sysfs_network[rule].action & SR_CLS_ACTION_ALLOW) {
-			sprintf(sysfs_network[rule].actionstring, "Allow");
+			sal_sprintf(sysfs_network[rule].actionstring, "Allow");
 		}
 		if (sysfs_network[rule].action & SR_CLS_ACTION_LOG) {
 			if (strlen(sysfs_network[rule].actionstring) == 0) {
-				sprintf(sysfs_network[rule].actionstring, "Log");
+				sal_sprintf(sysfs_network[rule].actionstring, "Log");
 			} else {
 				strcat(sysfs_network[rule].actionstring, "_log");
 			}
@@ -362,7 +516,7 @@ static void fetch_cls_ipv4(void)
 	rn_walktree(sr_cls_ipv4_table[SR_DIR_DST], walktree_sysfs_print_rule, &dir);
 }
 
-static SR_U8 sr_cls_find_ipv4_print(SR_U32 addr, SR_8 dir, char __user *user_buf, size_t count,
+static size_t sr_cls_find_ipv4_print(SR_U32 addr, SR_8 dir, char __user *user_buf, size_t count,
 		loff_t *ppos, size_t *used_count)
 {
 	struct radix_node *node;
@@ -382,16 +536,17 @@ static SR_U8 sr_cls_find_ipv4_print(SR_U32 addr, SR_8 dir, char __user *user_buf
 	node = rn_match((void*)ip, tree_head);
 	SR_FREE(ip);
 	if (node) {
-		return rn_printnode(node, -1, user_buf, count, ppos, used_count);
+		return rn_printnode_single(node, user_buf, count, ppos, used_count);
 	} else {
 		return 0;
 	}
 }
 
-size_t dump_ipv4_table(char __user *user_buf, size_t count, loff_t *ppos)
+size_t dump_ipv4_table(char __user *user_buf, size_t count, loff_t *ppos, SR_U8 first_call)
 {
-	fetch_cls_ipv4();
-	return store_table(user_buf, count, ppos);
+	if (first_call)
+		fetch_cls_ipv4();
+	return store_table(user_buf, count, ppos, first_call);
 }
 
 size_t dump_ipv4_rule(SR_16 rule, char __user *user_buf, size_t count, loff_t *ppos)
@@ -400,16 +555,15 @@ size_t dump_ipv4_rule(SR_16 rule, char __user *user_buf, size_t count, loff_t *p
 	return store_rule(rule, user_buf, count, ppos);
 }
 
-size_t dump_ipv4_tree(int dir, char __user *user_buf, size_t count, loff_t *ppos)
+size_t dump_ipv4_tree(SR_U8 dir, char __user *user_buf, size_t count, loff_t *ppos, SR_U8 first_call)
 {
 	return rn_printtree((dir==SR_DIR_SRC)?get_cls_src_ipv4_table():get_cls_dst_ipv4_table(),
-			user_buf, count, ppos);
+			user_buf, count, ppos, first_call);
 }
 
 size_t dump_ipv4_ip(SR_32 ip, char __user *user_buf, size_t count, loff_t *ppos)
 {
-	size_t len, used_count = 0;
-	SR_8 rt;
+	size_t rt, len, used_count = 0;
 
 	len = sal_sprintf(buf, "Source IP:\n----------\n");
 	rt = sysfs_write_to_user(user_buf, count, ppos, len, &used_count);

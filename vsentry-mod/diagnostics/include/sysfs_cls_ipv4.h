@@ -9,9 +9,9 @@
 #include "sr_cls_network_common.h"
 #include "sr_radix.h"
 
-size_t dump_ipv4_table(char __user *user_buf, size_t count, loff_t *ppos);
+size_t dump_ipv4_table(char __user *user_buf, size_t count, loff_t *ppos, SR_U8 first_call);
 size_t dump_ipv4_rule(SR_16 rule, char __user *user_buf, size_t count, loff_t *ppos);
-size_t dump_ipv4_tree(int dir, char __user *user_buf, size_t count, loff_t *ppos);
+size_t dump_ipv4_tree(SR_U8 dir, char __user *user_buf, size_t count, loff_t *ppos, SR_U8 first_call);
 size_t dump_ipv4_ip(SR_32 ip, char __user *user_buf, size_t count, loff_t *ppos);
 
 struct sysfs_network_ent_t 
