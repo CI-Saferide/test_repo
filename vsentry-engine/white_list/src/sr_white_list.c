@@ -27,7 +27,7 @@ static void white_list_print(void *data_in_hash)
 	sr_white_list_item_t *white_list_item = (sr_white_list_item_t *)data_in_hash;
 
 	CEF_log_event(SR_CEF_CID_SYSTEM, "info", SEVERITY_LOW,
-		"%s=white list exec:%s ",REASON, white_list_item->exec);
+		"%s White list learnt program:%s ", MESSAGE, white_list_item->exec);
 	printf("exec:%s: \n", white_list_item->exec);
 
 	sr_white_list_file_print(white_list_item->white_list_file);
