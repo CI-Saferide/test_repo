@@ -1032,6 +1032,12 @@ int vsentry_socket_sock_rcv_skb(struct sock *sk, struct sk_buff *skb)
 			disp.can_info.msg_id = (SR_U32)cfd->can_id;
 			disp.can_info.payload_len = cfd->len;
 			disp.can_info.dir = SR_CAN_IN;
+
+			if (sk->sk_security)
+				disp.can_info.id.pid = *(int*)sk->sk_security);
+			else
+				disp.can_info.id.pid  = 0;
+
 			for (i = 0; i < cfd->len; i++) {
 				disp.can_info.payload[i] = cfd->data[i];
 			}
@@ -1066,6 +1072,12 @@ int vsentry_socket_recvmsg(struct socket *sock,struct msghdr *msg,int size,int f
 	}
 
 	switch (family) {
+		case AF_CAN:
+			sock->sk->sk_security = kmalloc(sizeof(int), GFP_KERNEL);
+			if (sock->sk->sk_security) {
+				*(int*)sock->sk->sk_security = (int)current->pid;
+			}
+
 		case AF_INET:
 #ifdef CONFIG_STAT_ANALYSIS
 			if (sock->sk->sk_protocol == IPPROTO_TCP && sock->sk->sk_rcv_saddr && sock->sk->sk_daddr) {

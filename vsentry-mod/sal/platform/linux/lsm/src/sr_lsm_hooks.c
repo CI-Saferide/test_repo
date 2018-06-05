@@ -335,7 +335,10 @@ static int vsentry_socket_shutdown(struct socket *sock,int how)
 {
 	if(hook_filter())
 		return 0;
-
+	if (sock->sk->sk_security) {
+		kfree(sock->sk->sk_security);
+		sock->sk->sk_security = NULL;
+	}
 	//TODO: handle permission for sys call
 	return 0;
 }
