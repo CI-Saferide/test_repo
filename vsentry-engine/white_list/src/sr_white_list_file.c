@@ -132,7 +132,7 @@ void sr_white_list_file_print(sr_white_list_file_t *white_list_file)
 
 	for (iter = white_list_file; iter; iter = iter->next) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "info", SEVERITY_LOW,
-                	        "%s= File learnt : file:%s file op:%x ", MESSAGE,  iter->file, iter->fileop);
+                	        "%s=file learnt : file:%s file op:%x ", MESSAGE,  iter->file, iter->fileop);
 		printf("  file:%s: fileop:%x \n", iter->file, iter->fileop);
 	}
 	
