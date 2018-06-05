@@ -1034,7 +1034,7 @@ int vsentry_socket_sock_rcv_skb(struct sock *sk, struct sk_buff *skb)
 			disp.can_info.dir = SR_CAN_IN;
 
 			if (sk->sk_security)
-				disp.can_info.id.pid = *(int*)sk->sk_security);
+				disp.can_info.id.pid = *(int*)(sk->sk_security);
 			else
 				disp.can_info.id.pid  = 0;
 
