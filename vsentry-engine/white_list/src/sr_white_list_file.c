@@ -338,6 +338,8 @@ SR_32 sr_white_list_file_apply(SR_BOOL is_apply)
 			"%s=wl file:fail to get mem optimizer",REASON);
 		return SR_ERROR;
 	}
+	CEF_log_event(SR_CEF_CID_SYSTEM, "info", SEVERITY_LOW,
+			"%s= Memory optimization calculated :%s", MESSAGE, mem_opt == CLS_FILE_MEM_OPT_ALL_FILES ? "All files" : "Only directory");
 	sr_cls_file_control_set_mem_opt(mem_opt);
 	snprintf(str_mem_opt, sizeof(str_mem_opt), "%d", mem_opt);
 	if (sr_engine_write_conf("FILE_CLS_MEM_OPTIMIZE", str_mem_opt) != SR_SUCCESS) {
