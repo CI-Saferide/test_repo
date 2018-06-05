@@ -15,5 +15,8 @@
 #define UID_HASH_TABLE_SIZE 32
 #define MAX_NUM_OF_LOCAL_IPS 10
 
+extern unsigned char buf[SR_MAX_PATH];
+
+size_t write_to_user(char __user *user_buf, size_t count, loff_t *ppos, size_t len, size_t *used_count);
 SR_U32 get_exec_for_rule(struct sr_hash_table_t *table,SR_16 rule,SR_32 table_size,enum sr_rule_type type);
 SR_U32 get_uid_for_rule(struct sr_hash_table_t *table,SR_16 rule,SR_32 table_size,enum sr_rule_type type);

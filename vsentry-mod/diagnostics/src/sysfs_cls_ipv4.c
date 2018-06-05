@@ -14,7 +14,6 @@ struct sysfs_buf_list_node_t
 	unsigned char *buf;
 };
 
-static unsigned char buf[SR_MAX_PATH];
 static struct rule_database* sr_db;
 static struct sr_hash_table_t *sr_cls_uid_table; // the uid table for NETWORK
 static struct sr_hash_table_t *sr_cls_exec_file_table; // the binary table for NETWORK
@@ -22,7 +21,6 @@ static struct radix_head  *sr_cls_ipv4_table[2]; //index 0 SRC , 1 DST
 static struct sr_hash_table_t *sr_cls_port_table[4]; // 0 - SR_SRC_TCP, 1 - SR_SRC_UDP, 2 - SR_DST_TCP, 3 - SR_DST_UDP
 static struct sr_hash_table_t *sr_cls_protocol_table;
 static struct sysfs_network_ent_t sysfs_network[SR_MAX_RULES];
-
 static SR_U16 store_table_rule_num;
 static struct sysfs_buf_list_node_t *buf_list_head;
 
@@ -62,43 +60,13 @@ SR_32 get_port_for_rule(SR_16 rule, SR_U8 dir)
 	return -1;
 }
 
-/*
- * parameters:
- * count = user_buf size
- * ppos = start position in kernel_buf
- * len = number of Bytes to write
- * used_count = number of Bytes already written to user_buf
- */
-static size_t sysfs_write_to_user(char __user *user_buf, size_t count, loff_t *ppos,
-		size_t len, size_t *used_count)
-{
-	size_t rt;
-
-	*ppos = 0; // always read from start of buf
-	if (*used_count + len > count) {
-		pr_debug("%s not enough space in user. call again\n",__func__);
-		/* return used_count to update the amount written so far
-		 * the func will be called again to write the rest
-		 * pos is 0 so it will continue */
-		return *used_count;
-	}
-
-	rt = simple_read_from_buffer(user_buf + *used_count, count, ppos, buf, len);
-	if ((rt != len) || (*ppos != len))
-		return rt;
-
-	*used_count += len; // since it may be called several times
-	return 0;
-}
-
-static size_t sysfs_write_ipv4_table_title(char __user *user_buf, size_t count, loff_t *ppos,
-		size_t *used_count)
+static size_t sysfs_write_ipv4_table_title(char __user *user_buf, size_t count, loff_t *ppos, size_t *used_count)
 {
 	size_t len = sal_sprintf(buf,
 			"rule\t\tsrc_ip/mask\t\tdst_ip/mask\ts_port\td_port\tproto\tuid\tbinary\t\taction\n"
 			"----------------------------------------------------------------------------------"
 			"----------------------------\n");
-	return sysfs_write_to_user(user_buf, count, ppos, len, used_count);
+	return write_to_user(user_buf, count, ppos, len, used_count);
 }
 
 static size_t store_table(char __user *user_buf, size_t count, loff_t *ppos, SR_U8 first_call)
@@ -132,7 +100,7 @@ static size_t store_table(char __user *user_buf, size_t count, loff_t *ppos, SR_
 				sysfs_network[i].inode_buff,
 				sysfs_network[i].actionstring);
 
-			rt = sysfs_write_to_user(user_buf, count, ppos, len, &used_count);
+			rt = write_to_user(user_buf, count, ppos, len, &used_count);
 			if (rt) {
 				// table has acceded 64k, save current rule number and continue when called again
 				store_table_rule_num = i;
@@ -167,7 +135,7 @@ static size_t store_rule(SR_16 rule_find, char __user *user_buf, size_t count, l
 				sysfs_network[rule_find].inode_buff,
 				sysfs_network[rule_find].actionstring);
 
-		rt = sysfs_write_to_user(user_buf, count, ppos, len, &used_count);
+		rt = write_to_user(user_buf, count, ppos, len, &used_count);
 		if (rt)
 			return rt;
 	}
@@ -216,7 +184,7 @@ static size_t rn_printnode_single(struct radix_node *n, char __user *user_buf, s
 				}
 			}
 			len += sal_sprintf(buf + len, "\n");
-			rt = sysfs_write_to_user(user_buf, count, ppos, len, used_count);
+			rt = write_to_user(user_buf, count, ppos, len, used_count);
 			if (rt)
 				return rt;
 
@@ -224,7 +192,7 @@ static size_t rn_printnode_single(struct radix_node *n, char __user *user_buf, s
 			if ((n->rn_bit < 0) && (n->rn_bit != -33) && n->rn_dupedkey) {
 				len = 0;
 				len += sal_sprintf(buf + len, "duplicated node:\n");
-				rt = sysfs_write_to_user(user_buf, count, ppos, len, used_count);
+				rt = write_to_user(user_buf, count, ppos, len, used_count);
 				if (rt)
 					return rt;
 
@@ -566,7 +534,7 @@ size_t dump_ipv4_ip(SR_32 ip, char __user *user_buf, size_t count, loff_t *ppos)
 	size_t rt, len, used_count = 0;
 
 	len = sal_sprintf(buf, "Source IP:\n----------\n");
-	rt = sysfs_write_to_user(user_buf, count, ppos, len, &used_count);
+	rt = write_to_user(user_buf, count, ppos, len, &used_count);
 	if (rt)
 		return rt;
 
@@ -575,7 +543,7 @@ size_t dump_ipv4_ip(SR_32 ip, char __user *user_buf, size_t count, loff_t *ppos)
 		return rt;
 
 	len = sal_sprintf(buf, "Destination IP:\n---------------\n");
-	rt = sysfs_write_to_user(user_buf, count, ppos, len, &used_count);
+	rt = write_to_user(user_buf, count, ppos, len, &used_count);
 	if (rt)
 		return rt;
 

@@ -9,10 +9,8 @@
 #include "sr_cls_canid.h"
 #include "sr_cls_canbus_common.h"
 
-void set_sysfs_can(unsigned char * buff);
-unsigned char* get_sysfs_can(void);
-void dump_can_table(void);
-void dump_can_rule(SR_16 rule);
+size_t dump_can_table(char __user *user_buf, size_t count, loff_t *ppos, SR_U8 first_call);
+size_t dump_can_rule(SR_16 rule,char __user *user_buf, size_t count, loff_t *ppos);
 
 struct sysfs_can_ent_t 
 {

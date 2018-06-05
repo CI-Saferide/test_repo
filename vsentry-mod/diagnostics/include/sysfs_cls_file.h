@@ -9,10 +9,8 @@
 #include "sr_cls_file.h"
 #include "sr_cls_file_common.h"
 
-void set_sysfs_file(unsigned char * buff);
-unsigned char* get_sysfs_file(void);
-void dump_file_table(void);
-void dump_file_rule(SR_16 rule);
+size_t dump_file_table(char __user *user_buf, size_t count, loff_t *ppos, SR_U8 first_call);
+size_t dump_file_rule(SR_16 rule,char __user *user_buf, size_t count, loff_t *ppos);
 
 struct sysfs_file_ent_t 
 {
