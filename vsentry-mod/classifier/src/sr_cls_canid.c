@@ -131,72 +131,114 @@ bit_array *src_cls_in_canid_any(void)
 	return &sr_cls_in_canid_any_rules;
 }
 
-void sr_cls_canid_remove(SR_32 canid, SR_8 dir)
-{ 
-	sr_hash_delete((dir==SR_CAN_OUT)?sr_cls_out_canid_table:sr_cls_in_canid_table, canid);
+int sr_cls_canid_remove(SR_32 canid, SR_U32 rulenum, SR_8 dir)
+{
+	struct sr_hash_ent_t *ent = sr_hash_lookup((dir==SR_CAN_OUT)?sr_cls_out_canid_table:sr_cls_in_canid_table, canid);
+	if (!ent) {
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+				"%s=Error can't del %s=%u %s=%x %s=%d - rule not found",REASON,
+				RULE_NUM_KEY,rulenum,
+				CAN_MSG_ID,canid,
+				DEVICE_DIRECTION,(dir==SR_CAN_OUT)? SR_CAN_OUT : SR_CAN_IN);
+		return SR_ERROR;
+	}
+	sal_clear_bit_array(rulenum, &ent->rules);
+	if (!ent->rules.summary) {
+		sr_hash_delete((dir==SR_CAN_OUT)?sr_cls_out_canid_table:sr_cls_in_canid_table, canid);
+	}
+	return SR_SUCCESS;
+}
+
+int sr_cls_canid_insert(SR_32 canid, SR_U32 rulenum, SR_8 dir)
+{
+	struct sr_hash_ent_t *ent = sr_hash_lookup((dir==SR_CAN_OUT)?sr_cls_out_canid_table:sr_cls_in_canid_table, canid);
+	if (!ent) {
+		ent = SR_ZALLOC(sizeof(*ent)); // <-A MINE!!!
+		if (!ent) {
+			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+					"%s=Failed to allocate memory",REASON);
+			return SR_ERROR;
+		} else {
+			ent->ent_type = CAN_MID;
+			ent->key = (SR_U32)canid;
+
+			sr_hash_insert((dir==SR_CAN_OUT)?sr_cls_out_canid_table:sr_cls_in_canid_table, ent);
+		}
+	}
+	sal_set_bit_array(rulenum, &ent->rules);
+	return SR_SUCCESS;
 }
 
 int sr_cls_canid_add_rule(SR_32 canid, SR_U32 rulenum, SR_8 dir)
 {
-	struct sr_hash_ent_t *ent;
-	
-	if(canid != MSGID_ANY) { 
+	int rt = SR_SUCCESS;
+
+	if (canid != MSGID_ANY) {
                /////////////////////////////////////////////////////////////////////////
               /*The 0 msgID is a valid number in the canbus protocol. 
                 * but need to check if its really being used in the Automotive industry
                 * or we gonna need to change our * = 0 = ANY convention here...*/ 
                 ////////////////////////////////////////////////////////////////////////
-		ent=sr_hash_lookup((dir==SR_CAN_OUT)?sr_cls_out_canid_table:sr_cls_in_canid_table, canid);
-		if (!ent) {             
-			ent = SR_ZALLOC(sizeof(*ent)); // <-A MINE!!!
-			if (!ent) {
-				CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-					"%s=Failed to allocate memory",REASON);
-				return SR_ERROR;
-			} else {
-				ent->ent_type = CAN_MID;
-				ent->key = (SR_U32)canid;
-				sr_hash_insert((dir==SR_CAN_OUT)?sr_cls_out_canid_table:sr_cls_in_canid_table,ent);
-			}       
-		}       
-
-		sal_set_bit_array(rulenum, &ent->rules);
-	}else{
-		sal_set_bit_array(rulenum,(dir==SR_CAN_IN)?&sr_cls_in_canid_any_rules:&sr_cls_out_canid_any_rules);
-		
+		if (dir == SR_CAN_BOTH) {
+			rt = sr_cls_canid_insert(canid, rulenum, SR_CAN_IN);
+			if (rt)
+				return rt;
+			rt = sr_cls_canid_insert(canid, rulenum, SR_CAN_OUT);
+			if (rt)
+				return rt;
+		} else {
+			rt = sr_cls_canid_insert(canid, rulenum, dir);
+			if (rt)
+				return rt;
+		}
+	} else {
+		if (dir == SR_CAN_BOTH) {
+			sal_set_bit_array(rulenum, &sr_cls_in_canid_any_rules);
+			sal_set_bit_array(rulenum, &sr_cls_out_canid_any_rules);
+		} else {
+			sal_set_bit_array(rulenum, (dir==SR_CAN_IN)?&sr_cls_in_canid_any_rules:&sr_cls_out_canid_any_rules);
+		}
 	}
+
 	CEF_log_event(SR_CEF_CID_CAN, "info", SEVERITY_LOW,
 		"%s=rule assigned to %s=%u %s=%x %s=%d",MESSAGE,
 		RULE_NUM_KEY,rulenum,
 		CAN_MSG_ID,canid,
-		DEVICE_DIRECTION,(dir==SR_CAN_OUT)? SR_CAN_OUT : SR_CAN_IN);
-	return SR_SUCCESS;
+		DEVICE_DIRECTION,(dir==SR_CAN_OUT)? SR_CAN_OUT : ((dir==SR_CAN_IN) ? SR_CAN_IN : SR_CAN_BOTH));
+
+	return rt;
 }
 
 int sr_cls_canid_del_rule(SR_32 canid, SR_U32 rulenum, SR_8 dir)
-{    
-	if(canid != MSGID_ANY) { 
-		struct sr_hash_ent_t *ent=sr_hash_lookup((dir==SR_CAN_OUT)?sr_cls_out_canid_table:sr_cls_in_canid_table, canid);         
-		if (!ent) {
-			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-				"%s=Error can't del %s=%u %s=%x %s=%d - rule not found",REASON,
-				RULE_NUM_KEY,rulenum,
-				CAN_MSG_ID,canid,
-				DEVICE_DIRECTION,(dir==SR_CAN_OUT)? SR_CAN_OUT : SR_CAN_IN);
-			return SR_ERROR;
-		}
-		sal_clear_bit_array(rulenum, &ent->rules);
-		if (!ent->rules.summary) {
-			sr_cls_canid_remove(canid,dir);
+{
+	int rt = SR_SUCCESS;
+
+	if(canid != MSGID_ANY) {
+		if (dir == SR_CAN_BOTH) {
+			rt = sr_cls_canid_remove(canid, rulenum, SR_CAN_IN);
+			if (rt)
+				return rt;
+			rt = sr_cls_canid_remove(canid, rulenum, SR_CAN_OUT);
+			if (rt)
+				return rt;
+		} else {
+			rt = sr_cls_canid_remove(canid, rulenum, dir);
+			if (rt)
+				return rt;
 		}
 	}else{// "Any" rules
-		sal_clear_bit_array(rulenum, (dir==SR_CAN_OUT)?&sr_cls_out_canid_any_rules:&sr_cls_in_canid_any_rules);
+		if (dir == SR_CAN_BOTH) {
+			sal_clear_bit_array(rulenum, &sr_cls_in_canid_any_rules);
+			sal_clear_bit_array(rulenum, &sr_cls_out_canid_any_rules);
+		} else {
+			sal_clear_bit_array(rulenum, (dir==SR_CAN_OUT)?&sr_cls_out_canid_any_rules:&sr_cls_in_canid_any_rules);
+		}
 	}
 	CEF_log_event(SR_CEF_CID_CAN, "info", SEVERITY_LOW,
 		"%s=removed rule %s=%u %s=%x %s=%d",MESSAGE,
 		RULE_NUM_KEY,rulenum,
 		CAN_MSG_ID,canid,
-		DEVICE_DIRECTION,(dir==SR_CAN_OUT)? SR_CAN_OUT : SR_CAN_IN);
+		DEVICE_DIRECTION,(dir==SR_CAN_OUT)? SR_CAN_OUT : ((dir==SR_CAN_IN) ? SR_CAN_IN : SR_CAN_BOTH));
 	return SR_SUCCESS;
 }
 
@@ -283,7 +325,7 @@ SR_8 sr_cls_canid_msg_dispatch(struct sr_cls_canbus_msg *msg)
 				"%s=Delete %s=%d %s=%x %s=%d",MESSAGE,
 				RULE_NUM_KEY,msg->rulenum, 
 				CAN_MSG_ID,msg->canid, 
-				DEVICE_DIRECTION,(msg->dir==SR_CAN_OUT)? SR_CAN_OUT : SR_CAN_IN);
+				DEVICE_DIRECTION,(msg->dir==SR_CAN_OUT)? SR_CAN_OUT : ((msg->dir==SR_CAN_IN) ? SR_CAN_IN : SR_CAN_BOTH));
 			if ((st =  sr_cls_canid_del_rule(msg->canid, msg->rulenum,msg->dir)) != SR_SUCCESS)
 			   return st;
 			if ((st = sr_cls_exec_inode_del_rule(SR_CAN_RULES, msg->exec_inode, msg->rulenum)) != SR_SUCCESS)
@@ -295,8 +337,8 @@ SR_8 sr_cls_canid_msg_dispatch(struct sr_cls_canbus_msg *msg)
 				RULE_NUM_KEY,msg->rulenum, 
 				DEVICE_UID,msg->uid, 
 				CAN_MSG_ID,msg->canid, 
-				DEVICE_DIRECTION,(msg->dir==SR_CAN_OUT)? SR_CAN_OUT : SR_CAN_IN);
-			if ((st = sr_cls_canid_add_rule(msg->canid, msg->rulenum,msg->dir)) != SR_SUCCESS)
+				DEVICE_DIRECTION,(msg->dir==SR_CAN_OUT)? SR_CAN_OUT : ((msg->dir==SR_CAN_IN) ? SR_CAN_IN : SR_CAN_BOTH));
+			if ((st = sr_cls_canid_add_rule(msg->canid, msg->rulenum, msg->dir)) != SR_SUCCESS)
 			   return st;
 			if ((st =  sr_cls_exec_inode_add_rule(SR_CAN_RULES, msg->exec_inode, msg->rulenum)) != SR_SUCCESS)
 			   return st;
