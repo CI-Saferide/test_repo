@@ -59,7 +59,11 @@ static void store_canid_rules(SR_32 canid, SR_8 dir)
 	while ((rule = sal_ffs_and_clear_array (&rules)) != -1) {
 		
 		sal_sprintf(sysfs_canbus[rule].canid_buff,"%03x",canid);
-		sal_sprintf(sysfs_canbus[rule].dir,"%s",(dir==SR_CAN_OUT)? "OUT" : "IN");
+		if (strlen(sysfs_canbus[rule].dir) == 0) {
+			sal_sprintf(sysfs_canbus[rule].dir,"%s",(dir==SR_CAN_OUT)? "OUT" : "IN");
+		} else {
+			sal_sprintf(sysfs_canbus[rule].dir,"%s", "BOTH");
+		}
 		sysfs_canbus[rule].canid = canid;
 		sysfs_canbus[rule].rule = rule;
 		
@@ -142,7 +146,11 @@ static void clone_cls_can_table(void)
 					}
 				}
 
-				sal_sprintf(sysfs_canbus[rule].dir,"%s",(dir==SR_CAN_OUT)? "OUT" : "IN");
+				if (strlen(sysfs_canbus[rule].dir) == 0) {
+					sal_sprintf(sysfs_canbus[rule].dir,"%s",(dir==SR_CAN_OUT)? "OUT" : "IN");
+				} else {
+					sal_sprintf(sysfs_canbus[rule].dir,"%s", "BOTH");
+				}
 				sysfs_canbus[rule].rule = rule;
 				sal_sprintf(sysfs_canbus[rule].canid_buff,"%s","ANY");
 
