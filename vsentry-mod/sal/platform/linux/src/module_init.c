@@ -156,11 +156,28 @@ static ssize_t vsentry_drv_read(struct file *fp, char __user *buf, size_t size, 
 	return 0;
 }
 
+long vsentry_drv_ioctl_u(struct file *file, unsigned int i, unsigned long l)
+{
+	switch (i) {
+		case 10:
+			if (sal_linux_mng_readbuf_up(SYNC_ENGINE) != SR_SUCCESS) {
+				CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_LOW,
+					"%s=failed up readbuf ENGINE mutex:", REASON);
+			}
+			break;
+		default:
+			break;
+	}
+
+	return 0;
+}
+
 static struct file_operations vsentry_file_ops = {
 	.owner = THIS_MODULE,
 	.read = vsentry_drv_read,
 	.mmap = vsentry_drv_mmap,
 	.release = vsentry_drv_release,
+	.unlocked_ioctl = vsentry_drv_ioctl_u,
 };
 
 #if 0

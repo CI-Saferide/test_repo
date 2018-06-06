@@ -20,5 +20,6 @@ SR_32 sr_start_task(sr_task_type task_id, SR_32 (*task_func)(void *data));
 SR_BOOL sr_task_should_stop(sr_task_type task_id);
 SR_8* sr_task_get_name(sr_task_type task_id);
 void* sr_task_get_data(sr_task_type task_id);
+SR_32 sr_task_set_pre_stop_cb(sr_task_type task_id,void (*pre_stop_cb)(void));
 
 #endif /* __SR_TASKS__ */

@@ -98,4 +98,6 @@ SR_32 sal_get_memory(SR_U64 *mem, SR_U64 *free_mem);
 SR_BOOL sal_is_string_numeric(char *s);
 SR_BOOL sal_is_valid_file_name(char *file_name);
 
+void sal_vsentry_unlock(void);
+
 #endif /* SAL_LINUX_ENGINE_H*/

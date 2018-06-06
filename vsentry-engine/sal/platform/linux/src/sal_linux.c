@@ -28,6 +28,11 @@ void sal_vsentry_fd_close(void)
 	close(fd_vsentry);
 }
 
+void sal_vsentry_unlock(void)
+{
+	ioctl(fd_vsentry, 10);
+}
+
 
 SR_32 sal_task_stop(void *data)
 {

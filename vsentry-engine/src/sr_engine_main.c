@@ -174,6 +174,11 @@ SR_32 sr_engine_write_conf(char *param, char *value)
 	return SR_SUCCESS;
 }
 
+static void sr_engine_pre_stop_cb(void)
+{
+	sal_vsentry_unlock();
+}
+
 SR_32 sr_engine_start(int argc, char *argv[])
 {
 	SR_32 ret;
@@ -302,6 +307,12 @@ SR_32 sr_engine_start(int argc, char *argv[])
 		return SR_ERROR;
 	}
 
+	ret = sr_task_set_pre_stop_cb(SR_ENGINE_TASK, sr_engine_pre_stop_cb);
+	if (ret != SR_SUCCESS){
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+						"%s=failed setting task pre stop cb",REASON);
+		return SR_ERROR;
+	}
 	ret = sr_start_task(SR_ENGINE_TASK, engine_main_loop);
 	if (ret != SR_SUCCESS) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
@@ -447,7 +458,8 @@ SR_32 sr_engine_start(int argc, char *argv[])
 	if (config_params->remote_server_support_enable && config_params->policy_update_enable) {
 		sr_static_policy_db_mng_stop();
 	}
-	sr_stop_task(SR_CAN_COLLECT_TASK);
+
+	sr_stop_task(SR_INFO_GATHER_TASK);
 	sr_stop_task(SR_ENGINE_TASK);
 	sentry_stop();
 #ifdef CONFIG_STAT_ANALYSIS
