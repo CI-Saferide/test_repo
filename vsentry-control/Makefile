@@ -9,7 +9,7 @@ OBJDIR		:= $(BUILD_DIR)/objs
 LIBDIR		:= $(BUILD_DIR)/lib
 BINDIR 		:= $(BUILD_DIR)/bin
 
-TARGET 		:= vsentry-ctrl
+TARGET 		:= vsentry_ctrl
 
 # where to search for sources
 VPATH 		:=  $(TOP_DIR)/src \
