@@ -91,9 +91,12 @@ SR_32 sr_white_list_file_open(struct sr_ec_file_open_t *file_open_info)
                 strcpy(exec, "*");
 
 	if (!sal_is_valid_file_name(file_open_info->file)) {
+#if 0
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 				"%s=Invalid file :%s ",REASON, file_open_info->file);
-		return SR_ERROR;
+#endif
+		// TODO check why kernel provides invalid paths
+		return SR_SUCCESS;
 	}
 
 	// The file to learn might be changed.
@@ -129,7 +132,7 @@ void sr_white_list_file_print(sr_white_list_file_t *white_list_file)
 
 	for (iter = white_list_file; iter; iter = iter->next) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "info", SEVERITY_LOW,
-                	        "%s= file:%s file op:%x ",REASON,  iter->file, iter->fileop);
+                	        "%s=file learnt : file:%s file op:%x ", MESSAGE,  iter->file, iter->fileop);
 		printf("  file:%s: fileop:%x \n", iter->file, iter->fileop);
 	}
 	
@@ -335,18 +338,20 @@ SR_32 sr_white_list_file_apply(SR_BOOL is_apply)
 			"%s=wl file:fail to get mem optimizer",REASON);
 		return SR_ERROR;
 	}
+	CEF_log_event(SR_CEF_CID_SYSTEM, "info", SEVERITY_LOW,
+			"%s=memory optimization calculated :%s", MESSAGE, mem_opt == CLS_FILE_MEM_OPT_ALL_FILES ? "All files" : "Only directory");
 	sr_cls_file_control_set_mem_opt(mem_opt);
 	snprintf(str_mem_opt, sizeof(str_mem_opt), "%d", mem_opt);
 	if (sr_engine_write_conf("FILE_CLS_MEM_OPTIMIZE", str_mem_opt) != SR_SUCCESS) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-			"%s failed writing the vsentry conf file", REASON);
+			"%s=failed writing the vsentry conf file", REASON);
 		return SR_ERROR;
 	}
 
 	// Send the memory optimization value to the Kernel
 	if (sr_control_set_mem_opt(mem_opt) != SR_SUCCESS) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-			"%s Failed to set memory optimization flag to Kernel", REASON);
+			"%s=failed to set memory optimization flag to Kernel", REASON);
 		return SR_ERROR;
 	}
 
