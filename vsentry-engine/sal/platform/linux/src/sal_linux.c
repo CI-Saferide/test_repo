@@ -30,7 +30,7 @@ void sal_vsentry_fd_close(void)
 
 void sal_vsentry_unlock(void)
 {
-	ioctl(fd_vsentry, 10);
+	ioctl(fd_vsentry, SR_MOD_CMD_SYNC_ENGINE);
 }
 
 

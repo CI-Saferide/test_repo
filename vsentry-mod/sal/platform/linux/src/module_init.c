@@ -159,7 +159,7 @@ static ssize_t vsentry_drv_read(struct file *fp, char __user *buf, size_t size, 
 long vsentry_drv_ioctl_u(struct file *file, unsigned int i, unsigned long l)
 {
 	switch (i) {
-		case 10:
+		case SR_MOD_CMD_SYNC_ENGINE:
 			if (sal_linux_mng_readbuf_up(SYNC_ENGINE) != SR_SUCCESS) {
 				CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_LOW,
 					"%s=failed up readbuf ENGINE mutex:", REASON);
