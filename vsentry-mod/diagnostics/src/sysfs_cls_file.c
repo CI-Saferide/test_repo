@@ -221,8 +221,11 @@ static size_t store_table(struct sr_hash_table_t *table, char __user *user_buf, 
 				sysfs_file[i].actionstring);
 				
 			rt = write_to_user(user_buf, count, ppos, len, &used_count);
-			if (rt)
+			if (rt) {
+				// table has acceded 64k, save current rule number and continue when called again
+				store_table_rule_num = i;
 				return rt;
+			}
 		}
 	}
 	*ppos = used_count;

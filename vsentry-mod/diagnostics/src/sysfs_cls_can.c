@@ -41,134 +41,106 @@ void print_table_canid_sysfs(struct sr_hash_table_t *table,SR_8 dir)
 }
 #endif
 
-static void store_canid_rules(SR_32 canid, SR_8 dir)
+static void store_canid_rules(SR_32 canid, SR_8 dir, bit_array *found_rules)
 {
-	struct sr_hash_ent_t *ent=sr_hash_lookup((dir==SR_CAN_OUT)?sr_cls_canid_table[SR_CAN_OUT]:sr_cls_canid_table[SR_CAN_IN], canid);
 	bit_array rules;
 	SR_16 rule;
 
 	sal_memset(&rules, 0, sizeof(rules));
+	sal_or_self_op_arrays(&rules, found_rules);
+	while ((rule = sal_ffs_and_clear_array (&rules)) != -1) {
+
+		if (strlen(sysfs_canbus[rule].dir) != 0) {
+			// rule was already written for one direction but applies to
+			sal_sprintf(sysfs_canbus[rule].dir,"%s", "BOTH");
+		} else {
+			// rule is written for the first time
+			sysfs_canbus[rule].rule = rule;
+			sal_sprintf(sysfs_canbus[rule].dir,"%s",(dir==SR_CAN_OUT)? "OUT" : "IN");
+
+			if (canid != MSGID_ANY) {
+				sal_sprintf(sysfs_canbus[rule].canid_buff,"0x%03x",canid);
+				sysfs_canbus[rule].canid = canid;
+			} else {
+				sal_sprintf(sysfs_canbus[rule].canid_buff,"%s","ANY");
+			}
+
+			sysfs_canbus[rule].action = sr_db->sr_rules_db[SR_CAN_RULES][rule].actions;
+			if (sysfs_canbus[rule].action & SR_CLS_ACTION_DROP) {
+				sal_sprintf(sysfs_canbus[rule].actionstring, "Drop");
+			} else if (sysfs_canbus[rule].action & SR_CLS_ACTION_ALLOW) {
+				sal_sprintf(sysfs_canbus[rule].actionstring, "Allow");
+			}
+			if (sysfs_canbus[rule].action & SR_CLS_ACTION_LOG) {
+				if (strlen(sysfs_canbus[rule].actionstring) == 0) {
+					sal_sprintf(sysfs_canbus[rule].actionstring, "Log");
+				} else {
+					strcat(sysfs_canbus[rule].actionstring, "_log");
+				}
+			}
+
+			//putting some work for the UID...
+			sysfs_canbus[rule].uid = get_uid_for_rule(sr_cls_uid_table,rule,UID_HASH_TABLE_SIZE,SR_CAN_RULES);
+			if(sysfs_canbus[rule].uid == 0)
+				sal_sprintf(sysfs_canbus[rule].uid_buff, "%s", "ANY");
+			else
+				sal_sprintf(sysfs_canbus[rule].uid_buff, "%d", sysfs_canbus[rule].uid);
+
+			//putting work for the BIN
+			sysfs_canbus[rule].inode = get_exec_for_rule(sr_cls_exec_file_table,rule,EXEC_FILE_HASH_TABLE_SIZE,SR_CAN_RULES);
+			if(sysfs_canbus[rule].inode == 0)
+				sal_sprintf(sysfs_canbus[rule].inode_buff, "%s", "ANY");
+			else
+				sal_sprintf(sysfs_canbus[rule].inode_buff, "%d", sysfs_canbus[rule].inode);
+		}
+	}
+}
+
+static void lookup_and_store_canid_rules(SR_32 canid, SR_8 dir)
+{
+	struct sr_hash_ent_t *ent = sr_hash_lookup((dir==SR_CAN_OUT)?sr_cls_canid_table[SR_CAN_OUT]:sr_cls_canid_table[SR_CAN_IN], canid);
 
 	if (!ent) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-			"Error store_canid_rules:%x CAN MsgID - %s rule not found\n",canid,(dir==SR_CAN_OUT)? "OUT" : "IN");
+			"Error lookup_and_store_canid_rules:%x CAN MsgID - %s rule not found\n",canid,(dir==SR_CAN_OUT)? "OUT" : "IN");
 		return;
 	}
 	
-	sal_or_self_op_arrays(&rules, &ent->rules);
-	while ((rule = sal_ffs_and_clear_array (&rules)) != -1) {
-		
-		sal_sprintf(sysfs_canbus[rule].canid_buff,"%03x",canid);
-		if (strlen(sysfs_canbus[rule].dir) == 0) {
-			sal_sprintf(sysfs_canbus[rule].dir,"%s",(dir==SR_CAN_OUT)? "OUT" : "IN");
-		} else {
-			sal_sprintf(sysfs_canbus[rule].dir,"%s", "BOTH");
-		}
-		sysfs_canbus[rule].canid = canid;
-		sysfs_canbus[rule].rule = rule;
-		
-		sysfs_canbus[rule].action = sr_db->sr_rules_db[SR_CAN_RULES][rule].actions;
-		if (sysfs_canbus[rule].action & SR_CLS_ACTION_DROP) {
-			sal_sprintf(sysfs_canbus[rule].actionstring, "Drop");
-		} else if (sysfs_canbus[rule].action & SR_CLS_ACTION_ALLOW) {
-			sal_sprintf(sysfs_canbus[rule].actionstring, "Allow");
-		}
-		if (sysfs_canbus[rule].action & SR_CLS_ACTION_LOG) {
-			if (strlen(sysfs_canbus[rule].actionstring) == 0) {
-				sal_sprintf(sysfs_canbus[rule].actionstring, "Log");
-			} else {
-				strcat(sysfs_canbus[rule].actionstring, "_log");
-			}
-		}
-
-		//putting some work for the UID...
-		sysfs_canbus[rule].uid = get_uid_for_rule(sr_cls_uid_table,rule,UID_HASH_TABLE_SIZE,SR_CAN_RULES);
-		if(sysfs_canbus[rule].uid == 0)
-			sal_sprintf(sysfs_canbus[rule].uid_buff, "%s", "ANY");
-		else
-			sal_sprintf(sysfs_canbus[rule].uid_buff, "%d", sysfs_canbus[rule].uid);
-
-		//putting work for the BIN
-		sysfs_canbus[rule].inode = get_exec_for_rule(sr_cls_exec_file_table,rule,EXEC_FILE_HASH_TABLE_SIZE,SR_CAN_RULES);
-		if(sysfs_canbus[rule].inode == 0)
-			sal_sprintf(sysfs_canbus[rule].inode_buff, "%s", "ANY");
-		else
-			sal_sprintf(sysfs_canbus[rule].inode_buff, "%d", sysfs_canbus[rule].inode);
-	}
+	store_canid_rules(canid, dir, &ent->rules);
 }
 
 static void clone_cls_can_table(void)
 {
-	SR_32 i,j;
-	SR_8 dir = 0; // to shut the warning...
-	bit_array ba_res;
+	SR_32 i;
 	struct sr_hash_ent_t *curr, *next;
-	SR_16 rule;
 	
-	sal_memset(&ba_res, 0, sizeof(ba_res));
 	sal_memset(sysfs_canbus, 0, sizeof(sysfs_canbus));
 	
 	if (sr_cls_canid_table[0] != NULL && sr_cls_canid_table[1] != NULL) { // to verify we are after sr_cls_canid_init()
-		for (j=0; j<=1; j++) {
-			if(!j) //if j is 0 this mean inbound
-				dir = SR_CAN_IN;
-			else
-				dir = SR_CAN_OUT;
 
-			// copy specific rules to sysfs
-			for(i = 0; i < HT_canid_SIZE; i++) {
-				if (sr_cls_canid_table[j]->buckets[i].head != NULL){
-					curr = sr_cls_canid_table[j]->buckets[i].head;
-					while (curr != NULL){
-						
-						store_canid_rules(curr->key,dir);
-						
-						next = curr->next;
-						curr= next;
-					}
-				}
+		// copy specific rules to sysfs
+		for (i = 0; i < HT_canid_SIZE; i++) {
+			curr = sr_cls_canid_table[SR_CAN_IN]->buckets[i].head;
+			while (curr != NULL){
+
+				lookup_and_store_canid_rules(curr->key, SR_CAN_IN);
+
+				next = curr->next;
+				curr= next;
 			}
-			
-			// copy "Any" rules to sysfs
-			sal_or_self_op_arrays(&ba_res, (dir==SR_CAN_OUT)?src_cls_out_canid_any():src_cls_in_canid_any());
-			while ((rule = sal_ffs_and_clear_array (&ba_res)) != -1) {
-				sysfs_canbus[rule].action = sr_db->sr_rules_db[SR_CAN_RULES][rule].actions;
-				if (sysfs_canbus[rule].action & SR_CLS_ACTION_DROP) {
-					sal_sprintf(sysfs_canbus[rule].actionstring, "Drop");
-				} else if (sysfs_canbus[rule].action & SR_CLS_ACTION_ALLOW) {
-					sal_sprintf(sysfs_canbus[rule].actionstring, "Allow");
-				}
-				if (sysfs_canbus[rule].action & SR_CLS_ACTION_LOG) {
-					if (strlen(sysfs_canbus[rule].actionstring) == 0) {
-						sal_sprintf(sysfs_canbus[rule].actionstring, "Log");
-					} else {
-						strcat(sysfs_canbus[rule].actionstring, "_log");
-					}
-				}
+			curr = sr_cls_canid_table[SR_CAN_OUT]->buckets[i].head;
+			while (curr != NULL){
 
-				if (strlen(sysfs_canbus[rule].dir) == 0) {
-					sal_sprintf(sysfs_canbus[rule].dir,"%s",(dir==SR_CAN_OUT)? "OUT" : "IN");
-				} else {
-					sal_sprintf(sysfs_canbus[rule].dir,"%s", "BOTH");
-				}
-				sysfs_canbus[rule].rule = rule;
-				sal_sprintf(sysfs_canbus[rule].canid_buff,"%s","ANY");
+				lookup_and_store_canid_rules(curr->key, SR_CAN_OUT);
 
-				//putting some work for the UID...
-				sysfs_canbus[rule].uid = get_uid_for_rule(sr_cls_uid_table,rule,UID_HASH_TABLE_SIZE,SR_CAN_RULES);
-				if(sysfs_canbus[rule].uid == 0)
-					sal_sprintf(sysfs_canbus[rule].uid_buff, "%s", "ANY");
-				else
-					sal_sprintf(sysfs_canbus[rule].uid_buff, "%d", sysfs_canbus[rule].uid);
-
-				//putting work for the BIN
-				sysfs_canbus[rule].inode = get_exec_for_rule(sr_cls_exec_file_table,rule,EXEC_FILE_HASH_TABLE_SIZE,SR_CAN_RULES);
-				if(sysfs_canbus[rule].inode == 0)
-					sal_sprintf(sysfs_canbus[rule].inode_buff, "%s", "ANY");
-				else
-					sal_sprintf(sysfs_canbus[rule].inode_buff, "%d",sysfs_canbus[rule].inode);
+				next = curr->next;
+				curr= next;
 			}
 		}
+
+		// copy "Any" rules to sysfs
+		store_canid_rules(MSGID_ANY, SR_CAN_IN, src_cls_in_canid_any());
+		store_canid_rules(MSGID_ANY, SR_CAN_OUT, src_cls_out_canid_any());
 	}	
 }
 
@@ -195,19 +167,22 @@ static size_t store_table(char __user *user_buf, size_t count, loff_t *ppos, SR_
 	}
 
 	for (; i < SR_MAX_RULES; i++) {
-		if (sysfs_canbus[i].rule){
+		if (sysfs_canbus[i].rule) {
 
 			len = sal_sprintf(buf,"%d\t%s\t%s\t%s\t%s\t%s\n",
-				sysfs_canbus[i].rule,
-				sysfs_canbus[i].canid_buff,
-				sysfs_canbus[i].dir,
-				sysfs_canbus[i].uid_buff,
-				sysfs_canbus[i].inode_buff,
-				sysfs_canbus[i].actionstring);
-				
+					sysfs_canbus[i].rule,
+					sysfs_canbus[i].canid_buff,
+					sysfs_canbus[i].dir,
+					sysfs_canbus[i].uid_buff,
+					sysfs_canbus[i].inode_buff,
+					sysfs_canbus[i].actionstring);
+
 			rt = write_to_user(user_buf, count, ppos, len, &used_count);
-			if (rt)
+			if (rt) {
+				// table has acceded 64k, save current rule number and continue when called again
+				store_table_rule_num = i;
 				return rt;
+			}
 		}
 	}
 
@@ -226,13 +201,13 @@ static size_t store_rule(SR_16 rule_find, char __user *user_buf, size_t count, l
 	if (sysfs_canbus[rule_find].rule == rule_find) {
 
 		len = sal_sprintf(buf,"%d\t%s\t%s\t%s\t%s\t%s\n",
-			sysfs_canbus[rule_find].rule,
-			sysfs_canbus[rule_find].canid_buff,
-			sysfs_canbus[rule_find].dir,
-			sysfs_canbus[rule_find].uid_buff,
-			sysfs_canbus[rule_find].inode_buff,
-			sysfs_canbus[rule_find].actionstring);
-				
+				sysfs_canbus[rule_find].rule,
+				sysfs_canbus[rule_find].canid_buff,
+				sysfs_canbus[rule_find].dir,
+				sysfs_canbus[rule_find].uid_buff,
+				sysfs_canbus[rule_find].inode_buff,
+				sysfs_canbus[rule_find].actionstring);
+
 		rt = write_to_user(user_buf, count, ppos, len, &used_count);
 		if (rt)
 			return rt;
