@@ -1164,7 +1164,7 @@ SR_32 sys_repo_mng_create_net_rule(sysrepo_mng_handler_t *handler, SR_32 rule_id
 
 static void can_packet_convert(SR_U32 msg_id,SR_U8 dir, char * msgid_str,char * dir_str)
 {
-	sprintf(msgid_str, "%x", msg_id);
+	sprintf(msgid_str, "%03x", msg_id);
 	sprintf(dir_str, "%s", dir==0?"in":"out");
 }
 
