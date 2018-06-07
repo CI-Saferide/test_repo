@@ -47,6 +47,8 @@ void sr_cls_canid_uninit(void)
 { 
 	SR_32 i;
 	struct sr_hash_ent_t *curr, *next;
+	bit_array rules;
+	SR_16 rule;
 	
 	if (sr_cls_out_canid_table != NULL) {
 		CEF_log_debug(SR_CEF_CID_CAN, "info", SEVERITY_LOW,
@@ -60,7 +62,13 @@ void sr_cls_canid_uninit(void)
 					CEF_log_debug(SR_CEF_CID_CAN, "info", SEVERITY_LOW,
 						"%s=CAN MsgID: %x dir: %d",MESSAGE,
 						curr->key,SR_CAN_OUT);
-					sr_cls_print_canid_rules(curr->key,SR_CAN_OUT);
+					sal_memset(&rules, 0, sizeof(rules));
+					sal_or_self_op_arrays(&rules, &curr->rules);
+					while ((rule = sal_ffs_and_clear_array(&rules)) != -1) {
+						CEF_log_event(SR_CEF_CID_CAN, "info", SEVERITY_LOW,
+								"%s=rule %d",MESSAGE,
+								rule);
+					}
 					next = curr->next;
 					SR_FREE(curr);
 					curr= next;
@@ -91,7 +99,13 @@ void sr_cls_canid_uninit(void)
 					CEF_log_debug(SR_CEF_CID_CAN, "info", SEVERITY_LOW,
 						"%s=CAN MsgID=%x dir=%d",MESSAGE,
 						curr->key,SR_CAN_IN);
-					sr_cls_print_canid_rules(curr->key,SR_CAN_IN);
+					sal_memset(&rules, 0, sizeof(rules));
+					sal_or_self_op_arrays(&rules, &curr->rules);
+					while ((rule = sal_ffs_and_clear_array(&rules)) != -1) {
+						CEF_log_event(SR_CEF_CID_CAN, "info", SEVERITY_LOW,
+								"%s=rule %d",MESSAGE,
+								rule);
+					}
 					next = curr->next;
 					SR_FREE(curr);
 					curr= next;
@@ -238,29 +252,6 @@ struct sr_hash_ent_t *sr_cls_canid_find(SR_32 canid, SR_8 dir)
 		return NULL;
 	}
 	return ent;
-}
-
-void sr_cls_print_canid_rules(SR_32 canid, SR_8 dir)
-{
-	struct sr_hash_ent_t *ent=sr_hash_lookup((dir==SR_CAN_OUT)?sr_cls_out_canid_table:sr_cls_in_canid_table, canid);
-	bit_array rules;
-	SR_16 rule;
-
-	sal_memset(&rules, 0, sizeof(rules));
-
-	if (!ent) {
-		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-			"%s=%x CAN MsgID rule not found",REASON,
-			canid);
-		return;
-	}
-	sal_or_self_op_arrays(&rules, &ent->rules);
-	while ((rule = sal_ffs_and_clear_array (&rules)) != -1) {
-		CEF_log_event(SR_CEF_CID_CAN, "info", SEVERITY_LOW,
-		"%s=rule %d",MESSAGE,
-		rule);
-	}
-	
 }
 
 bit_array *sr_cls_match_canid(SR_32 canid, SR_8 dir)
