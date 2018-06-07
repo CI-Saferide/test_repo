@@ -99,5 +99,6 @@ SR_BOOL sal_is_string_numeric(char *s);
 SR_BOOL sal_is_valid_file_name(char *file_name);
 
 void sal_vsentry_unlock(void);
+void sal_set_interrupt_cb(void (*cb)(int));
 
 #endif /* SAL_LINUX_ENGINE_H*/

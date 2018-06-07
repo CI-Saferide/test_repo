@@ -174,9 +174,47 @@ SR_32 sr_engine_write_conf(char *param, char *value)
 	return SR_SUCCESS;
 }
 
+static void engine_shutdown(void)
+{
+	struct config_params_t *config_params;
+
+	config_params = sr_config_get_param();
+	sal_third_party_interface_uninit();
+	if (config_params->remote_server_support_enable) {
+		sr_get_command_stop();
+	}
+	if (config_params->remote_server_support_enable && config_params->policy_update_enable) {
+		sr_static_policy_db_mng_stop();
+	}
+
+	sr_stop_task(SR_INFO_GATHER_TASK);
+	sr_stop_task(SR_ENGINE_TASK);
+	sentry_stop();
+#ifdef CONFIG_STAT_ANALYSIS
+	sr_stat_analysis_uninit();
+#endif /* CONFIG_STAT_ANALYSIS */
+	sr_white_list_uninit();
+	sr_white_list_ip_uninit();
+#ifdef CONFIG_CAN_ML
+	sr_ml_can_hash_deinit();
+#endif /* CONFIG_CAN_ML */
+	sr_info_gather_uninit();
+	sr_file_hash_deinit();
+	sr_db_deinit();
+	sr_log_uploader_deinit();
+	sr_log_deinit();
+	sal_vsentry_fd_close();
+}
+
 static void sr_engine_pre_stop_cb(void)
 {
 	sal_vsentry_unlock();
+}
+
+static void sr_interrupt_cb(int i)
+{
+	engine_shutdown();
+	exit(0);
 }
 
 SR_32 sr_engine_start(int argc, char *argv[])
@@ -190,7 +228,9 @@ SR_32 sr_engine_start(int argc, char *argv[])
 	SR_32 cmd_line;
 	SR_BOOL run = SR_TRUE;
 	SR_BOOL background = SR_FALSE;
-	
+
+	sal_set_interrupt_cb(sr_interrupt_cb);
+
 	while ((cmd_line = getopt (argc, argv, "bhc:")) != -1)
 	switch (cmd_line) {
 		case 'h':
@@ -451,30 +491,6 @@ SR_32 sr_engine_start(int argc, char *argv[])
 		}
 	}
 
-	sal_third_party_interface_uninit();
-	if (config_params->remote_server_support_enable) {
-		sr_get_command_stop();
-	}
-	if (config_params->remote_server_support_enable && config_params->policy_update_enable) {
-		sr_static_policy_db_mng_stop();
-	}
-
-	sr_stop_task(SR_INFO_GATHER_TASK);
-	sr_stop_task(SR_ENGINE_TASK);
-	sentry_stop();
-#ifdef CONFIG_STAT_ANALYSIS
-	sr_stat_analysis_uninit();
-#endif /* CONFIG_STAT_ANALYSIS */
-	sr_white_list_uninit();
-	sr_white_list_ip_uninit();
-#ifdef CONFIG_CAN_ML
-	sr_ml_can_hash_deinit();
-#endif /* CONFIG_CAN_ML */
-	sr_info_gather_uninit();
-	sr_file_hash_deinit();
-	sr_db_deinit();
-	sr_log_uploader_deinit();
-	sr_log_deinit();
-	sal_vsentry_fd_close();
+	engine_shutdown();
 	return 0;
 }
