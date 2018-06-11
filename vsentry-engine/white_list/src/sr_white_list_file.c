@@ -52,6 +52,9 @@ static char *get_file_to_learn(char *file, char *new_file, dev_type_t dev_type)
 		case DEV_TYPE_SYS:
 			sprintf(new_file, "/sys%s", file);
 			return new_file;
+		case DEV_TYPE_DEV:
+			sprintf(new_file, "/dev%s", file);
+			return new_file;
 		default:
 			break;
 	}

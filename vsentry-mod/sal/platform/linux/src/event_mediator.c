@@ -686,6 +686,9 @@ SR_32 vsentry_file_open(struct file *file, const struct cred *cred)
 			case 4:
 				disp.fileinfo.dev_type = DEV_TYPE_PROC;
 				break;
+			case 6:
+				disp.fileinfo.dev_type = DEV_TYPE_DEV;
+				break;
 			case 19:
 				disp.fileinfo.dev_type = DEV_TYPE_SYS;
 				break;
