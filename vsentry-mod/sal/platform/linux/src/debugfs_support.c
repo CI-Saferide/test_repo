@@ -1,16 +1,16 @@
-/* file: sysfs_support.c
+/* file: debugfs_support.c
  * purpose: this file initialize the kernel module
 */
-#ifdef SYSFS_SUPPORT
-#include "sysfs_support.h"
+#ifdef DEBUGFS_SUPPORT
+#include "debugfs_support.h"
 
-#define SYSFS_MAX_USER_COMMAND 100
+#define DEBUGFS_MAX_USER_COMMAND 100
 
-static unsigned char buf[SYSFS_MAX_USER_COMMAND];
+static unsigned char buf[DEBUGFS_MAX_USER_COMMAND];
 static struct dentry *root = NULL;
 static SR_U8 read_called_again = 0;
 
-static ssize_t sysfs_state_read(struct file *file, char __user *user_buf, size_t count, loff_t *ppos)
+static ssize_t debugfs_state_read(struct file *file, char __user *user_buf, size_t count, loff_t *ppos)
 {
 	size_t rt, len;
 
@@ -27,7 +27,7 @@ static ssize_t sysfs_state_read(struct file *file, char __user *user_buf, size_t
 	return rt;
 }
 
-static ssize_t sysfs_file_read(struct file *file, char __user *user_buf, size_t count, loff_t *ppos)
+static ssize_t debugfs_file_read(struct file *file, char __user *user_buf, size_t count, loff_t *ppos)
 {
 	size_t rt = 0;
 	int rule_num;
@@ -59,7 +59,7 @@ static ssize_t sysfs_file_read(struct file *file, char __user *user_buf, size_t 
 	return rt;
 }
 
-static ssize_t sysfs_can_read(struct file *file, char __user *user_buf, size_t count, loff_t *ppos)
+static ssize_t debugfs_can_read(struct file *file, char __user *user_buf, size_t count, loff_t *ppos)
 {
 	size_t rt = 0;
 	int rule_num;
@@ -91,7 +91,7 @@ static ssize_t sysfs_can_read(struct file *file, char __user *user_buf, size_t c
 	return rt;
 }
 
-static ssize_t sysfs_ipv4_read(struct file *file, char __user *user_buf, size_t count, loff_t *ppos)
+static ssize_t debugfs_ipv4_read(struct file *file, char __user *user_buf, size_t count, loff_t *ppos)
 {
 	size_t rt = 0;
 	int rule_num;
@@ -141,7 +141,7 @@ static ssize_t sysfs_ipv4_read(struct file *file, char __user *user_buf, size_t 
 	return rt;
 }
 
-static ssize_t sysfs_write(struct file *file, const char __user *user_buf, size_t count, loff_t *ppos)
+static ssize_t debugfs_write(struct file *file, const char __user *user_buf, size_t count, loff_t *ppos)
 {
 	size_t rt;
 
@@ -161,29 +161,29 @@ static int default_open(struct inode *inode, struct file *file)
 }
 
 static struct file_operations ipv4_ops = {
-	.write =	sysfs_write,
-	.read  =	sysfs_ipv4_read,
+	.write =	debugfs_write,
+	.read  =	debugfs_ipv4_read,
 	.open  =	default_open,
 };
 
 static struct file_operations can_ops = {
-	.write =	sysfs_write,
-	.read  =	sysfs_can_read,
+	.write =	debugfs_write,
+	.read  =	debugfs_can_read,
 	.open  =	default_open,
 };
 
 static struct file_operations file_ops = {
-	.write =	sysfs_write,
-	.read  =	sysfs_file_read,
+	.write =	debugfs_write,
+	.read  =	debugfs_file_read,
 	.open  =	default_open,
 };
 
 static struct file_operations state_ops = {
-	.read  =	sysfs_state_read,
+	.read  =	debugfs_state_read,
 	.open  =	default_open,
 };
 
-int sysfs_init(void){
+int debugfs_init(void){
 
 	root = debugfs_create_dir("vsentry", NULL);
 	if (!root) {
@@ -206,9 +206,9 @@ int sysfs_init(void){
 	return 0;
 }
 
-void sysfs_deinit(){
+void debugfs_deinit(){
 	if (root)
 		debugfs_remove_recursive(root);
 }
 
-#endif /* SYSFS_SUPPORT */
+#endif /* DEBUGFS_SUPPORT */

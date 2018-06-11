@@ -1,5 +1,5 @@
 /* file: cls_helper.h
- * purpose: this file is used by all sysfs subjects for vsentry classifier
+ * purpose: this file is used by all debugfs subjects for vsentry classifier
 */
 #include "sal_module.h"
 #include "sr_sal_common.h"

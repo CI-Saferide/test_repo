@@ -20,7 +20,7 @@ EXTRA_CFLAGS += -I$(TOP_DIR)/ml/include
 #EXTRA_CFLAGS += -DUNIT_TEST
 EXTRA_CFLAGS += -DCONFIG_CAN_ML
 EXTRA_CFLAGS += -D_KERNEL
-EXTRA_CFLAGS += -DSYSFS_SUPPORT
+EXTRA_CFLAGS += -DDEBUGFS_SUPPORT
 #EXTRA_CFLAGS += -DROOT_CLS_IGNORE
 EXTRA_CFLAGS += -DRL_SUPPORT
 #debug flags
@@ -39,7 +39,7 @@ ifneq ($(KERNELRELEASE),)
 TARGET = vsentry
 obj-m += $(TARGET).o 
 $(TARGET)-objs := sal/platform/linux/src/module_init.o \
-				  sal/platform/linux/src/sysfs_support.o \
+				  sal/platform/linux/src/debugfs_support.o \
 				  sal/platform/linux/lsm/src/sr_lsm_hooks.o \
 				  sal/platform/linux/src/event_mediator.o \
 				  sal/platform/linux/src/sal_linux_mng.o \
@@ -61,9 +61,9 @@ $(TARGET)-objs := sal/platform/linux/src/module_init.o \
 				  classifier/src/sr_cls_sk_process.o \
 				  classifier/src/sr_cls_housekeeping.o \
 				  diagnostics/src/cls_helper.o \
-				  diagnostics/src/sysfs_cls_can.o \
-				  diagnostics/src/sysfs_cls_file.o \
-				  diagnostics/src/sysfs_cls_ipv4.o \
+				  diagnostics/src/debugfs_cls_can.o \
+				  diagnostics/src/debugfs_cls_file.o \
+				  diagnostics/src/debugfs_cls_ipv4.o \
 				  stat_analysis/src/sr_special_hash.o \
 				  stat_analysis/src/sr_stat_connection.o \
 				  stat_analysis/src/sr_stat_analysis.o \

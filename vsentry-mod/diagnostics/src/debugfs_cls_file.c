@@ -1,16 +1,16 @@
-/* file: sysfs_cls_file.c
- * purpose: this file used as a getter/setter to the sysfs variables
+/* file: debugfs_cls_file.c
+ * purpose: this file used as a getter/setter to the debugfs variables
 */
-#ifdef SYSFS_SUPPORT
+#ifdef DEBUGFS_SUPPORT
 
 #include "cls_helper.h"
-#include "sysfs_cls_file.h"
+#include "debugfs_cls_file.h"
 
 static struct rule_database* sr_db;
 static struct sr_hash_table_t *sr_cls_uid_table; // the uid table for file
 static struct sr_hash_table_t *sr_cls_exec_file_table; // the binary table for file
 static struct sr_hash_table_t *sr_cls_file_table; // the watched files table
-static struct sysfs_file_ent_t sysfs_file[SR_MAX_RULES];
+static struct debugfs_file_ent_t debugfs_file[SR_MAX_RULES];
 static SR_U16 store_table_rule_num;
 
 #ifdef DEBUG
@@ -77,44 +77,44 @@ static void store_file_rules(SR_U32 inode)
 	sal_or_self_op_arrays(&rules, &ent->rules);
 	while ((rule = sal_ffs_and_clear_array (&rules)) != -1) {	
 		
-		sysfs_file[rule].rule = rule;
-		sysfs_file[rule].inode = inode;
-		sal_sprintf(sysfs_file[rule].inode_buff,"%u",inode);
+		debugfs_file[rule].rule = rule;
+		debugfs_file[rule].inode = inode;
+		sal_sprintf(debugfs_file[rule].inode_buff,"%u",inode);
 		
-		sysfs_file[rule].action = sr_db->sr_rules_db[SR_FILE_RULES][rule].actions;
-		if (sysfs_file[rule].action & SR_CLS_ACTION_DROP) {
-			sal_sprintf(sysfs_file[rule].actionstring, "Drop");
-		} else if (sysfs_file[rule].action & SR_CLS_ACTION_ALLOW) {
-			sal_sprintf(sysfs_file[rule].actionstring, "Allow");
+		debugfs_file[rule].action = sr_db->sr_rules_db[SR_FILE_RULES][rule].actions;
+		if (debugfs_file[rule].action & SR_CLS_ACTION_DROP) {
+			sal_sprintf(debugfs_file[rule].actionstring, "Drop");
+		} else if (debugfs_file[rule].action & SR_CLS_ACTION_ALLOW) {
+			sal_sprintf(debugfs_file[rule].actionstring, "Allow");
 		}
-		if (sysfs_file[rule].action & SR_CLS_ACTION_LOG) {
-			if (strlen(sysfs_file[rule].actionstring) == 0) {
-				sal_sprintf(sysfs_file[rule].actionstring, "Log");
+		if (debugfs_file[rule].action & SR_CLS_ACTION_LOG) {
+			if (strlen(debugfs_file[rule].actionstring) == 0) {
+				sal_sprintf(debugfs_file[rule].actionstring, "Log");
 			} else {
-				strcat(sysfs_file[rule].actionstring, "_log");
+				strcat(debugfs_file[rule].actionstring, "_log");
 			}
 		}
 
 		//fetch the permission...
-		sysfs_file[rule].file_ops = sr_db->sr_rules_db[SR_FILE_RULES][rule].file_ops;
-		if (sysfs_file[rule].file_ops & SR_FILEOPS_READ)		{perm_string[0] = 'r';}
-		if (sysfs_file[rule].file_ops & SR_FILEOPS_WRITE)		{perm_string[1] = 'w';}
-		if (sysfs_file[rule].file_ops & SR_FILEOPS_EXEC)		{perm_string[2] = 'x';}
-		sal_sprintf(sysfs_file[rule].perm_string,"%c%c%c",perm_string[0],perm_string[1],perm_string[2]);
+		debugfs_file[rule].file_ops = sr_db->sr_rules_db[SR_FILE_RULES][rule].file_ops;
+		if (debugfs_file[rule].file_ops & SR_FILEOPS_READ)		{perm_string[0] = 'r';}
+		if (debugfs_file[rule].file_ops & SR_FILEOPS_WRITE)		{perm_string[1] = 'w';}
+		if (debugfs_file[rule].file_ops & SR_FILEOPS_EXEC)		{perm_string[2] = 'x';}
+		sal_sprintf(debugfs_file[rule].perm_string,"%c%c%c",perm_string[0],perm_string[1],perm_string[2]);
 
 		//putting some work for the UID...
-		sysfs_file[rule].uid = get_uid_for_rule(sr_cls_uid_table,rule,UID_HASH_TABLE_SIZE,SR_FILE_RULES);
-		if(sysfs_file[rule].uid == 0)
-			sal_sprintf(sysfs_file[rule].uid_buff, "%s", "ANY");
+		debugfs_file[rule].uid = get_uid_for_rule(sr_cls_uid_table,rule,UID_HASH_TABLE_SIZE,SR_FILE_RULES);
+		if(debugfs_file[rule].uid == 0)
+			sal_sprintf(debugfs_file[rule].uid_buff, "%s", "ANY");
 		else
-			sal_sprintf(sysfs_file[rule].uid_buff, "%d", sysfs_file[rule].uid);
+			sal_sprintf(debugfs_file[rule].uid_buff, "%d", debugfs_file[rule].uid);
 
 		//putting work for the BIN
-		sysfs_file[rule].inode_exe = get_exec_for_rule(sr_cls_exec_file_table,rule,EXEC_FILE_HASH_TABLE_SIZE,SR_FILE_RULES);
-		if(sysfs_file[rule].inode_exe == 0)
-			sal_sprintf(sysfs_file[rule].inode_exe_buff, "%s", "ANY");
+		debugfs_file[rule].inode_exe = get_exec_for_rule(sr_cls_exec_file_table,rule,EXEC_FILE_HASH_TABLE_SIZE,SR_FILE_RULES);
+		if(debugfs_file[rule].inode_exe == 0)
+			sal_sprintf(debugfs_file[rule].inode_exe_buff, "%s", "ANY");
 		else
-			sal_sprintf(sysfs_file[rule].inode_exe_buff, "%u", sysfs_file[rule].inode_exe);
+			sal_sprintf(debugfs_file[rule].inode_exe_buff, "%u", debugfs_file[rule].inode_exe);
 	}
 }
 
@@ -127,7 +127,7 @@ static void clone_cls_file_table(struct sr_hash_table_t *table)
 	SR_8 perm_string[4] = {'-','-','-','\0'};
 	
 	sal_memset(&ba_res, 0, sizeof(ba_res));
-	sal_memset(sysfs_file, 0, sizeof(sysfs_file));
+	sal_memset(debugfs_file, 0, sizeof(debugfs_file));
 	
 	if (table != NULL) {
 		
@@ -145,48 +145,48 @@ static void clone_cls_file_table(struct sr_hash_table_t *table)
 		sal_or_self_op_arrays(&ba_res,sr_cls_file_any());
 		while ((rule = sal_ffs_and_clear_array (&ba_res)) != -1) {
 				
-			sysfs_file[rule].action = sr_db->sr_rules_db[SR_FILE_RULES][rule].actions;
-			if (sysfs_file[rule].action & SR_CLS_ACTION_DROP) {
-				sal_sprintf(sysfs_file[rule].actionstring, "Drop");
-			} else if (sysfs_file[rule].action & SR_CLS_ACTION_ALLOW) {
-				sprintf(sysfs_file[rule].actionstring, "Allow");
+			debugfs_file[rule].action = sr_db->sr_rules_db[SR_FILE_RULES][rule].actions;
+			if (debugfs_file[rule].action & SR_CLS_ACTION_DROP) {
+				sal_sprintf(debugfs_file[rule].actionstring, "Drop");
+			} else if (debugfs_file[rule].action & SR_CLS_ACTION_ALLOW) {
+				sprintf(debugfs_file[rule].actionstring, "Allow");
 			}
-			if (sysfs_file[rule].action & SR_CLS_ACTION_LOG) {
-				if (strlen(sysfs_file[rule].actionstring) == 0) {
-					sal_sprintf(sysfs_file[rule].actionstring, "Log");
+			if (debugfs_file[rule].action & SR_CLS_ACTION_LOG) {
+				if (strlen(debugfs_file[rule].actionstring) == 0) {
+					sal_sprintf(debugfs_file[rule].actionstring, "Log");
 				} else {
-					strcat(sysfs_file[rule].actionstring, "_log");
+					strcat(debugfs_file[rule].actionstring, "_log");
 				}
 			}
 
-			sysfs_file[rule].rule = rule;
-			sysfs_file[rule].inode = 0;
-			sal_sprintf(sysfs_file[rule].inode_buff,"%s","ANY");
+			debugfs_file[rule].rule = rule;
+			debugfs_file[rule].inode = 0;
+			sal_sprintf(debugfs_file[rule].inode_buff,"%s","ANY");
 
 			//fetch the permission...
-			sysfs_file[rule].file_ops = sr_db->sr_rules_db[SR_FILE_RULES][rule].file_ops;
-			if (sysfs_file[rule].file_ops & SR_FILEOPS_READ)		{perm_string[0] = 'r';}
-			if (sysfs_file[rule].file_ops & SR_FILEOPS_WRITE)		{perm_string[1] = 'w';}
-			if (sysfs_file[rule].file_ops & SR_FILEOPS_EXEC)		{perm_string[2] = 'x';}
-			sal_sprintf(sysfs_file[rule].perm_string,"%c%c%c",perm_string[0],perm_string[1],perm_string[2]);
+			debugfs_file[rule].file_ops = sr_db->sr_rules_db[SR_FILE_RULES][rule].file_ops;
+			if (debugfs_file[rule].file_ops & SR_FILEOPS_READ)		{perm_string[0] = 'r';}
+			if (debugfs_file[rule].file_ops & SR_FILEOPS_WRITE)		{perm_string[1] = 'w';}
+			if (debugfs_file[rule].file_ops & SR_FILEOPS_EXEC)		{perm_string[2] = 'x';}
+			sal_sprintf(debugfs_file[rule].perm_string,"%c%c%c",perm_string[0],perm_string[1],perm_string[2]);
 			//putting some work for the UID...
-			sysfs_file[rule].uid = get_uid_for_rule(sr_cls_uid_table,rule,UID_HASH_TABLE_SIZE,SR_FILE_RULES);
-			if(sysfs_file[rule].uid == 0)
-				sal_sprintf(sysfs_file[rule].uid_buff, "%s", "ANY");
+			debugfs_file[rule].uid = get_uid_for_rule(sr_cls_uid_table,rule,UID_HASH_TABLE_SIZE,SR_FILE_RULES);
+			if(debugfs_file[rule].uid == 0)
+				sal_sprintf(debugfs_file[rule].uid_buff, "%s", "ANY");
 			else
-				sal_sprintf(sysfs_file[rule].uid_buff, "%d", sysfs_file[rule].uid);
+				sal_sprintf(debugfs_file[rule].uid_buff, "%d", debugfs_file[rule].uid);
 
 			//putting work for the BIN
-			sysfs_file[rule].inode_exe = get_exec_for_rule(sr_cls_exec_file_table,rule,EXEC_FILE_HASH_TABLE_SIZE,SR_FILE_RULES);
-			if(sysfs_file[rule].inode_exe == 0)
-				sal_sprintf(sysfs_file[rule].inode_exe_buff, "%s", "ANY");
+			debugfs_file[rule].inode_exe = get_exec_for_rule(sr_cls_exec_file_table,rule,EXEC_FILE_HASH_TABLE_SIZE,SR_FILE_RULES);
+			if(debugfs_file[rule].inode_exe == 0)
+				sal_sprintf(debugfs_file[rule].inode_exe_buff, "%s", "ANY");
 			else
-				sal_sprintf(sysfs_file[rule].inode_exe_buff, "%u", sysfs_file[rule].inode_exe);
+				sal_sprintf(debugfs_file[rule].inode_exe_buff, "%u", debugfs_file[rule].inode_exe);
 		}
 	}
 }	
 
-static size_t sysfs_write_file_table_title(char __user *user_buf, size_t count, loff_t *ppos, size_t *used_count)
+static size_t debugfs_write_file_table_title(char __user *user_buf, size_t count, loff_t *ppos, size_t *used_count)
 {
 	size_t len = sal_sprintf(buf,"rule\tinode\t\tpermission\tuid\tbinary\t\taction\n"
 			"----------------------------------------------------------------------\n");
@@ -200,7 +200,7 @@ static size_t store_table(struct sr_hash_table_t *table, char __user *user_buf, 
 	size_t rt, len, used_count = 0;
 
 	if (first_call) {
-		rt = sysfs_write_file_table_title(user_buf, count, ppos, &used_count); // title
+		rt = debugfs_write_file_table_title(user_buf, count, ppos, &used_count); // title
 		if (rt)
 			return rt;
 
@@ -210,15 +210,15 @@ static size_t store_table(struct sr_hash_table_t *table, char __user *user_buf, 
 	}
 	
 	for (; i < SR_MAX_RULES; i++) {
-		if (sysfs_file[i].rule) {
+		if (debugfs_file[i].rule) {
 
 			len = sal_sprintf(buf,"%d\t%s\t\t%s\t\t%s\t%s\t\t%s\n",
-				sysfs_file[i].rule,
-				sysfs_file[i].inode_buff,
-				sysfs_file[i].perm_string,
-				sysfs_file[i].uid_buff,
-				sysfs_file[i].inode_exe_buff,
-				sysfs_file[i].actionstring);
+				debugfs_file[i].rule,
+				debugfs_file[i].inode_buff,
+				debugfs_file[i].perm_string,
+				debugfs_file[i].uid_buff,
+				debugfs_file[i].inode_exe_buff,
+				debugfs_file[i].actionstring);
 				
 			rt = write_to_user(user_buf, count, ppos, len, &used_count);
 			if (rt) {
@@ -236,18 +236,18 @@ static size_t store_rule(struct sr_hash_table_t *table, SR_16 rule_find, char __
 {
 	size_t rt, len, used_count = 0;
 
-	rt = sysfs_write_file_table_title(user_buf, count, ppos, &used_count);
+	rt = debugfs_write_file_table_title(user_buf, count, ppos, &used_count);
 	if (rt)
 		return rt;
 
-	if (sysfs_file[rule_find].rule == rule_find) {
+	if (debugfs_file[rule_find].rule == rule_find) {
 		len = sal_sprintf(buf,"%d\t%s\t\t%s\t\t%s\t%s\t\t%s\n",
-			sysfs_file[rule_find].rule,
-			sysfs_file[rule_find].inode_buff,
-			sysfs_file[rule_find].perm_string,
-			sysfs_file[rule_find].uid_buff,
-			sysfs_file[rule_find].inode_exe_buff,
-			sysfs_file[rule_find].actionstring);
+			debugfs_file[rule_find].rule,
+			debugfs_file[rule_find].inode_buff,
+			debugfs_file[rule_find].perm_string,
+			debugfs_file[rule_find].uid_buff,
+			debugfs_file[rule_find].inode_exe_buff,
+			debugfs_file[rule_find].actionstring);
 				
 		rt = write_to_user(user_buf, count, ppos, len, &used_count);
 		if (rt)
@@ -283,4 +283,4 @@ size_t dump_file_rule(SR_16 rule,char __user *user_buf, size_t count, loff_t *pp
 	fetch_cls_file();	
 	return store_rule(sr_cls_file_table, rule, user_buf, count, ppos);
 }
-#endif /* SYSFS_SUPPORT */
+#endif /* DEBUGFS_SUPPORT */
