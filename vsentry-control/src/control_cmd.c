@@ -12,7 +12,7 @@
 #include <sys/un.h>
 #include <errno.h>
 
-static is_valid_cmd(char *cmd)
+static int is_valid_cmd(char *cmd)
 {
 	return !strcmp(cmd, "wl_learn") || !strcmp(cmd, "wl_apply") || !strcmp(cmd, "wl_print");
 }
@@ -20,7 +20,7 @@ static is_valid_cmd(char *cmd)
 int main(int argc, char **argv)
 {
 	struct sockaddr_un addr = {};
-	char buf[100], cmd[200];
+	char cmd[200];
 	int opt, fd,rc;
 
 	*cmd = 0;
