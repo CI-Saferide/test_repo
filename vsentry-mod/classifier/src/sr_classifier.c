@@ -10,6 +10,9 @@
 #include "sr_cls_housekeeping.h"
 #include "sr_cls_conn_obj.h"
 #include "sr_control.h"
+#ifdef UNIT_TEST
+#include "sr_cls_test.h"
+#endif
 
 static cls_file_mem_optimization_t dparent_flag = CLS_FILE_MEM_OPT_ALL_FILES;
 
@@ -26,6 +29,10 @@ SR_32 sr_classifier_init(void)
 	sr_cls_sk_process_hash_init();
 	sr_conn_obj_init();
 	sr_cls_housekeeping_init();
+
+#ifdef UNIT_TEST
+	sr_cls_test_runall();
+#endif
 
 	return 0;
 }
