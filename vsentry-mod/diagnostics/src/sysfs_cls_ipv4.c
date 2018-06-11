@@ -329,6 +329,11 @@ static size_t rn_printtree(struct radix_head *h, char __user *user_buf, size_t c
 		}
 		buf_list_head->next = NULL;
 
+		// tree title
+		used_count = sal_sprintf(buf_list_head->buf,
+					"n: node pointer, p: parent pointer, bm: bit mask, o: byte offset, l: left pointer, r: right pointer\n"
+					"---------------------------------------------------------------------------------------------------\n");
+
 		// prepare print tree in knodes
 		temp = buf_list_head;
 		rt = rn_printnode(h->rnh_treetop, level, &temp, count, &used_count);
