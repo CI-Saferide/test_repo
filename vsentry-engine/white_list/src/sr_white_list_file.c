@@ -52,6 +52,9 @@ static char *get_file_to_learn(char *file, char *new_file, dev_type_t dev_type)
 		case DEV_TYPE_SYS:
 			sprintf(new_file, "/sys%s", file);
 			return new_file;
+		case DEV_TYPE_DEV:
+			sprintf(new_file, "/dev%s", file);
+			return new_file;
 		default:
 			break;
 	}
@@ -95,7 +98,7 @@ SR_32 sr_white_list_file_open(struct sr_ec_file_open_t *file_open_info)
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 				"%s=Invalid file :%s ",REASON, file_open_info->file);
 #endif
-		// TODO check why kernel provides invalid paths
+		printf("=====Invalid file name :%s \n", file_open_info->file);
 		return SR_SUCCESS;
 	}
 
