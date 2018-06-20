@@ -1,6 +1,7 @@
 EXTRA_CFLAGS += -I$(TOP_DIR)/sal/platform/linux/lsm/include 
 EXTRA_CFLAGS += -I$(TOP_DIR)/multiplexer/include
 EXTRA_CFLAGS += -I$(TOP_DIR)/classifier/include
+EXTRA_CFLAGS += -I$(TOP_DIR)/classifier/test/include
 EXTRA_CFLAGS += -I$(TOP_DIR)/diagnostics/include
 EXTRA_CFLAGS += -I$(TOP_DIR)/event_collector/include
 EXTRA_CFLAGS += -I$(TOP_DIR)/sal/include
@@ -60,6 +61,7 @@ $(TARGET)-objs := sal/platform/linux/src/module_init.o \
 				  classifier/src/sr_cls_canid.o \
 				  classifier/src/sr_cls_sk_process.o \
 				  classifier/src/sr_cls_housekeeping.o \
+				  classifier/test/src/sr_cls_test.o \
 				  diagnostics/src/cls_helper.o \
 				  diagnostics/src/debugfs_cls_can.o \
 				  diagnostics/src/debugfs_cls_file.o \
