@@ -64,6 +64,7 @@ void sr_cls_canid_uninit(void)
 						curr->key,SR_CAN_OUT);
 					sal_memset(&rules, 0, sizeof(rules));
 					sal_or_self_op_arrays(&rules, &curr->rules);
+					//shay - artur do we need this while loop?
 					while ((rule = sal_ffs_and_clear_array(&rules)) != -1) {
 						CEF_log_event(SR_CEF_CID_CAN, "info", SEVERITY_LOW,
 								"%s=rule %d",MESSAGE,
@@ -101,6 +102,7 @@ void sr_cls_canid_uninit(void)
 						curr->key,SR_CAN_IN);
 					sal_memset(&rules, 0, sizeof(rules));
 					sal_or_self_op_arrays(&rules, &curr->rules);
+					//shay - artur do we need this while loop?
 					while ((rule = sal_ffs_and_clear_array(&rules)) != -1) {
 						CEF_log_event(SR_CEF_CID_CAN, "info", SEVERITY_LOW,
 								"%s=rule %d",MESSAGE,
