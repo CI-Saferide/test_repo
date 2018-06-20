@@ -187,20 +187,24 @@ int debugfs_init(void){
 
 	root = debugfs_create_dir("vsentry", NULL);
 	if (!root) {
-		pr_err("%s failed to create vsentry directory\n",__func__);
+		sal_kernel_print_err("%s failed to create vsentry directory\n",__func__);
 		return -ENXIO;
 	}
 	if (!debugfs_create_file("cls_ipv4", 0644, root, NULL, &ipv4_ops)) {
-		pr_warn("%s failed to create cls_ipv4\n",__func__);
+		sal_kernel_print_err("%s failed to create cls_ipv4\n",__func__);
+		return -ENXIO;
 	}
 	if (!debugfs_create_file("cls_can", 0644, root, NULL, &can_ops)) {
-		pr_warn("%s failed to create cls_can\n",__func__);
+		sal_kernel_print_err("%s failed to create cls_can\n",__func__);
+		return -ENXIO;
 	}
 	if (!debugfs_create_file("cls_file", 0644, root, NULL, &file_ops)) {
-		pr_warn("%s failed to create cls_file\n",__func__);
+		sal_kernel_print_err("%s failed to create cls_file\n",__func__);
+		return -ENXIO;
 	}
 	if (!debugfs_create_file("state", 0644, root, NULL, &state_ops)) {
-		pr_warn("%s failed to create state\n",__func__);
+		sal_kernel_print_err("%s failed to create state\n",__func__);
+		return -ENXIO;
 	}
 
 	return 0;
