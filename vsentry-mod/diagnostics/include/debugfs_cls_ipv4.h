@@ -16,7 +16,7 @@ size_t dump_ipv4_ip(SR_32 ip, char __user *user_buf, size_t count, loff_t *ppos)
 
 struct debugfs_network_ent_t
 {
-	SR_8 actionstring[16],uid_buff[16],inode_buff[16];
+	SR_8 actionstring[32],uid_buff[32],inode_buff[16];
 	SR_U16 uid,action;
 	SR_U32 rule,inode;
 	SR_8 src_ipv4[16],dst_ipv4[16],proto[16],binary[SR_MAX_PATH];
