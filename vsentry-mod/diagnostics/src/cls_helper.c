@@ -21,7 +21,7 @@ size_t write_to_user(char __user *user_buf, size_t count, loff_t *ppos, size_t l
 
 	*ppos = 0; // always read from start of buf
 	if (*used_count + len > count) {
-		pr_debug("%s not enough space in user. call again\n",__func__);
+		sal_kernel_print_info("%s not enough space in user. call again\n",__func__);
 		/* return used_count to update the amount written so far
 		 * the func will be called again to write the rest
 		 * pos is 0 so it will continue */
