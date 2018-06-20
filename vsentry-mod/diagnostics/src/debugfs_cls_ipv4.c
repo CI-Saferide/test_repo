@@ -411,7 +411,7 @@ int walktree_debugfs_print_rule(struct radix_node *node, void *data)
 			debugfs_network[rule].s_port = get_port_for_rule(rule, *dir);
 
 			sal_sprintf(debugfs_network[rule].src_ipv4,"%u.%u.%u.%u",
-					(unsigned char)cp[0], (unsigned char)cp[1], (unsigned char)cp[2], (unsigned char)cp[3]);
+					(SR_U8)cp[0], (SR_U8)cp[1], (SR_U8)cp[2], (SR_U8)cp[3]);
 
 		} else { // DST
 
@@ -423,7 +423,7 @@ int walktree_debugfs_print_rule(struct radix_node *node, void *data)
 			debugfs_network[rule].d_port = get_port_for_rule(rule, *dir);
 			debugfs_network[rule].dst_netmask_len = abs(node->rn_bit + 33);
 			sal_sprintf(debugfs_network[rule].dst_ipv4,"%u.%u.%u.%u",
-					(unsigned char)cp[0], (unsigned char)cp[1], (unsigned char)cp[2], (unsigned char)cp[3]);
+					(SR_U8)cp[0], (SR_U8)cp[1], (SR_U8)cp[2], (SR_U8)cp[3]);
 		}
 
 		sal_sprintf(debugfs_network[rule].proto,"%s","N/A");
@@ -500,7 +500,7 @@ static size_t sr_cls_find_ipv4_print(SR_U32 addr, SR_8 dir, char __user *user_bu
 	memset(&matched_rules, 0, sizeof(matched_rules));
 	ip = SR_ZALLOC(sizeof(struct sockaddr_in));
 	if (!ip) {
-		pr_warn("%s failed to allocate memory\n",__func__);
+		sal_kernel_print_warning("%s failed to allocate memory\n",__func__);
 		return 0;
 	}
 	ip->sin_family = AF_INET;
