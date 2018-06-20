@@ -1,3 +1,5 @@
+#ifdef UNIT_TEST
+
 #include "dispatcher.h"
 #include "sal_module.h"
 #include "sal_bitops.h"
@@ -7,8 +9,6 @@
 #include "sr_cls_network_common.h"
 #include "sr_cls_test.h"
 #include "sr_radix.h"
-
-#ifdef UNIT_TEST
 
 static SR_32 sr_cls_find_ipv4_verify(SR_U32 addr, SR_8 dir, SR_16 *rules, SR_U32 rules_num)
 {
