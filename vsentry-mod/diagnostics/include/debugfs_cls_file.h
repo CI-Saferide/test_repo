@@ -14,7 +14,7 @@ size_t dump_file_rule(SR_16 rule,char __user *user_buf, size_t count, loff_t *pp
 
 struct debugfs_file_ent_t
 {
-	SR_8 actionstring[16],uid_buff[16],inode_buff[16],inode_exe_buff[16];
+	SR_8 actionstring[32],uid_buff[32],inode_buff[16],inode_exe_buff[16];
 	SR_U16 rule,uid,action,file_ops;
 	SR_U32 inode,inode_exe;
 	SR_8 perm_string[4];
