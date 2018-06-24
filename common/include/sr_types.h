@@ -29,6 +29,7 @@ typedef enum dev_type {
         DEV_TYPE_PROC,
         DEV_TYPE_SYS,
         DEV_TYPE_DEV,
+        DEV_TYPE_TMP,
 } dev_type_t;
 
 #endif /*__SR_TYPES__ */

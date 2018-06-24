@@ -681,21 +681,16 @@ SR_32 vsentry_file_open(struct file *file, const struct cred *cred)
 					disp.fileinfo.id.uid);
 #endif /* DEBUG_EVENT_MEDIATOR */
 
+	disp.fileinfo.dev_type = DEV_TYPE_UNKOWN;
 	if (file->f_path.dentry->d_inode && file->f_path.dentry->d_inode->i_sb) { 
-		switch (file->f_path.dentry->d_inode->i_sb->s_dev) {
-			case 4:
+		if (!strcmp(file->f_path.dentry->d_inode->i_sb->s_id, "proc"))
 				disp.fileinfo.dev_type = DEV_TYPE_PROC;
-				break;
-			case 6:
+		else if(!strcmp(file->f_path.dentry->d_inode->i_sb->s_id, "devtmpfs"))
 				disp.fileinfo.dev_type = DEV_TYPE_DEV;
-				break;
-			case 19:
+		else if(!strcmp(file->f_path.dentry->d_inode->i_sb->s_id, "sysfs"))
 				disp.fileinfo.dev_type = DEV_TYPE_SYS;
-				break;
-			default:
-				disp.fileinfo.dev_type = DEV_TYPE_UNKOWN;
-				break;
-		}
+		else if(!strcmp(file->f_path.dentry->d_inode->i_sb->s_id, "tmpfs"))
+				disp.fileinfo.dev_type = DEV_TYPE_TMP;
 	}
 
 	/* call dispatcher */
