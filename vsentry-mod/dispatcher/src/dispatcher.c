@@ -161,7 +161,6 @@ SR_32 disp_file_open_report(disp_info_t* info)
 	strncpy(file_open_data.mount, info->fileinfo.mount_point, SR_MAX_MOUNT_SIZE); 
 	file_open_data.pid = info->fileinfo.id.pid; 
 	file_open_data.fileop = info->fileinfo.fileop;
-	file_open_data.dev_type = info->fileinfo.dev_type;
 	sr_ec_send_event(MOD2STAT_BUF, SR_EVENT_STATS_FILE_OPEN, &file_open_data);
 
 	return SR_SUCCESS;
