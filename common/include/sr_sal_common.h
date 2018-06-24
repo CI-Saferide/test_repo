@@ -4,6 +4,7 @@
 #define SR_MAX_LOG  512
 
 #define SR_MAX_PATH_SIZE 256
+#define SR_MAX_MOUNT_SIZE 64
 
 #if defined (__KERNEL__) || defined (__linux)
 #include "sal_linux.h"

@@ -158,6 +158,7 @@ SR_32 disp_file_open_report(disp_info_t* info)
 	struct sr_ec_file_open_t file_open_data;
 
 	strncpy(file_open_data.file, info->fileinfo.fullpath, SR_MAX_PATH_SIZE); 
+	strncpy(file_open_data.mount, info->fileinfo.mount_point, SR_MAX_MOUNT_SIZE); 
 	file_open_data.pid = info->fileinfo.id.pid; 
 	file_open_data.fileop = info->fileinfo.fileop;
 	file_open_data.dev_type = info->fileinfo.dev_type;

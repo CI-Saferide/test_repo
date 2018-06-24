@@ -703,11 +703,19 @@ SR_32 vsentry_file_open(struct file *file, const struct cred *cred)
 
 	if (rc == 0) {
 		if(get_collector_state() == SR_TRUE){		
+			struct path path1;
 			if (get_path(file->f_path.dentry, disp.fileinfo.fullpath, sizeof(disp.fileinfo.fullpath)) != SR_SUCCESS) {
 				CEF_log_event(SR_CEF_CID_SYSTEM, "Error", SEVERITY_HIGH,
 															"File operation denied, file path it to long");
 				return 0;
 			}
+			path1 = file->f_path;
+			if (!dget(file->f_path.dentry))
+				return rc;
+			if (follow_up(&path1))
+				get_path(path1.dentry, disp.fileinfo.mount_point, sizeof(disp.fileinfo.mount_point));
+			else
+				dput(file->f_path.dentry);
 			disp_file_open_report(&disp);
 		}
 	}
