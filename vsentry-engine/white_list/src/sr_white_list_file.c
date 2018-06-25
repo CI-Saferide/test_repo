@@ -23,14 +23,17 @@ typedef struct wl_learn_file_item {
 } wl_learn_file_item_t;
 
 #define CHECK_DIR(dir_name) \
-	if (!memcmp(file, dir_name, strlen(dir_name))) { \
+	if (!memcmp(new_file, dir_name, strlen(dir_name))) { \
 		strcpy(new_file, dir_name); \
 		return new_file; \
 	}
 
-static char *get_file_to_learn(char *file, char *new_file, dev_type_t dev_type)
+static char *get_file_to_learn(char *file, char *mount, char *new_file)
 {
 	char *p, *help;
+
+	sprintf(new_file, "%s%s", strlen(mount) > 1 ? mount : "", file);
+
 	CHECK_DIR("/tmp")
 	CHECK_DIR("/var/spool")
 	CHECK_DIR("/var/cache")
@@ -39,27 +42,15 @@ static char *get_file_to_learn(char *file, char *new_file, dev_type_t dev_type)
 	if (home_dir)
 		CHECK_DIR(home_dir)
 
-	switch (dev_type) {
-		case DEV_TYPE_PROC:
-			help = strdup(file);
-			p = strtok(help, "/");
-			if (p && sal_is_string_numeric(p))
-				strcpy(new_file, "/proc");
-			else
-				sprintf(new_file, "/proc%s", file);
-			free(help);
-			return new_file;
-		case DEV_TYPE_SYS:
-			sprintf(new_file, "/sys%s", file);
-			return new_file;
-		case DEV_TYPE_DEV:
-			sprintf(new_file, "/dev%s", file);
-			return new_file;
-		default:
-			break;
+	if (!strcmp(mount, "/proc")) {
+		help = strdup(file);
+		p = strtok(help, "/");
+		if (p && sal_is_string_numeric(p))
+			strcpy(new_file, "/proc");
+		free(help);
 	}
 
-	return file;
+	return new_file;
 }
 
 SR_32 sr_white_list_file_init(void)
@@ -103,7 +94,7 @@ SR_32 sr_white_list_file_open(struct sr_ec_file_open_t *file_open_info)
 	}
 
 	// The file to learn might be changed.
-	file_to_learn = get_file_to_learn(file_open_info->file, new_file, file_open_info->dev_type);
+	file_to_learn = get_file_to_learn(file_open_info->file, file_open_info->mount, new_file);
 	if (!(white_list_item = sr_white_list_hash_get(exec))) {
 		if (sr_white_list_hash_insert(exec, &white_list_item) != SR_SUCCESS) {
 			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,

@@ -681,21 +681,16 @@ SR_32 vsentry_file_open(struct file *file, const struct cred *cred)
 					disp.fileinfo.id.uid);
 #endif /* DEBUG_EVENT_MEDIATOR */
 
+	disp.fileinfo.dev_type = DEV_TYPE_UNKOWN;
 	if (file->f_path.dentry->d_inode && file->f_path.dentry->d_inode->i_sb) { 
-		switch (file->f_path.dentry->d_inode->i_sb->s_dev) {
-			case 4:
+		if (!strcmp(file->f_path.dentry->d_inode->i_sb->s_id, "proc"))
 				disp.fileinfo.dev_type = DEV_TYPE_PROC;
-				break;
-			case 6:
+		else if(!strcmp(file->f_path.dentry->d_inode->i_sb->s_id, "devtmpfs"))
 				disp.fileinfo.dev_type = DEV_TYPE_DEV;
-				break;
-			case 19:
+		else if(!strcmp(file->f_path.dentry->d_inode->i_sb->s_id, "sysfs"))
 				disp.fileinfo.dev_type = DEV_TYPE_SYS;
-				break;
-			default:
-				disp.fileinfo.dev_type = DEV_TYPE_UNKOWN;
-				break;
-		}
+		else if(!strcmp(file->f_path.dentry->d_inode->i_sb->s_id, "tmpfs"))
+				disp.fileinfo.dev_type = DEV_TYPE_TMP;
 	}
 
 	/* call dispatcher */
@@ -703,11 +698,22 @@ SR_32 vsentry_file_open(struct file *file, const struct cred *cred)
 
 	if (rc == 0) {
 		if(get_collector_state() == SR_TRUE){		
+			struct path path1;
 			if (get_path(file->f_path.dentry, disp.fileinfo.fullpath, sizeof(disp.fileinfo.fullpath)) != SR_SUCCESS) {
 				CEF_log_event(SR_CEF_CID_SYSTEM, "Error", SEVERITY_HIGH,
 															"File operation denied, file path it to long");
 				return 0;
 			}
+			path1 = file->f_path;
+			/* inc reference counter */
+			if (unlikely(!dget(file->f_path.dentry)))
+				return rc;
+			if (follow_up(&path1))
+				/* if foolow_up succeed, it dec the reference counter */
+				get_path(path1.dentry, disp.fileinfo.mount_point, sizeof(disp.fileinfo.mount_point));
+			else
+				/* dec the reference counter */
+				dput(file->f_path.dentry);
 			disp_file_open_report(&disp);
 		}
 	}
