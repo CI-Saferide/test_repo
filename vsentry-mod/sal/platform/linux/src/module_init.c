@@ -9,8 +9,8 @@
 #include <linux/utsname.h>
 #include <linux/kthread.h>
 
-#ifdef SYSFS_SUPPORT
-#include "sysfs_support.h"
+#ifdef DEBUGFS_SUPPORT
+#include "debugfs_support.h"
 #endif
 #include "sr_lsm_hooks.h"
 #include "sal_linux.h"
@@ -343,10 +343,10 @@ static int __init vsentry_init(void)
 
 	sr_netfilter_init();
 	
-#ifdef SYSFS_SUPPORT
-	rc = sysfs_init();
+#ifdef DEBUGFS_SUPPORT
+	rc = debugfs_init();
 		if (rc) {
-		pr_debug("Cannot create sysfs 'vsentry'!\n");
+		pr_debug("Cannot create debugfs 'vsentry'!\n");
 		return rc;
 	}
 #endif	
@@ -389,8 +389,8 @@ static void __exit vsentry_cleanup(void)
 
 	cdev_del(cdev_p);
 	unregister_chrdev_region(vsentry_dev, 1);
-#ifdef SYSFS_SUPPORT
-	sysfs_deinit();
+#ifdef DEBUGFS_SUPPORT
+	debugfs_deinit();
 #endif
 	pr_info("[%s]: module released!\n", MODULE_NAME);
 }

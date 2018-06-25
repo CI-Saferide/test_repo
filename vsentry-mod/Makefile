@@ -1,6 +1,7 @@
 EXTRA_CFLAGS += -I$(TOP_DIR)/sal/platform/linux/lsm/include 
 EXTRA_CFLAGS += -I$(TOP_DIR)/multiplexer/include
 EXTRA_CFLAGS += -I$(TOP_DIR)/classifier/include
+EXTRA_CFLAGS += -I$(TOP_DIR)/classifier/test/include
 EXTRA_CFLAGS += -I$(TOP_DIR)/diagnostics/include
 EXTRA_CFLAGS += -I$(TOP_DIR)/event_collector/include
 EXTRA_CFLAGS += -I$(TOP_DIR)/sal/include
@@ -20,7 +21,7 @@ EXTRA_CFLAGS += -I$(TOP_DIR)/ml/include
 #EXTRA_CFLAGS += -DUNIT_TEST
 EXTRA_CFLAGS += -DCONFIG_CAN_ML
 EXTRA_CFLAGS += -D_KERNEL
-EXTRA_CFLAGS += -DSYSFS_SUPPORT
+EXTRA_CFLAGS += -DDEBUGFS_SUPPORT
 #EXTRA_CFLAGS += -DROOT_CLS_IGNORE
 EXTRA_CFLAGS += -DRL_SUPPORT
 #debug flags
@@ -39,7 +40,7 @@ ifneq ($(KERNELRELEASE),)
 TARGET = vsentry
 obj-m += $(TARGET).o 
 $(TARGET)-objs := sal/platform/linux/src/module_init.o \
-				  sal/platform/linux/src/sysfs_support.o \
+				  sal/platform/linux/src/debugfs_support.o \
 				  sal/platform/linux/lsm/src/sr_lsm_hooks.o \
 				  sal/platform/linux/src/event_mediator.o \
 				  sal/platform/linux/src/sal_linux_mng.o \
@@ -60,10 +61,11 @@ $(TARGET)-objs := sal/platform/linux/src/module_init.o \
 				  classifier/src/sr_cls_canid.o \
 				  classifier/src/sr_cls_sk_process.o \
 				  classifier/src/sr_cls_housekeeping.o \
+				  classifier/test/src/sr_cls_test.o \
 				  diagnostics/src/cls_helper.o \
-				  diagnostics/src/sysfs_cls_can.o \
-				  diagnostics/src/sysfs_cls_file.o \
-				  diagnostics/src/sysfs_cls_ipv4.o \
+				  diagnostics/src/debugfs_cls_can.o \
+				  diagnostics/src/debugfs_cls_file.o \
+				  diagnostics/src/debugfs_cls_ipv4.o \
 				  stat_analysis/src/sr_special_hash.o \
 				  stat_analysis/src/sr_stat_connection.o \
 				  stat_analysis/src/sr_stat_analysis.o \

@@ -53,7 +53,7 @@ typedef union {
 		SR_8		fileop;
 		SR_U8 		filename[SR_MAX_PATH_SIZE];
 		SR_U8 		fullpath[SR_MAX_PATH_SIZE];
-		SR_U8 		old_path[SR_MAX_PATH_SIZE];
+		SR_U8 		mount_point[SR_MAX_MOUNT_SIZE];
 		void 		*parent_info; // for holding the adress of the parent dir (dentry struct in unix for example)
 		SR_U32		parent_directory_inode;
 		dev_type_t  dev_type;

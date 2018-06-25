@@ -47,6 +47,8 @@ void sr_cls_canid_uninit(void)
 { 
 	SR_32 i;
 	struct sr_hash_ent_t *curr, *next;
+	bit_array rules;
+	SR_16 rule;
 	
 	if (sr_cls_out_canid_table != NULL) {
 		CEF_log_debug(SR_CEF_CID_CAN, "info", SEVERITY_LOW,
@@ -60,7 +62,14 @@ void sr_cls_canid_uninit(void)
 					CEF_log_debug(SR_CEF_CID_CAN, "info", SEVERITY_LOW,
 						"%s=CAN MsgID: %x dir: %d",MESSAGE,
 						curr->key,SR_CAN_OUT);
-					sr_cls_print_canid_rules(curr->key,SR_CAN_OUT);
+					sal_memset(&rules, 0, sizeof(rules));
+					sal_or_self_op_arrays(&rules, &curr->rules);
+					//shay - artur do we need this while loop?
+					while ((rule = sal_ffs_and_clear_array(&rules)) != -1) {
+						CEF_log_event(SR_CEF_CID_CAN, "info", SEVERITY_LOW,
+								"%s=rule %d",MESSAGE,
+								rule);
+					}
 					next = curr->next;
 					SR_FREE(curr);
 					curr= next;
@@ -91,7 +100,14 @@ void sr_cls_canid_uninit(void)
 					CEF_log_debug(SR_CEF_CID_CAN, "info", SEVERITY_LOW,
 						"%s=CAN MsgID=%x dir=%d",MESSAGE,
 						curr->key,SR_CAN_IN);
-					sr_cls_print_canid_rules(curr->key,SR_CAN_IN);
+					sal_memset(&rules, 0, sizeof(rules));
+					sal_or_self_op_arrays(&rules, &curr->rules);
+					//shay - artur do we need this while loop?
+					while ((rule = sal_ffs_and_clear_array(&rules)) != -1) {
+						CEF_log_event(SR_CEF_CID_CAN, "info", SEVERITY_LOW,
+								"%s=rule %d",MESSAGE,
+								rule);
+					}
 					next = curr->next;
 					SR_FREE(curr);
 					curr= next;
@@ -240,29 +256,6 @@ struct sr_hash_ent_t *sr_cls_canid_find(SR_32 canid, SR_8 dir)
 	return ent;
 }
 
-void sr_cls_print_canid_rules(SR_32 canid, SR_8 dir)
-{
-	struct sr_hash_ent_t *ent=sr_hash_lookup((dir==SR_CAN_OUT)?sr_cls_out_canid_table:sr_cls_in_canid_table, canid);
-	bit_array rules;
-	SR_16 rule;
-
-	sal_memset(&rules, 0, sizeof(rules));
-
-	if (!ent) {
-		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-			"%s=%x CAN MsgID rule not found",REASON,
-			canid);
-		return;
-	}
-	sal_or_self_op_arrays(&rules, &ent->rules);
-	while ((rule = sal_ffs_and_clear_array (&rules)) != -1) {
-		CEF_log_event(SR_CEF_CID_CAN, "info", SEVERITY_LOW,
-		"%s=rule %d",MESSAGE,
-		rule);
-	}
-	
-}
-
 bit_array *sr_cls_match_canid(SR_32 canid, SR_8 dir)
 {
 	
@@ -283,9 +276,18 @@ SR_8 sr_cls_canid_msg_dispatch(struct sr_cls_canbus_msg *msg)
 				"%s=Delete %s=%d %s=%x %s=%d",MESSAGE,
 				RULE_NUM_KEY,msg->rulenum, 
 				CAN_MSG_ID,msg->canid, 
-				DEVICE_DIRECTION,(msg->dir==SR_CAN_OUT)? SR_CAN_OUT : SR_CAN_IN);
-			if ((st =  sr_cls_canid_del_rule(msg->canid, msg->rulenum,msg->dir)) != SR_SUCCESS)
-			   return st;
+				DEVICE_DIRECTION,(msg->dir==SR_CAN_OUT)? SR_CAN_OUT : ((msg->dir==SR_CAN_IN)? SR_CAN_IN : SR_CAN_BOTH));
+			if (msg->dir==SR_CAN_BOTH) {
+				// del IN
+				if ((st =  sr_cls_canid_del_rule(msg->canid, msg->rulenum, SR_CAN_IN)) != SR_SUCCESS)
+					return st;
+				// del OUT
+				if ((st =  sr_cls_canid_del_rule(msg->canid, msg->rulenum, SR_CAN_OUT)) != SR_SUCCESS)
+					return st;
+			} else { // IN/OUT
+				if ((st =  sr_cls_canid_del_rule(msg->canid, msg->rulenum, msg->dir)) != SR_SUCCESS)
+					return st;
+			}
 			if ((st = sr_cls_exec_inode_del_rule(SR_CAN_RULES, msg->exec_inode, msg->rulenum)) != SR_SUCCESS)
 			   return st;
 			return sr_cls_uid_del_rule(SR_CAN_RULES, msg->uid, msg->rulenum);
@@ -295,11 +297,20 @@ SR_8 sr_cls_canid_msg_dispatch(struct sr_cls_canbus_msg *msg)
 				RULE_NUM_KEY,msg->rulenum, 
 				DEVICE_UID,msg->uid, 
 				CAN_MSG_ID,msg->canid, 
-				DEVICE_DIRECTION,(msg->dir==SR_CAN_OUT)? SR_CAN_OUT : SR_CAN_IN);
-			if ((st = sr_cls_canid_add_rule(msg->canid, msg->rulenum,msg->dir)) != SR_SUCCESS)
-			   return st;
+				DEVICE_DIRECTION,(msg->dir==SR_CAN_OUT)? SR_CAN_OUT : ((msg->dir==SR_CAN_IN)? SR_CAN_IN : SR_CAN_BOTH));
+			if (msg->dir==SR_CAN_BOTH) {
+				// add IN
+				if ((st = sr_cls_canid_add_rule(msg->canid, msg->rulenum, SR_CAN_IN)) != SR_SUCCESS)
+					return st;
+				// add OUT
+				if ((st = sr_cls_canid_add_rule(msg->canid, msg->rulenum,SR_CAN_OUT)) != SR_SUCCESS)
+					return st;
+			} else { // IN/OUT
+				if ((st = sr_cls_canid_add_rule(msg->canid, msg->rulenum, msg->dir)) != SR_SUCCESS)
+					return st;
+			}
 			if ((st =  sr_cls_exec_inode_add_rule(SR_CAN_RULES, msg->exec_inode, msg->rulenum)) != SR_SUCCESS)
-			   return st;
+				return st;
 			return sr_cls_uid_add_rule(SR_CAN_RULES, msg->uid, msg->rulenum);
 			break;
 		default:

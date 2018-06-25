@@ -23,14 +23,17 @@ typedef struct wl_learn_file_item {
 } wl_learn_file_item_t;
 
 #define CHECK_DIR(dir_name) \
-	if (!memcmp(file, dir_name, strlen(dir_name))) { \
+	if (!memcmp(new_file, dir_name, strlen(dir_name))) { \
 		strcpy(new_file, dir_name); \
 		return new_file; \
 	}
 
-static char *get_file_to_learn(char *file, char *new_file, dev_type_t dev_type)
+static char *get_file_to_learn(char *file, char *mount, char *new_file)
 {
 	char *p, *help;
+
+	sprintf(new_file, "%s%s", strlen(mount) > 1 ? mount : "", file);
+
 	CHECK_DIR("/tmp")
 	CHECK_DIR("/var/spool")
 	CHECK_DIR("/var/cache")
@@ -39,24 +42,15 @@ static char *get_file_to_learn(char *file, char *new_file, dev_type_t dev_type)
 	if (home_dir)
 		CHECK_DIR(home_dir)
 
-	switch (dev_type) {
-		case DEV_TYPE_PROC:
-			help = strdup(file);
-			p = strtok(help, "/");
-			if (p && sal_is_string_numeric(p))
-				strcpy(new_file, "/proc");
-			else
-				sprintf(new_file, "/proc%s", file);
-			free(help);
-			return new_file;
-		case DEV_TYPE_SYS:
-			sprintf(new_file, "/sys%s", file);
-			return new_file;
-		default:
-			break;
+	if (!strcmp(mount, "/proc")) {
+		help = strdup(file);
+		p = strtok(help, "/");
+		if (p && sal_is_string_numeric(p))
+			strcpy(new_file, "/proc");
+		free(help);
 	}
 
-	return file;
+	return new_file;
 }
 
 SR_32 sr_white_list_file_init(void)
@@ -91,13 +85,16 @@ SR_32 sr_white_list_file_open(struct sr_ec_file_open_t *file_open_info)
                 strcpy(exec, "*");
 
 	if (!sal_is_valid_file_name(file_open_info->file)) {
+#if 0
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 				"%s=Invalid file :%s ",REASON, file_open_info->file);
-		return SR_ERROR;
+#endif
+		printf("=====Invalid file name :%s \n", file_open_info->file);
+		return SR_SUCCESS;
 	}
 
 	// The file to learn might be changed.
-	file_to_learn = get_file_to_learn(file_open_info->file, new_file, file_open_info->dev_type);
+	file_to_learn = get_file_to_learn(file_open_info->file, file_open_info->mount, new_file);
 	if (!(white_list_item = sr_white_list_hash_get(exec))) {
 		if (sr_white_list_hash_insert(exec, &white_list_item) != SR_SUCCESS) {
 			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
@@ -129,7 +126,7 @@ void sr_white_list_file_print(sr_white_list_file_t *white_list_file)
 
 	for (iter = white_list_file; iter; iter = iter->next) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "info", SEVERITY_LOW,
-                	        "%s= file:%s file op:%s ",REASON,  iter->file, iter->fileop);
+                	        "%s=file learnt : file:%s file op:%x ", MESSAGE,  iter->file, iter->fileop);
 		printf("  file:%s: fileop:%x \n", iter->file, iter->fileop);
 	}
 	
@@ -335,18 +332,20 @@ SR_32 sr_white_list_file_apply(SR_BOOL is_apply)
 			"%s=wl file:fail to get mem optimizer",REASON);
 		return SR_ERROR;
 	}
+	CEF_log_event(SR_CEF_CID_SYSTEM, "info", SEVERITY_LOW,
+			"%s=memory optimization calculated :%s", MESSAGE, mem_opt == CLS_FILE_MEM_OPT_ALL_FILES ? "All files" : "Only directory");
 	sr_cls_file_control_set_mem_opt(mem_opt);
 	snprintf(str_mem_opt, sizeof(str_mem_opt), "%d", mem_opt);
 	if (sr_engine_write_conf("FILE_CLS_MEM_OPTIMIZE", str_mem_opt) != SR_SUCCESS) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-			"%s failed writing the vsentry conf file", REASON);
+			"%s=failed writing the vsentry conf file", REASON);
 		return SR_ERROR;
 	}
 
 	// Send the memory optimization value to the Kernel
 	if (sr_control_set_mem_opt(mem_opt) != SR_SUCCESS) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-			"%s Failed to set memory optimization flag to Kernel", REASON);
+			"%s=failed to set memory optimization flag to Kernel", REASON);
 		return SR_ERROR;
 	}
 

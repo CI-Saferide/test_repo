@@ -79,7 +79,7 @@ static SR_8 get_path(struct dentry *dentry, SR_8 *buffer, SR_32 len)
 	SR_8 path[SR_MAX_PATH_SIZE], *path_ptr;
 	
 	path_ptr = dentry_path_raw(dentry, path, SR_MAX_PATH_SIZE);
-	if (IS_ERR(path))
+	if (IS_ERR(path_ptr))
 		return SR_ERROR;
 
 	if (strlen(path_ptr) > SR_MAX_PATH_SIZE) { 
@@ -618,8 +618,8 @@ SR_32 vsentry_inode_create(struct inode *dir, struct dentry *dentry, umode_t mod
 	rc = disp_inode_create(&disp);
 	if (rc == 0) {
 		if (get_path(dentry, disp.fileinfo.fullpath, sizeof(disp.fileinfo.fullpath)) != SR_SUCCESS) {
-			CEF_log_event(SR_CEF_CID_SYSTEM, "Error" , SEVERITY_HIGH, "File operation denied, file path it to long");
-			return -EACCES;
+			CEF_log_event(SR_CEF_CID_SYSTEM, "Error" , SEVERITY_HIGH, "get path failed, file path it to long");
+			return 0;
 		}
 		if (!sr_cls_filter_path_is_match(disp.fileinfo.fullpath) && disp_file_created(&disp) != SR_SUCCESS) {
 			CEF_log_event(SR_CEF_CID_SYSTEM, "Error" , SEVERITY_HIGH, 
@@ -681,18 +681,16 @@ SR_32 vsentry_file_open(struct file *file, const struct cred *cred)
 					disp.fileinfo.id.uid);
 #endif /* DEBUG_EVENT_MEDIATOR */
 
+	disp.fileinfo.dev_type = DEV_TYPE_UNKOWN;
 	if (file->f_path.dentry->d_inode && file->f_path.dentry->d_inode->i_sb) { 
-		switch (file->f_path.dentry->d_inode->i_sb->s_dev) {
-			case 4:
+		if (!strcmp(file->f_path.dentry->d_inode->i_sb->s_id, "proc"))
 				disp.fileinfo.dev_type = DEV_TYPE_PROC;
-				break;
-			case 19:
+		else if(!strcmp(file->f_path.dentry->d_inode->i_sb->s_id, "devtmpfs"))
+				disp.fileinfo.dev_type = DEV_TYPE_DEV;
+		else if(!strcmp(file->f_path.dentry->d_inode->i_sb->s_id, "sysfs"))
 				disp.fileinfo.dev_type = DEV_TYPE_SYS;
-				break;
-			default:
-				disp.fileinfo.dev_type = DEV_TYPE_UNKOWN;
-				break;
-		}
+		else if(!strcmp(file->f_path.dentry->d_inode->i_sb->s_id, "tmpfs"))
+				disp.fileinfo.dev_type = DEV_TYPE_TMP;
 	}
 
 	/* call dispatcher */
@@ -700,11 +698,22 @@ SR_32 vsentry_file_open(struct file *file, const struct cred *cred)
 
 	if (rc == 0) {
 		if(get_collector_state() == SR_TRUE){		
+			struct path path1;
 			if (get_path(file->f_path.dentry, disp.fileinfo.fullpath, sizeof(disp.fileinfo.fullpath)) != SR_SUCCESS) {
 				CEF_log_event(SR_CEF_CID_SYSTEM, "Error", SEVERITY_HIGH,
 															"File operation denied, file path it to long");
 				return 0;
 			}
+			path1 = file->f_path;
+			/* inc reference counter */
+			if (unlikely(!dget(file->f_path.dentry)))
+				return rc;
+			if (follow_up(&path1))
+				/* if foolow_up succeed, it dec the reference counter */
+				get_path(path1.dentry, disp.fileinfo.mount_point, sizeof(disp.fileinfo.mount_point));
+			else
+				/* dec the reference counter */
+				dput(file->f_path.dentry);
 			disp_file_open_report(&disp);
 		}
 	}
@@ -1032,6 +1041,12 @@ int vsentry_socket_sock_rcv_skb(struct sock *sk, struct sk_buff *skb)
 			disp.can_info.msg_id = (SR_U32)cfd->can_id;
 			disp.can_info.payload_len = cfd->len;
 			disp.can_info.dir = SR_CAN_IN;
+
+			if (sk->sk_security)
+				disp.can_info.id.pid = *(int*)(sk->sk_security);
+			else
+				disp.can_info.id.pid  = 0;
+
 			for (i = 0; i < cfd->len; i++) {
 				disp.can_info.payload[i] = cfd->data[i];
 			}
@@ -1066,6 +1081,12 @@ int vsentry_socket_recvmsg(struct socket *sock,struct msghdr *msg,int size,int f
 	}
 
 	switch (family) {
+		case AF_CAN:
+			sock->sk->sk_security = kmalloc(sizeof(int), GFP_KERNEL);
+			if (sock->sk->sk_security) {
+				*(int*)sock->sk->sk_security = (int)current->pid;
+			}
+
 		case AF_INET:
 #ifdef CONFIG_STAT_ANALYSIS
 			if (sock->sk->sk_protocol == IPPROTO_TCP && sock->sk->sk_rcv_saddr && sock->sk->sk_daddr) {

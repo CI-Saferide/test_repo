@@ -17,7 +17,7 @@ struct sr_cls_canbus_msg {
 	sr_canbus_verb_t  msg_type;
 	SR_U32	rulenum;
 	SR_U32  canid;
-	SR_U8   dir; // SR_CAN_IN/SR_CAN_OUT
+	SR_U8   dir; // SR_CAN_IN/ SR_CAN_OUT/ SR_CAN_BOTH
 	SR_U32  exec_inode;
 	SR_32   uid;
 };

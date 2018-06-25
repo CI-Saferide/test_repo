@@ -347,7 +347,7 @@ static int sr_wl_node_printer(struct radix_node *node, void *unused)
 
 	ip=(struct sockaddr_in *)(node->rn_u.rn_leaf.rn_Key);
 	CEF_log_event(SR_CEF_CID_SYSTEM, "info", SEVERITY_LOW,
-					"%s=node: %x",MESSAGE,
+					"%s=Address learnt : %x", MESSAGE,
 					ip->sin_addr.s_addr);
 	printf(" RADIX addr:%x \n", ip->sin_addr.s_addr);
 
@@ -363,7 +363,7 @@ void sr_white_list_ip_print(void)
 {
 	printf("Radix tree:\n");
 	CEF_log_event(SR_CEF_CID_SYSTEM, "info", SEVERITY_LOW,
-					"%s= Radix tree",MESSAGE);
+					"%s=IP addresses learnt:",MESSAGE);
 	sr_wl_conngraph_print_tree();
 	printf("\nBinary hash:\n");
 	sr_wl_ip_binary_print();
