@@ -4,6 +4,7 @@
 typedef struct {
 	void* data;
 	SR_BOOL run;
+	void (*pre_stop_cb) (void);
 } sr_task;
 
 sr_task sr_tasks_array[SR_TOTAL_TASKS];
@@ -36,6 +37,8 @@ SR_32 sr_stop_task(sr_task_type task_id)
 		task_names[task_id]);
 	sr_tasks_array[task_id].run = 0;
 
+	if (sr_tasks_array[task_id].pre_stop_cb)
+		sr_tasks_array[task_id].pre_stop_cb();
 	if (sal_task_stop(sr_tasks_array[task_id].data) != SR_SUCCESS) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 			"%s=sal_stop_task: failed to stop task %s", REASON,
@@ -46,6 +49,19 @@ SR_32 sr_stop_task(sr_task_type task_id)
 	CEF_log_event(SR_CEF_CID_SYSTEM, "info", SEVERITY_LOW,
 		"%s=sr_stop_task: task %s stopped",MESSAGE,
 		task_names[task_id]);
+
+	return SR_SUCCESS;
+}
+
+SR_32 sr_task_set_pre_stop_cb(sr_task_type task_id,void (*pre_stop_cb)(void))
+{
+	if (task_id > SR_MAX_TASK) {
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+			"%s=sal_stop_task: invalid task_id %d",REASON, task_id);
+		return SR_ERROR;
+	}
+
+	sr_tasks_array[task_id].pre_stop_cb = pre_stop_cb;
 
 	return SR_SUCCESS;
 }

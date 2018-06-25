@@ -2,9 +2,10 @@
 #include "sr_log.h"
 
 #define SR_MAX_LOG  512
-
 #define SR_MAX_PATH_SIZE 256
 #define SR_MAX_MOUNT_SIZE 64
+
+#define SR_MOD_CMD_SYNC_ENGINE 10
 
 #if defined (__KERNEL__) || defined (__linux)
 #include "sal_linux.h"

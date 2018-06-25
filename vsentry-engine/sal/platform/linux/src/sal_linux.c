@@ -2,6 +2,7 @@
 #include "sal_linux.h"
 #include "sr_tasks.h"
 #include "engine_sal.h"
+#include "signal.h"
 #include <syslog.h>
 
 #define SAFERIDE_PREFIX "saferide"
@@ -26,6 +27,11 @@ int sal_get_vsentry_fd(void)
 void sal_vsentry_fd_close(void)
 {
 	close(fd_vsentry);
+}
+
+void sal_vsentry_unlock(void)
+{
+	ioctl(fd_vsentry, SR_MOD_CMD_SYNC_ENGINE);
 }
 
 
@@ -380,4 +386,9 @@ char *sal_get_str_ip_address(SR_U32 ip)
 	inet_ntop(AF_INET, &ip, str_address, INET_ADDRSTRLEN);
 
 	return str_address;
+}
+
+void sal_set_interrupt_cb(void (*cb)(int))
+{
+	signal(SIGINT, cb);
 }
