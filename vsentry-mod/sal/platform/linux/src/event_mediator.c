@@ -705,11 +705,14 @@ SR_32 vsentry_file_open(struct file *file, const struct cred *cred)
 				return 0;
 			}
 			path1 = file->f_path;
-			if (!dget(file->f_path.dentry))
+			/* inc reference counter */
+			if (unlikely(!dget(file->f_path.dentry)))
 				return rc;
 			if (follow_up(&path1))
+				/* if foolow_up succeed, it dec the reference counter */
 				get_path(path1.dentry, disp.fileinfo.mount_point, sizeof(disp.fileinfo.mount_point));
 			else
+				/* dec the reference counter */
 				dput(file->f_path.dentry);
 			disp_file_open_report(&disp);
 		}
