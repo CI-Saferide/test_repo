@@ -284,8 +284,6 @@ void sr_cls_fs_uninit(void)
 		return;
 	sr_hash_free_table(sr_cls_file_table);
 	sr_cls_filter_path_deinit();
-	SR_FREE(sr_cls_file_table->buckets);
-	SR_FREE(sr_cls_file_table);
 	sr_cls_file_table = NULL;
 	
 }
