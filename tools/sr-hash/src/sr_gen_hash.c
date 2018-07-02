@@ -274,8 +274,13 @@ SR_32 sr_gen_hash_cond_delete_all(struct sr_gen_hash *hash, SR_BOOL (*cond_cb)(v
 			*iter = (*iter)->next;
 			if (hash->attrs & SR_GEN_HASH_SLOW_DELETE)
 				add_object_to_free_repos(hash, help);
-			else 
+			else {
+				if (hash->hash_ops.free)
+					hash->hash_ops.free(help->data);
+				else if (help->data)
+					SR_Free(help->data);
 				SR_Free(help);
+			}
 		}
 		if (gen_hash_unlock(&(hash->table[i]), hash->attrs, 0, flags, SR_TRUE) != SR_SUCCESS) {
 			return SR_ERROR;
