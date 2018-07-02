@@ -119,6 +119,7 @@ void sr_stat_analysis_uninit(void)
 	is_run_transmit = SR_FALSE;
 	sal_task_stop(transmit_task);
 	sr_stat_connection_uninit();
+	sr_stat_port_uninit();
 }
 
 #ifdef SR_STS_ANALYSIS_DEBUG
