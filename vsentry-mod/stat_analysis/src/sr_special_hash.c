@@ -151,12 +151,12 @@ static void cleanup_free_repos(sr_special_hash_table_t *table)
 
 void sr_special_hash_free_table(sr_special_hash_table_t *table)
 {
+	cleanup_free_repos(table);
 	sr_special_hash_empty_table(table, SR_FALSE);
 
 	sal_kernel_print_info("Cleaned entire connection table\n");
 	SR_FREE(table->buckets);
 	SR_FREE(table);
-	cleanup_free_repos(table);
 }
 
 SR_32 sr_special_hash_print_table(sr_special_hash_table_t *table)
