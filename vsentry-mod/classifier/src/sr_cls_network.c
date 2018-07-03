@@ -27,6 +27,25 @@ int sr_cls_walker_update_rule(struct radix_node *node, void *rulenum);
 
 static SR_U32 local_ips[MAX_NUM_OF_LOCAL_IPS];
 
+static int sr_cls_walker_delete(struct radix_node *node, void *data)
+{
+	struct radix_node *del_node;
+
+	if (node->rn_bit >= 0 || node->rn_bit == -33)
+		return 0;
+
+	del_node = rn_delete((void*)node->rn_key, (void*)node->rn_mask, data);
+	if (!del_node) {
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+			"%s=failed to del ipv4, node not found!",REASON);
+		return SR_ERROR;
+	}
+	SR_FREE(del_node);
+
+	return 0;
+}
+
+
 SR_32 local_ips_array_init(void)
 {
 	SR_32 count;
@@ -75,10 +94,12 @@ void sr_cls_network_init(void)
 void sr_cls_network_uninit(void)
 {
 	if (sr_cls_src_ipv4) {
+		rn_walktree(sr_cls_src_ipv4, sr_cls_walker_delete, sr_cls_src_ipv4);
 		rn_detachhead((void **)&sr_cls_src_ipv4);
 		sr_cls_src_ipv4 = NULL;
 	}
 	if (sr_cls_dst_ipv4) {
+		rn_walktree(sr_cls_dst_ipv4, sr_cls_walker_delete, sr_cls_dst_ipv4);
 		rn_detachhead((void **)&sr_cls_dst_ipv4);
 		sr_cls_dst_ipv4 = NULL;
 	}
