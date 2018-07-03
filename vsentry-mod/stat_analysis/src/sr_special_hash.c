@@ -139,10 +139,12 @@ static void cleanup_free_repos(sr_special_hash_table_t *table)
 	sr_special_hash_ent_t *object_to_free;
 
 	while (sr_cyclic_array_read(&(table->gc_buffer), (void *)&object_to_free) == SR_SUCCESS) {
-		if (table->ops.free)
-			table->ops.free(object_to_free->data);
-		else
-			SR_KFREE(object_to_free->data);
+		if (object_to_free->data) {
+			if (table->ops.free)
+				table->ops.free(object_to_free->data);
+			else
+				SR_KFREE(object_to_free->data);
+		}
 		SR_KFREE(object_to_free);
 	}
 }

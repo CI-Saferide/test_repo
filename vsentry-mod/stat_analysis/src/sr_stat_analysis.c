@@ -33,7 +33,7 @@ static SR_32 sr_stat_analysis_transmit_task(void *data)
 #ifdef SR_STAT_ANALYSIS_DEBUG
 		sal_kernel_print_info("STAT ANALYSIS TRANSMIT is_stat_analysis_um_running:%d\n", is_stat_analysis_um_running);
 #endif
-		if (is_stat_analysis_um_running)
+		if (is_run_transmit && is_stat_analysis_um_running)
  	       		sr_stat_analysis_start_transmit();
 	}
 
