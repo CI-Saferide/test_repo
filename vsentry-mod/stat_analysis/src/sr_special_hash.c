@@ -113,25 +113,38 @@ static void sr_special_hash_empty_table(sr_special_hash_table_t *table, SR_BOOL 
         if (!table)
                 return;
 
-        for (i = 0; i < table->size; i++) {
-                if (table->buckets[i].head != NULL){
+	for (i = 0; i < table->size; i++) {
+		if (table->buckets[i].head != NULL){
 			if (is_lock)
-                        	SR_LOCK(&table->buckets[i].bucket_lock);
-                        curr = table->buckets[i].head;
-                        while (curr != NULL){
+				SR_LOCK(&table->buckets[i].bucket_lock);
+			curr = table->buckets[i].head;
+			while (curr != NULL){
                                 next = curr->next;
 				if (table->ops.free)
 					table->ops.free(curr->data);
 				else
-                                	SR_KFREE(curr->data);
-                                SR_KFREE(curr);
-                                curr= next;
-                        }
-                        table->buckets[i].head = NULL;
+					SR_KFREE(curr->data);
+				SR_KFREE(curr);
+				curr= next;
+			}
+			table->buckets[i].head = NULL;
 			if (is_lock)
-                        	SR_UNLOCK(&table->buckets[i].bucket_lock);
-                }
-        }
+				SR_UNLOCK(&table->buckets[i].bucket_lock);
+		}
+	}
+}
+
+static void cleanup_free_repos(sr_special_hash_table_t *table)
+{
+	sr_special_hash_ent_t *object_to_free;
+
+	while (sr_cyclic_array_read(&(table->gc_buffer), (void *)&object_to_free) == SR_SUCCESS) {
+		if (table->ops.free)
+			table->ops.free(object_to_free->data);
+		else
+			SR_KFREE(object_to_free->data);
+		SR_KFREE(object_to_free);
+	}
 }
 
 void sr_special_hash_free_table(sr_special_hash_table_t *table)
@@ -141,6 +154,7 @@ void sr_special_hash_free_table(sr_special_hash_table_t *table)
 	sal_kernel_print_info("Cleaned entire connection table\n");
 	SR_FREE(table->buckets);
 	SR_FREE(table);
+	cleanup_free_repos(table);
 }
 
 SR_32 sr_special_hash_print_table(sr_special_hash_table_t *table)
