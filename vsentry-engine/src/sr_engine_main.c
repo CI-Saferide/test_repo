@@ -39,6 +39,10 @@
 #include "sr_can_collector.h"
 #include "sr_config_parse.h"
 #include "sal_third_party_interface.h"
+#include "sr_stat_system_policer.h"
+#ifdef CONFIG_UT
+#include "ut_server.h"
+#endif
 
 static SR_32 engine_main_loop(void *data)
 {
@@ -204,6 +208,10 @@ static void engine_shutdown(void)
 	sr_log_uploader_deinit();
 	sr_log_deinit();
 	sal_vsentry_fd_close();
+
+#ifdef CONFIG_UT
+	ut_server_stop();
+#endif
 }
 
 static void sr_engine_pre_stop_cb(void)
@@ -418,15 +426,20 @@ SR_32 sr_engine_start(int argc, char *argv[])
 	}
 	fprintf(f, "on");
 	fclose(f);
+
+#ifdef CONFIG_UT
+	ut_server_start();
+#endif
 	
 	/* sending config params to kernel */
-    msg = (sr_config_msg_t*)sr_get_msg(ENG2MOD_BUF, ENG2MOD_MSG_MAX_SIZE);
+	msg = (sr_config_msg_t*)sr_get_msg(ENG2MOD_BUF, ENG2MOD_MSG_MAX_SIZE);
 	if (msg) {
 		msg->msg_type = SR_MSG_TYPE_CONFIG;
 		msg->sub_msg.cef_max_rate = config_params->cef_max_rate; 
 		msg->sub_msg.def_file_action = config_params->default_file_action;
 		msg->sub_msg.def_can_action = config_params->default_can_action;
 		msg->sub_msg.def_net_action = config_params->default_net_action;
+		msg->sub_msg.system_policer_interval = config_params->system_policer_interval;
 		sr_send_msg(ENG2MOD_BUF, (SR_32)sizeof(msg));
 	} else
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
@@ -464,13 +477,15 @@ SR_32 sr_engine_start(int argc, char *argv[])
 					printf ("printing debug info for ml_can\n");
 					sr_ml_can_print_hash();
 				break;
+#endif /* CONFIG_CAN_ML */
 			case 'e':
 					printf ("Move to WL learn mode \n");
 					sr_white_list_set_mode(SR_WL_MODE_LEARN);
 				break;
 			case 'f':
 				printf ("Move to WL prootect mode \n");
-				sr_white_list_set_mode(SR_WL_MODE_APPLY);
+				sr_stat_analysis_learn_mode_set(SR_STAT_MODE_PROTECT);
+				//sr_white_list_set_mode(SR_WL_MODE_APPLY);
 				break;
 			case 'g':
 				printf ("Move to WL OFF mode \n");
@@ -487,7 +502,12 @@ SR_32 sr_engine_start(int argc, char *argv[])
 				//	"%s=print connection object",MESSAGE);
 				//sr_control_util(SR_CONTROL_PRINT);
 				break;
-#endif /* CONFIG_CAN_ML */
+#ifdef CONFIG_SYSTEM_POLICER
+			case 'y':
+				printf("SYSTEM POLICER learn table:\n");
+				sr_stat_system_policer_learn_print();
+				break;
+#endif
 		}
 	}
 

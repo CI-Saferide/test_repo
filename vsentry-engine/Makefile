@@ -20,6 +20,8 @@ VPATH 		:=  $(TOP_DIR)/sal/platform/linux/src \
 				$(TOP_DIR)/white_list/src \
 				$(TOP_DIR)/db/src
 
+VPATH += $(if $(CONFIG_UT),$(TOP_DIR)/../vsentry-ut/src)
+
 # sources to compile
 SRCS 		:=  main.c \
 				sal_shmem_linux.c \
@@ -62,8 +64,10 @@ SRCS 		:=  main.c \
 				sr_db_file.c \
 				sr_db_can.c \
 				sr_ml_can.c \
-                log_uploader.c
+				log_uploader.c \
+				sr_stat_system_policer.c
 
+SRCS += $(if $(CONFIG_UT),ut_server.c)
 
 # include folders
 INCLUDES 	:=  -I../common/include \
@@ -81,6 +85,8 @@ INCLUDES 	:=  -I../common/include \
 				-Iwhite_list/include \
 				-Idb/include \
 
+INCLUDES += $(if $(CONFIG_UT),-I../vsentry-ut/include)
+
 OBJS		:=  $(addprefix $(OBJDIR)/,$(SRCS:.c=.o))
 DEPS		:=  $(OBJS:.o=.d)
 
@@ -91,9 +97,11 @@ LIB_PATH 	:= -L$(LIBDIR) -L../vsentry-lib/lib
 
 CFLAGS 		+= -MMD -Wall
 CFLAGS 		+= -DCONFIG_STAT_ANALYSIS
+CFLAGS 		+= -DCONFIG_SYSTEM_POLICER
 CFLAGS 		+= -DCONFIG_CAN_ML
 CFLAGS 		+= $(if $(SR_STAT_ANALYSIS_DEBUG),-DSR_STAT_ANALYSIS_DEBUG)
 CFLAGS 		+= $(if $(SR_CAN_DEBUG_PRINT),-DSR_CAN_DEBUG_PRINT)
+CFLAGS 		+= $(if $(CONFIG_UT),-DCONFIG_UT)
 
 CFLAGS 		+= -DSR_CAN_DEBUG_PRINT
 #CFLAGS 		+= -DSR_RB_DEBUG -DSR_MSG_DEBUG

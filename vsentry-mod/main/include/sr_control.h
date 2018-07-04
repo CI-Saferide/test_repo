@@ -10,6 +10,7 @@ struct config_params_t {
 	SR_U16	def_file_action;					/* default action for file classifier */
 	SR_U16	def_can_action;						/* default action for canbus classifier */
 	SR_U16	def_net_action;						/* default action for network classifier */
+	SR_U8	system_policer_interval;				/* system policer interval mesaured */
 };
 
 void 	vsentry_set_state (SR_BOOL state);

@@ -38,6 +38,11 @@ void config_defaults(void)
 
 	config_params.remote_server_support_enable = SR_FALSE;
 	config_params.policy_update_enable = SR_FALSE;
+
+#ifdef CONFIG_SYSTEM_POLICER
+	config_params.system_policer_interval = 1;
+	config_params.system_policer_threshold_percent = 5;
+#endif
 }
 
 SR_32 read_vsentry_config(char* config_filename)
@@ -204,6 +209,18 @@ SR_32 read_vsentry_config(char* config_filename)
 		if (!strcmp(param, "POLICY_UPDATE_ENABLE")) {
 			config_params.policy_update_enable = (SR_BOOL)atoi(value);
 		}
+
+#ifdef CONFIG_SYSTEM_POLICER
+		if (!strcmp(param, "SYSTEM_POLICER_LEARN_FILE")) {
+			strncpy(config_params.system_prolicer_learn_file, value, PATH_BUFF); 
+		}
+		if (!strcmp(param, "SYSTEM_POLICER_INTERVAL")) {
+			config_params.system_policer_interval = atoi(value);
+		}
+		if (!strcmp(param, "SYSTEM_POLICER_THRESHOLD_PERCENT")) {
+			config_params.system_policer_threshold_percent = atoi(value);
+		}
+#endif
     }
     fclose(fp);
     return SR_SUCCESS;

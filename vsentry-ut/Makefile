@@ -49,12 +49,17 @@ CFLAGS		+= -g -O0
 else
 CFLAGS 		+= -O2
 endif
+LDFLAGS += -lpthread
+TARGET_SYSTEM_TEST = $(BINDIR)/system_test_process
 
-all: $(TARGET)
+all: $(TARGET) $(TARGET_SYSTEM_TEST)
 
 $(TARGET): $(OBJDIR) $(OBJS) libjsmn libsysrepo_mng
 	@echo "linking $(notdir $@)"
-	$(CC) $(LDFLAGS) $(OBJS) -o $(BINDIR)/$(TARGET) $(LIB_PATH) $(LIBS)
+	$(CC) $(OBJS) -o $(BINDIR)/$(TARGET) $(LIB_PATH) $(LIBS) $(LDFLAGS)
+
+$(TARGET_SYSTEM_TEST): system_test_process.c
+	$(CC) $(CFLAGS) $(INCLUDES) $< -o $@ $(LDFLAGS)
 
 $(OBJDIR):
 	@mkdir -p $(OBJDIR)

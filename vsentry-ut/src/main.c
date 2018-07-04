@@ -8,6 +8,8 @@
 #include <arpa/inet.h>
 #include <netdb.h>
 #include <ifaddrs.h>
+#include <sys/socket.h>
+#include <ut_server.h>
 
 #define FIXED_PART_START "{\"canVersion\": 238, \"ipVersion\": 238, \"systemVersion\": 238, \"actionVersion\": 238, \"actions\": [{\"log\": false, \"drop\": false, \"id\": 1111, \"allow\": true, \"name\": \"allow\"}, {\"log\": true, \"drop\": false, \"id\": 1112, \"allow\": true, \"name\": \"allow_log\"}, {\"log\": true, \"drop\": true, \"id\": 1113, \"allow\": false, \"name\": \"drop\"}]"
 
@@ -660,6 +662,82 @@ static int handle_can(sysrepo_mng_handler_t *handler)
 	return rc;
 }
 
+static int handle_system(sysrepo_mng_handler_t *handler)
+{
+	int rc = 0, pid, err_count = 0, fd, n;
+	char cmd[200];
+        short port = UT_DEFAULT_PORT;
+        struct sockaddr_in sa = {};
+
+	inet_aton("127.0.0.1", &sa.sin_addr);
+	sa.sin_family = AF_INET;
+	sa.sin_port = htons(port);
+	if ((fd = socket(AF_INET, SOCK_STREAM, 0)) <0) {
+		perror("socket");
+		return -1;
+	}
+	if (connect(fd, (struct sockaddr *)&sa, sizeof(sa))) {
+		perror("connected");
+		return -1;
+	}
+
+	if (!(flog = log_init())) 
+		return -1;
+
+	system("./build/bin/system_test_process &");
+
+	pid = atoi(get_cmd_output("ps aux | grep system_test_process | awk '{print $2}'"));
+
+        if ((n = send(fd, "LEARN", 5, 0)) < 0) {
+		perror("send");
+		return -1;
+	}
+	sleep(3);
+	if ((n = send(fd, "PROTECT", 7, 0)) < 0) {
+		perror("send");
+		return -1;
+	}
+	printf("sleeping ...\n");
+	sleep(3);
+
+	printf("killing ... pid:%d \n", pid);
+	/* Signal process to increase resource consumtion */
+	sprintf(cmd, "sudo kill -11 %d", pid);
+	system(cmd);
+
+	sleep(3);
+
+	if (!log_is_string_exists(flog, "system_test_process reason")) {
+		printf("system_test_process test FAILED !!!!!\n");
+		err_count++;
+	}
+
+	printf("Stop test:\n");
+	if ((n = send(fd, "OFF", 3, 0)) < 0) {
+		perror("send");
+		return -1;
+	}
+	sleep(1);
+	if ((n = send(fd, "DONE", 4, 0)) < 0) {
+		perror("send");
+		return -1;
+	}
+
+	sprintf(cmd, "sudo kill -9 %d", pid);
+	system(cmd);
+
+	close(fd);
+
+	log_deinit(flog);
+	
+	if (err_count)
+		printf("TEST FAIED !!\n");
+	else
+		printf("TEST SUCCESS !!\n");
+
+	return rc;
+}
+
 int main(int argc, char **argv)
 {
 	sysrepo_mng_handler_t handler;
@@ -712,6 +790,10 @@ printf(" PID:%d\n", getpid());
 	}
 	if (!strcmp(type, "clean")) {
 		rc = handle_cleanup(&handler);
+		goto cleanup;
+	}
+	if (!strcmp(type, "system")) {
+		rc = handle_system(&handler);
 		goto cleanup;
 	}
 

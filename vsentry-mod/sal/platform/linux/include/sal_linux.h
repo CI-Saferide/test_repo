@@ -119,4 +119,6 @@ SR_U32 sal_get_exec_inode(SR_32 pid);
 //SR_U32 sal_get_parent_dir(void* dir);
 void* sal_get_parent_dir(void* info);
 
+SR_32 sal_exec_for_all_tasks(SR_32 (*cb)(void *data));
+
 #endif /* SAL_LINUX_H*/

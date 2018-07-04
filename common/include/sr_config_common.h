@@ -7,6 +7,7 @@ struct sr_config_msg {
 	SR_U16 	def_file_action;
 	SR_U16 	def_can_action;
 	SR_U16 	def_net_action;
+	SR_U8 	system_policer_interval;
 };
 
 #endif /* SR_CONFIG_COMMON_H */

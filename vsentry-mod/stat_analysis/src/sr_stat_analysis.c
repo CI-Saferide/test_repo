@@ -3,6 +3,9 @@
 #include "sr_event_collector.h"
 #include "sr_stat_analysis_common.h"
 #include "sr_shmem.h"
+#ifdef CONFIG_SYSTEM_POLICER
+#include "sr_system_policer.h"
+#endif
 
 #define STAT_ANALYSIS_TRANSMIT_SCHEDULE_USECS 1000000
 #define STAT_ANALYSIS_GC_SCHEDULE_USECS       10000000
@@ -21,6 +24,11 @@ static TASK_DESC *watchdog_task;
 static SR_TIME_COUNT last_time_message_recived;
 static SR_BOOL is_stat_analysis_um_running = SR_TRUE;
 
+void sr_stat_stop_transmit(void)
+{
+	is_run_transmit = SR_FALSE;
+}
+
 SR_BOOL sr_stat_analysis_um_is_running(void)
 {	
 	return is_stat_analysis_um_running;
@@ -33,8 +41,12 @@ static SR_32 sr_stat_analysis_transmit_task(void *data)
 #ifdef SR_STAT_ANALYSIS_DEBUG
 		sal_kernel_print_info("STAT ANALYSIS TRANSMIT is_stat_analysis_um_running:%d\n", is_stat_analysis_um_running);
 #endif
-		if (is_run_transmit && is_stat_analysis_um_running)
+		if (is_run_transmit && is_stat_analysis_um_running) {
  	       		sr_stat_analysis_start_transmit();
+#ifdef CONFIG_SYSTEM_POLICER
+			sr_system_policer_start_transmit();
+#endif
+		}
 	}
 
 	return SR_SUCCESS;

@@ -91,6 +91,14 @@ int sr_ec_send_event(SR_U8 buf_type, SR_U8 event_type, void *data)
 				case SR_EVENT_STATS_NEW_CONNECTION:
 					sr_ec_append_event(buf_type, event_type, data, sizeof(struct sr_ec_new_connection_t), SR_FALSE);
 					break;
+#ifdef CONFIG_SYSTEM_POLICER
+				case SR_EVENT_STATS_SYSTEM:
+					sr_ec_append_event(buf_type, event_type, data, sizeof(struct sr_ec_system_stat_t), SR_FALSE);
+					break;
+				case SR_EVENT_STATS_SYSTEM_FINISH:
+					sr_ec_append_event(buf_type, event_type, data, sizeof(struct sr_ec_system_stat_t), SR_FALSE);
+					break;
+#endif
 				default:
 					break;
 			}

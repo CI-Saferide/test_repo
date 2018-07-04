@@ -8,6 +8,10 @@
 #include "dispatcher.h"
 #include <linux/netdevice.h>
 #include <linux/inetdevice.h>
+#include <linux/sched.h>
+#include <linux/fdtable.h>
+#include <linux/task_io_accounting_ops.h>
+#include "sr_ec_common.h"
 
 SR_32 sal_get_local_ips(SR_U32 local_ips[], SR_U32 *count, SR_U32 max)
 {
@@ -248,4 +252,36 @@ SR_U64 get_curr_time_usec(void)
 	struct timeval tv;
 	do_gettimeofday(&tv);
 	return ((tv.tv_sec * 1000000) + tv.tv_usec);
+}
+
+SR_32 sal_exec_for_all_tasks(SR_32 (*cb)(void *data))
+{
+	struct task_struct *p, *t;
+	struct sr_ec_system_stat_t system_stat = {};
+	struct mm_struct *mm;
+	struct task_io_accounting acct;
+
+	rcu_read_lock();
+	for_each_process(p) {
+		memset(&system_stat, 0, sizeof(system_stat));
+		memset(&acct, 0, sizeof(acct));
+		system_stat.pid = p->pid;
+		for_each_thread(p, t) {
+			if (((mm)= get_task_mm(t))) {
+				system_stat.vm_allocated += mm->total_vm;
+				mmput(mm);
+			}
+			system_stat.utime += t->utime;
+			system_stat.stime += t->stime;
+			system_stat.num_of_threads++;
+                        task_io_accounting_add(&acct, &t->ioac);
+		}
+		system_stat.bytes_read = acct.rchar;
+		system_stat.bytes_write = acct.wchar;
+		system_stat.curr_time = jiffies * 1000 / HZ;
+		cb(&system_stat);
+	}
+	rcu_read_unlock();
+
+	return SR_SUCCESS;
 }

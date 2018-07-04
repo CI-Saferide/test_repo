@@ -33,6 +33,7 @@ EXTRA_CFLAGS += -DRL_SUPPORT
 #EXTRA_CFLAGS += -DDEBUG
 
 EXTRA_CFLAGS += -DCONFIG_STAT_ANALYSIS
+EXTRA_CFLAGS += -DCONFIG_SYSTEM_POLICER
 EXTRA_CFLAGS += $(if $(SR_STAT_ANALYSIS_DEBUG),-DSR_STAT_ANALYSIS_DEBUG)
 
 ifneq ($(KERNELRELEASE),)
@@ -70,6 +71,7 @@ $(TARGET)-objs := sal/platform/linux/src/module_init.o \
 				  stat_analysis/src/sr_stat_connection.o \
 				  stat_analysis/src/sr_stat_analysis.o \
 				  stat_analysis/src/sr_stat_port.o \
+				  stat_analysis/src/sr_system_policer.o \
 				  ../tools/radix/src/sr_radix.o \
 				  ../tools/sr-hash/src/sr_hash.o \
 				  ../tools/sr-hash/src/sr_gen_hash.o \
