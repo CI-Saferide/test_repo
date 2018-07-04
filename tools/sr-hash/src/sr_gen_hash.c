@@ -374,6 +374,8 @@ SR_32 sr_gen_hash_delete_all_cb(struct sr_gen_hash *hash, SR_BOOL (*cb)(void *ha
 			if (cb && cb((*iter)->data)) {
 				help = *iter;
 				*iter = (*iter)->next;
+				if (help->data)
+					SR_Free(help->data);
 				SR_Free(help);
 			} else 
 				iter = &((*iter)->next);
