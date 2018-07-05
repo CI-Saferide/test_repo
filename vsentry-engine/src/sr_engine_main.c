@@ -42,7 +42,7 @@
 #include "sr_stat_system_policer.h"
 #ifdef CONFIG_UT
 #include "ut_server.h"
-#endif
+#endif /* CONFIG_UT */
 
 static SR_32 engine_main_loop(void *data)
 {
