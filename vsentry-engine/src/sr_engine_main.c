@@ -40,9 +40,6 @@
 #include "sr_config_parse.h"
 #include "sal_third_party_interface.h"
 #include "sr_stat_system_policer.h"
-#ifdef CONFIG_UT
-#include "ut_server.h"
-#endif /* CONFIG_UT */
 
 static SR_32 engine_main_loop(void *data)
 {
@@ -208,10 +205,6 @@ static void engine_shutdown(void)
 	sr_log_uploader_deinit();
 	sr_log_deinit();
 	sal_vsentry_fd_close();
-
-#ifdef CONFIG_UT
-	ut_server_stop();
-#endif /*CONFIG_UT */
 }
 
 static void sr_engine_pre_stop_cb(void)
@@ -427,10 +420,6 @@ SR_32 sr_engine_start(int argc, char *argv[])
 	fprintf(f, "on");
 	fclose(f);
 
-#ifdef CONFIG_UT
-	ut_server_start();
-#endif /* CONFIG_UT */
-	
 	/* sending config params to kernel */
 	msg = (sr_config_msg_t*)sr_get_msg(ENG2MOD_BUF, ENG2MOD_MSG_MAX_SIZE);
 	if (msg) {

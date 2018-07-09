@@ -664,22 +664,8 @@ static int handle_can(sysrepo_mng_handler_t *handler)
 
 static int handle_system(sysrepo_mng_handler_t *handler)
 {
-	int rc = 0, pid, err_count = 0, fd, n;
+	int rc = 0, pid, err_count = 0;
 	char cmd[200];
-        short port = UT_DEFAULT_PORT;
-        struct sockaddr_in sa = {};
-
-	inet_aton("127.0.0.1", &sa.sin_addr);
-	sa.sin_family = AF_INET;
-	sa.sin_port = htons(port);
-	if ((fd = socket(AF_INET, SOCK_STREAM, 0)) <0) {
-		perror("socket");
-		return -1;
-	}
-	if (connect(fd, (struct sockaddr *)&sa, sizeof(sa))) {
-		perror("connected");
-		return -1;
-	}
 
 	if (!(flog = log_init())) 
 		return -1;
@@ -687,16 +673,10 @@ static int handle_system(sysrepo_mng_handler_t *handler)
 	system("./build/bin/system_test_process &");
 
 	pid = atoi(get_cmd_output("ps aux | grep system_test_process | awk '{print $2}'"));
-
-        if ((n = send(fd, "LEARN", 5, 0)) < 0) {
-		perror("send");
-		return -1;
-	}
+	
+	system("vsentry_ctrl -c st_learn");
 	sleep(3);
-	if ((n = send(fd, "PROTECT", 7, 0)) < 0) {
-		perror("send");
-		return -1;
-	}
+	system("vsentry_ctrl -c st_apply");
 	printf("sleeping ...\n");
 	sleep(3);
 
@@ -713,20 +693,10 @@ static int handle_system(sysrepo_mng_handler_t *handler)
 	}
 
 	printf("Stop test:\n");
-	if ((n = send(fd, "OFF", 3, 0)) < 0) {
-		perror("send");
-		return -1;
-	}
-	sleep(1);
-	if ((n = send(fd, "DONE", 4, 0)) < 0) {
-		perror("send");
-		return -1;
-	}
+	system("vsentry_ctrl -c st_off");
 
 	sprintf(cmd, "sudo kill -9 %d", pid);
 	system(cmd);
-
-	close(fd);
 
 	log_deinit(flog);
 	
@@ -743,8 +713,6 @@ int main(int argc, char **argv)
 	sysrepo_mng_handler_t handler;
 	int rc = 0, opt;
 	char *type = NULL;
-
-printf(" PID:%d\n", getpid());
 
 	if (getenv("TEST_AREA_HOME"))
 		home = strdup(getenv("TEST_AREA_HOME"));

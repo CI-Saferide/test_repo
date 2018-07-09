@@ -12,9 +12,25 @@
 #include <sys/un.h>
 #include <errno.h>
 
+static char *commands[] = {
+	"wl_learn",
+	"wl_apply",
+	"wl_print",
+	"st_learn",
+	"st_apply",
+	"st_off",
+	NULL,
+};
+
 static int is_valid_cmd(char *cmd)
 {
-	return !strcmp(cmd, "wl_learn") || !strcmp(cmd, "wl_apply") || !strcmp(cmd, "wl_print");
+	int i;
+
+	for (i = 0; commands[i]; i++) {
+		if (!strcmp(cmd, commands[i]))
+			return 1;
+	}
+	return 0;
 }
 
 int main(int argc, char **argv)
@@ -30,7 +46,7 @@ int main(int argc, char **argv)
 				strcpy(cmd, optarg);
           			break;
 			case 'h':
-				printf("usage: %s -c [wl_learn,wl_apply,wl_print]\n", argv[0]);
+				printf("usage: %s -c [wl_learn,wl_apply,wl_print,st_learn,st_apply,st_off]\n", argv[0]);
 				return 0;
         		default:
 				printf("Invalid option %c ignored\n", opt);
@@ -38,7 +54,7 @@ int main(int argc, char **argv)
      		}
 	}
 	if (!is_valid_cmd(cmd)) {
-		printf("usage: %s -c [wl_learn,wl_apply,wl_print]\n", argv[0]);
+		printf("usage: %s -c [wl_learn,wl_apply,wl_print,st_learn,st_apply]\n", argv[0]);
 		return -1; 
 	}
 
