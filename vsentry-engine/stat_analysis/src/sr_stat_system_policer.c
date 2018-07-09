@@ -75,6 +75,10 @@ SR_32 sr_stat_system_policer_init(void)
         	CEF_log_event(SR_CEF_CID_SP, "error", SEVERITY_HIGH, "%s=insertion to system policer hash has failed", REASON);
 		return SR_ERROR;
 	}
+	if (!(system_policer_learn_table = sr_gen_hash_new(HASH_SIZE, hash_ops, 0))) {
+        	CEF_log_event(SR_CEF_CID_SP, "error", SEVERITY_HIGH, "%s=insertion to system policer hash has failed", REASON);
+		return SR_ERROR;
+	}
 
         return SR_SUCCESS;
 }
