@@ -33,6 +33,8 @@ VSENTRY_CONFIG_FILE vsentry_config.txt
 REMOTE_SERVER_SUPPORT_ENABLE 0
 POLICY_UPDATE_ENABLE 0
 
-SYSTEM_POLICER_LEARN_FILE /tmp/system_learn.txt
+SYSTEM_POLICER_LEARN_FILE /etc/vsentry/system_learn.txt
+# Totlerance for rasing an alert of system policer.
 SYSTEM_POLICER_THRESHOLD_PERCENT 5
+# Interval for system inforamtion transmition by the Kernel.
 SYSTEM_POLICER_INTERVAL 1

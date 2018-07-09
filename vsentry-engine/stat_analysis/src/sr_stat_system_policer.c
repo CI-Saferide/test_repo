@@ -34,8 +34,7 @@ static void system_policer_print(void *data_in_hash)
 {
 	system_policer_item_t *system_policer_item = (system_policer_item_t *)data_in_hash;
 
-        CEF_log_event(SR_CEF_CID_SP, "Info", SEVERITY_LOW, "%s=process :%s: utime:%d stime:%d vm_allocated:%d bytes_read:%d bytes_write:%d num of threads:%d curr_time:%d",
-		REASON, 
+        CEF_log_event(SR_CEF_CID_SP, "info", SEVERITY_LOW, "process :%s: utime:%d stime:%d vm_allocated:%d bytes_read:%d bytes_write:%d num of threads:%d curr_time:%d",
 		system_policer_item->exec, system_policer_item->stats.utime, system_policer_item->stats.stime,
 		system_policer_item->stats.vm_allocated,  
 		system_policer_item->stats.bytes_read, system_policer_item->stats.bytes_write,
@@ -60,7 +59,7 @@ static SR_BOOL is_debug_exe(char *exe)
 {
 	return (SR_BOOL)!!strstr(exe, "system_test_process");
 }
-#endif
+#endif /* SYSTEM_POLICER_DEBUG */
 
 SR_32 sr_stat_system_policer_init(void)
 {
@@ -73,15 +72,7 @@ SR_32 sr_stat_system_policer_init(void)
 	hash_ops.comp = system_policer_comp;
 	hash_ops.print = system_policer_print;
 	if (!(system_policer_table = sr_gen_hash_new(HASH_SIZE, hash_ops, 0))) {
-        	CEF_log_event(SR_CEF_CID_SP, "error", SEVERITY_HIGH, "%s=file_hash_init: sr_gen_hash_new failed", REASON);
-		return SR_ERROR;
-	}
-
-	hash_ops.create_key = system_policer_create_key;
-	hash_ops.comp = system_policer_comp;
-	hash_ops.print = system_policer_print;
-	if (!(system_policer_learn_table = sr_gen_hash_new(HASH_SIZE, hash_ops, 0))) {
-        	CEF_log_event(SR_CEF_CID_SP, "error", SEVERITY_HIGH, "%s=file_hash_init: sr_gen_hash_new failed", REASON);
+        	CEF_log_event(SR_CEF_CID_SP, "error", SEVERITY_HIGH, "%s=insertion to system policer hash has failed", REASON);
 		return SR_ERROR;
 	}
 
@@ -200,7 +191,7 @@ static SR_32 system_policer_update_tolerance(char *exe, struct sr_ec_system_stat
 
 #ifdef SYSTEM_POLICER_DEBUG
 	if (is_debug_exe(exe)) {
-		printf("PPPPPPPPPPPPPPPPPPPPPPP Arik in system_policer_update_tolerance exec:%s threshold:%d max:%d max_tol:%d count:%d\n",
+		printf("PPPPPPPPPPPPPPPPPPPPPPP System_policer_update_tolerance exec:%s threshold:%d max:%d max_tol:%d count:%d\n",
 			exe, config_params->system_policer_threshold_percent, max->utime, max_tol, count);
 	}
 #endif
@@ -208,7 +199,7 @@ static SR_32 system_policer_update_tolerance(char *exe, struct sr_ec_system_stat
 	return SR_SUCCESS;
 }
 
-static SR_32 system_policer_leran(char *exe_name, system_policer_item_t *system_policer_item, struct sr_ec_system_stat_t *stats)
+static SR_32 system_policer_learn(char *exe_name, system_policer_item_t *system_policer_item, struct sr_ec_system_stat_t *stats)
 {
 	system_policer_item_t *system_policer_learn_item;
 
@@ -226,7 +217,7 @@ static SR_32 system_policer_leran(char *exe_name, system_policer_item_t *system_
 		}
 		strncpy(system_policer_learn_item->exec, exe_name, SR_MAX_PATH_SIZE);
 		if (sr_gen_hash_insert(system_policer_learn_table, (void *)exe_name, system_policer_learn_item, 0) != SR_SUCCESS) {
-        		CEF_log_event(SR_CEF_CID_SP, "error", SEVERITY_HIGH, "%s=system_policer_leran sr_gen_hash_insert failed", REASON);
+        		CEF_log_event(SR_CEF_CID_SP, "error", SEVERITY_HIGH, "%s=system policer learn insert to hash failed", REASON);
 			return SR_ERROR;
 		}	
 		system_policer_learn_item = sr_gen_hash_get(system_policer_learn_table, exe_name, 0);
@@ -282,7 +273,7 @@ SR_32 sr_stat_system_policer_new_data(struct sr_ec_system_stat_t *stats)
 		return SR_SUCCESS;
 	
 	if (sal_get_process_name(stats->pid, exe_name, sizeof(exe_name)) != SR_SUCCESS)
-		return SR_SUCCESS;
+		return SR_SUCCESS; // Process already removed.
 
         if (!(system_policer_item = sr_gen_hash_get(system_policer_table, exe_name, 0))) {
 		/* Learning - Insert process to DB */
@@ -323,8 +314,8 @@ SR_32 sr_stat_system_policer_new_data(struct sr_ec_system_stat_t *stats)
 	/* Existing binaric */
 	switch (stat_mode) {
 		case SR_STAT_MODE_LEARN:
-			if (system_policer_leran(exe_name, system_policer_item, stats) != SR_SUCCESS) {
-        			CEF_log_event(SR_CEF_CID_SP, "error", SEVERITY_HIGH, "%s=system_policer_leran failed", REASON);
+			if (system_policer_learn(exe_name, system_policer_item, stats) != SR_SUCCESS) {
+        			CEF_log_event(SR_CEF_CID_SP, "error", SEVERITY_HIGH, "%s=system_policer_learn failed", REASON);
 				return SR_ERROR;
 			}
 			break;
@@ -418,8 +409,10 @@ SR_32 sr_stat_policer_load_file(void)
 	}
 
 	while ((read = getline(&line, &len, fp)) != -1) {
+#ifdef SYSTEM_POLICER_DEBUG
         	printf("Retrieved line of length %zu :\n", read);
         	printf("%s", line);
+#endif
 		SR_Zalloc(system_policer_learn_item, system_policer_item_t *, sizeof(system_policer_item_t));
 		if (!system_policer_learn_item) {
         		CEF_log_event(SR_CEF_CID_SP, "error", SEVERITY_HIGH, "%s=learn hash update: memory allocation failed ", REASON);

@@ -211,7 +211,7 @@ static void engine_shutdown(void)
 
 #ifdef CONFIG_UT
 	ut_server_stop();
-#endif
+#endif /*CONFIG_UT */
 }
 
 static void sr_engine_pre_stop_cb(void)
@@ -429,7 +429,7 @@ SR_32 sr_engine_start(int argc, char *argv[])
 
 #ifdef CONFIG_UT
 	ut_server_start();
-#endif
+#endif /* CONFIG_UT */
 	
 	/* sending config params to kernel */
 	msg = (sr_config_msg_t*)sr_get_msg(ENG2MOD_BUF, ENG2MOD_MSG_MAX_SIZE);
