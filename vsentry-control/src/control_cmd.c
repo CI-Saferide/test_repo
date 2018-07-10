@@ -54,7 +54,7 @@ int main(int argc, char **argv)
      		}
 	}
 	if (!is_valid_cmd(cmd)) {
-		printf("usage: %s -c [wl_learn,wl_apply,wl_print,st_learn,st_apply]\n", argv[0]);
+		printf("usage: %s -c [wl_learn,wl_apply,wl_print,st_learn,st_apply,st_off]\n", argv[0]);
 		return -1; 
 	}
 
