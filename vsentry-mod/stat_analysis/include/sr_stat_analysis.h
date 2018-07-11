@@ -14,5 +14,6 @@ void sr_stat_analysis_report_porcess_die(SR_U32 pid);
 SR_32 sr_stat_analysis_handle_message(struct sr_stat_analysis_msg *msg);
 void sr_stat_analysis_garbage_collector(void);
 SR_BOOL sr_stat_analysis_um_is_running(void);
+void sr_stat_stop_transmit(void);
 
 #endif

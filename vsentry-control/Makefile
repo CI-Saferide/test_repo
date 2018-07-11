@@ -58,6 +58,9 @@ $(OBJDIR)/%.o: %.c
 clean:
 	@rm -fr $(BUILD_DIR)
 
+install:
+	install -m 755 build/bin/* /usr/bin/
+
 -include $(DEPS)
 
 

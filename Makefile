@@ -18,10 +18,14 @@ all:
 	@$(MAKE) -C vsentry-mod KERNEL_SRC=${KERNEL_SRC}
 	@echo "***** enter vsentry-engine *****"
 	@$(MAKE) -s -C vsentry-engine
+	@echo "***** enter vsentry-control *****"
+	@$(MAKE) -s -C vsentry-control
+	@sudo make install -s -C vsentry-control
 	@echo "***** enter vsentry-ut *****"
 	@$(MAKE) -s -C vsentry-ut
 
 clean:
 	@$(MAKE) -C vsentry-mod clean
 	@$(MAKE) -s -C vsentry-engine clean
+	@$(MAKE) -s -C vsentry-control clean
 	@$(MAKE) -s -C vsentry-ut clean

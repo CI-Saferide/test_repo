@@ -8,6 +8,8 @@
 #include <arpa/inet.h>
 #include <netdb.h>
 #include <ifaddrs.h>
+#include <sys/socket.h>
+#include <ut_server.h>
 
 #define FIXED_PART_START "{\"canVersion\": 238, \"ipVersion\": 238, \"systemVersion\": 238, \"actionVersion\": 238, \"actions\": [{\"log\": false, \"drop\": false, \"id\": 1111, \"allow\": true, \"name\": \"allow\"}, {\"log\": true, \"drop\": false, \"id\": 1112, \"allow\": true, \"name\": \"allow_log\"}, {\"log\": true, \"drop\": true, \"id\": 1113, \"allow\": false, \"name\": \"drop\"}]"
 
@@ -18,6 +20,8 @@
 #define CHANGED_PART_CAN ", \"canPolicies\": [{\"priority\": \"%d\", \"id\": 11, \"msgId\": \"%s\", \"canDirection\": \"%s\", \"execProgram\": \"%s\", \"user\": \"%s\", \"actionName\": \"%s\"}], \"ipPolicies\": [], \"systemPolicies\": []"
 
 #define FIXED_PART_END "}"
+
+#define CHECK_RESULT(x)	if(x) return x;
 
 #define TEST_PORT 7788
 #define VSENTRY_LOG "/var/log/vsentry0.log"
@@ -160,56 +164,80 @@ static void open_file_test_case(sysrepo_mng_handler_t *handler, char *file_name,
 static int create_file_setup(void)
 {
 	char cmd[MAX_STR_SIZE];
-	int rc __attribute__((unused));
+	int rc;
 
 	sprintf(cmd, "rm -rf %s", test_area);
 	rc = system(cmd);
+	CHECK_RESULT(rc)
 	sprintf(cmd, "mkdir -p %s", test_area);
 	rc = system(cmd);
+	CHECK_RESULT(rc)
 	sprintf(cmd, "mkdir -p %s/da/db/dc/dd", test_area);
 	rc = system(cmd);
+	CHECK_RESULT(rc)
 	sprintf(cmd, "mkdir -p %s/da/db1/dc/dd", test_area);
 	rc = system(cmd);
+	CHECK_RESULT(rc)
 	sprintf(cmd, "mkdir -p %s/da1/db/dc/dd", test_area);
 	rc = system(cmd);
+	CHECK_RESULT(rc)
 	sprintf(cmd, "mkdir -p %s/da2/db/dc/dd", test_area);
 	rc = system(cmd);
+	CHECK_RESULT(rc)
 	sprintf(cmd, "echo kkkk > %s/da/db/dc/dd/filer", test_area);
 	rc = system(cmd);
+	CHECK_RESULT(rc)
 	sprintf(cmd, "echo kkkk > %s/da/db1/dc/dd/filer1", test_area);
 	rc = system(cmd);
+	CHECK_RESULT(rc)
 	sprintf(cmd, "echo kkkk > %s/da1/db/dc/dd/filer1", test_area);
 	rc = system(cmd);
+	CHECK_RESULT(rc)
 	sprintf(cmd, "echo kkkk > %s/da1/db/dc/dd/filew1", test_area);
 	rc = system(cmd);
+	CHECK_RESULT(rc)
 	sprintf(cmd, "echo kkkk > %s/da2/db/dc/dd/filew2", test_area);
 	rc = system(cmd);
+	CHECK_RESULT(rc)
 	sprintf(cmd, "echo kkkk > %s/da2/db/dc/dd/filew22", test_area);
 	rc = system(cmd);
+	CHECK_RESULT(rc)
 	sprintf(cmd, "ln %s/da2/db/dc/dd/filew2 %s/da1/db/dc/dd/filew12", test_area, test_area);
 	rc = system(cmd);
+	CHECK_RESULT(rc)
 	sprintf(cmd, "ln %s/da2/db/dc/dd/filew22 %s/da1/db/dc/dd/filew122", test_area, test_area);
 	rc = system(cmd);
+	CHECK_RESULT(rc)
 	sprintf(cmd, "mkdir -p %s/dirrp", test_area);
 	rc = system(cmd);
+	CHECK_RESULT(rc)
 	sprintf(cmd, "mkdir -p %s/dirwp", test_area);
 	rc = system(cmd);
+	CHECK_RESULT(rc)
 	sprintf(cmd, "echo AAAAAA > %s/dirrp/file", test_area);
 	rc = system(cmd);
+	CHECK_RESULT(rc)
 	sprintf(cmd, "echo AAAAAA > %s/filerp", test_area);
 	rc = system(cmd);
+	CHECK_RESULT(rc)
 	sprintf(cmd, "echo AAAAAA > %s/filerp1", test_area);
 	rc = system(cmd);
+	CHECK_RESULT(rc)
 	sprintf(cmd, "echo AAAAAA > %s/filerp2", test_area);
 	rc = system(cmd);
+	CHECK_RESULT(rc)
 	sprintf(cmd, "echo AAAAAA > %s/filewp", test_area);
 	rc = system(cmd);
+	CHECK_RESULT(rc)
 	sprintf(cmd, "echo AAAAAA > %s/file", test_area);
 	rc = system(cmd);
+	CHECK_RESULT(rc)
 	sprintf(cmd, "echo ls > %s/filexp", test_area);
 	rc = system(cmd);
+	CHECK_RESULT(rc)
 	sprintf(cmd, "chmod +x  %s/filexp", test_area);
 	rc = system(cmd);
+	CHECK_RESULT(rc)
 	rc = system("sudo useradd -m -g users test_user");
 
 	return rc;
@@ -218,9 +246,10 @@ static int create_file_setup(void)
 static void cleanup_file_setup(void)
 {
 	char cmd[MAX_STR_SIZE];
-	int rc __attribute__((unused));
+	int rc;
 
 	rc = system("sudo deluser test_user");
+	if (rc) return;
 	sprintf(cmd, "rm -rf %s", test_area);
 	rc = system(cmd);
 }
@@ -506,7 +535,7 @@ static int test_ip_rule(sysrepo_mng_handler_t *handler, int fd, int rule_id, cha
 {
 	struct sockaddr_in remote = {};
 	char log_search_string[100];
-	int rc __attribute__((unused));
+	int rc;
 
 	(*test_count)++;
 	sysrepo_mng_parse_json(handler, FIXED_PART_START FIXED_PART_END, NULL, 0);
@@ -515,8 +544,10 @@ static int test_ip_rule(sysrepo_mng_handler_t *handler, int fd, int rule_id, cha
 	sleep(1);
 	if (fd > -1)
 		sendto(fd, cmd, strlen(cmd), 0, (struct sockaddr *)&remote, sizeof(remote));
-	else
+	else {
 		rc = system(cmd);
+		CHECK_RESULT(rc)
+	}
 	sleep(2);
 	if (is_verbose)
 		printf(">>>>> T#%d >>>>>>>>>>>>>>>>>>>>>> %s \n", *test_count, cmd);
@@ -591,18 +622,22 @@ static int handle_ip(sysrepo_mng_handler_t *handler)
 static int test_can_rule(sysrepo_mng_handler_t *handler, int rule_id, char *cmd, char *msg_id, char *dir,
 		char *user, char *exec, char *action, int *test_count, int *err_count, int is_success)
 {
-	int rc __attribute__((unused)), is_string_exists;
+	int rc, is_string_exists;
 	char log_search_string[MAX_STR_SIZE];
 
 	(*test_count)++;
 	sysrepo_mng_parse_json(handler, FIXED_PART_START FIXED_PART_END, NULL, 0);
 	rc = sleep(1);
+	CHECK_RESULT(rc)
 	sysrepo_mng_parse_json(handler, get_can_json(rule_id, msg_id, dir, user, exec, action), NULL, 0);
 	rc = sleep(1);
+	CHECK_RESULT(rc)
 	rc = system(cmd);
+	CHECK_RESULT(rc)
 	if (is_verbose)
 		printf(">>>>> T#%d >>>>>>>>>>>>>>>>>>>>>> %s \n", *test_count, cmd);
 	rc = sleep(1);
+	CHECK_RESULT(rc)
 	/* Check the log */
 	sprintf(log_search_string, "RuleNumber=%d Action=", rule_id);
 	is_string_exists = log_is_string_exists(flog, log_search_string);
@@ -616,11 +651,12 @@ static int test_can_rule(sysrepo_mng_handler_t *handler, int rule_id, char *cmd,
 
 static int handle_can(sysrepo_mng_handler_t *handler)
 {
-	int rc __attribute__((unused));
+	int rc;
 	int err_count = 0, test_count = 0;
 	char *user, *can_prog, cmd[1000];
 
 	rc = system("sudo useradd -m -g users test_user");
+	CHECK_RESULT(rc)
 	if (!(flog = log_init())) 
 		return -1;
 
@@ -636,6 +672,7 @@ static int handle_can(sysrepo_mng_handler_t *handler)
 		test_can_rule(handler, 10, "cansend vcan0 123#", "123", "OUT", "*", can_prog, "drop", &test_count, &err_count, 0);
 		sprintf(cmd,"sudo cp %s %s1\n", can_prog, can_prog);
 		rc = system(cmd);
+		CHECK_RESULT(rc)
 		test_can_rule(handler, 10, "cansend1 vcan0 123#", "123", "OUT", "*", can_prog, "drop", &test_count, &err_count, 1);
 	}
 
@@ -660,13 +697,63 @@ static int handle_can(sysrepo_mng_handler_t *handler)
 	return rc;
 }
 
+static int handle_system(sysrepo_mng_handler_t *handler)
+{
+	int rc = 0, pid, err_count = 0;
+	char cmd[200];
+
+	if (!(flog = log_init())) 
+		return -1;
+
+	rc = system("./build/bin/system_test_process &");
+	CHECK_RESULT(rc)
+
+	pid = atoi(get_cmd_output("ps aux | grep system_test_process | awk '{print $2}'"));
+	
+	rc = system("vsentry_ctrl -c st_learn");
+	CHECK_RESULT(rc)
+	sleep(3);
+	rc = system("vsentry_ctrl -c st_apply");
+	CHECK_RESULT(rc)
+	printf("sleeping ...\n");
+	sleep(3);
+
+	printf("killing ... pid:%d \n", pid);
+	/* Signal process to increase resource consumtion */
+	sprintf(cmd, "sudo kill -11 %d", pid);
+	rc = system(cmd);
+	CHECK_RESULT(rc)
+
+	sleep(3);
+
+	if (!log_is_string_exists(flog, "system_test_process reason")) {
+		printf("system_test_process test FAILED !!!!!\n");
+		err_count++;
+	}
+
+	printf("Stop test:\n");
+	rc = system("vsentry_ctrl -c st_off");
+	CHECK_RESULT(rc)
+
+	sprintf(cmd, "sudo kill -9 %d", pid);
+	rc = system(cmd);
+	CHECK_RESULT(rc)
+
+	log_deinit(flog);
+	
+	if (err_count)
+		printf("TEST FAIED !!\n");
+	else
+		printf("TEST SUCCESS !!\n");
+
+	return rc;
+}
+
 int main(int argc, char **argv)
 {
 	sysrepo_mng_handler_t handler;
 	int rc = 0, opt;
 	char *type = NULL;
-
-printf(" PID:%d\n", getpid());
 
 	if (getenv("TEST_AREA_HOME"))
 		home = strdup(getenv("TEST_AREA_HOME"));
@@ -712,6 +799,10 @@ printf(" PID:%d\n", getpid());
 	}
 	if (!strcmp(type, "clean")) {
 		rc = handle_cleanup(&handler);
+		goto cleanup;
+	}
+	if (!strcmp(type, "system")) {
+		rc = handle_system(&handler);
 		goto cleanup;
 	}
 

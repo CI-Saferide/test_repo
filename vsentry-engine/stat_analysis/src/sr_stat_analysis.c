@@ -4,6 +4,9 @@
 #include "sr_msg.h"
 #include "sr_stat_analysis_common.h"
 #include "sr_stat_learn_rule.h"
+#ifdef CONFIG_SYSTEM_POLICER
+#include "sr_stat_system_policer.h"
+#endif
 #include <stdio.h>
 
 static SR_U64 last_aging;
@@ -12,6 +15,15 @@ static sr_stat_mode_t stat_mode;
 SR_32 sr_stat_analysis_init(void)
 {
 	SR_U64 t;
+
+#ifdef CONFIG_SYSTEM_POLICER
+	if (sr_stat_system_policer_init() != SR_SUCCESS) {
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+						"stat analysis init failed at sr_stat_system_policer_init");
+		return SR_ERROR;
+	}
+	sr_stat_policer_load_file();
+#endif
 
 	if (sr_stat_learn_rule_hash_init() != SR_SUCCESS) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
@@ -34,8 +46,15 @@ SR_32 sr_stat_analysis_init(void)
 
 void sr_stat_analysis_uninit(void)
 {
+	sr_stat_connection_info_t con = {};
+
+	sr_stat_analysis_send_msg(SR_STAT_ANALYSIS_STOP, &con);
+
 	sr_stat_process_connection_hash_uninit();
 	sr_stat_learn_rule_hash_uninit();
+#ifdef CONFIG_SYSTEM_POLICER
+	sr_stat_system_policer_uninit();
+#endif
 }
 
 void sr_stat_analysis_dump(void)

@@ -8,6 +8,9 @@
 #include "sr_white_list_file.h"
 #include "sr_white_list_can.h"
 #include "sr_white_list_ip.h"
+#ifdef CONFIG_SYSTEM_POLICER
+#include "sr_stat_system_policer.h"
+#endif
 
 void sr_event_stats_receiver(SR_8 *msg_buff, SR_U32 msg_len)
 {
@@ -18,6 +21,9 @@ void sr_event_stats_receiver(SR_8 *msg_buff, SR_U32 msg_len)
 	struct sr_ec_file_open_t *pFile_open;
 	struct sr_ec_can_t *wl_can;
 	struct sr_ec_new_connection_t *pNewConnection, new_con;
+#ifdef CONFIG_SYSTEM_POLICER
+	struct sr_ec_system_stat_t *p_system;
+#endif
 
 	while (offset < msg_len) {
 		switch  (msg_buff[offset++]) {
@@ -80,6 +86,24 @@ void sr_event_stats_receiver(SR_8 *msg_buff, SR_U32 msg_len)
 				/* Use this oportunity to check for aging */
 				sr_stat_analysis_handle_aging();
 				break;
+#ifdef CONFIG_SYSTEM_POLICER
+			case SR_EVENT_STATS_SYSTEM:
+				p_system = (struct sr_ec_system_stat_t *) &msg_buff[offset];
+				offset += sizeof(struct sr_ec_system_stat_t);
+				if ((rc = sr_stat_system_policer_new_data(p_system)) != SR_SUCCESS) {
+                			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+								"failed processing system policer new data");
+					break;	
+				}
+				break;
+			case SR_EVENT_STATS_SYSTEM_FINISH:
+				if ((rc = sr_start_system_policer_data_finish()) != SR_SUCCESS) {
+                			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+								"failed processing system policer finish notification.");
+					break;	
+				}
+				break;
+#endif
 			case SR_EVENT_STATS_FILE_OPEN:
 				pFile_open = (struct sr_ec_file_open_t *) &msg_buff[offset];
 				offset += sizeof(struct sr_ec_file_open_t);
