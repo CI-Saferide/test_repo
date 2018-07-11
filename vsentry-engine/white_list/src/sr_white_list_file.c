@@ -28,11 +28,11 @@ typedef struct wl_learn_file_item {
 		return new_file; \
 	}
 
-static char *get_file_to_learn(char *file, char *mount, char *new_file)
+static char *get_file_to_learn(char *file, char *new_file)
 {
 	char *p, *help;
 
-	sprintf(new_file, "%s%s", strlen(mount) > 1 ? mount : "", file);
+	strcpy(new_file, file);
 
 	CHECK_DIR("/tmp")
 	CHECK_DIR("/var/spool")
@@ -42,9 +42,11 @@ static char *get_file_to_learn(char *file, char *mount, char *new_file)
 	if (home_dir)
 		CHECK_DIR(home_dir)
 
-	if (!strcmp(mount, "/proc")) {
+    // If file is /proc/pid learn the whole /proc
+	if (!memcmp(file, "/proc/", 5)) {
 		help = strdup(file);
 		p = strtok(help, "/");
+		p = strtok(NULL, "/"); // The number
 		if (p && sal_is_string_numeric(p))
 			strcpy(new_file, "/proc");
 		free(help);
@@ -94,7 +96,7 @@ SR_32 sr_white_list_file_open(struct sr_ec_file_open_t *file_open_info)
 	}
 
 	// The file to learn might be changed.
-	file_to_learn = get_file_to_learn(file_open_info->file, file_open_info->mount, new_file);
+	file_to_learn = get_file_to_learn(file_open_info->file, new_file);
 	if (!(white_list_item = sr_white_list_hash_get(exec))) {
 		if (sr_white_list_hash_insert(exec, &white_list_item) != SR_SUCCESS) {
 			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,

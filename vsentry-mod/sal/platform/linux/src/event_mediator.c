@@ -635,7 +635,7 @@ SR_32 vsentry_file_open(struct file *file, const struct cred *cred)
 	disp_info_t disp;
 	struct task_struct *ts = current;
 	const struct cred *rcred = ts->real_cred;
-	SR_32 rc;
+	SR_32 rc, mount_point_length;
 	
 	memset(&disp, 0, sizeof(disp_info_t));
 	
@@ -699,21 +699,30 @@ SR_32 vsentry_file_open(struct file *file, const struct cred *cred)
 	if (rc == 0) {
 		if(get_collector_state() == SR_TRUE){		
 			struct path path1;
-			if (get_path(file->f_path.dentry, disp.fileinfo.fullpath, sizeof(disp.fileinfo.fullpath)) != SR_SUCCESS) {
-				CEF_log_event(SR_CEF_CID_SYSTEM, "Error", SEVERITY_HIGH,
-															"File operation denied, file path it to long");
-				return 0;
-			}
+
 			path1 = file->f_path;
 			/* inc reference counter */
 			if (unlikely(!dget(file->f_path.dentry)))
 				return rc;
-			if (follow_up(&path1))
+			if (follow_up(&path1)) {
 				/* if foolow_up succeed, it dec the reference counter */
-				get_path(path1.dentry, disp.fileinfo.mount_point, sizeof(disp.fileinfo.mount_point));
-			else
+				get_path(path1.dentry, disp.fileinfo.fullpath, sizeof(disp.fileinfo.fullpath));
+			} else
 				/* dec the reference counter */
 				dput(file->f_path.dentry);
+
+			mount_point_length = strlen(disp.fileinfo.fullpath);
+			if (mount_point_length == 1) {
+				// The mount point is only slash, remove it.
+				disp.fileinfo.fullpath[0] = 0;
+				mount_point_length = 0;
+			}
+
+			if (get_path(file->f_path.dentry, disp.fileinfo.fullpath + mount_point_length, sizeof(disp.fileinfo.fullpath) - mount_point_length) != SR_SUCCESS) {
+				CEF_log_event(SR_CEF_CID_SYSTEM, "Error", SEVERITY_HIGH,
+															"File operation denied, file path it to long");
+				return 0;
+			}
 			disp_file_open_report(&disp);
 		}
 	}
