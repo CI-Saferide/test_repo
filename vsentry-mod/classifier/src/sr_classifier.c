@@ -212,7 +212,7 @@ defaultConf:
 		return SR_CLS_ACTION_ALLOW;	
 
 result:	
-	do{
+	while ((rule = sal_ffs_and_clear_array (&ba_res)) != SR_CLS_NO_MATCH) {
 		if(def_action == config_params->def_net_action){
 			action = config_params->def_net_action;
 			rule = SR_CLS_DEFAULT_RULE;
@@ -252,7 +252,7 @@ result:
 		if (action & SR_CLS_ACTION_DROP) return SR_CLS_ACTION_DROP;
 		if (action & SR_CLS_ACTION_ALLOW) return SR_CLS_ACTION_ALLOW;
 		
-	}while ((rule = sal_ffs_and_clear_array (&ba_res)) != SR_CLS_NO_MATCH);
+	}
 
 	return SR_CLS_ACTION_ALLOW;
 }
@@ -386,7 +386,7 @@ defaultConf:
 		return SR_CLS_ACTION_ALLOW;		
 	
 result:	
-	do {
+	while ((rule = sal_ffs_and_clear_array (&ba_res)) != SR_CLS_NO_MATCH) {
 		if(def_action == config_params->def_file_action){
 			action = config_params->def_file_action;
 			rule = SR_CLS_DEFAULT_RULE; // the default rule
@@ -412,7 +412,7 @@ result:
 		if (action & SR_CLS_ACTION_ALLOW) {
 			return SR_CLS_ACTION_ALLOW;
 		}
-	} while ((rule = sal_ffs_and_clear_array (&ba_res)) != SR_CLS_NO_MATCH);
+	}
 	
 	return SR_CLS_ACTION_ALLOW;
 }
@@ -486,7 +486,7 @@ defaultConf:
 
 	
 result:
-	do {
+	while ((rule = sal_ffs_and_clear_array (&ba_res)) != SR_CLS_NO_MATCH) {
 		if(def_action == config_params->def_can_action ){
 			action = config_params->def_can_action;
 			rule = SR_CLS_DEFAULT_RULE; // the default rule
@@ -520,7 +520,7 @@ result:
 		if (action & SR_CLS_ACTION_DROP)
 			return SR_CLS_ACTION_DROP;
 			
-	}while ((rule = sal_ffs_and_clear_array (&ba_res)) != SR_CLS_NO_MATCH);
+	}
 	
 	return SR_CLS_ACTION_ALLOW;
 }
