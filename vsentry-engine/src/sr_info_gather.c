@@ -21,21 +21,21 @@ static SR_32 sr_info_gather_loop(void *data)
                 
 	if (!(fd = sal_get_vsentry_fd())) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_LOW,
-			"%s=sr_info_gather_loop: no vsenbtry fd", REASON);
+			"%s=sr_info_gather_loop: no vsentry fd", REASON);
 		return SR_ERROR;
 	}
 
         ret = sr_msg_alloc_buf(ENG2LOG_BUF, MAX_BUFFER_SIZE);
         if (ret != SR_SUCCESS){
                 CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-					"%s=failed to init log buf",REASON);
+					"%s=failed to init log buf for ENG2LOG",REASON);
                 return 0;
         }
          
         ret = sr_msg_alloc_buf(MOD2LOG_BUF, MAX_BUFFER_SIZE);
         if (ret != SR_SUCCESS){
                 CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-					"%s=failed to init log buf",REASON);
+					"%s=failed to init log buf for MOD2LOG",REASON);
                 return 0;
         }               
          
@@ -43,7 +43,7 @@ static SR_32 sr_info_gather_loop(void *data)
         ret = sr_msg_alloc_buf(MOD2STAT_BUF, MAX_BUFFER_SIZE);
         if (ret != SR_SUCCESS){
                 CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-					"%s=failed to init stat buf",REASON);
+					"%s=failed to init stat buf for MOD2STAT",REASON);
                 return 0;
         }               
 #endif

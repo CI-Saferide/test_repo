@@ -13,8 +13,8 @@ int sr_cls_canid_add_rule(SR_U32 canid, char *exec, char *user, SR_U32 rulenum,S
 	int st;
 
 	if ((st = sr_get_inode(exec, &inode)) != SR_SUCCESS)  {
-	    CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_LOW,
-			"%s=failed getting inode while adding can rule",REASON);
+	    CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+			"%s=can add:failed to get exec inode for can rule, exec %s, rule %d",REASON, exec, rulenum);
 	    return st;
 	}
 	uid = sr_get_uid(user);
@@ -44,8 +44,8 @@ int sr_cls_canid_del_rule(SR_U32 canid, char *exec, char *user, SR_U32 rulenum,S
 	int st;
 
         if ((st = sr_get_inode(exec, &inode)) != SR_SUCCESS)  {
-            CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_LOW,
-				"%s=failed getting inode while deleting can rule",REASON);
+            CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+				"%s=can del:failed to get exec inode for can rule, exec %s, rule %d",REASON, exec, rulenum);
             return st;
         }
 	uid = sr_get_uid(user);

@@ -22,12 +22,13 @@ static SR_32 cls_housekeeping_task_func(void *data)
 SR_32 sr_cls_housekeeping_init(void)
 {
 	if (sal_task_start((void **)&cls_housekeeping_task, cls_housekeeping_task_func) != SR_SUCCESS) {
-  		sal_kernel_print_err("sr_cls_housekeeping_init sal_task_start FAILED\n");
+  		sal_kernel_print_err("failed to initilize cls_housekeeping\n");
 		return SR_ERROR;
         }
         is_run_cls_housekeeping = SR_TRUE;
         if (sal_wake_up_process(cls_housekeeping_task) != SR_SUCCESS) {
                 sal_kernel_print_err("sr_cls_housekeeping_init sal_wake_up FAILED\n");
+                sal_kernel_print_err("cls_housekeeping:failed to wakeup process\n");
         }
 
 	return SR_SUCCESS;

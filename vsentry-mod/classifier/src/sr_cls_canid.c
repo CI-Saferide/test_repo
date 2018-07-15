@@ -20,17 +20,17 @@ int sr_cls_canid_init(void)
 	
 	sr_cls_out_canid_table = sr_hash_new_table(HT_canid_SIZE);
 	if (!sr_cls_out_canid_table) {
-		sal_kernel_print_err("[%s]: Failed to allocate OUTBAND CAN MsgID table!\n", MODULE_NAME);
+		sal_kernel_print_err("[%s]: failed to allocate outbaund can mid table\n", MODULE_NAME);
 		return SR_ERROR;
 	}
 	
 	sr_cls_in_canid_table = sr_hash_new_table(HT_canid_SIZE);
 	if (!sr_cls_in_canid_table) {
-		sal_kernel_print_err("[%s]: Failed to allocate INBOUND CAN MsgID table!\n", MODULE_NAME);
+		sal_kernel_print_err("[%s]: failed to allocate inbaund can mid table\n", MODULE_NAME);
 		return SR_ERROR;
 	}
 	
-	sal_kernel_print_info("[%s]: Successfully initialized CAN MsgID classifier!\n", MODULE_NAME);
+	sal_kernel_print_info("[%s]: successfully initialized can mid classifier\n", MODULE_NAME);
 	
 	return SR_SUCCESS;
 }
@@ -52,15 +52,15 @@ void sr_cls_canid_uninit(void)
 	
 	if (sr_cls_out_canid_table != NULL) {
 		CEF_log_debug(SR_CEF_CID_CAN, "info", SEVERITY_LOW,
-			"%s=DELETEING MsgID elements",MESSAGE);
+			"%s=delete mid elements",MESSAGE);
 		for(i = 0; i < HT_canid_SIZE; i++) {
 			if (sr_cls_out_canid_table->buckets[i].head != NULL){
 				CEF_log_debug(SR_CEF_CID_CAN, "info", SEVERITY_LOW,
-					"%s=hash_index %d - DELETEING",MESSAGE,i);
+					"%s=hash_index %d - delete",MESSAGE,i);
 				curr = sr_cls_out_canid_table->buckets[i].head;				
 				while (curr != NULL){
 					CEF_log_debug(SR_CEF_CID_CAN, "info", SEVERITY_LOW,
-						"%s=CAN MsgID: %x dir: %d",MESSAGE,
+						"%s=can mid: %x dir: %d",MESSAGE,
 						curr->key,SR_CAN_OUT);
 					sal_memset(&rules, 0, sizeof(rules));
 					sal_or_self_op_arrays(&rules, &curr->rules);
@@ -79,26 +79,26 @@ void sr_cls_canid_uninit(void)
 		
 		if(sr_cls_out_canid_table->buckets != NULL){
 			CEF_log_debug(SR_CEF_CID_CAN, "info", SEVERITY_LOW,
-				"%s=DELETEING CAN MsgID table->bucket",MESSAGE);
+				"%s=delet can mid table bucket",MESSAGE);
 			SR_FREE(sr_cls_out_canid_table->buckets);
 		}
 		CEF_log_debug(SR_CEF_CID_CAN, "info", SEVERITY_LOW,
-			"%s=DELETEING CAN MsgID table that orig size was: %u dir: %d",MESSAGE,
+			"%s=delete can mid table that orig size was: %u dir: %d",MESSAGE,
 			sr_cls_out_canid_table->size,SR_CAN_OUT);
 		SR_FREE(sr_cls_out_canid_table);
 	}
 	
 	if (sr_cls_in_canid_table != NULL) {
 		CEF_log_debug(SR_CEF_CID_CAN, "info", SEVERITY_LOW,
-			"%s=DELETEING MsgID elements!",MESSAGE);
+			"%s=delete mid elements!",MESSAGE);
 		for(i = 0; i < HT_canid_SIZE; i++) {
 			if (sr_cls_in_canid_table->buckets[i].head != NULL){
 				CEF_log_debug(SR_CEF_CID_CAN, "info", SEVERITY_LOW,
-					"%s=hash_index %d - DELETEING",MESSAGE,i);
+					"%s=hash_index %d - delete",MESSAGE,i);
 				curr = sr_cls_in_canid_table->buckets[i].head;				
 				while (curr != NULL){
 					CEF_log_debug(SR_CEF_CID_CAN, "info", SEVERITY_LOW,
-						"%s=CAN MsgID=%x dir=%d",MESSAGE,
+						"%s=can mid=%x dir=%d",MESSAGE,
 						curr->key,SR_CAN_IN);
 					sal_memset(&rules, 0, sizeof(rules));
 					sal_or_self_op_arrays(&rules, &curr->rules);
@@ -117,11 +117,11 @@ void sr_cls_canid_uninit(void)
 		
 		if(sr_cls_in_canid_table->buckets != NULL){
 			CEF_log_debug(SR_CEF_CID_CAN, "info", SEVERITY_LOW,
-				"%s=DELETEING CAN MsgID table->bucket",MESSAGE);
+				"%s=delete can mid table bucket",MESSAGE);
 			SR_FREE(sr_cls_in_canid_table->buckets);
 		}
 		CEF_log_debug(SR_CEF_CID_CAN, "info", SEVERITY_LOW,
-			"%s=DELETEING CAN MsgID table that orig size was: %u dir: %d",MESSAGE,
+			"%s=delete can mid table that orig size was: %u dir: %d",MESSAGE,
 			sr_cls_in_canid_table->size,SR_CAN_IN);
 		SR_FREE(sr_cls_in_canid_table);
 	}
@@ -164,10 +164,10 @@ int sr_cls_canid_add_rule(SR_32 canid, SR_U32 rulenum, SR_8 dir)
                 ////////////////////////////////////////////////////////////////////////
 		ent=sr_hash_lookup((dir==SR_CAN_OUT)?sr_cls_out_canid_table:sr_cls_in_canid_table, canid);
 		if (!ent) {             
-			ent = SR_ZALLOC(sizeof(*ent)); // <-A MINE!!!
+			ent = SR_ZALLOC(sizeof(*ent));
 			if (!ent) {
 				CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-					"%s=Failed to allocate memory",REASON);
+					"%s=cls-can:failed to allocate memory",REASON);
 				return SR_ERROR;
 			} else {
 				ent->ent_type = CAN_MID;
@@ -195,7 +195,7 @@ int sr_cls_canid_del_rule(SR_32 canid, SR_U32 rulenum, SR_8 dir)
 		struct sr_hash_ent_t *ent=sr_hash_lookup((dir==SR_CAN_OUT)?sr_cls_out_canid_table:sr_cls_in_canid_table, canid);         
 		if (!ent) {
 			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-				"%s=Error can't del %s=%u %s=%x %s=%d - rule not found",REASON,
+				"%s=failed to del %s=%u %s=%x %s=%d - rule not found",REASON,
 				RULE_NUM_KEY,rulenum,
 				CAN_MSG_ID,canid,
 				DEVICE_DIRECTION,(dir==SR_CAN_OUT)? SR_CAN_OUT : SR_CAN_IN);
@@ -223,13 +223,13 @@ void print_table_canid(struct sr_hash_table_t *table)
 	struct sr_hash_ent_t *curr, *next;
 	
 	if (sr_cls_out_canid_table != NULL) {
-		sal_kernel_print_info("Printing CAN MsgID elements!\n");
+		sal_kernel_print_info("printing can mid elements!\n");
 		for(i = 0; i < HT_canid_SIZE; i++) {
 			if (sr_cls_out_canid_table->buckets[i].head != NULL){
 				sal_kernel_print_info("hash_index[%d]\n",i);
 				curr = sr_cls_out_canid_table->buckets[i].head;				
 				while (curr != NULL){
-					sal_kernel_print_info("\t\tCAN MsgID: %x\n",curr->key);
+					sal_kernel_print_info("\t\tcan mid: %x\n",curr->key);
 					sr_cls_print_canid_rules(curr->key,SR_CAN_OUT);
 					next = curr->next;
 					curr= next;
@@ -237,9 +237,9 @@ void print_table_canid(struct sr_hash_table_t *table)
 			}
 		}		
 		if(sr_cls_out_canid_table->buckets != NULL){
-			sal_kernel_print_info("Printed CAN MsgID table->bucket\n");
+			sal_kernel_print_info("printed can mid table bucket\n");
 		}
-		sal_kernel_print_info("Printed CAN MsgID table that orig size was: %u\n",sr_cls_out_canid_table->size);
+		sal_kernel_print_info("printed can mid table that orig size was: %u\n",sr_cls_out_canid_table->size);
 	}	
 }
 #endif
@@ -249,7 +249,7 @@ struct sr_hash_ent_t *sr_cls_canid_find(SR_32 canid, SR_8 dir)
 	struct sr_hash_ent_t *ent=sr_hash_lookup((dir==SR_CAN_OUT)?sr_cls_out_canid_table:sr_cls_in_canid_table, canid);
 	if (!ent) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-			"%s=%x CAN MsgID not found",REASON,
+			"%s=%x can mid not found",REASON,
 			canid);
 		return NULL;
 	}
@@ -273,7 +273,7 @@ SR_8 sr_cls_canid_msg_dispatch(struct sr_cls_canbus_msg *msg)
 	switch (msg->msg_type) {
 		case SR_CLS_CANID_DEL_RULE:
 			CEF_log_event(SR_CEF_CID_CAN, "info", SEVERITY_LOW,
-				"%s=Delete %s=%d %s=%x %s=%d",MESSAGE,
+				"%s=delete %s=%d %s=%x %s=%d",MESSAGE,
 				RULE_NUM_KEY,msg->rulenum, 
 				CAN_MSG_ID,msg->canid, 
 				DEVICE_DIRECTION,(msg->dir==SR_CAN_OUT)? SR_CAN_OUT : ((msg->dir==SR_CAN_IN)? SR_CAN_IN : SR_CAN_BOTH));
@@ -317,25 +317,4 @@ SR_8 sr_cls_canid_msg_dispatch(struct sr_cls_canbus_msg *msg)
 			break;
 	}
 	return SR_SUCCESS;
-}
-
-int myRandom_canid(int bottom, int top){ // for unit testing
-	
-	SR_U32 get_time;
-	//int sec ,hr, min, tmp1,tmp2;
-	SR_32 usec;
-	struct timeval tv;
-
-	do_gettimeofday(&tv);
-	//get_time = tv.tv_sec;
-	//sec = get_time % 60;
-	//tmp1 = get_time / 60;
-	//min = tmp1 % 60;
-	//tmp2 = tmp1 / 60;
-	//hr = tmp2 % 24;
-
-	//printk("The time is hr:min:sec  ::  %d:%d:%dn",hr,min,sec);
-	get_time = tv.tv_usec;
-	usec = get_time % 9999;	
-    return (usec % (top - bottom)) + bottom;
 }

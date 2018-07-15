@@ -45,7 +45,7 @@ void sr_event_receiver(SR_8 *msg_buff, SR_U32 msg_len)
 				spid = (SR_32)(pProcessDied->pid);
 #ifdef SR_STAT_ANALYSIS_DEBUG
 				CEF_log_debug(SR_CEF_CID_SYSTEM, "info", SEVERITY_LOW,
-					"%s=Process died:%d",MESSAGE,
+					"%s=process died, pid %d",MESSAGE,
 					spid);
 #endif
 				if (spid <= 0)

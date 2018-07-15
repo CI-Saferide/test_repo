@@ -89,13 +89,13 @@ SR_32 sr_white_list_ip_init(void)
 	hash_ops.free = wl_ip_binary_free;
 	if (!(wl_ip_binary_hash = sr_gen_hash_new(HASH_SIZE, hash_ops, 0))) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-			"%s=file_hash_init: sr_gen_hash_new failed",REASON);
+			"%s=failed to init white list ip hash table",REASON);
 		return SR_ERROR;
 	}
 
 	if (!rn_inithead((void **)&sr_wl_conngraph_table, (8 * offsetof(struct sockaddr_in, sin_addr)))) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-			"%s=error initializing conngraph",REASON);
+			"%s=error initializing connection graph table",REASON);
 		return (SR_ERROR);
 	}
 
@@ -123,14 +123,14 @@ SR_32 sr_wl_ip_binary_insert(char *exec)
 	SR_Zalloc(sr_wl_ip_binary_item, sr_wl_ip_binary_t *, sizeof(sr_wl_ip_binary_t));
 	if (!sr_wl_ip_binary_item) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-			"%s=learn hash update: memory allocation failed", REASON);
+			"%s=failed to allocate memory for white list ip", REASON);
 		return SR_ERROR;
 	}
 
 	strncpy(sr_wl_ip_binary_item->exec, exec, SR_MAX_PATH_SIZE);
         if (sr_gen_hash_insert(wl_ip_binary_hash, (void *)exec, sr_wl_ip_binary_item, 0) != SR_SUCCESS) {
                 CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-                               "%s=%s: sr_gen_hash_insert failed",REASON, __FUNCTION__);
+                               "%s=failed to insert new item to white list ip table",REASON);
                 return SR_ERROR;
         }
 
@@ -141,7 +141,7 @@ static SR_32 white_list_ip_clear_graph(void)
 {
 	if (!rn_detachhead((void **)&sr_wl_conngraph_table)) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-			"%s=error clearing conngraph",REASON);
+			"%s=failed to clear connection graph",REASON);
 	}
 
 	return sr_white_list_ip_init();
@@ -172,7 +172,7 @@ SR_32 exec_add_to_list_cb(void *hash_data, void *data)
 	SR_Zalloc(new_item, wl_exec_item_t *, sizeof(wl_exec_item_t));
         if (!new_item) {
                 CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-                                "%s=learn hash update: memory allocation failed",REASON);
+                                "%s=failed to allocate memory for white list ip exec",REASON);
                 return SR_ERROR;
         }
 	new_item->next = exec_item_list;
@@ -192,7 +192,7 @@ static int ip_add_to_list_cb(struct radix_node *node, void *unused)
 	SR_Zalloc(new_item, wl_ip_item_t *, sizeof(wl_ip_item_t));
         if (!new_item) {
                 CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-                                "%s=learn hash update: memory allocation failed",REASON);
+                                "%s=failed to allocate memory for white list ip addr",REASON);
                 return SR_ERROR;
         }
 	new_item->next = ip_item_list;
@@ -212,7 +212,7 @@ SR_32 sr_white_list_ip_apply(SR_32 is_apply)
 	// Create one rule, 
         if (sysrepo_mng_session_start(&sysrepo_handler)) {
                 CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-                        "%s=sysrepo_mng_session_start failed",REASON);
+                        "%s=failed to start persistent storage session",REASON);
                 return SR_ERROR;
         }
 
@@ -229,27 +229,27 @@ SR_32 sr_white_list_ip_apply(SR_32 is_apply)
 		if (sys_repo_mng_create_net_rule(&sysrepo_handler, WL_IP_RULE_ID, tuple_id, "0.0.0.0", "0.0.0.0", sal_get_str_ip_address(ip_iter->ip), "255.255.255.255",
 			0, 0, 0, exec_iter->exec, "*", WHITE_LIST_ACTION) != SR_SUCCESS) {
 			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-				"%s=sys_repo_mng_create_file_rule  fiel rule id:%d ",
+				"%s=failed to create ip rule (id %d, ip and exec)",
 					REASON, WL_IP_RULE_ID);
 		}
 		tuple_id++;
 	}
-	// In case exec iter was left 
+	// In case exec iter was left (out of ips, but list on exec still available)
 	for (; exec_iter; exec_iter = exec_iter->next) {
 		if (sys_repo_mng_create_net_rule(&sysrepo_handler, WL_IP_RULE_ID, tuple_id, "0.0.0.0", "0.0.0.0", sal_get_str_ip_address(ip_item_list->ip), "255.255.255.255",
 			0, 0, 0, exec_iter->exec, "*", WHITE_LIST_ACTION) != SR_SUCCESS) {
 			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-				"%s=sys_repo_mng_create_file_rule  fiel rule id:%d ",
+				"%s=failed to create ip rule (id %d, exec only)",
 					REASON, WL_IP_RULE_ID);
 		}
 		tuple_id++;
 	}
-	// In case ip iter was left 
+	// In case ip iter was left (out of execs, but list of ips still available)
 	for (; ip_iter; ip_iter = ip_iter->next) {
 		if (sys_repo_mng_create_net_rule(&sysrepo_handler, WL_IP_RULE_ID, tuple_id, "0.0.0.0", "0.0.0.0", sal_get_str_ip_address(ip_iter->ip), "255.255.255.255",
 			0, 0, 0, exec_item_list->exec, "*", WHITE_LIST_ACTION) != SR_SUCCESS) {
 			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-				"%s=sys_repo_mng_create_file_rule failed rule id:%d ",
+				"%s=failed to create ip rule (id %d, ip only)",
 					REASON, WL_IP_RULE_ID);
 		}
 		tuple_id++;
@@ -271,26 +271,26 @@ SR_32 sr_white_list_ip_apply(SR_32 is_apply)
 
         if (sys_repo_mng_commit(&sysrepo_handler) != SR_SUCCESS) {
                 CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-                                "%s=sys_repo_mng_commit failed ", REASON);
+                                "%s=ip wl: failed to commit changes to persistent storage", REASON);
         }
         sysrepo_mng_session_end(&sysrepo_handler);
 
 	return SR_SUCCESS;
 }
 
-static SR_32 white_list_ip_update_pid(struct radix_node *node, SR_U32 pid)
+static SR_32 white_list_ip_update_pid(SR_U32 pid, struct sockaddr_in *ip)
 {
 	char exec[SR_MAX_PATH_SIZE];
 
-	if (pid) {
-		if (sal_get_process_name(pid, exec, SR_MAX_PATH_SIZE) != SR_SUCCESS) 
-			strcpy(exec, "*");
-	} else
-		strcpy(exec, "*");
+	if (!pid || sal_get_process_name(pid, exec, SR_MAX_PATH_SIZE) != SR_SUCCESS)  {
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+			"%s=ip wl: failed to learn program name, pid:%d ip:%d ",REASON, pid, ip->sin_addr.s_addr);
+		return SR_ERROR;
+	}
 
 	if (sr_wl_ip_binary_insert(exec) == SR_ERROR) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-			"%s=%s: ip binary insert failed",REASON, __FUNCTION__);
+			"%s=%s: ip binary insert failed",REASON);
 		return SR_ERROR;
 	}
 
@@ -318,7 +318,7 @@ SR_32 sr_white_list_ip_new_connection(struct sr_ec_new_connection_t *pNewConnect
 	switch (sr_white_list_get_mode()) {
 		case SR_WL_MODE_LEARN:
 			if (node) {
-				white_list_ip_update_pid(node, pNewConnection->pid);
+				white_list_ip_update_pid(pNewConnection->pid, ip);
 				free(ip);
 				return SR_SUCCESS;
 			}
@@ -328,7 +328,7 @@ SR_32 sr_white_list_ip_new_connection(struct sr_ec_new_connection_t *pNewConnect
 				return SR_ERROR;
 			}
 			node = rn_addroute((void*)ip, NULL, sr_wl_conngraph_table, treenodes);
-			white_list_ip_update_pid(node, pNewConnection->pid);
+			white_list_ip_update_pid(pNewConnection->pid, ip);
 			break;
 		case SR_WL_MODE_APPLY:
 			free(ip);
@@ -347,9 +347,9 @@ static int sr_wl_node_printer(struct radix_node *node, void *unused)
 
 	ip=(struct sockaddr_in *)(node->rn_u.rn_leaf.rn_Key);
 	CEF_log_event(SR_CEF_CID_SYSTEM, "info", SEVERITY_LOW,
-					"%s=Address learnt : %x", MESSAGE,
+					"%s=address learned %x", MESSAGE,
 					ip->sin_addr.s_addr);
-	printf(" RADIX addr:%x \n", ip->sin_addr.s_addr);
+	printf("radix addr:%x \n", ip->sin_addr.s_addr);
 
 	return 0;
 }
@@ -361,11 +361,11 @@ void sr_wl_conngraph_print_tree(void)
 
 void sr_white_list_ip_print(void)
 {
-	printf("Radix tree:\n");
+	printf("radix tree:\n");
 	CEF_log_event(SR_CEF_CID_SYSTEM, "info", SEVERITY_LOW,
-					"%s=IP addresses learnt:",MESSAGE);
+					"%s=ip addresses learned:",MESSAGE);
 	sr_wl_conngraph_print_tree();
-	printf("\nBinary hash:\n");
+	printf("\nbinary hash:\n");
 	sr_wl_ip_binary_print();
 }
 

@@ -101,7 +101,7 @@ static SR_32 delete_action(action_t *action)
 {
 	if (sr_db_action_delete_action(action) != SR_SUCCESS) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, 
-			"%s=handle action failed act=%s",REASON,
+			"%s=delete action failed act=%s",REASON,
 			action->action_name);
 		return SR_ERROR;
 	}

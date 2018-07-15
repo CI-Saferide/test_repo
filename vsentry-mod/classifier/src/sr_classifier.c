@@ -236,16 +236,16 @@ result:
 			sprintf(ext, "%s=%d%s %s=%s %s=%s %s=%s %s=%d %s=%s %s=%d",
 				RULE_NUM_KEY,rule, rule == SR_CLS_DEFAULT_RULE ? "(Default)" : "",
 				DEVICE_ACTION,actionstring,
-				TRANSPORT_PROTOCOL,info->tuple_info.ip_proto == IPPROTO_TCP?"TCP":"UDP",
+				TRANSPORT_PROTOCOL,info->tuple_info.ip_proto == IPPROTO_TCP?"tcp":"udp",
 				DEVICE_SRC_IP,sip,
 				DEVICE_SRC_PORT,info->tuple_info.sport,
 				DEVICE_DEST_IP,dip,
 				DEVICE_DEST_PORT,info->tuple_info.dport);
 			if (action & SR_CLS_ACTION_DROP) {
-				CEF_log_event(SR_CEF_CID_NETWORK, "Connection drop" , SEVERITY_HIGH, ext);
+				CEF_log_event(SR_CEF_CID_NETWORK, "connection drop" , SEVERITY_HIGH, ext);
 				return SR_CLS_ACTION_DROP;
 			} else {
-				CEF_log_event(SR_CEF_CID_NETWORK, "Connection allow" , SEVERITY_LOW, ext);
+				CEF_log_event(SR_CEF_CID_NETWORK, "connection allow" , SEVERITY_LOW, ext);
 				return SR_CLS_ACTION_ALLOW;
 			}
 		}
@@ -362,7 +362,7 @@ check_old_parent:
 		// PID
 		if ((st = sr_cls_process_add(info->fileinfo.id.pid)) != SR_SUCCESS) {
 			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-				"%s=error adding process",REASON);
+				"%s=cls-file: error adding process",REASON);
 		}
 		ptr = sr_cls_process_match(SR_FILE_RULES, info->fileinfo.id.pid);
 		if (ptr) {
@@ -397,14 +397,14 @@ result:
 			char ext[64];
 			
 			sprintf(ext, "%s=%d%s %s=%u %s=%s",
-				RULE_NUM_KEY,rule, rule == SR_CLS_DEFAULT_RULE ? "(Default)" : "", 
+				RULE_NUM_KEY,rule, rule == SR_CLS_DEFAULT_RULE ? "(default)" : "", 
 				INODE_NUMBER,info->fileinfo.parent_inode?info->fileinfo.parent_inode:info->fileinfo.current_inode,
-				FILE_PERMISSION,(info->fileinfo.fileop&SR_FILEOPS_WRITE)?"Write":(info->fileinfo.fileop&SR_FILEOPS_READ)?"Read":"Execute"); 
+				FILE_PERMISSION,(info->fileinfo.fileop&SR_FILEOPS_WRITE)?"write":(info->fileinfo.fileop&SR_FILEOPS_READ)?"read":"execute"); 
 			
 			if (action & SR_CLS_ACTION_DROP)
-				CEF_log_event(SR_CEF_CID_FILE, "File operation drop" , SEVERITY_HIGH, ext);
+				CEF_log_event(SR_CEF_CID_FILE, "file operation drop" , SEVERITY_HIGH, ext);
 			else
-				CEF_log_event(SR_CEF_CID_FILE, "File operation allow" , SEVERITY_LOW, ext);
+				CEF_log_event(SR_CEF_CID_FILE, "file operation allow" , SEVERITY_LOW, ext);
 		}
 		if (action & SR_CLS_ACTION_DROP) {
 			return SR_CLS_ACTION_DROP;
@@ -447,7 +447,7 @@ SR_32 sr_classifier_canbus(disp_info_t* info)
 		if (info->can_info.id.pid) { 
 			if ((st = sr_cls_process_add(info->can_info.id.pid)) != SR_SUCCESS) {
 				CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-					"%s=error adding process",
+					"%s=cls-can: error adding process",
 					REASON);
 			}
 			ptr = sr_cls_process_match(SR_CAN_RULES, info->can_info.id.pid);
@@ -497,11 +497,11 @@ result:
 			char actionstring[16], msg[64];
 			SR_U8 severity;
 			if (action & SR_CLS_ACTION_DROP) {
-				sprintf(actionstring, "Drop");
+				sprintf(actionstring, "drop");
 				strncpy(msg, "CAN message drop", 64);
 				severity = SEVERITY_HIGH;
 			} else if (action & SR_CLS_ACTION_ALLOW) {
-				sprintf(actionstring, "Allow");
+				sprintf(actionstring, "allow");
 				strncpy(msg, "CAN message allow", 64);
 				severity = SEVERITY_LOW;
 			} else {
@@ -512,7 +512,7 @@ result:
 
 			CEF_log_event(SR_CEF_CID_CAN, msg , severity, 
 				"%s=%d%s %s=%s %s=%x %s=%d",
-				RULE_NUM_KEY,rule,rule == SR_CLS_DEFAULT_RULE ? "(Default)" : "",
+				RULE_NUM_KEY,rule,rule == SR_CLS_DEFAULT_RULE ? "(default)" : "",
 				DEVICE_ACTION,actionstring,
 				CAN_MSG_ID,info->can_info.msg_id,
 				DEVICE_DIRECTION,info->can_info.dir == SR_CAN_OUT?SR_CAN_OUT:SR_CAN_IN); /* "0" for inbound or "1" for outbound*/

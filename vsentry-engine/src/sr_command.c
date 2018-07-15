@@ -29,12 +29,12 @@ static SR_32 handle_engine_start_stop(SR_BOOL is_on)
 	usleep(500000);
 	if ((rc = sr_control_set_state(is_on)) != SR_SUCCESS) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, 
-			"%s=failed sr_control_set_state",REASON);
+			"%s=remote command - failed to set security state to %s",REASON, (is_on)? "enabled":"disabled");
 		return SR_ERROR;
 	}
 	if (!(f = fopen("/tmp/sec_state", "w"))) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-			"%s=failed opening file /tmp/sec_state",REASON);
+			"%s=failed to open security state internal file",REASON);
 		return SR_ERROR;
 	}
 		
@@ -57,7 +57,7 @@ void sr_command_get_ml_state_str(char *state, SR_U32 size)
 			strncpy(state, CMD_OFF, (size_t)size);
 			break;
 		default:
-			strncpy(state, "ERROR", (size_t)size);
+			strncpy(state, "error", (size_t)size);
 			break;
 	}
 }
