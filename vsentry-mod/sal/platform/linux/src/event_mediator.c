@@ -933,7 +933,7 @@ SR_32 vsentry_socket_sendmsg(struct socket *sock,struct msghdr *msg,SR_32 size)
 				return 0;
 			}
 			cfd = (struct canfd_frame *)skb->data;
-			disp.can_info.msg_id = (SR_U32)cfd->can_id;
+			disp.can_info.msg_id = ((SR_U32)cfd->can_id) & 0x1fffffff;
 			disp.can_info.payload_len = cfd->len;
 			disp.can_info.dir = SR_CAN_OUT;
 			for (i = 0; i < cfd->len; i++) {
@@ -1038,7 +1038,7 @@ int vsentry_socket_sock_rcv_skb(struct sock *sk, struct sk_buff *skb)
 		
 		case PF_CAN:
 			cfd = (struct canfd_frame *)skb->data;
-			disp.can_info.msg_id = (SR_U32)cfd->can_id;
+			disp.can_info.msg_id = ((SR_U32)cfd->can_id) & 0x1fffffff;
 			disp.can_info.payload_len = cfd->len;
 			disp.can_info.dir = SR_CAN_IN;
 
