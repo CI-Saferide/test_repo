@@ -65,7 +65,7 @@ void sr_event_stats_receiver(SR_8 *msg_buff, SR_U32 msg_len)
 					new_con.ip_proto = pConStats->con_id.ip_proto;
 					if (sr_white_list_ip_new_connection(&new_con) != SR_SUCCESS) {
 						CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-							"%s=failed to hash exec for process canbus",REASON);
+							"%s=failed to add udp connection to ip white list",REASON);
 					}
 				}
 

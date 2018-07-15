@@ -36,7 +36,7 @@ static SR_32 calc_learn_values(void *hash_data, void *data)
 		ptr->mean_delta = (SR_U32)((ptr->sum_delta) / (ptr->samples));
 	} else {
 		ptr->mean_delta = 0;
-		CEF_log_event(SR_CEF_CID_SYSTEM, "No learning data", SEVERITY_MEDIUM,
+		CEF_log_event(SR_CEF_CID_SYSTEM, "no learning data", SEVERITY_MEDIUM,
 			"%s=state changed to protection without any learning info msg_id 0x%x. detection will not work!",MESSAGE,
 			ptr->msg_id);
 	}
@@ -52,7 +52,7 @@ static SR_32 calc_learn_values(void *hash_data, void *data)
 		sr_send_msg(ENG2MOD_BUF, sizeof(msg));
 	} else {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-			"%s=failed to transfer can_ml leaning info for msg_id 0x%x",REASON,
+			"%s=failed to transfer can_ml leaning info for msg_id %x",REASON,
 			ptr->msg_id);
 	}
 	ptr->calc_sigma_plus = 0;
@@ -82,7 +82,7 @@ static SR_32 update_learning_info(void *hash_data, void *data)
 	buf_len = strlen(buf);
 	if ((learning_ptr + buf_len) >= DYNAMIC_POLICY_BUFFER) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-			"%s=no space left for dynamic policy update. msg_id 0x%x cannot be added",REASON,
+			"%s=no space left for dynamic policy update. msg_id %x cannot be added",REASON,
 			ptr->msg_id);
 		return SR_ERROR;
 	}

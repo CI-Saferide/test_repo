@@ -35,7 +35,7 @@ SR_32 sr_white_list_canbus(struct sr_ec_can_t *can_info)
 
 	if (sal_get_process_name(can_info->pid, exec, SR_MAX_PATH_SIZE) != SR_SUCCESS) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-			"%s=while list CAN failed lerning program name for pid:%d msgid:%d dir:%d whilte list insert failed",
+			"%s=white list: failed to learn program name for CAN message, pid:%d mid:%d dir:%d",
 				REASON, can_info->pid, can_info->msg_id, can_info->dir);
 		return SR_ERROR;
 	}
@@ -43,7 +43,8 @@ SR_32 sr_white_list_canbus(struct sr_ec_can_t *can_info)
 	if (!(white_list_item = sr_white_list_hash_get(exec))) {		
 		if (sr_white_list_hash_insert(exec, &white_list_item) != SR_SUCCESS) {
 			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-				"%s=can whilte list insert failed",REASON);
+				"%s=failed to insert CAN message to white list, pid:%d mid:%d dir:%d",
+				REASON, can_info->pid, can_info->msg_id, can_info->dir);
 			return SR_ERROR;
 		}
 		
@@ -59,12 +60,12 @@ SR_32 sr_white_list_canbus(struct sr_ec_can_t *can_info)
 			SR_Zalloc(*iter, sr_wl_can_item_t *, sizeof(sr_wl_can_item_t));
 			if (!*iter) {
 				CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-					"%s=can wl learn hash update: memory allocation failed",REASON);
+					"%s=failed to allocate memory for white list CAN message, pid:%d mid:%d dir:%d",
+					REASON, can_info->pid, can_info->msg_id, can_info->dir);
 				return SR_ERROR;
 			}
 			(*iter)->msg_id = can_info->msg_id;
 			(*iter)->dir = can_info->dir;
-			//printf("PID=%u ITER MSG_ID=%x %s %s\n",can_info->pid,(*iter)->msg_id,(*iter)->dir==SR_CAN_IN?"IN":"OUT",exec);
 		}
 
 	return SR_SUCCESS;
@@ -76,8 +77,8 @@ void sr_white_list_canbus_print(sr_wl_can_item_t *wl_canbus)
 	
 	for (iter = wl_canbus; iter; iter = iter->next) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "info", SEVERITY_LOW,
-			"%s= MsgID=%03x dir=%s ",REASON, iter->msg_id,iter->dir==SR_CAN_OUT? "OUT":"IN");
-		printf("MsgID=%03x dir=%s\n", iter->msg_id,iter->dir==SR_CAN_OUT? "OUT":"IN");
+			"%s=mid %03x dir %s ",MESSAGE, iter->msg_id,iter->dir==SR_CAN_OUT? "out":"in");
+		printf("mid=%03x dir=%s\n", iter->msg_id,iter->dir==SR_CAN_OUT? "out":"in");
 	}
 	
 }
@@ -133,8 +134,8 @@ static SR_32 canbus_apply_cb(void *hash_data, void *data)
 		}
 		if (sys_repo_mng_create_canbus_rule(&sysrepo_handler, rule_id, iter->msg_id, wl_item->exec, "*", WHITE_LIST_ACTION, iter->dir) != SR_SUCCESS) {
 			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-				"%s=fail to create can rule in persistent db. rule id:%d ",
-					REASON, rule_id);
+				"%s=fail to create can rule in persistent db. rule id:%d mid:%x %s exec:%s",
+					REASON, rule_id, iter->msg_id,iter->dir ,wl_item->exec);
 		}
 		rule_id++;
 

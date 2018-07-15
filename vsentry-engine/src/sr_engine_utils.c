@@ -12,7 +12,7 @@ SR_32 sr_get_inode(char *file_name, SR_U32 *inode)
 	if (*file_name != '*') {
 	    if(lstat(file_name, &buf)) { // Error
 	       CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-			"%s=failed to get inode for file :%s",REASON,
+			"%s=failed to get inode for file %s",REASON,
 			file_name);
 	       return SR_ERROR;
 	    }

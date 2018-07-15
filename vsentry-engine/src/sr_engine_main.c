@@ -60,8 +60,8 @@ static SR_32 engine_main_loop(void *data)
 	}
 
 	if (!(fd = sal_get_vsentry_fd())) {
-                CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_LOW,
-                        "%s=sr_info_gather_loop: no vsenbtry fd", REASON);
+                CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+                        "%s=sr_info_gather_loop: no vsentry fd", REASON);
                 return SR_ERROR;
 	}
 
@@ -111,15 +111,14 @@ static SR_32 handle_mem_opt(cls_file_mem_optimization_t mem_opt)
  	// Send the memory optimization value to the Kernel
  	if (sr_control_set_mem_opt(mem_opt) != SR_SUCCESS) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-			"%s Failed to set memory optimization flag to Kernel", REASON);
+			"%s=failed to set memory optimization flag to kernel", REASON);
  		return SR_ERROR;
 	}
 
 	return SR_SUCCESS;
 }
 
-
-static SR_32 sr_engine_read_conf(char *vsentry_config_file)
+static SR_32 sr_engine_read_init_values(char *vsentry_config_file)
 {
 	FILE *f_conf;
 	char buf[CONFIG_LINE_BUFFER_SIZE], *param, *value;
@@ -129,7 +128,7 @@ static SR_32 sr_engine_read_conf(char *vsentry_config_file)
 
 	if (!(f_conf = fopen(vsentry_config_file, "r"))) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-						"%s=to open conf file :%s",REASON, vsentry_config_file);
+						"%s=failed to open config file %s",REASON, vsentry_config_file);
 		return SR_SUCCESS;
 	}
 
@@ -145,7 +144,7 @@ static SR_32 sr_engine_read_conf(char *vsentry_config_file)
 		if (!strcmp(param, "FILE_CLS_MEM_OPTIMIZE")) {
 			if (handle_mem_opt(atoi(value)) != SR_SUCCESS) {
 				CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-					"%s= failed to handle mem opt :%s",REASON);
+					"%s=failed to handle memory optimization, value=%s",REASON, value);
 				return SR_SUCCESS;
 			}
 		}
@@ -164,7 +163,7 @@ SR_32 sr_engine_write_conf(char *param, char *value)
 	config_params = sr_config_get_param();
 	if (!(f_conf = fopen(config_params->vsentry_config_file, "w"))) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-						"%s=failed to open conf file :%s",REASON, config_params->vsentry_config_file);
+						"%s=failed to open config file %s",REASON, config_params->vsentry_config_file);
 		return SR_ERROR;
 	}
 	// TODO : Add real logic to this function which overide the file now.
@@ -282,7 +281,8 @@ SR_32 sr_engine_start(int argc, char *argv[])
 	if (config_params->remote_server_support_enable) {
 		ret = sr_log_uploader_init();
 		if (ret != SR_SUCCESS){
-			printf("failed to init_log_uploader\n");
+			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+							"%s=failed to init remote services",REASON);
 			return SR_ERROR;
 		}
 	}
@@ -290,14 +290,14 @@ SR_32 sr_engine_start(int argc, char *argv[])
 	ret = sr_white_list_init();
 	if (ret != SR_SUCCESS){
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-						"%s=failed to init sr_white_list_init",REASON);
+						"%s=failed to init white list",REASON);
 		return SR_ERROR;
 	}
 
 	ret = sal_vsentry_fd_open();
 	if (ret != SR_SUCCESS){
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-						"%s=failed sal_fd_vsentry_open", REASON);
+						"%s=failed to open vsentry fd", REASON);
 		return SR_ERROR;
 	}
 
@@ -308,7 +308,7 @@ SR_32 sr_engine_start(int argc, char *argv[])
 		return SR_ERROR;
 	}
 
-	ret = sr_engine_read_conf(config_params->vsentry_config_file);
+	ret = sr_engine_read_init_values(config_params->vsentry_config_file);
 	if (ret != SR_SUCCESS){
 		printf("failed to read conf  sr_engine\n");
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,

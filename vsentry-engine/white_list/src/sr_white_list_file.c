@@ -85,17 +85,15 @@ SR_32 sr_white_list_file_open(struct sr_ec_file_open_t *file_open_info)
 
 	if (sal_get_process_name(file_open_info->pid, exec, SR_MAX_PATH_SIZE) != SR_SUCCESS) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-				"%s=file while list FILE - Failed learning exec name for pid:%d file :%s ",REASON, file_open_info->pid, file_open_info->file);
+				"%s=failed to learn program name for white list file, pid:%d file :%s",REASON, file_open_info->pid, file_open_info->file);
 		return SR_ERROR;	
 	}
 
 	if (!sal_is_valid_file_name(file_open_info->file)) {
-#if 0
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-				"%s=Invalid file :%s ",REASON, file_open_info->file);
-#endif
+				"%s=invalid file :%s ",REASON, file_open_info->file);
 		printf("=====Invalid file name :%s \n", file_open_info->file);
-		return SR_SUCCESS;
+		return SR_ERROR;
 	}
 
 	// The file to learn might be changed.
@@ -103,7 +101,7 @@ SR_32 sr_white_list_file_open(struct sr_ec_file_open_t *file_open_info)
 	if (!(white_list_item = sr_white_list_hash_get(exec))) {
 		if (sr_white_list_hash_insert(exec, &white_list_item) != SR_SUCCESS) {
 			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-				"%s=file white list insert failed",REASON);
+				"%s=file white list insert failed, pid:%d file :%s",REASON, file_open_info->pid, file_open_info->file);
 			return SR_ERROR;
 		}
 	}
@@ -115,7 +113,7 @@ SR_32 sr_white_list_file_open(struct sr_ec_file_open_t *file_open_info)
 		SR_Zalloc(*iter, sr_white_list_file_t *, sizeof(sr_white_list_file_t));
 		if (!*iter) {
 			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-				"%s=learn hash update: memory allocation failed",REASON);
+				"%s=failed to allocate memory for white list file, pid:%d file :%s",REASON, file_open_info->pid, file_open_info->file);
 			return SR_ERROR;
 		}
 		strncpy((*iter)->file, file_to_learn, SR_MAX_PATH_SIZE);
@@ -131,8 +129,8 @@ void sr_white_list_file_print(sr_white_list_file_t *white_list_file)
 
 	for (iter = white_list_file; iter; iter = iter->next) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "info", SEVERITY_LOW,
-                	        "%s=file learnt : file:%s file op:%x ", MESSAGE,  iter->file, iter->fileop);
-		printf("  file:%s: fileop:%x \n", iter->file, iter->fileop);
+                	        "%s=file leaned : file:%s file op:%x ", MESSAGE,  iter->file, iter->fileop);
+		printf("file:%s: fileop:%x \n", iter->file, iter->fileop);
 	}
 	
 }
@@ -166,7 +164,7 @@ static SR_32 wl_file_count_cb(void *hash_data, void *data)
 		SR_Zalloc(new_item, wl_learn_file_item_t *, sizeof(wl_learn_file_item_t));
 		if (!new_item) {
 			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-				"%s=learn hash update: memory allocation failed",REASON);
+				"%s=failed to allocate memory for white list file update",REASON);
 			return SR_ERROR;
 		}
 		new_item->next = learn_files_list;
@@ -219,7 +217,7 @@ static SR_32 sr_white_list_count_files(SR_U32 *counter)
 
 	if (sr_white_list_hash_exec_for_all(wl_file_count_cb) != SR_SUCCESS) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-			"%s=file wl hash exec failed",REASON);
+			"%s=failed to count white list files",REASON);
 		return SR_ERROR;
 	}
 	
@@ -247,12 +245,12 @@ static SR_32 sr_white_list_calculate_mem_optimization(cls_file_mem_optimization_
 	config_params = sr_config_get_param();
 	if (sal_get_memory(NULL, &free_memory) != SR_SUCCESS) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-				"%s=Ger free memory failed", REASON);
+				"%s=failed to get free memory, memory optimization cannot continue", REASON);
 		return SR_ERROR;
 	}
 	if (sr_white_list_count_files(&files_counter) != SR_SUCCESS) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-				"%s=Counter fiels has failed", REASON);
+				"%s=failed to count white list total files", REASON);
 		return SR_ERROR;
 	}
 
@@ -277,7 +275,7 @@ static void write_file_rule(char *file_name, char *exec, SR_U8 file_op, SR_32 *r
 	//printf("rule:%d tuple:%d exec:%s file:%s perm:%d \n", *op_rule, *op_tuple, exec, file_name, file_op);
 	if (sys_repo_mng_create_file_rule(&sysrepo_handler, *op_rule, *op_tuple, file_name, exec, "*", WHITE_LIST_ACTION, file_op) != SR_SUCCESS) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-			"%s=fail to create file rule in persistent db. rule id:%d ",
+			"%s=fail to create file rule in persistent db. rule id:%d",
 				REASON, *rule_id);
 	}
 	(*op_tuple)++;
@@ -300,7 +298,7 @@ static SR_32 file_apply_cb(void *hash_data, void *data)
 	for (iter = wl_item->white_list_file; iter; iter = iter->next) {
 		if (rule_id > SR_FILE_WL_END_RULE_NO) {
 			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-				"%s=file learn rule exeeds list boundary. file:%s exec:%s",
+				"%s=white list file learn rule exeeds list boundary. file:%s exec:%s",
 					REASON, iter->file, wl_item->exec);
 			continue; /* we do not break since we want to have log per any rule that we cannot accomodate in the persistent storage */
 		}
@@ -334,16 +332,16 @@ SR_32 sr_white_list_file_apply(SR_BOOL is_apply)
 
 	if (sr_white_list_calculate_mem_optimization(&mem_opt)) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-			"%s=wl file:fail to get mem optimizer",REASON);
+			"%s=file whitelist: fail to calculate memory optimization",REASON);
 		return SR_ERROR;
 	}
 	CEF_log_event(SR_CEF_CID_SYSTEM, "info", SEVERITY_LOW,
-			"%s=memory optimization calculated :%s", MESSAGE, mem_opt == CLS_FILE_MEM_OPT_ALL_FILES ? "All files" : "Only directory");
+			"%s=memory optimization calculated :%s", MESSAGE, mem_opt == CLS_FILE_MEM_OPT_ALL_FILES ? "all-files" : "directories");
 	sr_cls_file_control_set_mem_opt(mem_opt);
 	snprintf(str_mem_opt, sizeof(str_mem_opt), "%d", mem_opt);
 	if (sr_engine_write_conf("FILE_CLS_MEM_OPTIMIZE", str_mem_opt) != SR_SUCCESS) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-			"%s=failed writing the vsentry conf file", REASON);
+			"%s=failed to write memory optimization result to configuration file", REASON);
 		return SR_ERROR;
 	}
 

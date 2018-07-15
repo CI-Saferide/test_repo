@@ -26,13 +26,14 @@ int sr_cls_file_add_rule(char *filename, char *exec, char *user, SR_U32 rulenum,
 	SR_32 uid, st;
 
 	if(lstat(filename, &buf)) { // Error
-		perror("lstat");
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+			"%s=failed to perform lstat on file %s",REASON, filename);
 		return SR_ERROR;
 	}
 
 	if ((st = sr_get_inode(exec, &exec_inode)) != SR_SUCCESS) {
 	    CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-			"%s=file add rule failed getting inode",REASON);
+			"%s=file add:failed to get exec inode for file rule, exec %s, rule %d",REASON, exec, rulenum);
 	    return st;
 	}
 
@@ -40,7 +41,7 @@ int sr_cls_file_add_rule(char *filename, char *exec, char *user, SR_U32 rulenum,
 
 	if (S_ISREG(buf.st_mode)) {
 		if ((buf.st_nlink > 1) && (treetop)) {
-			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_LOW,
+			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 				"%s=cannot add classification rules for hard links",REASON);
 			return SR_ERROR;
 		}
@@ -138,7 +139,7 @@ int sr_cls_file_del_rule(char *filename, char *exec, char *user, SR_U32 rulenum,
 
 	if ((st = sr_get_inode(exec, &exec_inode)) != SR_SUCCESS) {
 	    CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_LOW,
-			"%s=failed getting inode while deleting",REASON);
+			"%s=file del:failed to get exec inode for file rule, exec %s, rule %d",REASON, exec, rulenum);
 	   return st;
 	}
 
@@ -146,7 +147,7 @@ int sr_cls_file_del_rule(char *filename, char *exec, char *user, SR_U32 rulenum,
 
 	if (S_ISREG(buf.st_mode)) {
 		if ((buf.st_nlink > 1) && (treetop)) {
-			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_LOW,
+			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 				"%s=cannot del classification rules for hard links",REASON);
 			return SR_ERROR;
 		}
@@ -264,7 +265,7 @@ int sr_cls_file_create(char *filename)
 
 	if ((rc = sr_file_hash_exec_for_file(filename, sr_event_process_rule)) != SR_SUCCESS) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_LOW,
-			"%s=file hash exec for file failed - file:%s",REASON, 
+			"%s=file hash exec for file failed, filename %s",REASON, 
 			filename);
 		return rc;
 	}
@@ -356,13 +357,6 @@ int sr_cls_file_add_remove_filter_path(char *path, SR_BOOL is_add)
 	}
 
 	return SR_SUCCESS;
-}
-
-void sr_cls_control_ut(void)
-{
-	sr_cls_file_add_rule("/home/hilik/Desktop/git/vsentry/", "ls", "*", 10, 1);
-	sr_cls_file_create("/usr/lib/shotwell");
-	return ;
 }
 
 cls_file_mem_optimization_t sr_cls_file_control_get_mem_opt(void)

@@ -21,6 +21,7 @@
 #endif
 #include "sr_cls_sk_process.h"
 #include "sr_event_collector.h"
+#include "sr_sal_common.h"
 
 //#define DEBUG_EVENT_MEDIATOR
 /* Protocol families, same as address families */
@@ -719,8 +720,8 @@ SR_32 vsentry_file_open(struct file *file, const struct cred *cred)
 			}
 
 			if (get_path(file->f_path.dentry, disp.fileinfo.fullpath + mount_point_length, sizeof(disp.fileinfo.fullpath) - mount_point_length) != SR_SUCCESS) {
-				CEF_log_event(SR_CEF_CID_SYSTEM, "Error", SEVERITY_HIGH,
-															"File operation denied, file path it to long");
+				CEF_log_event(SR_CEF_CID_FILE, "file operation drop", SEVERITY_HIGH,
+								"%s=file path is too long (more then %d bytes)", REASON, SR_MAX_PATH_SIZE);
 				return 0;
 			}
 			disp_file_open_report(&disp);

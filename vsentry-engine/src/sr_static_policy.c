@@ -26,7 +26,7 @@ static SR_32 set_version_to_file(SR_U32 version)
 
 	if (!(fout = fopen(STATIC_POLICY_VERSION_FILE, "w"))) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-			"%s=failed openning file :%s",REASON,
+			"%s=failed openning static policy version file :%s",REASON,
 			STATIC_POLICY_VERSION_FILE);
                 return SR_ERROR;
 	}
@@ -114,7 +114,7 @@ static SR_32 get_server_db(sysrepo_mng_handler_t *handler)
 	}
 
 #ifdef SR_STATIC_POLICY_DEBUG
-	printf("Fetched payload :%s: \n", fetch->payload);
+	printf("fetched payload :%s: \n", fetch->payload);
 #endif
 	if (!fetch->payload)	
 		goto out;
@@ -123,7 +123,7 @@ static SR_32 get_server_db(sysrepo_mng_handler_t *handler)
 		static_policy_version = new_version;
 		if (set_version_to_file(new_version) != SR_SUCCESS) {
 			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-			"%s=FAILED setting new version",REASON);
+							"%s=failed to set new version to file",REASON);
 		}
 	}
 
