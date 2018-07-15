@@ -46,4 +46,7 @@ sr_config.cfg
 sr_build_ver.h
 scripts/tmp/
 
+.cproject
+.project
+.settings/
 

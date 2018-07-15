@@ -31,6 +31,8 @@ enum sr_event_stats_type {
         SR_EVENT_STATS_FILE_OPEN,
         SR_EVENT_STATS_NEW_CONNECTION,
         SR_EVENT_STATS_CANBUS,
+		SR_EVENT_STATS_SYSTEM,
+		SR_EVENT_STATS_SYSTEM_FINISH,
         SR_EVENT_STATS_MAX_EVENT
 };
 #endif
@@ -73,6 +75,22 @@ struct sr_ec_connection_stat_t{
 	SR_BOOL is_outgoing;
 };
 #pragma pack(pop)
+
+#ifdef CONFIG_SYSTEM_POLICER
+#pragma pack(push, 1)
+struct sr_ec_system_stat_t{
+	SR_U32 pid;
+	SR_U64 utime;
+	SR_U64 stime;
+	SR_U32 vm_allocated;
+	SR_U64 bytes_read;
+	SR_U64 bytes_write;
+	SR_U16 num_of_threads;
+	SR_U16 num_of_fds;
+	SR_U64 curr_time;
+};
+#pragma pack(pop)
+#endif
 
 #pragma pack(push, 1)
 struct sr_ec_can_t{

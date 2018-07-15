@@ -62,8 +62,8 @@ SRCS 		:=  main.c \
 				sr_db_file.c \
 				sr_db_can.c \
 				sr_ml_can.c \
-                log_uploader.c
-
+				log_uploader.c \
+				sr_stat_system_policer.c
 
 # include folders
 INCLUDES 	:=  -I../common/include \
@@ -91,10 +91,10 @@ LIB_PATH 	:= -L$(LIBDIR) -L../vsentry-lib/lib
 
 CFLAGS 		+= -MMD -Wall
 CFLAGS 		+= -DCONFIG_STAT_ANALYSIS
+CFLAGS 		+= -DCONFIG_SYSTEM_POLICER
 CFLAGS 		+= -DCONFIG_CAN_ML
 CFLAGS 		+= $(if $(SR_STAT_ANALYSIS_DEBUG),-DSR_STAT_ANALYSIS_DEBUG)
 CFLAGS 		+= $(if $(SR_CAN_DEBUG_PRINT),-DSR_CAN_DEBUG_PRINT)
-
 CFLAGS 		+= -DSR_CAN_DEBUG_PRINT
 #CFLAGS 		+= -DSR_RB_DEBUG -DSR_MSG_DEBUG
 CFLAGS 		+= -D__linux

@@ -27,6 +27,7 @@ enum SR_CEF_CLASS_ID {
 	SR_CEF_CID_SYSTEM = 400,		/* general vsentry system events */
 	SR_CEF_CID_ML_CAN = 500,		/* CAN machine learning events */
 	SR_CEF_CID_STAT_IP = 600,		/* IP statisstical analysis events */
+	SR_CEF_CID_SP = 700,                    /* System policer */
 };
 
 
@@ -148,6 +149,9 @@ enum SR_CEF_CLASS_ID {
 
 /*cs1 is a deviceCustomString1 that means Rule Number in firewalls.*/
 #define RULE_NUM_KEY 				"cs1" 
+
+/* A count associated with this event. How many times was this same event observed? Count can be omitted if it is 1 */
+#define BASE_EVENT_COUNT                        "cnt"
 
 /*
 cef example:
