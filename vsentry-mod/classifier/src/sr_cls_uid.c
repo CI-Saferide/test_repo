@@ -112,10 +112,8 @@ int sr_cls_uid_del_rule(enum sr_rule_type type, SR_32 uid, SR_U32 rulenum)
 	if (uid != UID_ANY) {
 		struct sr_hash_ent_t *ent=sr_hash_lookup(sr_cls_uid_table[type], uid);
 		if (!ent) {
-			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-				"%s=cannot del rule %u on uid %u - rule not found",
-				REASON,rulenum, uid);
-			return SR_ERROR;
+			// uid was delete for other entity of the rule (port, ip etc ...).
+			return SR_SUCCESS;
 		}
 		sal_clear_bit_array(rulenum, &ent->rules);
 

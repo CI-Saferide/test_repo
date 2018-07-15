@@ -69,10 +69,8 @@ int sr_cls_exec_inode_del_rule(enum sr_rule_type type, SR_U32 exec_inode, SR_U32
 	if (likely(exec_inode != INODE_ANY)) {
 		struct sr_hash_ent_multy_t *ent= (struct sr_hash_ent_multy_t *)sr_hash_lookup(sr_cls_exec_file_table, exec_inode);
 		if (!ent) {
-			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-			"%s=failed to delete exec_file rule %d, inode %d not found",REASON,
-			rulenum, exec_inode);
-			return SR_ERROR;
+			// exec inode was delete for other entity of the rule (port, ip etc ...).
+			return SR_SUCCESS;
 		}
 		sal_clear_bit_array(rulenum, &(ent->rules[type]));
 
