@@ -12,6 +12,7 @@
 #include "sr_engine_main.h"
 #include "sr_control.h"
 #include "sr_cls_wl_common.h"
+#include "sr_engine_utils.h"
 
 static SR_32 rule_id; 
 static sysrepo_mng_handler_t sysrepo_handler;
@@ -126,13 +127,14 @@ SR_32 sr_white_list_file_open(struct sr_ec_file_open_t *file_open_info)
 void sr_white_list_file_print(sr_white_list_file_t *white_list_file)
 {
 	sr_white_list_file_t *iter;
+	char permissions[4];
 
 	for (iter = white_list_file; iter; iter = iter->next) {
+		sr_get_file_perm_from_bits(iter->fileop, permissions);
 		CEF_log_event(SR_CEF_CID_SYSTEM, "info", SEVERITY_LOW,
                 	        "%s=file leaned : file:%s file op:%x ", MESSAGE,  iter->file, iter->fileop);
 		printf("file:%s: fileop:%x \n", iter->file, iter->fileop);
 	}
-	
 }
 
 void sr_white_list_file_cleanup(sr_white_list_file_t *white_list_file)
