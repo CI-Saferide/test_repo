@@ -22,10 +22,23 @@ SR_32 sr_get_inode(char *file_name, SR_U32 *inode)
 	return SR_SUCCESS;
 }
 
-
 SR_32 sr_get_uid(char *user) 
 {
 	if (!user || *user == '*')
 		return UID_ANY;
 	return sal_get_uid(user);
+}
+
+/* It is the resposibity of the calling function to allocate anough memort for persmissions buffer */
+void sr_get_file_perm_from_bits(SR_U8 file_op, char *permissions)
+{
+	int i = 0;
+
+	memset(permissions, 0, 4);
+	if (file_op & SR_FILEOPS_READ)
+		permissions[i++] = 'r';
+	if (file_op & SR_FILEOPS_WRITE)
+		permissions[i++] = 'w';
+	if (file_op & SR_FILEOPS_EXEC)
+		permissions[i++] = 'x';
 }
