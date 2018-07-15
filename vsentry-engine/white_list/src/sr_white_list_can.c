@@ -33,8 +33,12 @@ SR_32 sr_white_list_canbus(struct sr_ec_can_t *can_info)
 	printf("%s\n********\n",wl_can->dir==SR_CAN_IN?"IN":"OUT");
 #endif		
 
-     if (sal_get_process_name(can_info->pid, exec, SR_MAX_PATH_SIZE) != SR_SUCCESS)
-		strcpy(exec, "*");
+	if (sal_get_process_name(can_info->pid, exec, SR_MAX_PATH_SIZE) != SR_SUCCESS) {
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+			"%s=while list CAN failed lerning program name for pid:%d msgid:%d dir:%d whilte list insert failed",
+				REASON, can_info->pid, can_info->msg_id, can_info->dir);
+		return SR_ERROR;
+	}
 
 	if (!(white_list_item = sr_white_list_hash_get(exec))) {		
 		if (sr_white_list_hash_insert(exec, &white_list_item) != SR_SUCCESS) {

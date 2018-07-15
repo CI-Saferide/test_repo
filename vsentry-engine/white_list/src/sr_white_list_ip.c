@@ -278,15 +278,15 @@ SR_32 sr_white_list_ip_apply(SR_32 is_apply)
 	return SR_SUCCESS;
 }
 
-static SR_32 white_list_ip_update_pid(struct radix_node *node, SR_U32 pid)
+static SR_32 white_list_ip_update_pid(SR_U32 pid, struct sockaddr_in *ip)
 {
 	char exec[SR_MAX_PATH_SIZE];
 
-	if (pid) {
-		if (sal_get_process_name(pid, exec, SR_MAX_PATH_SIZE) != SR_SUCCESS) 
-			strcpy(exec, "*");
-	} else
-		strcpy(exec, "*");
+	if (!pid || sal_get_process_name(pid, exec, SR_MAX_PATH_SIZE) != SR_SUCCESS)  {
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+			"%s: whilte list IP failed learning program name for pid:%d ip:%d ",REASON, pid, ip->sin_addr.s_addr);
+		return SR_ERROR;
+	}
 
 	if (sr_wl_ip_binary_insert(exec) == SR_ERROR) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
@@ -318,7 +318,7 @@ SR_32 sr_white_list_ip_new_connection(struct sr_ec_new_connection_t *pNewConnect
 	switch (sr_white_list_get_mode()) {
 		case SR_WL_MODE_LEARN:
 			if (node) {
-				white_list_ip_update_pid(node, pNewConnection->pid);
+				white_list_ip_update_pid(pNewConnection->pid, ip);
 				free(ip);
 				return SR_SUCCESS;
 			}
@@ -328,7 +328,7 @@ SR_32 sr_white_list_ip_new_connection(struct sr_ec_new_connection_t *pNewConnect
 				return SR_ERROR;
 			}
 			node = rn_addroute((void*)ip, NULL, sr_wl_conngraph_table, treenodes);
-			white_list_ip_update_pid(node, pNewConnection->pid);
+			white_list_ip_update_pid(pNewConnection->pid, ip);
 			break;
 		case SR_WL_MODE_APPLY:
 			free(ip);

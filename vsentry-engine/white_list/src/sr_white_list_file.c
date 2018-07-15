@@ -83,8 +83,11 @@ SR_32 sr_white_list_file_open(struct sr_ec_file_open_t *file_open_info)
 	if (sr_white_list_get_mode() != SR_WL_MODE_LEARN)
 		return SR_SUCCESS;
 
-        if (sal_get_process_name(file_open_info->pid, exec, SR_MAX_PATH_SIZE) != SR_SUCCESS)
-                strcpy(exec, "*");
+	if (sal_get_process_name(file_open_info->pid, exec, SR_MAX_PATH_SIZE) != SR_SUCCESS) {
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+				"%s=file while list FILE - Failed learning exec name for pid:%d file :%s ",REASON, file_open_info->pid, file_open_info->file);
+		return SR_ERROR;	
+	}
 
 	if (!sal_is_valid_file_name(file_open_info->file)) {
 #if 0

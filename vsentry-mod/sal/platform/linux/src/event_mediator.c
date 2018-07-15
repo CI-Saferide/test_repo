@@ -658,7 +658,7 @@ SR_32 vsentry_file_open(struct file *file, const struct cred *cred)
 		disp.fileinfo.parent_inode = 0;
 
 	disp.fileinfo.id.uid = (int)rcred->uid.val;
-	disp.fileinfo.id.pid = current->pid;
+	disp.fileinfo.id.pid = current->tgid;
 	if (file->f_mode & FMODE_WRITE)
 		disp.fileinfo.fileop |= SR_FILEOPS_WRITE;
 	if (file->f_mode & FMODE_READ)
