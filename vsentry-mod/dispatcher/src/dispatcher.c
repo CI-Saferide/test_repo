@@ -152,17 +152,27 @@ SR_32 disp_file_created(disp_info_t* info)
 	return SR_SUCCESS;
 }
 
-/* Report open file for white list, Only when white list is enabled. */
-SR_32 disp_file_open_report(disp_info_t* info)
+static SR_32 disp_file_learn_report(disp_info_t* info, sr_ec_wl_type_t wl_type)
 {
-	struct sr_ec_file_open_t file_open_data;
+	struct sr_ec_file_wl_t file_wl_data;
 
-	strncpy(file_open_data.file, info->fileinfo.fullpath, SR_MAX_PATH_SIZE); 
-	file_open_data.pid = info->fileinfo.id.pid; 
-	file_open_data.fileop = info->fileinfo.fileop;
-	sr_ec_send_event(MOD2STAT_BUF, SR_EVENT_STATS_FILE_OPEN, &file_open_data);
+	file_wl_data.wl_type = wl_type;
+	strncpy(file_wl_data.file, info->fileinfo.fullpath, SR_MAX_PATH_SIZE); 
+	file_wl_data.pid = info->fileinfo.id.pid; 
+	file_wl_data.fileop = info->fileinfo.fileop;
+	sr_ec_send_event(MOD2STAT_BUF, SR_EVENT_STATS_FILE_WL, &file_wl_data);
 
 	return SR_SUCCESS;
+}
+
+SR_32 disp_file_open_report(disp_info_t* info)
+{
+	return disp_file_learn_report(info, SR_EC_WL_FILE_OPEN);
+}
+
+SR_32 disp_file_exe_report(disp_info_t* info)
+{
+	return disp_file_learn_report(info, SR_EC_WL_FILE_EXE);
 }
 
 SR_32 disp_ipv4_sendmsg(disp_info_t* info)

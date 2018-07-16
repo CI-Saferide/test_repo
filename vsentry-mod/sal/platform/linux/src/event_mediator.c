@@ -630,13 +630,48 @@ SR_32 vsentry_inode_create(struct inode *dir, struct dentry *dentry, umode_t mod
 	return rc;
 }
 
+static SR_32 sr_get_full_path(struct file * file, char *file_full_path, SR_U32 max_len)
+{
+	SR_32 mount_point_length;
+	struct path path;
+
+	if (!file)
+		return SR_ERROR;
+
+	path = file->f_path;
+	/* inc reference counter */
+	if (unlikely(!dget(file->f_path.dentry)))
+		return SR_ERROR;
+	if (follow_up(&path)) {
+	    /* if foolow_up succeed, it dec the reference counter */
+	    get_path(path.dentry, file_full_path, max_len);
+	} else {
+	    /* dec the reference counter */
+	    dput(file->f_path.dentry);
+	}
+	mount_point_length = strlen(file_full_path);
+	if (mount_point_length == 1) {
+		// The mount point is only slash, remove it.
+	    file_full_path[0] = 0;
+	    mount_point_length = 0;
+	}
+
+	if (get_path(file->f_path.dentry, file_full_path + mount_point_length, max_len - mount_point_length) != SR_SUCCESS) {
+		CEF_log_event(SR_CEF_CID_FILE, "file operation drop", SEVERITY_HIGH,
+				"%s=file path is too long (more then %d bytes)", REASON, SR_MAX_PATH_SIZE);
+	    return SR_ERROR;
+	}
+
+	return SR_SUCCESS;
+}
+
 //__attribute__ ((unused))
 SR_32 vsentry_file_open(struct file *file, const struct cred *cred)
 {
 	disp_info_t disp;
 	struct task_struct *ts = current;
 	const struct cred *rcred = ts->real_cred;
-	SR_32 rc, mount_point_length;
+	SR_32 rc;
 	
 	memset(&disp, 0, sizeof(disp_info_t));
 	
@@ -660,12 +695,11 @@ SR_32 vsentry_file_open(struct file *file, const struct cred *cred)
 
 	disp.fileinfo.id.uid = (int)rcred->uid.val;
 	disp.fileinfo.id.pid = current->tgid;
+	/* A File is opned to read or write, not to exec */
 	if (file->f_mode & FMODE_WRITE)
 		disp.fileinfo.fileop |= SR_FILEOPS_WRITE;
 	if (file->f_mode & FMODE_READ)
 		disp.fileinfo.fileop |= SR_FILEOPS_READ;
-	if (file->f_mode & FMODE_EXEC)
-		disp.fileinfo.fileop |= SR_FILEOPS_EXEC;
 
 #ifdef DEBUG_EVENT_MEDIATOR
 #pragma GCC diagnostic ignored "-Wdeclaration-after-statement"
@@ -698,32 +732,9 @@ SR_32 vsentry_file_open(struct file *file, const struct cred *cred)
 	rc = disp_file_open(&disp);
 
 	if (rc == 0) {
-		if(get_collector_state() == SR_TRUE){		
-			struct path path1;
-
-			path1 = file->f_path;
-			/* inc reference counter */
-			if (unlikely(!dget(file->f_path.dentry)))
+		if(get_collector_state() == SR_TRUE){
+			if (sr_get_full_path(file, disp.fileinfo.fullpath, SR_MAX_PATH_SIZE) != SR_SUCCESS)
 				return rc;
-			if (follow_up(&path1)) {
-				/* if foolow_up succeed, it dec the reference counter */
-				get_path(path1.dentry, disp.fileinfo.fullpath, sizeof(disp.fileinfo.fullpath));
-			} else
-				/* dec the reference counter */
-				dput(file->f_path.dentry);
-
-			mount_point_length = strlen(disp.fileinfo.fullpath);
-			if (mount_point_length == 1) {
-				// The mount point is only slash, remove it.
-				disp.fileinfo.fullpath[0] = 0;
-				mount_point_length = 0;
-			}
-
-			if (get_path(file->f_path.dentry, disp.fileinfo.fullpath + mount_point_length, sizeof(disp.fileinfo.fullpath) - mount_point_length) != SR_SUCCESS) {
-				CEF_log_event(SR_CEF_CID_FILE, "file operation drop", SEVERITY_HIGH,
-								"%s=file path is too long (more then %d bytes)", REASON, SR_MAX_PATH_SIZE);
-				return 0;
-			}
 			disp_file_open_report(&disp);
 		}
 	}
@@ -1150,6 +1161,7 @@ SR_32 vsentry_bprm_check_security(struct linux_binprm *bprm)
 	disp_info_t disp;
 	struct task_struct *ts = current;
 	const struct cred *rcred= ts->real_cred;
+	SR_32 rc;
 	
 	memset(&disp, 0, sizeof(disp_info_t));
 	
@@ -1163,7 +1175,7 @@ SR_32 vsentry_bprm_check_security(struct linux_binprm *bprm)
 		disp.fileinfo.current_inode = bprm->file->f_inode->i_ino;
 		
 	disp.fileinfo.id.uid = (int)rcred->uid.val;
-	disp.fileinfo.id.pid = current->pid;
+	disp.fileinfo.id.pid = current->tgid;
 	disp.fileinfo.fileop = SR_FILEOPS_EXEC; // open requires exec access
     
 #ifdef DEBUG_EVENT_MEDIATOR
@@ -1177,7 +1189,14 @@ SR_32 vsentry_bprm_check_security(struct linux_binprm *bprm)
 			disp.fileinfo.id.pid,
 			disp.fileinfo.id.uid);
 #endif     
-    return (disp_file_exec(&disp));
+    rc =  disp_file_exec(&disp);
+    if (rc == 0 && get_collector_state() == SR_TRUE) {
+    	if (sr_get_full_path(bprm->file, disp.fileinfo.fullpath, SR_MAX_PATH_SIZE) != SR_SUCCESS)
+    		return rc;
+    	disp_file_exe_report(&disp);
+    }
+
+	return rc;
 }
 
 void vsentry_task_free(struct task_struct *task)

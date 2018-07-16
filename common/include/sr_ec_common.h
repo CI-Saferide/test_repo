@@ -13,6 +13,11 @@ struct sr_ec_msg{
 	sr_ec_mode_t ec_mode;
 };
 
+typedef enum {
+        SR_EC_WL_FILE_OPEN,
+        SR_EC_WL_FILE_EXE,
+} sr_ec_wl_type_t;
+
 enum sr_event_type {
         SR_EVENT_FILE_CREATED,
         SR_EVENT_PROCESS_DIED,
@@ -28,7 +33,7 @@ enum sr_sync_type {
 enum sr_event_stats_type {
         SR_EVENT_STATS_CONNECTION,
         SR_EVENT_STATS_CONNECTION_TRANSMIT,
-        SR_EVENT_STATS_FILE_OPEN,
+        SR_EVENT_STATS_FILE_WL,
         SR_EVENT_STATS_NEW_CONNECTION,
         SR_EVENT_STATS_CANBUS,
 		SR_EVENT_STATS_SYSTEM,
@@ -113,10 +118,11 @@ struct sr_ec_connection_transmit_t{
 #pragma pack(pop)
 
 #pragma pack(push, 1)
-struct sr_ec_file_open_t{
+struct sr_ec_file_wl_t{
 	SR_8 file[SR_MAX_PATH_SIZE];
 	SR_U32 pid;
 	SR_U8  fileop;
+	SR_U8 wl_type;
 };
 #pragma pack(pop)
 #endif
