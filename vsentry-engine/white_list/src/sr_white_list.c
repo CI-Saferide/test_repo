@@ -215,7 +215,7 @@ SR_32 sr_white_list_set_mode(sr_wl_mode_t new_wl_mode)
 			}
 			printf("Applying file CAN rules ..... \n");
  			CEF_log_event(SR_CEF_CID_SYSTEM, "info", SEVERITY_LOW,
-					"%s= Applying CAN rules .....", REASON);
+					"%s=applying CAN rules .....", REASON);
 			if ((rc = sr_white_list_canbus_apply(SR_TRUE)) != SR_SUCCESS) {
                			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 					"%s=sr_white_list_canbus_apply failed",REASON);
