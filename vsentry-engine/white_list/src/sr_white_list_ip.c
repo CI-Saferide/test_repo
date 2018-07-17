@@ -345,12 +345,11 @@ static int sr_wl_node_printer(struct radix_node *node, void *unused)
 { 
 	struct sockaddr_in *ip;
 
-	ip=(struct sockaddr_in *)(node->rn_u.rn_leaf.rn_Key);
+	ip = (struct sockaddr_in *)(node->rn_u.rn_leaf.rn_Key);
 	CEF_log_event(SR_CEF_CID_SYSTEM, "info", SEVERITY_LOW,
 					"%s=address learned %x", MESSAGE,
 					ip->sin_addr.s_addr);
 	printf("radix addr:%x \n", ip->sin_addr.s_addr);
-
 	return 0;
 }
 
