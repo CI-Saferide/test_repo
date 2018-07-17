@@ -204,8 +204,42 @@ SR_32 sr_classifier_network(disp_info_t* info)
 	goto result; // skip the default check...
 	
 defaultConf:
-	if(config_params->def_net_action & SR_CLS_ACTION_LOG)
-		def_action = config_params->def_net_action;
+	if(config_params->def_net_action & SR_CLS_ACTION_LOG) {
+		def_action = config_params->def_net_action;\
+		rule = SR_CLS_DEFAULT_RULE; // the default rule
+		if (def_action & SR_CLS_ACTION_LOG) {
+
+			char ext[256],sip[16],dip[16], actionstring[16];
+			SR_U32 sip_t, dip_t;
+			sip_t = info->tuple_info.saddr.v4addr.s_addr;
+			dip_t = info->tuple_info.daddr.v4addr.s_addr;
+
+			if (def_action & SR_CLS_ACTION_DROP)
+				sprintf(actionstring, "drop");
+			else
+				sprintf(actionstring, "allow");
+
+			sprintf(sip, "%d.%d.%d.%d", (sip_t&0xff000000)>>24, (sip_t&0x00ff0000)>>16, (sip_t&0xff00)>> 8, sip_t&0xff);
+			sprintf(dip, "%d.%d.%d.%d", (dip_t&0xff000000)>>24, (dip_t&0x00ff0000)>>16, (dip_t&0xff00)>> 8, dip_t&0xff);
+			sprintf(ext, "%s=%d%s %s=%s %s=%s %s=%s %s=%d %s=%s %s=%d",
+					RULE_NUM_KEY,rule, rule == SR_CLS_DEFAULT_RULE ? "(Default)" : "",
+					DEVICE_ACTION,actionstring,
+					TRANSPORT_PROTOCOL,info->tuple_info.ip_proto == IPPROTO_TCP?"tcp":"udp",
+					DEVICE_SRC_IP,sip,
+					DEVICE_SRC_PORT,info->tuple_info.sport,
+					DEVICE_DEST_IP,dip,
+					DEVICE_DEST_PORT,info->tuple_info.dport);
+			if (def_action & SR_CLS_ACTION_DROP) {
+				CEF_log_event(SR_CEF_CID_NETWORK, "connection drop" , SEVERITY_HIGH, ext);
+				return SR_CLS_ACTION_DROP;
+			} else {
+				CEF_log_event(SR_CEF_CID_NETWORK, "connection allow" , SEVERITY_LOW, ext);
+				return SR_CLS_ACTION_ALLOW;
+			}
+		}
+		if (def_action & SR_CLS_ACTION_DROP) return SR_CLS_ACTION_DROP;
+		if (def_action & SR_CLS_ACTION_ALLOW) return SR_CLS_ACTION_ALLOW;
+	}
 	else if(config_params->def_net_action & SR_CLS_ACTION_DROP)
 		return SR_CLS_ACTION_DROP;
 	else if(config_params->def_net_action & SR_CLS_ACTION_ALLOW)
@@ -213,12 +247,7 @@ defaultConf:
 
 result:	
 	while ((rule = sal_ffs_and_clear_array (&ba_res)) != SR_CLS_NO_MATCH) {
-		if(def_action == config_params->def_net_action){
-			action = config_params->def_net_action;
-			rule = SR_CLS_DEFAULT_RULE;
-		}else
-			action = sr_cls_network_rule_match(rule, info->tuple_info.size);	
-		
+		action = sr_cls_network_rule_match(rule, info->tuple_info.size);
 		if (action & SR_CLS_ACTION_LOG) {
 			
 			char ext[256],sip[16],dip[16], actionstring[16];
@@ -251,7 +280,6 @@ result:
 		}
 		if (action & SR_CLS_ACTION_DROP) return SR_CLS_ACTION_DROP;
 		if (action & SR_CLS_ACTION_ALLOW) return SR_CLS_ACTION_ALLOW;
-		
 	}
 
 	return SR_CLS_ACTION_ALLOW;
@@ -378,8 +406,29 @@ check_old_parent:
 	goto result; // skip the default check...
 	
 defaultConf:
-	if(config_params->def_file_action & SR_CLS_ACTION_LOG)
+	if(config_params->def_file_action & SR_CLS_ACTION_LOG) {
 		def_action = config_params->def_file_action;
+		rule = SR_CLS_DEFAULT_RULE; // the default rule
+		if (def_action & SR_CLS_ACTION_LOG) {
+			char ext[64];
+
+			sprintf(ext, "%s=%d%s %s=%u %s=%s",
+					RULE_NUM_KEY,rule, rule == SR_CLS_DEFAULT_RULE ? "(default)" : "",
+							INODE_NUMBER,info->fileinfo.parent_inode?info->fileinfo.parent_inode:info->fileinfo.current_inode,
+									FILE_PERMISSION,(info->fileinfo.fileop&SR_FILEOPS_WRITE)?"write":(info->fileinfo.fileop&SR_FILEOPS_READ)?"read":"execute");
+
+			if (def_action & SR_CLS_ACTION_DROP)
+				CEF_log_event(SR_CEF_CID_FILE, "file operation drop" , SEVERITY_HIGH, ext);
+			else
+				CEF_log_event(SR_CEF_CID_FILE, "file operation allow" , SEVERITY_LOW, ext);
+		}
+		if (def_action & SR_CLS_ACTION_DROP) {
+			return SR_CLS_ACTION_DROP;
+		}
+		if (def_action & SR_CLS_ACTION_ALLOW) {
+			return SR_CLS_ACTION_ALLOW;
+		}
+	}
 	else if(config_params->def_file_action & SR_CLS_ACTION_DROP)
 		return SR_CLS_ACTION_DROP;
 	else if(config_params->def_file_action & SR_CLS_ACTION_ALLOW)
@@ -387,12 +436,7 @@ defaultConf:
 	
 result:	
 	while ((rule = sal_ffs_and_clear_array (&ba_res)) != SR_CLS_NO_MATCH) {
-		if(def_action == config_params->def_file_action){
-			action = config_params->def_file_action;
-			rule = SR_CLS_DEFAULT_RULE; // the default rule
-		}else
-			action = sr_cls_file_rule_match(info->fileinfo.fileop, rule);
-			
+		action = sr_cls_file_rule_match(info->fileinfo.fileop, rule);
 		if (action & SR_CLS_ACTION_LOG) {
 			char ext[64];
 			
@@ -413,7 +457,7 @@ result:
 			return SR_CLS_ACTION_ALLOW;
 		}
 	}
-	
+
 	return SR_CLS_ACTION_ALLOW;
 }
 
@@ -477,8 +521,37 @@ SR_32 sr_classifier_canbus(disp_info_t* info)
 	
 defaultConf:
 
-	if(config_params->def_can_action & SR_CLS_ACTION_LOG)
+	if(config_params->def_can_action & SR_CLS_ACTION_LOG) {
+		char actionstring[16], msg[64];
+		SR_U8 severity;
 		def_action = config_params->def_can_action;
+		rule = SR_CLS_DEFAULT_RULE; // the default rule
+		if (def_action & SR_CLS_ACTION_LOG) {
+			if (def_action & SR_CLS_ACTION_DROP) {
+				sprintf(actionstring, "drop");
+				strncpy(msg, "CAN message drop", 64);
+				severity = SEVERITY_HIGH;
+			} else if (def_action & SR_CLS_ACTION_ALLOW) {
+				sprintf(actionstring, "allow");
+				strncpy(msg, "CAN message allow", 64);
+				severity = SEVERITY_LOW;
+			} else {
+				sprintf(actionstring, "log-only"); // TBD: when adding more terminal actions
+				strncpy(msg, "CAN message log", 64);
+				severity = SEVERITY_LOW;
+			}
+
+			CEF_log_event(SR_CEF_CID_CAN, msg , severity,
+					"%s=%d%s %s=%s %s=%x %s=%d",
+					RULE_NUM_KEY,rule,rule == SR_CLS_DEFAULT_RULE ? "(default)" : "",
+					DEVICE_ACTION,actionstring,
+					CAN_MSG_ID,info->can_info.msg_id,
+					DEVICE_DIRECTION,info->can_info.dir == SR_CAN_OUT?SR_CAN_OUT:SR_CAN_IN); /* "0" for inbound or "1" for outbound*/
+		}
+		if (def_action & SR_CLS_ACTION_DROP)
+			return SR_CLS_ACTION_DROP;
+		return SR_CLS_ACTION_ALLOW;
+	}
 	else if(config_params->def_can_action & SR_CLS_ACTION_DROP)
 		return SR_CLS_ACTION_DROP;
 	else if(config_params->def_can_action & SR_CLS_ACTION_ALLOW)
@@ -487,12 +560,7 @@ defaultConf:
 	
 result:
 	while ((rule = sal_ffs_and_clear_array (&ba_res)) != SR_CLS_NO_MATCH) {
-		if(def_action == config_params->def_can_action ){
-			action = config_params->def_can_action;
-			rule = SR_CLS_DEFAULT_RULE; // the default rule
-		}else
-			action = sr_cls_can_rule_match(rule);
-		
+		action = sr_cls_can_rule_match(rule);		
 		if (action & SR_CLS_ACTION_LOG) {
 			char actionstring[16], msg[64];
 			SR_U8 severity;
@@ -519,8 +587,7 @@ result:
 		}
 		if (action & SR_CLS_ACTION_DROP)
 			return SR_CLS_ACTION_DROP;
-			
 	}
-	
+
 	return SR_CLS_ACTION_ALLOW;
 }
