@@ -338,6 +338,17 @@ int sr_cls_del_ipv4(SR_U32 addr, SR_U32 netmask, int rulenum, SR_8 dir)
 	rn_walktree_from(tree_head, ip, mask, sr_cls_walker_update_rule, (void*)&addrule_data);
 	SR_FREE(ip);
 	SR_FREE(mask);
+
+	if (!node->sr_private.rules.summary) {
+		node = rn_delete((void*)node->rn_key, (void*)node->rn_mask, tree_head);
+		if (!node) {
+			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+					"%s=failed to del ipv4, node not found!",REASON);
+			return SR_ERROR;
+		}
+		SR_FREE(node);
+	}
+
 	} else if (netmask) {
 		sal_set_bit_array((SR_U32)(long)rulenum, (dir==SR_DIR_SRC)?&sr_cls_network_src_local_rules:&sr_cls_network_dst_local_rules);
 	} else { // "ANY" rule
@@ -428,20 +439,22 @@ int sr_cls_walker_update_rule(struct radix_node *node, void *data)
 				}
 			}
 		}
+
+		// if we removed the last rule (cleared ba) from any leaf - we can now delete it
+		// ad->node will be deleted at the end, since it is still in use
+		if (!node->sr_private.rules.summary) {
+			//sal_kernel_print_alert("Cleared last rule from entry, removing entry\n");
+			//sal_kernel_print_info("Cleared last rule, removing node 0x%llx\n", (SR_U64)node & 0xFFFFFFF);
+			del_node = rn_delete((void*)node->rn_key, (void*)node->rn_mask, ad->head);
+			if (!del_node) {
+				CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+						"%s=failed to del ipv4, node not found!",REASON);
+				return SR_ERROR;
+			}
+			SR_FREE(del_node);
+		}
 	}
 
-	// if we removed the last rule (cleared ba) from any leaf - we can now delete it
-	if (!node->sr_private.rules.summary) {
-		//sal_kernel_print_alert("Cleared last rule from entry, removing entry\n");
-		//sal_kernel_print_info("Cleared last rule, removing node 0x%llx\n", (SR_U64)node & 0xFFFFFFF);
-		del_node = rn_delete((void*)node->rn_key, (void*)node->rn_mask, ad->head);
-		if (!del_node) {
-			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-					"%s=failed to del ipv4, node not found!",REASON);
-			return SR_ERROR;
-		}
-		SR_FREE(del_node);
-	}
 	return 0;
 }
 
