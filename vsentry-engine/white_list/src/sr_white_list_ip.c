@@ -347,9 +347,9 @@ static int sr_wl_node_printer(struct radix_node *node, void *unused)
 
 	ip = (struct sockaddr_in *)(node->rn_u.rn_leaf.rn_Key);
 	CEF_log_event(SR_CEF_CID_SYSTEM, "info", SEVERITY_LOW,
-					"%s=Address learnt : %s", MESSAGE,
+					"%s=address learned : %s", MESSAGE,
 					sal_get_str_ip_address(ip->sin_addr.s_addr));
-	printf("%s=Address learnt : %s\n", MESSAGE,
+	printf("Address learned : %s\n", MESSAGE,
 					sal_get_str_ip_address(ip->sin_addr.s_addr));
 
 	return 0;
