@@ -141,12 +141,10 @@ SR_32 read_vsentry_config(char* config_filename)
 		value = strtok(NULL, " \n");
 		if (!value)
 			continue;
-		if (!strcmp(param, "LOG_TYPE")) {
-			if (!memcmp(value, "CURL", strlen("CURL")))
-				config_params.log_type |= LOG_TYPE_CURL;
-			if (!memcmp(value, "SYSLOG", strlen("SYSLOG")))
-				config_params.log_type |= LOG_TYPE_SYSLOG;
-		}
+		if (!strcmp(param, "LOG_TYPE_CURL"))
+			config_params.log_type |= LOG_TYPE_CURL;
+		if (!strcmp(param, "LOG_TYPE_SYSLOG"))
+			config_params.log_type |= LOG_TYPE_SYSLOG;
 
 		if (!strcmp(param, "DEFAULT_FILE_RULE")) {
 			if (!memcmp(value, "ALLOW", strlen("ALLOW")))
