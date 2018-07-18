@@ -16,7 +16,8 @@ SR_MUTEX cef_lock = SR_MUTEX_INIT_VALUE; //for locking the cef wirte to file fun
 //The valid string values are Unknown, Low, Medium, High, and Very-High. The valid integer values are 0-3=Low, 4-6=Medium, 7- 8=High, and 9-10=Very-High.
 char severity_strings[SEVERITY_MAX][10] = { "Unknown", "Low", "Medium", "High", "Very-High"};
 
-static SR_8 g_app_name[20];
+static SR_8 		g_app_name[20];
+static SR_BOOL		g_log_init = SR_FALSE;
 
 typedef const SR_8* cef_str;
 FILE* log_fp = 0;
@@ -90,7 +91,9 @@ void log_print_cef_msg(CEF_payload *cef)
 			DEVICE_EXTERNAL_ID,config_params->vin, // the vin would be in the beginning of the extension filed.
 			DEVICE_FACILITY,LOG_FROM_ENGINE,
 			cef->extension);
-			
+	
+	if (SR_FALSE == g_log_init)
+		printf ("%s", cef_buffer);
 	if (config_params->log_type & LOG_TYPE_CURL) {
 		SR_MUTEX_LOCK(&cef_lock);
 		log_cef_msg(cef_buffer);
@@ -142,7 +145,8 @@ SR_32 sr_log_init (const SR_8* app_name, SR_32 flags)
 	if (config_params->log_type & LOG_TYPE_SYSLOG)
 		sal_openlog();
 
-	printf("Starting LOG module!\n");
+	printf("LOG module started succesfully\n");
+	g_log_init = SR_TRUE;
 	return SR_SUCCESS;
 }
 
@@ -154,4 +158,5 @@ void sr_log_deinit(void)
 
 	if (config_params->log_type & LOG_TYPE_SYSLOG)
 		sal_closelog();
+	g_log_init = SR_FALSE;
 }

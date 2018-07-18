@@ -15,6 +15,7 @@
 #endif
 
 static cls_file_mem_optimization_t dparent_flag = CLS_FILE_MEM_OPT_ALL_FILES;
+static SR_BOOL is_def; /* global variable for all default rules */
 
 SR_32 sr_classifier_init(void)
 {
@@ -67,6 +68,15 @@ void sr_classifier_set_dparent_flags(cls_file_mem_optimization_t i_dparent_flag)
 	dparent_flag = i_dparent_flag;
 }
 
+SR_U32 find_next_rule (bit_array *ba)
+{
+	if (is_def) {
+		is_def = SR_FALSE;
+		return (SR_CLS_DEFAULT_RULE);
+	} else
+		return(sal_ffs_and_clear_array (ba));
+}
+
 ///////////////////////////////////////////////////////////////////////////
 /////// Actual classifiers entry points
 ///////////////////////////////////////////////////////////////////////////
@@ -77,13 +87,14 @@ SR_32 sr_classifier_network(disp_info_t* info)
 	SR_16 rule = SR_CLS_NO_MATCH;
 	SR_U16 action;
 	bit_array ba_res;
-	SR_U16 def_action = SR_CLS_ACTION_NOOP;//just default action
+	SR_U16 def_action = SR_CLS_ACTION_ALLOW; /* if we don't have default rule from user, then we just allow the packet */
 	struct config_params_t *config_params;
 	
 #ifdef ROOT_CLS_IGNORE
-	if (!info->tuple_info.id.uid) return SR_CLS_ACTION_ALLOW; // Don't mess up root access
+	if (!info->tuple_info.id.uid) return SR_CLS_ACTION_ALLOW; /* no classification for root user (debug only) */
 #endif
 
+	is_def = SR_FALSE;
 	memset(&ba_res, 0, sizeof(bit_array));
 	config_params = sr_control_config_params();
 	// Match 5-tuple
@@ -204,21 +215,17 @@ SR_32 sr_classifier_network(disp_info_t* info)
 	goto result; // skip the default check...
 	
 defaultConf:
-	if(config_params->def_net_action & SR_CLS_ACTION_LOG)
+	is_def = SR_TRUE;
+	if(config_params->def_net_action)
 		def_action = config_params->def_net_action;
-	else if(config_params->def_net_action & SR_CLS_ACTION_DROP)
-		return SR_CLS_ACTION_DROP;
-	else if(config_params->def_net_action & SR_CLS_ACTION_ALLOW)
-		return SR_CLS_ACTION_ALLOW;	
 
 result:	
-	while ((rule = sal_ffs_and_clear_array (&ba_res)) != SR_CLS_NO_MATCH) {
-		if(def_action == config_params->def_net_action){
-			action = config_params->def_net_action;
-			rule = SR_CLS_DEFAULT_RULE;
-		}else
-			action = sr_cls_network_rule_match(rule, info->tuple_info.size);	
-		
+	while ((rule = find_next_rule (&ba_res)) != SR_CLS_NO_MATCH) {
+		if (SR_CLS_DEFAULT_RULE == rule) {
+			action = def_action;
+		} else {
+			action = sr_cls_network_rule_match(rule, info->tuple_info.size);
+		}
 		if (action & SR_CLS_ACTION_LOG) {
 			
 			char ext[256],sip[16],dip[16], actionstring[16];
@@ -234,7 +241,7 @@ result:
 			sprintf(sip, "%d.%d.%d.%d", (sip_t&0xff000000)>>24, (sip_t&0x00ff0000)>>16, (sip_t&0xff00)>> 8, sip_t&0xff);
 			sprintf(dip, "%d.%d.%d.%d", (dip_t&0xff000000)>>24, (dip_t&0x00ff0000)>>16, (dip_t&0xff00)>> 8, dip_t&0xff);
 			sprintf(ext, "%s=%d%s %s=%s %s=%s %s=%s %s=%d %s=%s %s=%d",
-				RULE_NUM_KEY,rule, rule == SR_CLS_DEFAULT_RULE ? "(Default)" : "",
+				RULE_NUM_KEY,rule, rule == SR_CLS_DEFAULT_RULE ? "(default)" : "",
 				DEVICE_ACTION,actionstring,
 				TRANSPORT_PROTOCOL,info->tuple_info.ip_proto == IPPROTO_TCP?"tcp":"udp",
 				DEVICE_SRC_IP,sip,
@@ -251,7 +258,6 @@ result:
 		}
 		if (action & SR_CLS_ACTION_DROP) return SR_CLS_ACTION_DROP;
 		if (action & SR_CLS_ACTION_ALLOW) return SR_CLS_ACTION_ALLOW;
-		
 	}
 
 	return SR_CLS_ACTION_ALLOW;
@@ -264,14 +270,15 @@ SR_32 sr_classifier_file(disp_info_t* info)
 	bit_array *ptr = NULL, ba_res;
 	SR_16 rule = SR_CLS_NO_MATCH;
 	SR_U16 action;
-	SR_U16 def_action = SR_CLS_ACTION_NOOP;//just default action
+	SR_U16 def_action = SR_CLS_ACTION_ALLOW; /* if we don't have default rule from user, then we just allow the packet */
 	int st;
 	struct config_params_t *config_params;
 
 #ifdef ROOT_CLS_IGNORE
-	if (!info->tuple_info.id.uid) return SR_CLS_ACTION_ALLOW; // Don't mess up root access
+	if (!info->tuple_info.id.uid) return SR_CLS_ACTION_ALLOW; /* no classification for root user (debug only) */
 #endif
 
+	is_def = SR_FALSE;
 	memset(&ba_res, 0, sizeof(bit_array));
 	config_params = sr_control_config_params();	
 	tmp_info = info;
@@ -378,21 +385,17 @@ check_old_parent:
 	goto result; // skip the default check...
 	
 defaultConf:
-	if(config_params->def_file_action & SR_CLS_ACTION_LOG)
-		def_action = config_params->def_file_action;
-	else if(config_params->def_file_action & SR_CLS_ACTION_DROP)
-		return SR_CLS_ACTION_DROP;
-	else if(config_params->def_file_action & SR_CLS_ACTION_ALLOW)
-		return SR_CLS_ACTION_ALLOW;		
+	is_def = SR_TRUE;
+	if(config_params->def_file_action)
+		def_action = config_params->def_file_action;	
 	
 result:	
-	while ((rule = sal_ffs_and_clear_array (&ba_res)) != SR_CLS_NO_MATCH) {
-		if(def_action == config_params->def_file_action){
-			action = config_params->def_file_action;
-			rule = SR_CLS_DEFAULT_RULE; // the default rule
-		}else
+	while ((rule = find_next_rule (&ba_res)) != SR_CLS_NO_MATCH) {
+		if (SR_CLS_DEFAULT_RULE == rule) {
+			action = def_action;
+		} else {
 			action = sr_cls_file_rule_match(info->fileinfo.fileop, rule);
-			
+		}
 		if (action & SR_CLS_ACTION_LOG) {
 			char ext[64];
 			
@@ -413,7 +416,7 @@ result:
 			return SR_CLS_ACTION_ALLOW;
 		}
 	}
-	
+
 	return SR_CLS_ACTION_ALLOW;
 }
 
@@ -423,13 +426,15 @@ SR_32 sr_classifier_canbus(disp_info_t* info)
 	bit_array *ptr, ba_res;
 	SR_16 rule = SR_CLS_NO_MATCH;
 	SR_U16 action;
-	SR_U16 def_action = SR_CLS_ACTION_NOOP;//just default action
+	SR_U16 def_action = SR_CLS_ACTION_ALLOW; /* if we don't have default rule from user, then we just allow the packet */
 	int st;
 	struct config_params_t *config_params;
 	
 #ifdef ROOT_CLS_IGNORE
-	if (!info->tuple_info.id.uid) return SR_CLS_ACTION_ALLOW; // Don't mess up root access
+	if (!info->tuple_info.id.uid) return SR_CLS_ACTION_ALLOW; /* no classification for root user (debug only) */
 #endif
+	
+	is_def = SR_FALSE;
 	config_params = sr_control_config_params();
 	memset(&ba_res, 0, sizeof(bit_array));
 	
@@ -476,51 +481,44 @@ SR_32 sr_classifier_canbus(disp_info_t* info)
 	goto result; // skip the default check...
 	
 defaultConf:
+	is_def = SR_TRUE;
+	if(config_params->def_can_action)
+		def_action = config_params->def_can_action;	
 
-	if(config_params->def_can_action & SR_CLS_ACTION_LOG)
-		def_action = config_params->def_can_action;
-	else if(config_params->def_can_action & SR_CLS_ACTION_DROP)
-		return SR_CLS_ACTION_DROP;
-	else if(config_params->def_can_action & SR_CLS_ACTION_ALLOW)
-		return SR_CLS_ACTION_ALLOW;
-
-	
 result:
-	while ((rule = sal_ffs_and_clear_array (&ba_res)) != SR_CLS_NO_MATCH) {
-		if(def_action == config_params->def_can_action ){
-			action = config_params->def_can_action;
-			rule = SR_CLS_DEFAULT_RULE; // the default rule
-		}else
+	while ((rule = find_next_rule (&ba_res)) != SR_CLS_NO_MATCH) {
+		if (SR_CLS_DEFAULT_RULE == rule) {
+			action = def_action;
+		} else {
 			action = sr_cls_can_rule_match(rule);
-		
+		}		
 		if (action & SR_CLS_ACTION_LOG) {
 			char actionstring[16], msg[64];
 			SR_U8 severity;
 			if (action & SR_CLS_ACTION_DROP) {
 				sprintf(actionstring, "drop");
-				strncpy(msg, "CAN message drop", 64);
+				strncpy(msg, "can message drop", 64);
 				severity = SEVERITY_HIGH;
 			} else if (action & SR_CLS_ACTION_ALLOW) {
 				sprintf(actionstring, "allow");
-				strncpy(msg, "CAN message allow", 64);
+				strncpy(msg, "can message allow", 64);
 				severity = SEVERITY_LOW;
 			} else {
 				sprintf(actionstring, "log-only"); // TBD: when adding more terminal actions
-				strncpy(msg, "CAN message log", 64);
+				strncpy(msg, "can message log", 64);
 				severity = SEVERITY_LOW;
 			}
 
 			CEF_log_event(SR_CEF_CID_CAN, msg , severity, 
-				"%s=%d%s %s=%s %s=%x %s=%d",
+				"%s=%d%s %s=%s %s=%x %s=%s",
 				RULE_NUM_KEY,rule,rule == SR_CLS_DEFAULT_RULE ? "(default)" : "",
 				DEVICE_ACTION,actionstring,
 				CAN_MSG_ID,info->can_info.msg_id,
-				DEVICE_DIRECTION,info->can_info.dir == SR_CAN_OUT?SR_CAN_OUT:SR_CAN_IN); /* "0" for inbound or "1" for outbound*/
+				DEVICE_DIRECTION,info->can_info.dir == SR_CAN_OUT?"out":"in"); /* "0" for inbound or "1" for outbound*/
 		}
 		if (action & SR_CLS_ACTION_DROP)
 			return SR_CLS_ACTION_DROP;
-			
 	}
-	
+
 	return SR_CLS_ACTION_ALLOW;
 }

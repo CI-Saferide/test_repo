@@ -100,7 +100,6 @@ enum cls_actions sr_cls_rl_check(struct sr_rl_t *rl, SR_U32 timestamp, SR_U32 si
 		return SR_CLS_ACTION_ALLOW;
 	}
 	if (rl->rate_type == SR_RATE_TYPE_EVENT && SR_ATOMIC_INC_RETURN(&rl->count) > rl->max_rate) {
-		//sal_kernel_print_alert("sr_cls_rl_check: Rate exceeds configured rate\n");
 		return rl->exceed_action;
 	}
 	if (rl->rate_type == SR_RATE_TYPE_BYTES && rl->max_rate && SR_ATOMIC_ADD_RETURN(size, &rl->count) > rl->max_rate) {

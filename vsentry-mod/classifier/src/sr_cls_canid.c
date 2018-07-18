@@ -182,10 +182,10 @@ int sr_cls_canid_add_rule(SR_32 canid, SR_U32 rulenum, SR_8 dir)
 		
 	}
 	CEF_log_event(SR_CEF_CID_CAN, "info", SEVERITY_LOW,
-		"%s=rule assigned to %s=%u %s=%x %s=%d",MESSAGE,
+		"%s=rule assigned to %s=%u %s=%x %s=%s",MESSAGE,
 		RULE_NUM_KEY,rulenum,
 		CAN_MSG_ID,canid,
-		DEVICE_DIRECTION,(dir==SR_CAN_OUT)? SR_CAN_OUT : SR_CAN_IN);
+		DEVICE_DIRECTION,(dir==SR_CAN_OUT)? "out" : ((dir==SR_CAN_IN)? "in" : "in-out"));
 	return SR_SUCCESS;
 }
 
@@ -195,10 +195,10 @@ int sr_cls_canid_del_rule(SR_32 canid, SR_U32 rulenum, SR_8 dir)
 		struct sr_hash_ent_t *ent=sr_hash_lookup((dir==SR_CAN_OUT)?sr_cls_out_canid_table:sr_cls_in_canid_table, canid);         
 		if (!ent) {
 			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-				"%s=failed to del %s=%u %s=%x %s=%d - rule not found",REASON,
+				"%s=failed to del %s=%u %s=%x %s=%s rule not found",REASON,
 				RULE_NUM_KEY,rulenum,
 				CAN_MSG_ID,canid,
-				DEVICE_DIRECTION,(dir==SR_CAN_OUT)? SR_CAN_OUT : SR_CAN_IN);
+				DEVICE_DIRECTION,(dir==SR_CAN_OUT)? "out" : ((dir==SR_CAN_IN)? "in" : "in-out"));
 			return SR_ERROR;
 		}
 		sal_clear_bit_array(rulenum, &ent->rules);
@@ -209,10 +209,10 @@ int sr_cls_canid_del_rule(SR_32 canid, SR_U32 rulenum, SR_8 dir)
 		sal_clear_bit_array(rulenum, (dir==SR_CAN_OUT)?&sr_cls_out_canid_any_rules:&sr_cls_in_canid_any_rules);
 	}
 	CEF_log_event(SR_CEF_CID_CAN, "info", SEVERITY_LOW,
-		"%s=removed rule %s=%u %s=%x %s=%d",MESSAGE,
+		"%s=rule remove %s=%u %s=%x %s=%s",MESSAGE,
 		RULE_NUM_KEY,rulenum,
 		CAN_MSG_ID,canid,
-		DEVICE_DIRECTION,(dir==SR_CAN_OUT)? SR_CAN_OUT : SR_CAN_IN);
+		DEVICE_DIRECTION,(dir==SR_CAN_OUT)? "out" : ((dir==SR_CAN_IN)? "in" : "in-out"));
 	return SR_SUCCESS;
 }
 
@@ -229,7 +229,7 @@ void print_table_canid(struct sr_hash_table_t *table)
 				sal_kernel_print_info("hash_index[%d]\n",i);
 				curr = sr_cls_out_canid_table->buckets[i].head;				
 				while (curr != NULL){
-					sal_kernel_print_info("\t\tcan mid: %x\n",curr->key);
+					sal_kernel_print_info("can mid: %x\n",curr->key);
 					sr_cls_print_canid_rules(curr->key,SR_CAN_OUT);
 					next = curr->next;
 					curr= next;
@@ -273,10 +273,10 @@ SR_8 sr_cls_canid_msg_dispatch(struct sr_cls_canbus_msg *msg)
 	switch (msg->msg_type) {
 		case SR_CLS_CANID_DEL_RULE:
 			CEF_log_event(SR_CEF_CID_CAN, "info", SEVERITY_LOW,
-				"%s=delete %s=%d %s=%x %s=%d",MESSAGE,
+				"%s=delete %s=%d %s=%x %s=%s",MESSAGE,
 				RULE_NUM_KEY,msg->rulenum, 
 				CAN_MSG_ID,msg->canid, 
-				DEVICE_DIRECTION,(msg->dir==SR_CAN_OUT)? SR_CAN_OUT : ((msg->dir==SR_CAN_IN)? SR_CAN_IN : SR_CAN_BOTH));
+				DEVICE_DIRECTION,(msg->dir==SR_CAN_OUT)? "out" : ((msg->dir==SR_CAN_IN)? "in" : "in-out"));
 			if (msg->dir==SR_CAN_BOTH) {
 				// del IN
 				if ((st =  sr_cls_canid_del_rule(msg->canid, msg->rulenum, SR_CAN_IN)) != SR_SUCCESS)
@@ -293,11 +293,11 @@ SR_8 sr_cls_canid_msg_dispatch(struct sr_cls_canbus_msg *msg)
 			return sr_cls_uid_del_rule(SR_CAN_RULES, msg->uid, msg->rulenum);
 		case SR_CLS_CANID_ADD_RULE:
 			CEF_log_event(SR_CEF_CID_CAN, "info", SEVERITY_LOW,
-				"%s=add %s=%d %s=%d %s=%x %s=%d",MESSAGE,
+				"%s=add %s=%d %s=%d %s=%x %s=%s",MESSAGE,
 				RULE_NUM_KEY,msg->rulenum, 
 				DEVICE_UID,msg->uid, 
 				CAN_MSG_ID,msg->canid, 
-				DEVICE_DIRECTION,(msg->dir==SR_CAN_OUT)? SR_CAN_OUT : ((msg->dir==SR_CAN_IN)? SR_CAN_IN : SR_CAN_BOTH));
+				DEVICE_DIRECTION,(msg->dir==SR_CAN_OUT)? "out" : ((msg->dir==SR_CAN_IN)? "in" : "in-out"));
 			if (msg->dir==SR_CAN_BOTH) {
 				// add IN
 				if ((st = sr_cls_canid_add_rule(msg->canid, msg->rulenum, SR_CAN_IN)) != SR_SUCCESS)
