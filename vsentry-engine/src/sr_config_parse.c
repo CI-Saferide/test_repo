@@ -224,5 +224,8 @@ SR_32 read_vsentry_config(char* config_filename)
 #endif
     }
     fclose(fp);
+    CEF_log_event(SR_CEF_CID_SYSTEM, "info", SEVERITY_LOW,
+			"%s=configuration file succesfully loaded from %s",MESSAGE,
+			config_filename);
     return SR_SUCCESS;
 }

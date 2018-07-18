@@ -145,7 +145,7 @@ enum SR_CEF_CLASS_ID {
 #define DEVICE_UID 		"suser"
 
 /*Don't need to be captain obvious...*/
-#define CAN_MSG_ID 					"CanID" 
+#define CAN_MSG_ID 					"mid" 
 
 /*cs1 is a deviceCustomString1 that means Rule Number in firewalls.*/
 #define RULE_NUM_KEY 				"cs1" 
