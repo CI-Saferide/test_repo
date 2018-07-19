@@ -82,8 +82,8 @@ int sr_ec_send_event(SR_U8 buf_type, SR_U8 event_type, void *data)
 					sr_ec_append_event(buf_type, event_type, data, sizeof(struct sr_ec_connection_transmit_t), SR_FALSE);
 					sal_linux_mng_readbuf_up(SYNC_INFO_GATHER);									
 					break;
-				case SR_EVENT_STATS_FILE_OPEN:
-					sr_ec_append_event(buf_type, event_type, data, sizeof(struct sr_ec_file_open_t), SR_FALSE);
+				case SR_EVENT_STATS_FILE_WL:
+					sr_ec_append_event(buf_type, event_type, data, sizeof(struct sr_ec_file_wl_t), SR_FALSE);
 					break;
 				case SR_EVENT_STATS_CANBUS:
 					sr_ec_append_event(buf_type, event_type, data, sizeof(struct sr_ec_can_t), SR_FALSE);

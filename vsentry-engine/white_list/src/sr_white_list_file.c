@@ -72,10 +72,10 @@ void sr_white_list_file_uninit(void)
 		free(home_dir);
 }
 
-/* For each binary ther will be at maximum 3 rules. One for each premisiion. The file will be tuples, the rule number
+/* For each binary there will be at maximum 3 rules. One for each premision. The file will be tuples, the rule number
 	is staring from 3k - up to 4k !!! */ 
 
-SR_32 sr_white_list_file_open(struct sr_ec_file_open_t *file_open_info)
+SR_32 sr_white_list_file_wl(struct sr_ec_file_wl_t *file_wl_info)
 {
 	sr_white_list_item_t *white_list_item;
 	char exec[SR_MAX_PATH_SIZE], *file_to_learn, new_file[SR_MAX_PATH_SIZE];
@@ -84,25 +84,38 @@ SR_32 sr_white_list_file_open(struct sr_ec_file_open_t *file_open_info)
 	if (sr_white_list_get_mode() != SR_WL_MODE_LEARN)
 		return SR_SUCCESS;
 
-	if (sal_get_process_name(file_open_info->pid, exec, SR_MAX_PATH_SIZE) != SR_SUCCESS) {
-		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-				"%s=failed to learn program name for white list file, pid:%d file :%s",REASON, file_open_info->pid, file_open_info->file);
-		return SR_ERROR;	
+	if (!sal_is_valid_file_name(file_wl_info->file)) {
+			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+					"%s=invalid file :%s ",REASON, file_wl_info->file);
+			printf("=====Invalid file name :%s \n", file_wl_info->file);
+			return SR_ERROR;
 	}
 
-	if (!sal_is_valid_file_name(file_open_info->file)) {
+	switch (file_wl_info->wl_type) {
+	case SR_EC_WL_FILE_OPEN:
+		if (sal_get_process_name(file_wl_info->pid, exec, SR_MAX_PATH_SIZE) != SR_SUCCESS) {
+			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+					"%s=failed to learn program name for white list file, pid:%d file :%s",REASON, file_wl_info->pid, file_wl_info->file);
+			return SR_ERROR;
+		}
+		// The file to learn might be changed, as in some cases we consolidate the file its container forlder
+		file_to_learn = get_file_to_learn(file_wl_info->file, new_file);
+		break;
+	case SR_EC_WL_FILE_EXE:
+		/* In file execute event it is not possible to learn pid. This pid is the pid of the executed file.*/
+		strcpy(new_file, file_wl_info->file);
+		strcpy(exec, "*");
+		break;
+	default:
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-				"%s=invalid file :%s ",REASON, file_open_info->file);
-		printf("=====Invalid file name :%s \n", file_open_info->file);
+							"%s=Invalid wl type :%d file :%s",REASON, file_wl_info->wl_type, file_wl_info->file);
 		return SR_ERROR;
 	}
 
-	// The file to learn might be changed.
-	file_to_learn = get_file_to_learn(file_open_info->file, new_file);
 	if (!(white_list_item = sr_white_list_hash_get(exec))) {
 		if (sr_white_list_hash_insert(exec, &white_list_item) != SR_SUCCESS) {
 			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-				"%s=file white list insert failed, pid:%d file :%s",REASON, file_open_info->pid, file_open_info->file);
+				"%s=file white list insert failed, pid:%d file :%s",REASON, file_wl_info->pid, file_wl_info->file);
 			return SR_ERROR;
 		}
 	}
@@ -114,12 +127,12 @@ SR_32 sr_white_list_file_open(struct sr_ec_file_open_t *file_open_info)
 		SR_Zalloc(*iter, sr_white_list_file_t *, sizeof(sr_white_list_file_t));
 		if (!*iter) {
 			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-				"%s=failed to allocate memory for white list file, pid:%d file :%s",REASON, file_open_info->pid, file_open_info->file);
+				"%s=failed to allocate memory for white list file, pid:%d file :%s",REASON, file_wl_info->pid, file_wl_info->file);
 			return SR_ERROR;
 		}
 		strncpy((*iter)->file, file_to_learn, SR_MAX_PATH_SIZE);
 	}
-	(*iter)->fileop |= file_open_info->fileop;
+	(*iter)->fileop |= file_wl_info->fileop;
 
 	return SR_SUCCESS;
 }

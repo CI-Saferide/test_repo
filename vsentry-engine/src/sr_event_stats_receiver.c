@@ -18,7 +18,7 @@ void sr_event_stats_receiver(SR_8 *msg_buff, SR_U32 msg_len)
 	struct sr_ec_connection_stat_t *pConStats;
 	struct sr_ec_connection_transmit_t *pConTran;
 	sr_stat_connection_info_t connection_info = {};
-	struct sr_ec_file_open_t *pFile_open;
+	struct sr_ec_file_wl_t *pFile_wl;
 	struct sr_ec_can_t *wl_can;
 	struct sr_ec_new_connection_t *pNewConnection, new_con;
 #ifdef CONFIG_SYSTEM_POLICER
@@ -104,10 +104,10 @@ void sr_event_stats_receiver(SR_8 *msg_buff, SR_U32 msg_len)
 				}
 				break;
 #endif
-			case SR_EVENT_STATS_FILE_OPEN:
-				pFile_open = (struct sr_ec_file_open_t *) &msg_buff[offset];
-				offset += sizeof(struct sr_ec_file_open_t);
-				if ((rc = sr_white_list_file_open(pFile_open)) != SR_SUCCESS) {
+			case SR_EVENT_STATS_FILE_WL:
+				pFile_wl = (struct sr_ec_file_wl_t *) &msg_buff[offset];
+				offset += sizeof(struct sr_ec_file_wl_t);
+				if ((rc = sr_white_list_file_wl(pFile_wl)) != SR_SUCCESS) {
                 			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 								"%s=sr_white_list_open failed",REASON);
 					break;	
