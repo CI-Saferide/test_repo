@@ -145,7 +145,7 @@ void sr_white_list_file_print(sr_white_list_file_t *white_list_file)
 	for (iter = white_list_file; iter; iter = iter->next) {
 		sr_get_file_perm_from_bits(iter->fileop, permissions);
 		CEF_log_event(SR_CEF_CID_SYSTEM, "info", SEVERITY_LOW,
-                	        "%s=file learnt : file:%s file permissions:%s ", MESSAGE,  iter->file, permissions);
+                	        "%s=file learned: file:%s permissions:%s ", MESSAGE,  iter->file, permissions);
 		printf("  file:%s: permissions:%s file_op:%u\n", iter->file, permissions, iter->fileop);
 	}
 }
