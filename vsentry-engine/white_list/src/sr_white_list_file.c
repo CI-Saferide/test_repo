@@ -98,7 +98,7 @@ SR_32 sr_white_list_file_wl(struct sr_ec_file_wl_t *file_wl_info)
 					"%s=failed to learn program name for white list file, pid:%d file :%s",REASON, file_wl_info->pid, file_wl_info->file);
 			return SR_ERROR;
 		}
-		// The file to learn might be changed.
+		// The file to learn might be changed, as in some cases we consolidate the file its container forlder
 		file_to_learn = get_file_to_learn(file_wl_info->file, new_file);
 		break;
 	case SR_EC_WL_FILE_EXE:
