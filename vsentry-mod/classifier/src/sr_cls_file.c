@@ -140,8 +140,8 @@ int sr_cls_inode_del_rule(SR_U32 inode, SR_U32 rulenum)
 		struct sr_hash_ent_t *ent=sr_hash_lookup(sr_cls_file_table, inode);
 		if (!ent) {
 			CEF_log_event(SR_CEF_CID_FILE, "error", SEVERITY_HIGH,
-				"%s=failed to cls_file del rule %d, inode rule not found",REASON,
-				rulenum);
+				"%s=failed to cls_file del rule %d, inode %d not found",REASON,
+				rulenum, inode);
 			return SR_ERROR;
 		}
 		sal_clear_bit_array(rulenum, &ent->rules);

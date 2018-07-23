@@ -181,11 +181,13 @@ int sr_cls_canid_add_rule(SR_32 canid, SR_U32 rulenum, SR_8 dir)
 		sal_set_bit_array(rulenum,(dir==SR_CAN_IN)?&sr_cls_in_canid_any_rules:&sr_cls_out_canid_any_rules);
 		
 	}
+#ifdef DEBUG
 	CEF_log_event(SR_CEF_CID_CAN, "info", SEVERITY_LOW,
 		"%s=rule assigned to %s=%u %s=%x %s=%s",MESSAGE,
 		RULE_NUM_KEY,rulenum,
 		CAN_MSG_ID,canid,
 		DEVICE_DIRECTION,(dir==SR_CAN_OUT)? "out" : ((dir==SR_CAN_IN)? "in" : "in-out"));
+#endif
 	return SR_SUCCESS;
 }
 
@@ -208,11 +210,13 @@ int sr_cls_canid_del_rule(SR_32 canid, SR_U32 rulenum, SR_8 dir)
 	}else{// "Any" rules
 		sal_clear_bit_array(rulenum, (dir==SR_CAN_OUT)?&sr_cls_out_canid_any_rules:&sr_cls_in_canid_any_rules);
 	}
+#ifdef DEBUG
 	CEF_log_event(SR_CEF_CID_CAN, "info", SEVERITY_LOW,
 		"%s=rule remove %s=%u %s=%x %s=%s",MESSAGE,
 		RULE_NUM_KEY,rulenum,
 		CAN_MSG_ID,canid,
 		DEVICE_DIRECTION,(dir==SR_CAN_OUT)? "out" : ((dir==SR_CAN_IN)? "in" : "in-out"));
+#endif
 	return SR_SUCCESS;
 }
 
