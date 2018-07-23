@@ -305,9 +305,11 @@ void sr_gen_hash_print(struct sr_gen_hash *hash)
 			count++;
 		}
 	}
+#ifdef GEN_HASH_DEBUG
 	CEF_log_event(SR_CEF_CID_SYSTEM, "info", SEVERITY_LOW,
 		"%s=GEN HASH table print count:%d",MESSAGE,
 		count);
+#endif
 }
 
 void *sr_gen_hash_get(struct sr_gen_hash *hash, void *key, SR_U8 hash_flags)
