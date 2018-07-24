@@ -118,7 +118,7 @@ SR_32 sr_white_list_file_wl(struct sr_ec_file_wl_t *file_wl_info)
 		printf("=====Invalid file name :%s \n", file_wl_info->file);
 		return SR_ERROR;
 	}
-	if (!*file_wl_info->file) {
+	if (!*file_wl_info->exec) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 				"%s=invalid exec for file :%s ",REASON, file_wl_info->file);
 		return SR_ERROR;
