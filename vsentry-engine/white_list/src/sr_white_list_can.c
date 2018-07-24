@@ -22,7 +22,7 @@ SR_32 sr_white_list_canbus(struct sr_ec_can_t *can_info)
 	
 	if (!*can_info->exec) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-			"%s=No exec name , pid:%d mid:%d dir:%d",
+			"%s=wl-can: no exec name , pid:%d mid:%d dir:%d",
 			REASON, can_info->pid, can_info->msg_id, can_info->dir);
 		return SR_ERROR;
 	}
