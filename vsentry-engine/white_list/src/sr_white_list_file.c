@@ -103,7 +103,7 @@ SR_32 sr_white_list_file_wl(struct sr_ec_file_wl_t *file_wl_info)
 		break;
 	case SR_EC_WL_FILE_EXE:
 		/* In file execute event it is not possible to learn pid. This pid is the pid of the executed file.*/
-		strcpy(new_file, file_wl_info->file);
+		file_to_learn = file_wl_info->file;
 		strcpy(exec, "*");
 		break;
 	default:
