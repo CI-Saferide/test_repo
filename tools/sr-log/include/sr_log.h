@@ -148,7 +148,7 @@ enum SR_CEF_CLASS_ID {
 #define CAN_MSG_ID 					"mid" 
 
 /*cs1 is a deviceCustomString1 that means Rule Number in firewalls.*/
-#define RULE_NUM_KEY 				"cs1" 
+#define RULE_NUM_KEY 				"rule" 
 
 /* A count associated with this event. How many times was this same event observed? Count can be omitted if it is 1 */
 #define BASE_EVENT_COUNT                        "cnt"
