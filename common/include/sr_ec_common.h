@@ -100,7 +100,8 @@ struct sr_ec_system_stat_t{
 #pragma pack(push, 1)
 struct sr_ec_can_t{
 	SR_U32 pid;
-    SR_U32 	msg_id;
+	SR_8 exec[SR_MAX_PATH_SIZE];
+	SR_U32 	msg_id;
 	SR_U8 	dir; //inbound/outbound msg
 };
 #pragma pack(pop)

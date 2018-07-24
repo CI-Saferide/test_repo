@@ -893,6 +893,25 @@ int vsentry_inet_conn_request(struct sock *sk, struct sk_buff *skb, struct reque
 }
 #endif
 
+static SR_32 get_process_name(SR_U32 pid, char *exec, SR_U32 max_len)
+{
+	struct pid *pid_struct;
+	struct task_struct *task;
+	struct mm_struct *mm;
+	SR_32 rc = SR_SUCCESS;
+
+	pid_struct = find_get_pid(pid);
+	task = pid_task(pid_struct, PIDTYPE_PID);
+	mm = get_task_mm(task);
+	if (!mm)
+		return rc;
+	down_read(&mm->mmap_sem);
+	rc = sr_get_full_path(mm->exe_file, exec, max_len);
+	up_read(&mm->mmap_sem);
+
+	return rc;
+}
+
 /* @socket_sendmsg:
  *	Check permission before transmitting a message to another socket.
  *	@sock contains the socket structure.
@@ -936,6 +955,11 @@ SR_32 vsentry_socket_sendmsg(struct socket *sock,struct msghdr *msg,SR_32 size)
 
 			disp.can_info.id.uid = (int)rcred->uid.val;
 			disp.can_info.id.pid = current->pid;
+			if (get_collector_state() == SR_TRUE){
+				if ((rc = get_process_name(disp.can_info.id.pid, disp.can_info.id.exec, SR_MAX_PATH_SIZE)) != SR_SUCCESS) {
+					CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, "Failed get process name for can rcv skb pid:%d ", disp.can_info.id.pid);
+				}
+			}
 			skb = sock_alloc_send_skb(copy_sock.sk, size + sizeof(struct can_skb_priv),
 						  copy_msg.msg_flags & MSG_DONTWAIT, &err);
 						  
@@ -1046,6 +1070,7 @@ int vsentry_socket_sock_rcv_skb(struct sock *sk, struct sk_buff *skb)
 	int i;
 	struct canfd_frame *cfd;
 	disp_info_t disp;	
+	SR_32 rc;
 		
 	/* check vsentry state */
 	CHECK_STATE
@@ -1063,8 +1088,14 @@ int vsentry_socket_sock_rcv_skb(struct sock *sk, struct sk_buff *skb)
 			disp.can_info.payload_len = cfd->len;
 			disp.can_info.dir = SR_CAN_IN;
 
-			if (sk->sk_security)
+			if (sk->sk_security) {
 				disp.can_info.id.pid = *(int*)(sk->sk_security);
+				if (get_collector_state() == SR_TRUE){
+					if ((rc = get_process_name(disp.can_info.id.pid, disp.can_info.id.exec, SR_MAX_PATH_SIZE)) != SR_SUCCESS) {
+						CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, "Failed get process name for can rcv skb pid:%d ", disp.can_info.id.pid);
+					}
+				}
+			}
 			else
 				disp.can_info.id.pid  = 0;
 

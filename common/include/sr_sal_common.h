@@ -2,7 +2,7 @@
 #include "sr_log.h"
 
 #define SR_MAX_LOG  512
-#define SR_MAX_PATH_SIZE 768
+#define SR_MAX_PATH_SIZE 360
 
 #define SR_MOD_CMD_SYNC_ENGINE 10
 

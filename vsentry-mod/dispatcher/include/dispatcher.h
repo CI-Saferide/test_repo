@@ -38,6 +38,7 @@ typedef struct _identifier {
 */	
 	SR_32 				uid; /* user identifier */
 	SR_U32 				pid; /* process identifier */
+	SR_U8 				exec[SR_MAX_PATH_SIZE];
 }identifier;
 
 

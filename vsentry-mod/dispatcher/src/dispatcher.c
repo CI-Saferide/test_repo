@@ -210,6 +210,7 @@ SR_32 disp_socket_sendmsg(disp_info_t* info)
 		can_data.pid = info->tuple_info.id.pid;
 		can_data.msg_id = info->can_info.msg_id;
 		can_data.dir = SR_CAN_OUT;
+		strncpy(can_data.exec, info->tuple_info.id.exec, SR_MAX_PATH_SIZE);
 		sr_ec_send_event(MOD2STAT_BUF, SR_EVENT_STATS_CANBUS, &can_data);
 	}
 	/* call classifier */
@@ -263,6 +264,7 @@ SR_32 disp_can_recvmsg(disp_info_t* info)
 		can_data.pid = info->tuple_info.id.pid;
 		can_data.msg_id = info->can_info.msg_id;
 		can_data.dir = SR_CAN_IN;
+		strncpy(can_data.exec, info->tuple_info.id.exec, SR_MAX_PATH_SIZE);
 		sr_ec_send_event(MOD2STAT_BUF, SR_EVENT_STATS_CANBUS, &can_data);
 	}
 	hook_event_names = event_mediator_hooks_event_names();
