@@ -29,9 +29,23 @@ typedef struct wl_learn_file_item {
 		return new_file; \
 	}
 
+static SR_U32 count_char_in_str(char *s, char c)
+{
+	SR_U32 res = 0;
+
+	for (; *s; s++) {
+		if ((*s) == c)
+			res++;
+	}
+
+	return res;
+}
+
 static char *get_file_to_learn(char *file, char *new_file)
 {
 	char *p, *help;
+	SR_U32 num_of_slashs = 0, i;
+	static SR_U32 num_of_slashs_in_home;
 
 	strcpy(new_file, file);
 
@@ -40,10 +54,24 @@ static char *get_file_to_learn(char *file, char *new_file)
 	CHECK_DIR("/var/cache")
 	CHECK_DIR("/var/log")
 	CHECK_DIR("/usr/share/dbus-1")
-	if (home_dir)
-		CHECK_DIR(home_dir)
 
-    // If file is /proc/pid learn the whole /proc
+	if (memcmp(file, HOME_PREFIX, strlen(HOME_PREFIX)) == 0) {
+		// if the file is in a home directory learn only home directory
+		if (!num_of_slashs_in_home)
+			num_of_slashs_in_home = 1 + count_char_in_str(HOME_PREFIX, '/');
+		i = 0;
+		for (p = file; *p; p++) {
+			if (*p == '/') {
+				num_of_slashs++;
+				if (num_of_slashs == num_of_slashs_in_home)
+					break;
+			}
+			new_file[i++] = *p; 
+		}
+		new_file[i] = 0;
+	}
+
+	// If file is /proc/pid learn the whole /proc
 	if (!memcmp(file, "/proc/", 5)) {
 		help = strdup(file);
 		p = strtok(help, "/");
