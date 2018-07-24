@@ -78,33 +78,31 @@ void sr_white_list_file_uninit(void)
 SR_32 sr_white_list_file_wl(struct sr_ec_file_wl_t *file_wl_info)
 {
 	sr_white_list_item_t *white_list_item;
-	char exec[SR_MAX_PATH_SIZE], *file_to_learn, new_file[SR_MAX_PATH_SIZE];
+	char *file_to_learn, new_file[SR_MAX_PATH_SIZE];
 	sr_white_list_file_t **iter;
 
 	if (sr_white_list_get_mode() != SR_WL_MODE_LEARN)
 		return SR_SUCCESS;
 
 	if (!sal_is_valid_file_name(file_wl_info->file)) {
-			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-					"%s=invalid file :%s ",REASON, file_wl_info->file);
-			printf("=====Invalid file name :%s \n", file_wl_info->file);
-			return SR_ERROR;
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+				"%s=invalid file :%s ",REASON, file_wl_info->file);
+		printf("=====Invalid file name :%s \n", file_wl_info->file);
+		return SR_ERROR;
+	}
+	if (!*file_wl_info->file) {
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+				"%s=invalid exec for file :%s ",REASON, file_wl_info->file);
+		return SR_ERROR;
 	}
 
 	switch (file_wl_info->wl_type) {
 	case SR_EC_WL_FILE_OPEN:
-		if (sal_get_process_name(file_wl_info->pid, exec, SR_MAX_PATH_SIZE) != SR_SUCCESS) {
-			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-					"%s=failed to learn program name for white list file, pid:%d file :%s",REASON, file_wl_info->pid, file_wl_info->file);
-			return SR_ERROR;
-		}
 		// The file to learn might be changed, as in some cases we consolidate the file its container forlder
 		file_to_learn = get_file_to_learn(file_wl_info->file, new_file);
 		break;
 	case SR_EC_WL_FILE_EXE:
-		/* In file execute event it is not possible to learn pid. This pid is the pid of the executed file.*/
 		file_to_learn = file_wl_info->file;
-		strcpy(exec, "*");
 		break;
 	default:
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
@@ -112,8 +110,8 @@ SR_32 sr_white_list_file_wl(struct sr_ec_file_wl_t *file_wl_info)
 		return SR_ERROR;
 	}
 
-	if (!(white_list_item = sr_white_list_hash_get(exec))) {
-		if (sr_white_list_hash_insert(exec, &white_list_item) != SR_SUCCESS) {
+	if (!(white_list_item = sr_white_list_hash_get(file_wl_info->exec))) {
+		if (sr_white_list_hash_insert(file_wl_info->exec, &white_list_item) != SR_SUCCESS) {
 			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 				"%s=file white list insert failed, pid:%d file :%s",REASON, file_wl_info->pid, file_wl_info->file);
 			return SR_ERROR;
