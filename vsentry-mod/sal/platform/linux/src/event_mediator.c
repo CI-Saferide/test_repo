@@ -189,60 +189,6 @@ static void parse_sinaddr(const struct in_addr saddr, SR_8* buffer, SR_32 length
 }
 #endif // DEBUG
 
-static SR_32 sr_get_full_path(struct file * file, char *file_full_path, SR_U32 max_len)
-{
-	SR_32 mount_point_length;
-	struct path path;
-
-	if (!file)
-		return SR_ERROR;
-
-	path = file->f_path;
-	/* inc reference counter */
-	if (unlikely(!dget(file->f_path.dentry)))
-		return SR_ERROR;
-	if (follow_up(&path)) {
-	    /* if foolow_up succeed, it dec the reference counter */
-	    get_path(path.dentry, file_full_path, max_len);
-	} else {
-	    /* dec the reference counter */
-	    dput(file->f_path.dentry);
-	}
-	mount_point_length = strlen(file_full_path);
-	if (mount_point_length == 1) {
-		// The mount point is only slash, remove it.
-	    file_full_path[0] = 0;
-	    mount_point_length = 0;
-	}
-
-	if (get_path(file->f_path.dentry, file_full_path + mount_point_length, max_len - mount_point_length) != SR_SUCCESS) {
-		CEF_log_event(SR_CEF_CID_FILE, "file operation drop", SEVERITY_HIGH,
-				"%s=file path is too long (more then %d bytes)", REASON, SR_MAX_PATH_SIZE);
-	    return SR_ERROR;
-	}
-
-	return SR_SUCCESS;
-}
-
-static SR_32 get_process_name(SR_U32 pid, char *exec, SR_U32 max_len)
-{
-	struct pid *pid_struct;
-	struct task_struct *task;
-	struct mm_struct *mm;
-	SR_32 rc = SR_SUCCESS;
-
-	pid_struct = find_get_pid(pid);
-	task = pid_task(pid_struct, PIDTYPE_PID);
-	mm = get_task_mm(task);
-	if (!mm)
-		return rc;
-	down_read(&mm->mmap_sem);
-	rc = sr_get_full_path(mm->exe_file, exec, max_len);
-	up_read(&mm->mmap_sem);
-
-	return rc;
-}
-
 static void update_sk_process_info (struct sk_security_struct *sksec)
 {
 	CEF_log_event(SR_CEF_CID_SYSTEM, "info", SEVERITY_LOW, "%s=socket process changed: old_process=%s old_pid=%d", MESSAGE, sksec->exec, sksec->pid);
