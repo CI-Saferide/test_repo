@@ -1164,7 +1164,7 @@ SR_32 sys_repo_mng_create_net_rule(sysrepo_mng_handler_t *handler, SR_32 rule_id
 
 static void can_packet_convert(SR_U32 msg_id,SR_U8 dir, char * msgid_str,char * dir_str)
 {
-	sprintf(msgid_str, "%03x", msg_id);
+	sprintf(msgid_str, "%08x", msg_id);
 	sprintf(dir_str, "%s", dir==0?"in":"out");
 }
 
@@ -1181,7 +1181,7 @@ static void can_packet_convert(SR_U32 msg_id,SR_U8 dir, char * msgid_str,char * 
 SR_32 sys_repo_mng_create_canbus_rule(sysrepo_mng_handler_t *handler, SR_32 rule_id, SR_U32 msg_id, char *exec, char *user, char *action, SR_U8 dir)
 {
 	char str_param[MAX_STR_SIZE];
-	char msgid_str[4];
+	char msgid_str[9];
 	char dir_str[4];
 	can_packet_convert(msg_id,dir, msgid_str,dir_str);
 	
