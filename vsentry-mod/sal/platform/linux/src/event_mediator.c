@@ -137,12 +137,15 @@ static SR_32 get_process_name(SR_U32 pid, char *exec, SR_U32 max_len)
 
 	pid_struct = find_get_pid(pid);
 	task = pid_task(pid_struct, PIDTYPE_PID);
+	if (!task)
+		return SR_ERROR;
 	mm = get_task_mm(task);
 	if (!mm)
-		return rc;
+		return SR_ERROR;
 	down_read(&mm->mmap_sem);
 	rc = sr_get_full_path(mm->exe_file, exec, max_len);
 	up_read(&mm->mmap_sem);
+	mmput(mm);
 
 	return rc;
 }
