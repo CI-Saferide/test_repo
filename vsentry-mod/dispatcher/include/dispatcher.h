@@ -38,6 +38,7 @@ typedef struct _identifier {
 */	
 	SR_32 				uid; /* user identifier */
 	SR_U32 				pid; /* process identifier */
+	SR_U8 				exec[SR_MAX_PATH_SIZE];
 }identifier;
 
 
@@ -98,6 +99,12 @@ typedef struct _event_name {
 	enum hook_events	event;
 	SR_U8				name[32];
 }event_name;
+
+/* this struct is used for sockets sk_security field */
+struct sk_security_struct {
+	SR_U32 				pid; /* process identifier */
+	SR_U8 				exec[SR_MAX_PATH_SIZE];
+};
 
 CEF_payload *cef_init(char* event_name,enum SR_CEF_SEVERITY sev,enum SR_CEF_CLASS_ID	class);
 

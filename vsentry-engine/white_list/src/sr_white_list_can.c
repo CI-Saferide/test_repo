@@ -15,13 +15,18 @@ static sysrepo_mng_handler_t sysrepo_handler;
 SR_32 sr_white_list_canbus(struct sr_ec_can_t *can_info)
 {
 	sr_white_list_item_t *white_list_item;
-	char exec[SR_MAX_PATH_SIZE];
 	sr_wl_can_item_t **iter;
 	
 	if (sr_white_list_get_mode() != SR_WL_MODE_LEARN)
 		return SR_SUCCESS;
-		
-		
+	
+	if (!*can_info->exec) {
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+			"%s=wl-can: no exec name , pid:%d mid:%d dir:%d",
+			REASON, can_info->pid, can_info->msg_id, can_info->dir);
+		return SR_ERROR;
+	}
+
 #if 0
 	/*debug can print*/	
 	struct sr_ec_can_t *wl_can;
@@ -33,15 +38,8 @@ SR_32 sr_white_list_canbus(struct sr_ec_can_t *can_info)
 	printf("%s\n********\n",wl_can->dir==SR_CAN_IN?"IN":"OUT");
 #endif		
 
-	if (sal_get_process_name(can_info->pid, exec, SR_MAX_PATH_SIZE) != SR_SUCCESS) {
-		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-			"%s=white list: failed to learn program name for CAN message, pid:%d mid:%d dir:%d",
-				REASON, can_info->pid, can_info->msg_id, can_info->dir);
-		return SR_ERROR;
-	}
-
-	if (!(white_list_item = sr_white_list_hash_get(exec))) {		
-		if (sr_white_list_hash_insert(exec, &white_list_item) != SR_SUCCESS) {
+	if (!(white_list_item = sr_white_list_hash_get(can_info->exec))) {		
+		if (sr_white_list_hash_insert(can_info->exec, &white_list_item) != SR_SUCCESS) {
 			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 				"%s=failed to insert CAN message to white list, pid:%d mid:%d dir:%d",
 				REASON, can_info->pid, can_info->msg_id, can_info->dir);

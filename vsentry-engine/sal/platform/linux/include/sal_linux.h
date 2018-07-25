@@ -39,6 +39,7 @@
 #include <ctype.h>
 
 #define VS_FILE_NAME 	"/dev/vsentry"
+#define HOME_PREFIX     "/home/"
 
 #define UBUNTU "Ubuntu"
 

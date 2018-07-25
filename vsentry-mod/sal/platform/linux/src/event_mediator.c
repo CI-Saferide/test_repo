@@ -93,6 +93,60 @@ static SR_8 get_path(struct dentry *dentry, SR_8 *buffer, SR_32 len)
 	return SR_SUCCESS;
 }
 
+static SR_32 sr_get_full_path(struct file * file, char *file_full_path, SR_U32 max_len)
+{
+	SR_32 mount_point_length;
+	struct path path;
+
+	if (!file)
+		return SR_ERROR;
+
+	path = file->f_path;
+	/* inc reference counter */
+	if (unlikely(!dget(file->f_path.dentry)))
+		return SR_ERROR;
+	if (follow_up(&path)) {
+	    /* if foolow_up succeed, it dec the reference counter */
+	    get_path(path.dentry, file_full_path, max_len);
+	} else {
+	    /* dec the reference counter */
+	    dput(file->f_path.dentry);
+	}
+	mount_point_length = strlen(file_full_path);
+	if (mount_point_length == 1) {
+		// The mount point is only slash, remove it.
+	    file_full_path[0] = 0;
+	    mount_point_length = 0;
+	}
+
+	if (get_path(file->f_path.dentry, file_full_path + mount_point_length, max_len - mount_point_length) != SR_SUCCESS) {
+		CEF_log_event(SR_CEF_CID_FILE, "file operation drop", SEVERITY_HIGH,
+				"%s=file path is too long (more then %d bytes)", REASON, SR_MAX_PATH_SIZE);
+	    return SR_ERROR;
+	}
+
+	return SR_SUCCESS;
+}
+
+static SR_32 get_process_name(SR_U32 pid, char *exec, SR_U32 max_len)
+{
+	struct pid *pid_struct;
+	struct task_struct *task;
+	struct mm_struct *mm;
+	SR_32 rc = SR_SUCCESS;
+
+	pid_struct = find_get_pid(pid);
+	task = pid_task(pid_struct, PIDTYPE_PID);
+	mm = get_task_mm(task);
+	if (!mm)
+		return rc;
+	down_read(&mm->mmap_sem);
+	rc = sr_get_full_path(mm->exe_file, exec, max_len);
+	up_read(&mm->mmap_sem);
+
+	return rc;
+}
+
 static const event_name hook_event_names[MAX_HOOK] = {
 	{HOOK_MKDIR,			"mkdir"},
 	{HOOK_UNLINK,			"unlink"},
@@ -134,6 +188,16 @@ static void parse_sinaddr(const struct in_addr saddr, SR_8* buffer, SR_32 length
 		((saddr.s_addr&0xFF000000)>>24));
 }
 #endif // DEBUG
+
+static void update_sk_process_info (struct sk_security_struct *sksec)
+{
+	CEF_log_event(SR_CEF_CID_SYSTEM, "info", SEVERITY_LOW, "%s=socket process changed: old_process=%s old_pid=%d", MESSAGE, sksec->exec, sksec->pid);
+	sksec->pid = current->tgid;
+	if ((get_process_name(current->tgid, sksec->exec, SR_MAX_PATH_SIZE)) != SR_SUCCESS) {
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, "%s=failed get process name at sk allocation pid:%d ", REASON, current->tgid);
+	}
+	CEF_log_event(SR_CEF_CID_SYSTEM, "info", SEVERITY_LOW, "%s=socket process new values: process_name=%s pid=%d", MESSAGE, sksec->exec, sksec->pid);
+}
 
 SR_32 vsentry_inode_mkdir(struct inode *dir, struct dentry *dentry, umode_t mask)
 {
@@ -464,7 +528,18 @@ SR_32 vsentry_socket_connect(struct socket *sock, struct sockaddr *address, SR_3
 	disp.tuple_info.id.pid = current->pid;
 	disp.tuple_info.saddr.v4addr.s_addr = 0;
 	disp.tuple_info.sport = 0;
-	disp.tuple_info.id.pid = current->pid;
+	
+	if (sock->sk->sk_security) {
+		struct sk_security_struct *sksec = sock->sk->sk_security;
+		if (sksec->pid != current->tgid)
+			update_sk_process_info (sksec);
+		disp.tuple_info.id.pid = sksec->pid;
+		if (get_collector_state() == SR_TRUE){
+			strncpy(disp.tuple_info.id.exec, sksec->exec, SR_MAX_PATH_SIZE);
+		}
+	}
+	else
+		disp.tuple_info.id.pid = current->tgid;
 
 	disp.tuple_info.daddr.v4addr.s_addr = ntohl(((struct sockaddr_in *)address)->sin_addr.s_addr);
 	disp.tuple_info.dport = ntohs(((struct sockaddr_in *)address)->sin_port);
@@ -506,6 +581,18 @@ SR_32 vsentry_incoming_connection(struct sk_buff *skb)
 	disp.tuple_info.sport = sal_packet_src_port(skb);
 	disp.tuple_info.dport = sal_packet_dest_port(skb);
 	disp.tuple_info.ip_proto = sal_packet_ip_proto(skb);
+	
+	if (skb->sk->sk_security) {
+		struct sk_security_struct *sksec = skb->sk->sk_security;
+		if (sksec->pid != current->tgid)
+			update_sk_process_info (sksec);
+		disp.tuple_info.id.pid = sksec->pid;
+		if (get_collector_state() == SR_TRUE){
+			strncpy(disp.tuple_info.id.exec, sksec->exec, SR_MAX_PATH_SIZE);
+		}
+	}
+	else
+		disp.tuple_info.id.pid = current->tgid;
 
 //#ifdef DEBUG_EVENT_MEDIATOR
 	CEF_log_event(SR_CEF_CID_SYSTEM, "info" , SEVERITY_LOW,
@@ -630,41 +717,6 @@ SR_32 vsentry_inode_create(struct inode *dir, struct dentry *dentry, umode_t mod
 	return rc;
 }
 
-static SR_32 sr_get_full_path(struct file * file, char *file_full_path, SR_U32 max_len)
-{
-	SR_32 mount_point_length;
-	struct path path;
-
-	if (!file)
-		return SR_ERROR;
-
-	path = file->f_path;
-	/* inc reference counter */
-	if (unlikely(!dget(file->f_path.dentry)))
-		return SR_ERROR;
-	if (follow_up(&path)) {
-	    /* if foolow_up succeed, it dec the reference counter */
-	    get_path(path.dentry, file_full_path, max_len);
-	} else {
-	    /* dec the reference counter */
-	    dput(file->f_path.dentry);
-	}
-	mount_point_length = strlen(file_full_path);
-	if (mount_point_length == 1) {
-		// The mount point is only slash, remove it.
-	    file_full_path[0] = 0;
-	    mount_point_length = 0;
-	}
-
-	if (get_path(file->f_path.dentry, file_full_path + mount_point_length, max_len - mount_point_length) != SR_SUCCESS) {
-		CEF_log_event(SR_CEF_CID_FILE, "file operation drop", SEVERITY_HIGH,
-				"%s=file path is too long (more then %d bytes)", REASON, SR_MAX_PATH_SIZE);
-	    return SR_ERROR;
-	}
-
-	return SR_SUCCESS;
-}
-
 //__attribute__ ((unused))
 SR_32 vsentry_file_open(struct file *file, const struct cred *cred)
 {
@@ -735,6 +787,10 @@ SR_32 vsentry_file_open(struct file *file, const struct cred *cred)
 		if(get_collector_state() == SR_TRUE){
 			if (sr_get_full_path(file, disp.fileinfo.fullpath, SR_MAX_PATH_SIZE) != SR_SUCCESS)
 				return rc;
+			if ((rc = get_process_name(disp.fileinfo.id.pid, disp.fileinfo.id.exec, SR_MAX_PATH_SIZE)) != SR_SUCCESS) {
+				CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, "Failed get process name for file open pid:%d ", disp.can_info.id.pid);
+				return rc;
+			}
 			disp_file_open_report(&disp);
 		}
 	}
@@ -936,6 +992,11 @@ SR_32 vsentry_socket_sendmsg(struct socket *sock,struct msghdr *msg,SR_32 size)
 
 			disp.can_info.id.uid = (int)rcred->uid.val;
 			disp.can_info.id.pid = current->pid;
+			if (get_collector_state() == SR_TRUE){
+				if ((rc = get_process_name(disp.can_info.id.pid, disp.can_info.id.exec, SR_MAX_PATH_SIZE)) != SR_SUCCESS) {
+					CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, "Failed get process name for can rcv skb pid:%d ", disp.can_info.id.pid);
+				}
+			}
 			skb = sock_alloc_send_skb(copy_sock.sk, size + sizeof(struct can_skb_priv),
 						  copy_msg.msg_flags & MSG_DONTWAIT, &err);
 						  
@@ -1063,10 +1124,15 @@ int vsentry_socket_sock_rcv_skb(struct sock *sk, struct sk_buff *skb)
 			disp.can_info.payload_len = cfd->len;
 			disp.can_info.dir = SR_CAN_IN;
 
-			if (sk->sk_security)
-				disp.can_info.id.pid = *(int*)(sk->sk_security);
+			if (sk->sk_security) {
+				struct sk_security_struct *sksec = sk->sk_security;
+				disp.can_info.id.pid = sksec->pid;
+				if (get_collector_state() == SR_TRUE){
+					strncpy(disp.can_info.id.exec, sksec->exec, SR_MAX_PATH_SIZE);
+				}
+			}
 			else
-				disp.can_info.id.pid  = 0;
+				disp.can_info.id.pid = 0;
 
 			for (i = 0; i < cfd->len; i++) {
 				disp.can_info.payload[i] = cfd->data[i];
@@ -1098,15 +1164,10 @@ int vsentry_socket_recvmsg(struct socket *sock,struct msghdr *msg,int size,int f
 #endif
 
 	if (sr_cls_process_add(current->pid) != SR_SUCCESS) {
-		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, "error adding process \n");
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, "%s=error adding process", REASON);
 	}
 
 	switch (family) {
-		case AF_CAN:
-			sock->sk->sk_security = kmalloc(sizeof(int), GFP_KERNEL);
-			if (sock->sk->sk_security) {
-				*(int*)sock->sk->sk_security = (int)current->pid;
-			}
 
 		case AF_INET:
 #ifdef CONFIG_STAT_ANALYSIS
@@ -1125,8 +1186,8 @@ int vsentry_socket_recvmsg(struct socket *sock,struct msghdr *msg,int size,int f
 				} else {
 					/* Create a connection */
 					if (sr_stat_connection_insert(&con, 0) != SR_SUCCESS) {
-						CEF_log_event(SR_CEF_CID_SYSTEM, "Error", SEVERITY_HIGH,
-										"ERROR failed sr_stat_connection_insert\n");
+						CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+										"%s=failed sr_stat_connection_insert", REASON);
 						return 0;
 					}
 				}
@@ -1193,6 +1254,10 @@ SR_32 vsentry_bprm_check_security(struct linux_binprm *bprm)
     if (rc == 0 && get_collector_state() == SR_TRUE) {
     	if (sr_get_full_path(bprm->file, disp.fileinfo.fullpath, SR_MAX_PATH_SIZE) != SR_SUCCESS)
     		return rc;
+		if ((rc = get_process_name(disp.fileinfo.id.pid, disp.fileinfo.id.exec, SR_MAX_PATH_SIZE)) != SR_SUCCESS) {
+			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, "Failed get process name for file open pid:%d ", disp.can_info.id.pid);
+			return rc;
+		}
     	disp_file_exe_report(&disp);
     }
 
@@ -1210,3 +1275,30 @@ void vsentry_task_free(struct task_struct *task)
 #endif
 }
 
+void vsentry_sk_free_security(struct sock *sk)
+{
+	struct sk_security_struct *sksec = sk->sk_security;
+
+	sk->sk_security = NULL;
+	kfree(sksec);
+}
+
+int vsentry_sk_alloc_security(struct sock *sk, int family, gfp_t priority)
+{
+	struct sk_security_struct *sksec;
+	SR_32 rc;
+
+	sksec = kzalloc(sizeof(*sksec), priority);
+	if (!sksec) {
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, "%s=failed to allocate memory for sk security pid:%d ", REASON, current->tgid);
+		return -ENOMEM;
+	}
+
+	sksec->pid = current->tgid;
+	if ((rc = get_process_name(current->tgid, sksec->exec, SR_MAX_PATH_SIZE)) != SR_SUCCESS) {
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, "%s=failed get process name at sk allocation pid:%d ", REASON, current->tgid);
+	}
+
+	sk->sk_security = sksec;
+	return 0;
+}

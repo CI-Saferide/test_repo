@@ -100,7 +100,8 @@ struct sr_ec_system_stat_t{
 #pragma pack(push, 1)
 struct sr_ec_can_t{
 	SR_U32 pid;
-    SR_U32 	msg_id;
+	SR_8 exec[SR_MAX_PATH_SIZE];
+	SR_U32 	msg_id;
 	SR_U8 	dir; //inbound/outbound msg
 };
 #pragma pack(pop)
@@ -120,6 +121,7 @@ struct sr_ec_connection_transmit_t{
 #pragma pack(push, 1)
 struct sr_ec_file_wl_t{
 	SR_8 file[SR_MAX_PATH_SIZE];
+	SR_8 exec[SR_MAX_PATH_SIZE];
 	SR_U32 pid;
 	SR_U8  fileop;
 	SR_U8 wl_type;

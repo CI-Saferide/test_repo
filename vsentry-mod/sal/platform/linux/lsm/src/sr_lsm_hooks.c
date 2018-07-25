@@ -354,6 +354,8 @@ typedef struct {
 } vs_hook_t;
 
 static vs_hook_t vsentry_hooks[] = {
+	{ VS_HOOK_SK_ALLOC_SECURITY, (void*)vsentry_sk_alloc_security },
+	{ VS_HOOK_SK_FREE_SECURITY, (void*)vsentry_sk_free_security },
 	{ VS_HOOK_BPRM_CHECK_SECURITY, (void*)vsentry_bprm_check_security },
 #ifdef CONFIG_SECURITY_PATH
 	{ VS_HOOK_PATH_UNLINK, (void*)vsentry_path_unlink },
@@ -620,6 +622,14 @@ void init_vsentry_hooks(int type, void* func_ptr)
 	case VS_HOOK_SOCKET_SOCK_RCV_SKB:
 		vsentry_security_hooks[type].hook.socket_sock_rcv_skb = func_ptr;
 		vsentry_security_hooks[type].head = &lsm_hook_head_ptr->socket_sock_rcv_skb;
+		break;
+	case VS_HOOK_SK_ALLOC_SECURITY:
+		vsentry_security_hooks[type].hook.sk_alloc_security = func_ptr;
+		vsentry_security_hooks[type].head = &lsm_hook_head_ptr->sk_alloc_security;
+		break;
+	case VS_HOOK_SK_FREE_SECURITY:
+		vsentry_security_hooks[type].hook.sk_free_security = func_ptr;
+		vsentry_security_hooks[type].head = &lsm_hook_head_ptr->sk_free_security;
 		break;
 
 	default:
