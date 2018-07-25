@@ -192,14 +192,29 @@ static void parse_sinaddr(const struct in_addr saddr, SR_8* buffer, SR_32 length
 }
 #endif // DEBUG
 
-static void update_sk_process_info (struct sk_security_struct *sksec)
+static void update_sk_process_info (struct sk_security_struct *sksec, SR_U32 current_pid)
 {
 	CEF_log_event(SR_CEF_CID_SYSTEM, "info", SEVERITY_LOW, "%s=socket process changed: old_process=%s old_pid=%d", MESSAGE, sksec->exec, sksec->pid);
-	sksec->pid = current->tgid;
+	sksec->pid = current_pid;
 	if ((get_process_name(current->tgid, sksec->exec, SR_MAX_PATH_SIZE)) != SR_SUCCESS) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, "%s=failed get process name at sk allocation pid:%d ", REASON, current->tgid);
 	}
 	CEF_log_event(SR_CEF_CID_SYSTEM, "info", SEVERITY_LOW, "%s=socket process new values: process_name=%s pid=%d", MESSAGE, sksec->exec, sksec->pid);
+}
+
+static void vsentry_get_sk_process_info(struct sock *sk, identifier *id, SR_32 current_pid)
+{
+	if (sk->sk_security) {
+		struct sk_security_struct *sksec = sk->sk_security;
+		if (current_pid && sksec->pid != current_pid)
+			update_sk_process_info(sksec, current_pid);
+		id->pid = sksec->pid;
+		if (get_collector_state() == SR_TRUE){
+			strncpy(id->exec, sksec->exec, SR_MAX_PATH_SIZE);
+		}
+	}
+	else
+		id->pid = current_pid;
 }
 
 SR_32 vsentry_inode_mkdir(struct inode *dir, struct dentry *dentry, umode_t mask)
@@ -532,17 +547,7 @@ SR_32 vsentry_socket_connect(struct socket *sock, struct sockaddr *address, SR_3
 	disp.tuple_info.saddr.v4addr.s_addr = 0;
 	disp.tuple_info.sport = 0;
 	
-	if (sock->sk->sk_security) {
-		struct sk_security_struct *sksec = sock->sk->sk_security;
-		if (sksec->pid != current->tgid)
-			update_sk_process_info (sksec);
-		disp.tuple_info.id.pid = sksec->pid;
-		if (get_collector_state() == SR_TRUE){
-			strncpy(disp.tuple_info.id.exec, sksec->exec, SR_MAX_PATH_SIZE);
-		}
-	}
-	else
-		disp.tuple_info.id.pid = current->tgid;
+	vsentry_get_sk_process_info(sock->sk, &disp.tuple_info.id, current->tgid);
 
 	disp.tuple_info.daddr.v4addr.s_addr = ntohl(((struct sockaddr_in *)address)->sin_addr.s_addr);
 	disp.tuple_info.dport = ntohs(((struct sockaddr_in *)address)->sin_port);
@@ -584,18 +589,7 @@ SR_32 vsentry_incoming_connection(struct sk_buff *skb)
 	disp.tuple_info.sport = sal_packet_src_port(skb);
 	disp.tuple_info.dport = sal_packet_dest_port(skb);
 	disp.tuple_info.ip_proto = sal_packet_ip_proto(skb);
-	
-	if (skb->sk->sk_security) {
-		struct sk_security_struct *sksec = skb->sk->sk_security;
-		if (sksec->pid != current->tgid)
-			update_sk_process_info (sksec);
-		disp.tuple_info.id.pid = sksec->pid;
-		if (get_collector_state() == SR_TRUE){
-			strncpy(disp.tuple_info.id.exec, sksec->exec, SR_MAX_PATH_SIZE);
-		}
-	}
-	else
-		disp.tuple_info.id.pid = current->tgid;
+
 
 //#ifdef DEBUG_EVENT_MEDIATOR
 	CEF_log_event(SR_CEF_CID_SYSTEM, "info" , SEVERITY_LOW,
