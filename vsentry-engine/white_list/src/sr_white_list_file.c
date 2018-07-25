@@ -29,9 +29,23 @@ typedef struct wl_learn_file_item {
 		return new_file; \
 	}
 
+static SR_U32 count_char_in_str(char *s, char c)
+{
+	SR_U32 res = 0;
+
+	for (; *s; s++) {
+		if ((*s) == c)
+			res++;
+	}
+
+	return res;
+}
+
 static char *get_file_to_learn(char *file, char *new_file)
 {
 	char *p, *help;
+	SR_U32 num_of_slashs = 0, i;
+	static SR_U32 num_of_slashs_in_home;
 
 	strcpy(new_file, file);
 
@@ -40,10 +54,24 @@ static char *get_file_to_learn(char *file, char *new_file)
 	CHECK_DIR("/var/cache")
 	CHECK_DIR("/var/log")
 	CHECK_DIR("/usr/share/dbus-1")
-	if (home_dir)
-		CHECK_DIR(home_dir)
 
-    // If file is /proc/pid learn the whole /proc
+	if (memcmp(file, HOME_PREFIX, strlen(HOME_PREFIX)) == 0) {
+		// if the file is in a home directory learn only home directory
+		if (!num_of_slashs_in_home)
+			num_of_slashs_in_home = 1 + count_char_in_str(HOME_PREFIX, '/');
+		i = 0;
+		for (p = file; *p; p++) {
+			if (*p == '/') {
+				num_of_slashs++;
+				if (num_of_slashs == num_of_slashs_in_home)
+					break;
+			}
+			new_file[i++] = *p; 
+		}
+		new_file[i] = 0;
+	}
+
+	// If file is /proc/pid learn the whole /proc
 	if (!memcmp(file, "/proc/", 5)) {
 		help = strdup(file);
 		p = strtok(help, "/");
@@ -78,33 +106,31 @@ void sr_white_list_file_uninit(void)
 SR_32 sr_white_list_file_wl(struct sr_ec_file_wl_t *file_wl_info)
 {
 	sr_white_list_item_t *white_list_item;
-	char exec[SR_MAX_PATH_SIZE], *file_to_learn, new_file[SR_MAX_PATH_SIZE];
+	char *file_to_learn, new_file[SR_MAX_PATH_SIZE];
 	sr_white_list_file_t **iter;
 
 	if (sr_white_list_get_mode() != SR_WL_MODE_LEARN)
 		return SR_SUCCESS;
 
 	if (!sal_is_valid_file_name(file_wl_info->file)) {
-			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-					"%s=invalid file :%s ",REASON, file_wl_info->file);
-			printf("=====Invalid file name :%s \n", file_wl_info->file);
-			return SR_ERROR;
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+				"%s=invalid file :%s ",REASON, file_wl_info->file);
+		printf("=====Invalid file name :%s \n", file_wl_info->file);
+		return SR_ERROR;
+	}
+	if (!*file_wl_info->exec) {
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+				"%s=invalid exec for file :%s ",REASON, file_wl_info->file);
+		return SR_ERROR;
 	}
 
 	switch (file_wl_info->wl_type) {
 	case SR_EC_WL_FILE_OPEN:
-		if (sal_get_process_name(file_wl_info->pid, exec, SR_MAX_PATH_SIZE) != SR_SUCCESS) {
-			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-					"%s=failed to learn program name for white list file, pid:%d file :%s",REASON, file_wl_info->pid, file_wl_info->file);
-			return SR_ERROR;
-		}
 		// The file to learn might be changed, as in some cases we consolidate the file its container forlder
 		file_to_learn = get_file_to_learn(file_wl_info->file, new_file);
 		break;
 	case SR_EC_WL_FILE_EXE:
-		/* In file execute event it is not possible to learn pid. This pid is the pid of the executed file.*/
 		file_to_learn = file_wl_info->file;
-		strcpy(exec, "*");
 		break;
 	default:
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
@@ -112,8 +138,8 @@ SR_32 sr_white_list_file_wl(struct sr_ec_file_wl_t *file_wl_info)
 		return SR_ERROR;
 	}
 
-	if (!(white_list_item = sr_white_list_hash_get(exec))) {
-		if (sr_white_list_hash_insert(exec, &white_list_item) != SR_SUCCESS) {
+	if (!(white_list_item = sr_white_list_hash_get(file_wl_info->exec))) {
+		if (sr_white_list_hash_insert(file_wl_info->exec, &white_list_item) != SR_SUCCESS) {
 			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 				"%s=file white list insert failed, pid:%d file :%s",REASON, file_wl_info->pid, file_wl_info->file);
 			return SR_ERROR;

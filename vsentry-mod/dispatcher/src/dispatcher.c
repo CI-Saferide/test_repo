@@ -158,6 +158,7 @@ static SR_32 disp_file_learn_report(disp_info_t* info, sr_ec_wl_type_t wl_type)
 
 	file_wl_data.wl_type = wl_type;
 	strncpy(file_wl_data.file, info->fileinfo.fullpath, SR_MAX_PATH_SIZE); 
+	strncpy(file_wl_data.exec, info->fileinfo.id.exec, SR_MAX_PATH_SIZE); 
 	file_wl_data.pid = info->fileinfo.id.pid; 
 	file_wl_data.fileop = info->fileinfo.fileop;
 	sr_ec_send_event(MOD2STAT_BUF, SR_EVENT_STATS_FILE_WL, &file_wl_data);
