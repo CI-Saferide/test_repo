@@ -71,10 +71,10 @@ int sr_cls_process_init(void)
 {
 	sr_cls_process_table = sr_hash_new_table(PROCESS_HASH_TABLE_SIZE);
 	if (!sr_cls_process_table) {
-		sal_kernel_print_err("Failed to allocate hash table!\n");
+		sal_kernel_print_err("failed to allocate hash table for cls_process\n");
 		return SR_ERROR;
 	}
-	sal_kernel_print_info("Successfully initialized process table!\n");
+	sal_kernel_print_info("successfully initialized process table\n");
 	return SR_SUCCESS;
 }
 
@@ -90,7 +90,9 @@ void sr_cls_process_uninit(void)
 		if (sr_cls_process_table->buckets[i].head != NULL){
 			curr = sr_cls_process_table->buckets[i].head;				
 			while (curr != NULL){
+#ifdef DEBUG
 				sal_kernel_print_info("\t\tDelete process : %u\n",curr->key);
+#endif /* DEBUG */
 				next = curr->next;
 				SR_FREE(curr);
 				curr= next;
@@ -99,10 +101,10 @@ void sr_cls_process_uninit(void)
 	}
 
 	if(sr_cls_process_table->buckets != NULL){
-		sal_kernel_print_info("DELETEING process table->bucket\n");
+		sal_kernel_print_info("deleting process table bucket\n");
 		SR_FREE(sr_cls_process_table->buckets);
 	}
 	SR_FREE(sr_cls_process_table);
 	sr_cls_process_table = NULL;
-	sal_kernel_print_info("[%s]: Successfully removed process classifier!\n", MODULE_NAME);
+	sal_kernel_print_info("[%s]: successfully removed process classifier\n", MODULE_NAME);
 }
