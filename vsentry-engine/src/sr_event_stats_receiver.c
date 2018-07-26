@@ -97,6 +97,7 @@ void sr_event_stats_receiver(SR_8 *msg_buff, SR_U32 msg_len)
 				}
 				break;
 			case SR_EVENT_STATS_SYSTEM_FINISH:
+				offset += sizeof(struct sr_ec_system_finish_t);
 				if ((rc = sr_start_system_policer_data_finish()) != SR_SUCCESS) {
                 			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 								"failed processing system policer finish notification.");

@@ -94,6 +94,10 @@ struct sr_ec_system_stat_t{
 	SR_U16 num_of_fds;
 	SR_U64 curr_time;
 };
+
+struct sr_ec_system_finish_t{
+	SR_U32 pid;
+};
 #pragma pack(pop)
 #endif
 

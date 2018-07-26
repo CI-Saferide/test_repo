@@ -96,7 +96,7 @@ int sr_ec_send_event(SR_U8 buf_type, SR_U8 event_type, void *data)
 					sr_ec_append_event(buf_type, event_type, data, sizeof(struct sr_ec_system_stat_t), SR_FALSE);
 					break;
 				case SR_EVENT_STATS_SYSTEM_FINISH:
-					sr_ec_append_event(buf_type, event_type, data, sizeof(struct sr_ec_system_stat_t), SR_FALSE);
+					sr_ec_append_event(buf_type, event_type, data, sizeof(struct sr_ec_system_finish_t), SR_FALSE);
 					break;
 #endif
 				default:
