@@ -184,6 +184,10 @@ SR_32 sr_classifier_network(disp_info_t* info)
 			} else { // take only dst/any
 				sal_and_self_op_arrays(&ba_res, sr_cls_exec_file_any(SR_NET_RULES));
 			}
+
+			if (array_is_clear(ba_res)) {
+				goto defaultConf;
+			}
 		}
 
 		if (info->tuple_info.id.pid) {  // Zero PID is an indication that we are not in process context

@@ -10,6 +10,8 @@ struct sr_hash_table_t *sr_cls_process_table;
 
 #define PROCESS_HASH_TABLE_SIZE 8192
 
+int is_arik_print;
+
 int sr_cls_process_add(SR_32 pid)
 {
 	struct sr_hash_ent_process_t *ent;
@@ -17,9 +19,11 @@ int sr_cls_process_add(SR_32 pid)
 	if (!sr_cls_process_table)
 		return SR_SUCCESS;
 
-	if (sr_hash_lookup(sr_cls_process_table, pid)) {
+
+	if ((ent = (struct sr_hash_ent_process_t *)sr_hash_lookup(sr_cls_process_table, pid))) {
+		ent->exec_inode = sal_get_exec_inode(pid);
 	    return SR_SUCCESS;
-        }
+	}
         ent = SR_ZALLOC(sizeof(*ent));
 	if (!ent) {
 	    CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
