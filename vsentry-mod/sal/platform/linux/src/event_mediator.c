@@ -545,8 +545,6 @@ SR_32 vsentry_socket_connect(struct socket *sock, struct sockaddr *address, SR_3
 	disp.tuple_info.id.pid = current->tgid;
 	disp.tuple_info.saddr.v4addr.s_addr = 0;
 	disp.tuple_info.sport = 0;
-	
-	vsentry_get_sk_process_info(sock->sk, &disp.tuple_info.id, current->tgid);
 
 	disp.tuple_info.daddr.v4addr.s_addr = ntohl(((struct sockaddr_in *)address)->sin_addr.s_addr);
 	disp.tuple_info.dport = ntohs(((struct sockaddr_in *)address)->sin_port);
