@@ -542,13 +542,14 @@ SR_32 vsentry_socket_connect(struct socket *sock, struct sockaddr *address, SR_3
 
 	/* gather metadata */
 	disp.tuple_info.id.uid = (int)rcred->uid.val;
-	disp.tuple_info.id.pid = current->tgid;
 	disp.tuple_info.saddr.v4addr.s_addr = 0;
 	disp.tuple_info.sport = 0;
 
 	disp.tuple_info.daddr.v4addr.s_addr = ntohl(((struct sockaddr_in *)address)->sin_addr.s_addr);
 	disp.tuple_info.dport = ntohs(((struct sockaddr_in *)address)->sin_port);
 	disp.tuple_info.ip_proto = sock->sk->sk_protocol;
+
+	vsentry_get_sk_process_info(sock->sk, &disp.tuple_info.id, current->tgid);
 
 #ifdef DEBUG_EVENT_MEDIATOR
 	CEF_log_event(SR_CEF_CID_SYSTEM, "info" , SEVERITY_LOW,
