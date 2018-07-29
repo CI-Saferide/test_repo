@@ -987,11 +987,6 @@ SR_32 vsentry_socket_sendmsg(struct socket *sock,struct msghdr *msg,SR_32 size)
 
 			disp.can_info.id.uid = (int)rcred->uid.val;
 			vsentry_get_sk_process_info(sock->sk, &disp.can_info.id, current->tgid);
-			if (get_collector_state() == SR_TRUE){
-				if ((rc = get_process_name(disp.can_info.id.pid, disp.can_info.id.exec, SR_MAX_PATH_SIZE)) != SR_SUCCESS) {
-					CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, "Failed get process name for can rcv skb pid:%d ", disp.can_info.id.pid);
-				}
-			}
 			skb = sock_alloc_send_skb(copy_sock.sk, size + sizeof(struct can_skb_priv),
 						  copy_msg.msg_flags & MSG_DONTWAIT, &err);
 						  
