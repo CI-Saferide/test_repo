@@ -10,8 +10,6 @@ struct sr_hash_table_t *sr_cls_process_table;
 
 #define PROCESS_HASH_TABLE_SIZE 8192
 
-int is_arik_print;
-
 int sr_cls_process_add(SR_32 pid)
 {
 	struct sr_hash_ent_process_t *ent;

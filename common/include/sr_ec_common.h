@@ -106,8 +106,9 @@ struct sr_ec_system_stat_t{
 	SR_U64 curr_time;
 };
 
+// A message to indicate the a cycle of tasks review. 
 struct sr_ec_system_finish_t{
-	SR_U32 pid;
+	SR_U32 dummy;
 };
 #pragma pack(pop)
 #endif

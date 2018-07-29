@@ -306,7 +306,7 @@ SR_32 sr_white_list_ip_new_connection(struct sr_ec_new_connection_wl_t *pNewConn
 	ip->sin_addr.s_addr = pNewConnection->con.remote_addr.v4addr;
 
 	if (!*pNewConnection->exec) {
-		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, "%s= No exec learnt for ip:%x ",
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, "%s=no exec learnt for ip:%x ",
 				MESSAGE, ip->sin_addr.s_addr);
 		return SR_ERROR;
 	}
