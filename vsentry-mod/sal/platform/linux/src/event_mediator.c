@@ -1043,6 +1043,9 @@ SR_32 vsentry_socket_sendmsg(struct socket *sock,struct msghdr *msg,SR_32 size)
 			CHECK_STATE
 			if (!sock->sk)
 				return 0;
+			if (sr_cls_process_add(current->pid) != SR_SUCCESS) {
+				CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, "%s=error adding process", REASON);
+			}
 #ifdef CONFIG_STAT_ANALYSIS
 			con.con_id.saddr.v4addr = ntohl(sock->sk->sk_rcv_saddr);
 			con.con_id.daddr.v4addr = ntohl(sock->sk->sk_daddr);
