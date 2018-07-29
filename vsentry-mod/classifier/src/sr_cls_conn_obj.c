@@ -3,6 +3,7 @@
 #include "sal_mem.h"
 #include "sal_linux.h"
 #include "sr_cls_network_common.h"
+#include "sr_event_collector.h"
 
 #define CON_OBJS_HASH_SIZE 1024
 #define SR_CONN_OBJ_AGED_TIME 30
@@ -94,6 +95,9 @@ SR_32 sr_conn_obj_hash_insert(sr_connection_id_t *con_id, SR_BOOL is_try_lock)
 {
 	sr_conn_obj_item_t *conn_obj_item;
 	SR_U8 hash_flags = 0;
+
+	if (get_collector_state() == SR_TRUE)
+		return SR_SUCCESS;
 
         SR_Zalloc(conn_obj_item, sr_conn_obj_item_t *, sizeof(sr_conn_obj_item_t));
         if (!conn_obj_item) {

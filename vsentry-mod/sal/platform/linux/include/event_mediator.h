@@ -76,6 +76,7 @@ void vsentry_inet_conn_established(struct sock *sk, struct sk_buff *skb);
 int vsentry_inet_conn_request(struct sock *sk, struct sk_buff *skb, struct request_sock *req);
 void vsentry_sk_free_security(struct sock *sk);
 int vsentry_sk_alloc_security(struct sock *sk, int family, gfp_t priority);
+SR_32 get_process_name(SR_U32 pid, char *exec, SR_U32 max_len);
 
 const event_name *event_mediator_hooks_event_names(void);
 

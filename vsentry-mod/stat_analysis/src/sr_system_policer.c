@@ -29,7 +29,7 @@ static SR_32 transmit_task(void *p)
 
 SR_32 sr_system_policer_start_transmit(void)
 {
-	struct sr_ec_system_stat_t system_stat = {};
+	struct sr_ec_system_finish_t system_finish = {};
 	static SR_U8 count;
 	struct config_params_t *config_params = sr_control_config_params();
 
@@ -41,7 +41,7 @@ SR_32 sr_system_policer_start_transmit(void)
 
 	// Transmission	
 	sal_exec_for_all_tasks(transmit_task);
-	sr_ec_send_event(MOD2STAT_BUF, SR_EVENT_STATS_SYSTEM_FINISH, &system_stat);
+	sr_ec_send_event(MOD2STAT_BUF, SR_EVENT_STATS_SYSTEM_FINISH, &system_finish);
 
 	return SR_SUCCESS;
 }

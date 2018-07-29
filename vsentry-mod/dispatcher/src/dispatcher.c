@@ -129,6 +129,7 @@ SR_32 disp_inode_symlink(disp_info_t* info)
 SR_32 disp_socket_connect(disp_info_t* info)
 {
 	struct sr_ec_new_connection_t sample_data;
+	struct sr_ec_new_connection_wl_t sample_data_wl;
 
 	sample_data.pid = info->tuple_info.id.pid;
 	sample_data.uid = info->tuple_info.id.uid;
@@ -137,7 +138,12 @@ SR_32 disp_socket_connect(disp_info_t* info)
 	sample_data.ip_proto = info->tuple_info.ip_proto;
 	sample_data.dport = info->tuple_info.dport;
 	sample_data.sport = info->tuple_info.sport;
-	sr_ec_send_event(MOD2STAT_BUF, SR_EVENT_STATS_NEW_CONNECTION, &sample_data);
+	// If WL learning
+	if (get_collector_state() == SR_TRUE) {
+		sample_data_wl.con = sample_data;
+		strncpy(sample_data_wl.exec, info->tuple_info.id.exec, SR_MAX_PATH_SIZE);
+		sr_ec_send_event(MOD2STAT_BUF, SR_EVENT_STATS_NEW_CONNECTION_WL, &sample_data_wl);
+	}
 	return (sr_classifier_network(info));
 }
 
