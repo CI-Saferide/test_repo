@@ -128,7 +128,7 @@ static SR_32 sr_get_full_path(struct file * file, char *file_full_path, SR_U32 m
 	return SR_SUCCESS;
 }
 
-static SR_32 get_process_name(SR_U32 pid, char *exec, SR_U32 max_len)
+SR_32 get_process_name(SR_U32 pid, char *exec, SR_U32 max_len)
 {
 	struct pid *pid_struct;
 	struct task_struct *task;

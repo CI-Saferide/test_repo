@@ -84,7 +84,7 @@ void sr_cls_uid_remove(enum sr_rule_type type, SR_32 uid)
 int sr_cls_uid_add_rule(enum sr_rule_type type, SR_32 uid, SR_U32 rulenum)
 {
 	struct sr_hash_ent_t *ent;
-	
+
 	if (uid != UID_ANY) {
 		ent=sr_hash_lookup(sr_cls_uid_table[type], uid);
 		if (!ent) {		

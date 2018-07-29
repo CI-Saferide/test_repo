@@ -114,6 +114,7 @@ SR_32 sal_get_local_ips(SR_U32 local_ips[], SR_U32 *count, SR_U32 max);
 
 // Process functions
 SR_U32 sal_get_exec_inode(SR_32 pid);
+SR_32 sal_get_process_name(SR_U32 pid, char *exec, SR_U32 max_len);
 
 //files and directories functions
 //SR_U32 sal_get_parent_dir(void* dir);

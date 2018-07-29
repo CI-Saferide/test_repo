@@ -32,9 +32,10 @@ enum sr_sync_type {
 #ifdef CONFIG_STAT_ANALYSIS
 enum sr_event_stats_type {
         SR_EVENT_STATS_CONNECTION,
+        SR_EVENT_STATS_CONNECTION_WL,
         SR_EVENT_STATS_CONNECTION_TRANSMIT,
+        SR_EVENT_STATS_NEW_CONNECTION_WL,
         SR_EVENT_STATS_FILE_WL,
-        SR_EVENT_STATS_NEW_CONNECTION,
         SR_EVENT_STATS_CANBUS,
 		SR_EVENT_STATS_SYSTEM,
 		SR_EVENT_STATS_SYSTEM_FINISH,
@@ -59,6 +60,11 @@ struct sr_ec_new_connection_t{
         SR_U8 ip_proto;
         // TODO: do we need the classification result ?
 };
+
+struct sr_ec_new_connection_wl_t {
+		struct sr_ec_new_connection_t con;
+		char exec[SR_MAX_PATH_SIZE];
+};
 #pragma pack(pop)
 
 #pragma pack(push, 1)
@@ -78,6 +84,11 @@ struct sr_ec_connection_stat_t{
 	SR_U32 tx_bytes;
 	SR_U64 curr_time;
 	SR_BOOL is_outgoing;
+};
+
+struct sr_ec_connection_stat_wl_t {
+	struct sr_ec_connection_stat_t con;
+	char exec[SR_MAX_PATH_SIZE];
 };
 #pragma pack(pop)
 

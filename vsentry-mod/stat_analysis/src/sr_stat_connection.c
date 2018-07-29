@@ -91,6 +91,7 @@ SR_U32 sr_connection_transmit(void)
    	SR_U32 i, ind, count = 0;
 	SR_U64 curr_time;
 	struct sr_ec_connection_stat_t con = {};
+	struct sr_ec_connection_stat_wl_t con_wl = {};
 	struct sr_ec_connection_transmit_t con_tran;
 
 	LRU_tmp = LRU_update;
@@ -125,7 +126,14 @@ SR_U32 sr_connection_transmit(void)
 		con.tx_bytes= LRU_transmit->objects[i]->tx_bytes;
 		con.curr_time = curr_time;
 		count++;
-		sr_ec_send_event(MOD2STAT_BUF, SR_EVENT_STATS_CONNECTION, &con);
+		// If WL learning, provide the process name
+		if (get_collector_state() == SR_TRUE){
+			con_wl.con = con;
+			sal_get_process_name(con.pid, con_wl.exec, SR_MAX_PATH_SIZE);
+			sr_ec_send_event(MOD2STAT_BUF, SR_EVENT_STATS_CONNECTION_WL, &con_wl);
+		} else {
+			sr_ec_send_event(MOD2STAT_BUF, SR_EVENT_STATS_CONNECTION, &con);
+		}
 	}
 	con_tran.count = count;
 	sr_ec_send_event(MOD2STAT_BUF, SR_EVENT_STATS_CONNECTION_TRANSMIT, &con_tran);

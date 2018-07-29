@@ -6,6 +6,7 @@
 #include "sr_tasks.h"
 #include "sr_sal_common.h"
 #include "dispatcher.h"
+#include "event_mediator.h"
 #include <linux/netdevice.h>
 #include <linux/inetdevice.h>
 #include <linux/sched.h>
@@ -284,4 +285,9 @@ SR_32 sal_exec_for_all_tasks(SR_32 (*cb)(void *data))
 	rcu_read_unlock();
 
 	return SR_SUCCESS;
+}
+
+SR_32 sal_get_process_name(SR_U32 pid, char *exec, SR_U32 max_len)
+{
+	return get_process_name(pid, exec, max_len);
 }

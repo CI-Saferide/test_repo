@@ -78,6 +78,9 @@ int sr_ec_send_event(SR_U8 buf_type, SR_U8 event_type, void *data)
 				case SR_EVENT_STATS_CONNECTION:
 					sr_ec_append_event(buf_type, event_type, data, sizeof(struct sr_ec_connection_stat_t), SR_FALSE);
 					break;
+				case SR_EVENT_STATS_CONNECTION_WL:
+					sr_ec_append_event(buf_type, event_type, data, sizeof(struct sr_ec_connection_stat_wl_t), SR_FALSE);
+					break;
 				case SR_EVENT_STATS_CONNECTION_TRANSMIT:
 					sr_ec_append_event(buf_type, event_type, data, sizeof(struct sr_ec_connection_transmit_t), SR_FALSE);
 					sal_linux_mng_readbuf_up(SYNC_INFO_GATHER);									
@@ -88,8 +91,8 @@ int sr_ec_send_event(SR_U8 buf_type, SR_U8 event_type, void *data)
 				case SR_EVENT_STATS_CANBUS:
 					sr_ec_append_event(buf_type, event_type, data, sizeof(struct sr_ec_can_t), SR_FALSE);
 					break;
-				case SR_EVENT_STATS_NEW_CONNECTION:
-					sr_ec_append_event(buf_type, event_type, data, sizeof(struct sr_ec_new_connection_t), SR_FALSE);
+				case SR_EVENT_STATS_NEW_CONNECTION_WL:
+					sr_ec_append_event(buf_type, event_type, data, sizeof(struct sr_ec_new_connection_wl_t), SR_FALSE);
 					break;
 #ifdef CONFIG_SYSTEM_POLICER
 				case SR_EVENT_STATS_SYSTEM:
@@ -116,7 +119,7 @@ static SR_32 sr_ec_send_msg_notification(SR_U8 buf_type, SR_U8 event_type)
 	switch (buf_type) {
 		case MOD2ENG_BUF: 
 			switch (event_type) {
-				case SR_EVENT_STATS_NEW_CONNECTION:
+				case SR_EVENT_STATS_NEW_CONNECTION_WL:
 				case SR_EVENT_FILE_CREATED:
 				case SR_EVENT_PROCESS_DIED:
 					sal_linux_mng_readbuf_up(SYNC_ENGINE);					
