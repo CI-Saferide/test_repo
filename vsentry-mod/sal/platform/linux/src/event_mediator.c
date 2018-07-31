@@ -588,7 +588,7 @@ SR_32 vsentry_incoming_connection(struct sk_buff *skb)
 	disp.tuple_info.dport = sal_packet_dest_port(skb);
 	disp.tuple_info.ip_proto = sal_packet_ip_proto(skb);
 
-	vsentry_get_sk_process_info(skb->sk, &disp.tuple_info.id, 0);
+	//vsentry_get_sk_process_info(skb->sk, &disp.tuple_info.id, 0);
 
 //#ifdef DEBUG_EVENT_MEDIATOR
 	CEF_log_event(SR_CEF_CID_SYSTEM, "info" , SEVERITY_LOW,
