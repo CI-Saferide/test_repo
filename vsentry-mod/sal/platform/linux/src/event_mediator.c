@@ -203,6 +203,9 @@ static void update_sk_process_info (struct sk_security_struct *sksec, SR_U32 cur
 
 static void vsentry_get_sk_process_info(struct sock *sk, identifier *id, SR_32 current_pid)
 {
+	if (!sk) 
+		return;
+
 	if (sk->sk_security) {
 		struct sk_security_struct *sksec = sk->sk_security;
 		if (current_pid && sksec->pid != current_pid) {
@@ -588,7 +591,7 @@ SR_32 vsentry_incoming_connection(struct sk_buff *skb)
 	disp.tuple_info.dport = sal_packet_dest_port(skb);
 	disp.tuple_info.ip_proto = sal_packet_ip_proto(skb);
 
-	//vsentry_get_sk_process_info(skb->sk, &disp.tuple_info.id, 0);
+	vsentry_get_sk_process_info(skb->sk, &disp.tuple_info.id, 0);
 
 //#ifdef DEBUG_EVENT_MEDIATOR
 	CEF_log_event(SR_CEF_CID_SYSTEM, "info" , SEVERITY_LOW,
