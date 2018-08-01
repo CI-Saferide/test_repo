@@ -16,6 +16,7 @@ static char *commands[] = {
 	"wl_learn",
 	"wl_apply",
 	"wl_print",
+	"wl_reset",
 	"st_learn",
 	"st_apply",
 	"st_off",
@@ -33,6 +34,11 @@ static int is_valid_cmd(char *cmd)
 	return 0;
 }
 
+static void usage(char *prog)
+{
+	printf("usage: %s -c [wl_learn,wl_apply,wl_print,wl_reset,st_learn,st_apply,st_off]\n", prog);
+}
+
 int main(int argc, char **argv)
 {
 	struct sockaddr_un addr = {};
@@ -46,7 +52,7 @@ int main(int argc, char **argv)
 				strcpy(cmd, optarg);
           			break;
 			case 'h':
-				printf("usage: %s -c [wl_learn,wl_apply,wl_print,st_learn,st_apply,st_off]\n", argv[0]);
+				usage(argv[0]);
 				return 0;
         		default:
 				printf("Invalid option %c ignored\n", opt);
@@ -54,7 +60,7 @@ int main(int argc, char **argv)
      		}
 	}
 	if (!is_valid_cmd(cmd)) {
-		printf("usage: %s -c [wl_learn,wl_apply,wl_print,st_learn,st_apply,st_off]\n", argv[0]);
+		usage(argv[0]);
 		return -1; 
 	}
 

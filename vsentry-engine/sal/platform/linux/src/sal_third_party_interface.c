@@ -26,6 +26,8 @@ static void handle_data(char *buf)
 		printf("print connection object:\n");
 		sr_control_util(SR_CONTROL_PRINT);
 	}
+	if (!memcmp(buf, "wl_reset", strlen("wl_reset")))
+		sr_white_list_reset();
 	if (!memcmp(buf, "st_learn", strlen("st_learn")))
 		sr_stat_analysis_learn_mode_set(SR_STAT_MODE_LEARN);
 	if (!memcmp(buf, "st_apply", strlen("st_apply")))

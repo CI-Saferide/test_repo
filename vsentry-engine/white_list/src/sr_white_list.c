@@ -143,6 +143,18 @@ static SR_32 sr_white_list_delete_rules(void)
 	return SR_SUCCESS;
 }
 
+SR_32 sr_white_list_reset(void)
+{
+	CEF_log_event(SR_CEF_CID_SYSTEM, "info", SEVERITY_LOW,
+			"%s=Delete WL rules ....", REASON);
+	sr_white_list_delete_all();
+	sr_white_list_ip_delete_all();
+	sr_white_list_delete_rules();
+ 	CEF_log_event(SR_CEF_CID_SYSTEM, "info", SEVERITY_LOW,
+			"%s=Finish delete WL rules ....", REASON);
+	return SR_SUCCESS;
+}
+
 SR_32 sr_white_list_set_mode(sr_wl_mode_t new_wl_mode)
 {
 	SR_32 rc;
@@ -191,14 +203,7 @@ SR_32 sr_white_list_set_mode(sr_wl_mode_t new_wl_mode)
 			} else
  				CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 					"%s=failed to transfer config info to kernel",REASON);
-
- 			CEF_log_event(SR_CEF_CID_SYSTEM, "info", SEVERITY_LOW,
-					"%s=Delete WL rules ....", REASON);
-			sr_white_list_delete_all();
-			sr_white_list_ip_delete_all();
-			sr_white_list_delete_rules();
- 			CEF_log_event(SR_CEF_CID_SYSTEM, "info", SEVERITY_LOW,
-					"%s=Finish delete WL rules ....", REASON);
+			sr_white_list_reset();
 			break;
 		case SR_WL_MODE_APPLY:
  			CEF_log_event(SR_CEF_CID_SYSTEM, "info", SEVERITY_LOW,
