@@ -94,6 +94,12 @@ SR_32 sr_classifier_network(disp_info_t* info)
 	if (!info->tuple_info.id.uid) return SR_CLS_ACTION_ALLOW; /* no classification for root user (debug only) */
 #endif
 
+	/* Local only traffic os allowed */
+	if (cr_cls_is_ip_address_local(info->tuple_info.saddr.v4addr) &&
+			cr_cls_is_ip_address_local(info->tuple_info.daddr.v4addr)) {
+		return SR_CLS_ACTION_ALLOW;
+ 	}
+
 	is_def = SR_FALSE;
 	memset(&ba_res, 0, sizeof(bit_array));
 	config_params = sr_control_config_params();
