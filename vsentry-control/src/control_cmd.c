@@ -16,9 +16,10 @@ static char *commands[] = {
 	"wl_learn",
 	"wl_apply",
 	"wl_print",
-	"st_learn",
-	"st_apply",
-	"st_off",
+	"wl_reset",
+	"sp_learn",
+	"sp_apply",
+	"sp_off",
 	NULL,
 };
 
@@ -31,6 +32,18 @@ static int is_valid_cmd(char *cmd)
 			return 1;
 	}
 	return 0;
+}
+
+static void usage(char *prog)
+{
+	printf("usage: %s -c [cmd]\n", prog);
+	printf("wl_learn		- start new white list learning\n");
+	printf("wl_apply		- while in wl_learn mode, applies current learned info\n");
+	printf("wl_apply		- while in wl_learn mode, prints current learned info to the log\n");
+	printf("wl_reset		- reset white list info (clears any applied learning data\n"):
+	printf("sp_learn		- start new system policer learning\n");
+	printf("sp_apply		- while in sp_learn mode, applies current learned info\n");
+	printf("sp_off			- disables system policer feature\n");
 }
 
 int main(int argc, char **argv)
@@ -46,7 +59,7 @@ int main(int argc, char **argv)
 				strcpy(cmd, optarg);
           			break;
 			case 'h':
-				printf("usage: %s -c [wl_learn,wl_apply,wl_print,st_learn,st_apply,st_off]\n", argv[0]);
+				usage(argv[0]);
 				return 0;
         		default:
 				printf("Invalid option %c ignored\n", opt);
@@ -54,7 +67,7 @@ int main(int argc, char **argv)
      		}
 	}
 	if (!is_valid_cmd(cmd)) {
-		printf("usage: %s -c [wl_learn,wl_apply,wl_print,st_learn,st_apply,st_off]\n", argv[0]);
+		usage(argv[0]);
 		return -1; 
 	}
 

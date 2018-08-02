@@ -26,11 +26,13 @@ static void handle_data(char *buf)
 		printf("print connection object:\n");
 		sr_control_util(SR_CONTROL_PRINT);
 	}
-	if (!memcmp(buf, "st_learn", strlen("st_learn")))
+	if (!memcmp(buf, "wl_reset", strlen("wl_reset")))
+		sr_white_list_reset();
+	if (!memcmp(buf, "sp_learn", strlen("sp_learn")))
 		sr_stat_analysis_learn_mode_set(SR_STAT_MODE_LEARN);
-	if (!memcmp(buf, "st_apply", strlen("st_apply")))
+	if (!memcmp(buf, "sp_apply", strlen("sp_apply")))
 		sr_stat_analysis_learn_mode_set(SR_STAT_MODE_PROTECT);
-	if (!memcmp(buf, "st_off", strlen("st_off")))
+	if (!memcmp(buf, "sp_off", strlen("sp_off")))
 		sr_stat_analysis_learn_mode_set(SR_STAT_MODE_OFF);
 }
 
