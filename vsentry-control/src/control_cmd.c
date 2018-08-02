@@ -40,7 +40,7 @@ static void usage(char *prog)
 	printf("wl_learn		- start new white list learning\n");
 	printf("wl_apply		- while in wl_learn mode, applies current learned info\n");
 	printf("wl_apply		- while in wl_learn mode, prints current learned info to the log\n");
-	printf("wl_reset		- reset white list info (clears any applied learning data\n"):
+	printf("wl_reset		- reset white list info (clears any applied learning data\n");
 	printf("sp_learn		- start new system policer learning\n");
 	printf("sp_apply		- while in sp_learn mode, applies current learned info\n");
 	printf("sp_off			- disables system policer feature\n");
