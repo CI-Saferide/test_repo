@@ -203,10 +203,7 @@ static void update_sk_process_info (struct sk_security_struct *sksec, SR_U32 cur
 
 static void vsentry_get_sk_process_info(struct sock *sk, identifier *id, SR_32 current_pid)
 {
-	if (!sk) 
-		return;
-
-	if (sk->sk_security) {
+	if ((sk) && (sk->sk_security)) {
 		struct sk_security_struct *sksec = sk->sk_security;
 		if (current_pid && sksec->pid != current_pid) {
 			update_sk_process_info(sksec, current_pid);
