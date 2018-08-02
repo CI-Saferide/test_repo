@@ -224,13 +224,13 @@ struct nf_hook_ops nfh_tx;
 int sr_netfilter_init(void)
 {
 	nfho.hook = sr_netfilter_hook_fn;
-	nfho.hooknum = NF_INET_LOCAL_IN;
+	nfho.hooknum = NF_INET_PRE_ROUTING;
 	nfho.pf = PF_INET;     
 	nfho.priority = NF_IP_PRI_FIRST;    
 	nf_register_hook(&nfho);         // Register the hook
 
 	nfh_tx.hook = sr_netfilter_out_hook_fn;
-	nfh_tx.hooknum = NF_INET_LOCAL_OUT;
+	nfh_tx.hooknum = NF_INET_POST_ROUTING;
 	nfh_tx.pf = PF_INET;     
 	nfh_tx.priority = NF_IP_PRI_FIRST;    
 	nf_register_hook(&nfh_tx);         // Register the hook
