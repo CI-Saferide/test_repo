@@ -10,7 +10,7 @@ struct sr_hash_table_t *sr_cls_process_table;
 
 #define PROCESS_HASH_TABLE_SIZE 8192
 
-int sr_cls_process_add(SR_32 pid)
+int sr_cls_process_add(SR_32 pid, SR_BOOL is_atomic)
 {
 	struct sr_hash_ent_process_t *ent;
 
@@ -22,7 +22,10 @@ int sr_cls_process_add(SR_32 pid)
 		ent->exec_inode = sal_get_exec_inode(pid);
 	    return SR_SUCCESS;
 	}
-        ent = SR_ZALLOC(sizeof(*ent));
+	if (is_atomic)
+        	ent = SR_KZALLOC_ATOMIC(sizeof(*ent));
+	else
+        	ent = SR_KZALLOC(sizeof(*ent));
 	if (!ent) {
 	    CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 			"%s=failed to add process %d, memory allocation fail",REASON,
@@ -40,7 +43,7 @@ int sr_cls_process_add(SR_32 pid)
 int sr_cls_process_del(SR_32 pid)
 {
 	if (sr_cls_process_table)
-		sr_hash_delete(sr_cls_process_table, pid);
+		sr_hash_delete_k(sr_cls_process_table, pid);
 
 	return SR_SUCCESS;
 }
@@ -96,7 +99,7 @@ void sr_cls_process_uninit(void)
 				sal_kernel_print_info("\t\tDelete process : %u\n",curr->key);
 #endif /* DEBUG */
 				next = curr->next;
-				SR_FREE(curr);
+				SR_KFREE(curr);
 				curr= next;
 			}
 		}

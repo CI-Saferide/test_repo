@@ -55,7 +55,8 @@ int sr_hash_insert(struct sr_hash_table_t *table, void *ptr)
 	SR_UNLOCK(&table->buckets[index].bucket_lock);
 	return SR_SUCCESS;
 }
-void sr_hash_delete(struct sr_hash_table_t *table, SR_U32 key)
+
+static void _sr_hash_delete(struct sr_hash_table_t *table, SR_U32 key, void (*free_func)(const void *ptr))
 {
 	SR_U32 index;
 	struct sr_hash_ent_t *ptr;
@@ -70,7 +71,7 @@ void sr_hash_delete(struct sr_hash_table_t *table, SR_U32 key)
 	if (table->buckets[index].head->key == key) {// remove head
 		ptr = table->buckets[index].head;
 		table->buckets[index].head = table->buckets[index].head->next;
-		SR_FREE(ptr);
+		free_func(ptr);
 		table->count--;
 	} else {
 		ptr = table->buckets[index].head;
@@ -78,7 +79,7 @@ void sr_hash_delete(struct sr_hash_table_t *table, SR_U32 key)
 			if (ptr->next->key == key) {
 				struct sr_hash_ent_t *ptr2 = ptr->next;
 				ptr->next = ptr->next->next;
-				SR_FREE(ptr2);
+				free_func(ptr2);
 				table->count--;
 				break;
 			}
@@ -87,6 +88,17 @@ void sr_hash_delete(struct sr_hash_table_t *table, SR_U32 key)
 	}
 	SR_UNLOCK(&table->buckets[index].bucket_lock);
 }
+
+void sr_hash_delete(struct sr_hash_table_t *table, SR_U32 key)
+{
+	return  _sr_hash_delete(table, key, SR_FREE);
+}
+
+void sr_hash_delete_k(struct sr_hash_table_t *table, SR_U32 key)
+{
+	return  _sr_hash_delete(table, key, SR_KFREE);
+}
+
 struct sr_hash_ent_t *sr_hash_lookup(struct sr_hash_table_t *table, SR_U32 key)
 {
 	SR_U32 index;
