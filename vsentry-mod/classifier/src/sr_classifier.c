@@ -377,7 +377,7 @@ check_old_parent:
 		}
 
 		// PID
-		if ((st = sr_cls_process_add(info->fileinfo.id.pid)) != SR_SUCCESS) {
+		if ((st = sr_cls_process_add(info->fileinfo.id.pid, SR_FALSE)) != SR_SUCCESS) {
 			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 				"%s=cls-file: error adding process",REASON);
 		}
@@ -460,7 +460,7 @@ SR_32 sr_classifier_canbus(disp_info_t* info)
 	}else{
 	
 		if (info->can_info.id.pid) { 
-			if ((st = sr_cls_process_add(info->can_info.id.pid)) != SR_SUCCESS) {
+			if ((st = sr_cls_process_add(info->can_info.id.pid, in_interrupt() != 0)) != SR_SUCCESS) {
 				CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 					"%s=cls-can: error adding process",
 					REASON);

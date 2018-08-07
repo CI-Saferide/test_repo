@@ -43,6 +43,7 @@ struct sr_hash_table_t{
 struct sr_hash_table_t *sr_hash_new_table(int count);
 int sr_hash_insert(struct sr_hash_table_t *table, void *ent);
 void sr_hash_delete(struct sr_hash_table_t *table, SR_U32 key);
+void sr_hash_delete_k(struct sr_hash_table_t *table, SR_U32 key);
 struct sr_hash_ent_t *sr_hash_lookup(struct sr_hash_table_t *table, SR_U32 key);
 void sr_hash_free_table(struct sr_hash_table_t *table);
 void sr_hash_print_table(struct sr_hash_table_t *table);
