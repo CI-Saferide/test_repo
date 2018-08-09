@@ -19,6 +19,52 @@
 #include "sr_cls_sk_process.h"
 #include "sr_cls_conn_obj.h"
 
+#ifdef CONFIG_STAT_ANALYSIS
+static SR_32 update_stats(struct sk_buff *skb) 
+{
+	struct iphdr *ip_header = (struct iphdr *)skb_network_header(skb);
+	sr_connection_data_t *conp, con = {};
+	struct udphdr *udp_header;
+	struct tcphdr *tcp_header;
+
+	con.con_id.saddr.v4addr = ntohl(ip_header->saddr);
+	con.con_id.daddr.v4addr = ntohl(ip_header->daddr);
+	if (con.con_id.daddr.v4addr == INADDR_BROADCAST || IN_MULTICAST(con.con_id.daddr.v4addr))
+		return SR_SUCCESS;
+
+	if (!ip_header->daddr || !ip_header->saddr)
+		return SR_SUCCESS;
+
+	con.con_id.ip_proto = ip_header->protocol;
+	if (ip_header->protocol == IPPROTO_TCP) { 
+		tcp_header = (struct tcphdr *)skb_transport_header(skb);
+		if (!tcp_header->dest || !tcp_header->source)
+			return SR_SUCCESS;
+		con.con_id.dport = ntohs(tcp_header->dest);
+		con.con_id.sport = ntohs(tcp_header->source);
+		con.rx_bytes = ntohs(ip_header->tot_len) - ip_header->ihl * 4 - tcp_header->doff * 4;
+	} else {
+		udp_header = (struct udphdr *)skb_transport_header(skb);
+		if (!udp_header->dest || !udp_header->source)
+			return SR_SUCCESS;
+		con.con_id.dport = ntohs(udp_header->dest);
+		con.con_id.sport = ntohs(udp_header->source);
+		con.rx_bytes = ntohs(udp_header->len) - UDP_HLEN;
+	}
+	con.rx_msgs = 1;
+
+	if ((conp = sr_stat_connection_lookup(&con.con_id))) {
+		sr_stat_connection_update_counters(conp, 0, con.rx_bytes, con.rx_msgs, 0, 0);
+	} else {
+		if (sr_stat_connection_insert(&con, SR_CONNECTION_NONBLOCKING | SR_CONNECTION_ATOMIC) != SR_SUCCESS) {
+			return SR_ERROR;
+		}
+	}
+
+	return SR_SUCCESS;
+}
+#endif
+
 #ifdef CONFIG_NETFILTER
 
 /* hook types are NF_INET_PRE_ROUTING, NF_INET_LOCAL_IN, NF_INET_FORWARD, NF_INET_LOCAL_OUT, NF_INET_POST_ROUTING */
@@ -51,14 +97,23 @@ unsigned int sr_netfilter_hook_fn(void *priv,
 		con_id.ip_proto = IPPROTO_TCP;
 
 		if (sr_conn_obj_hash_get(&con_id, SR_TRUE)) {
+#ifdef CONFIG_STAT_ANALYSIS
+			update_stats(skb);
+#endif
 			return NF_ACCEPT;
 		}
 		if (vsentry_incoming_connection(skb) == SR_CLS_ACTION_DROP) {
 			return NF_DROP;
 		}
+#ifdef CONFIG_STAT_ANALYSIS
+		update_stats(skb);
+#endif
 		if (sr_conn_obj_hash_insert(&con_id, SR_TRUE) == SR_ERROR) {
-			return NF_DROP;
+			return NF_DROP;	
 		}
+	}
+	if (ip_header->protocol == IPPROTO_TCP && !((struct tcphdr *)skb_transport_header(skb))->syn) {
+		update_stats(skb);
 	}
 
 	if (ip_header->protocol == IPPROTO_UDP) {
@@ -81,77 +136,22 @@ unsigned int sr_netfilter_hook_fn(void *priv,
 		con_id.ip_proto = IPPROTO_UDP;
 
 		if (sr_conn_obj_hash_get(&con_id, SR_TRUE)) {
+#ifdef CONFIG_STAT_ANALYSIS
+			update_stats(skb);
+#endif
 			return NF_ACCEPT;
 		}
 
 		if (disp_ipv4_recvmsg(&disp) != SR_CLS_ACTION_ALLOW)
 			return NF_DROP;
+#ifdef CONFIG_STAT_ANALYSIS
+		update_stats(skb);
+#endif
 
 		if (sr_conn_obj_hash_insert(&con_id, SR_TRUE) == SR_ERROR) {
 			return NF_DROP;
 		}
 	}
-
-#ifdef CONFIG_STAT_ANALYSIS
-	if ((ip_header->protocol == IPPROTO_TCP && !((struct tcphdr *)skb_transport_header(skb))->syn) ||
-		ip_header->protocol == IPPROTO_UDP) {
-		sr_connection_data_t *conp, con = {};
-		struct udphdr *udp_header;
-
-		con.con_id.saddr.v4addr = ntohl(ip_header->saddr);
-		con.con_id.daddr.v4addr = ntohl(ip_header->daddr);
-		if (con.con_id.daddr.v4addr == INADDR_BROADCAST) {
-			// Hnalde broadcast
-#ifdef SR_STAT_ANALYSIS_DEBUG
-			non_uc ++;
-			if (non_uc % 100 == 0)
-				CEF_log_event(SR_CEF_CID_SYSTEM, "Stat dropped broadcast" , SEVERITY_LOW,
-							"%s=dropped BC :%x count:%d",MESSAGE,
-							con.con_id.saddr.v4addr, non_uc);
-#endif
-			return NF_ACCEPT;
-		}
-		if (IN_MULTICAST(con.con_id.daddr.v4addr)) {
-			// Hnalde Multicast
-#ifdef SR_STAT_ANALYSIS_DEBUG
-			non_uc ++;
-			if (non_uc % 100 == 0)
-				CEF_log_event(SR_CEF_CID_SYSTEM, "Stat dropped broadcast" , SEVERITY_LOW,
-							"%s=dropped BC :%x count:%d",MESSAGE,
-							con.con_id.saddr.v4addr, non_uc);
-#endif
-			return NF_ACCEPT;
-		}
-
-		if (!ip_header->daddr || !ip_header->saddr)
-			return NF_ACCEPT;
-		con.con_id.ip_proto = ip_header->protocol;
-		if (ip_header->protocol == IPPROTO_TCP) { 
-			tcp_header = (struct tcphdr *)skb_transport_header(skb);
-			if (!tcp_header->dest || !tcp_header->source)
-				return NF_ACCEPT;
-			con.con_id.dport = ntohs(tcp_header->dest);
-			con.con_id.sport = ntohs(tcp_header->source);
-			con.rx_bytes = ntohs(ip_header->tot_len) - ip_header->ihl * 4 - tcp_header->doff * 4;
-		} else {
-			udp_header = (struct udphdr *)skb_transport_header(skb);
-			if (!udp_header->dest || !udp_header->source)
-				return NF_ACCEPT;
-			con.con_id.dport = ntohs(udp_header->dest);
-			con.con_id.sport = ntohs(udp_header->source);
-			con.rx_bytes = ntohs(udp_header->len) - UDP_HLEN;
-		}
-		con.rx_msgs = 1;
-
-		if ((conp = sr_stat_connection_lookup(&con.con_id))) {
-			sr_stat_connection_update_counters(conp, 0, con.rx_bytes, con.rx_msgs, 0, 0);
-		} else {
-			if (sr_stat_connection_insert(&con, SR_CONNECTION_NONBLOCKING | SR_CONNECTION_ATOMIC) != SR_SUCCESS) {
-				return NF_ACCEPT;
-			}
-		}
-	}
-#endif
 
 	return NF_ACCEPT;
 }
