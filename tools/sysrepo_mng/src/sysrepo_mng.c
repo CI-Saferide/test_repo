@@ -39,6 +39,7 @@
 #define JSON_SRCPORT "srcPort"
 #define JSON_DSTPORT "dstPort"
 #define JSON_PROGRAM "execProgram"
+#define JSON_INTERFACE "canInterface"
 #define JSON_USER "user"
 #define ACTION_VER "actionVersion"
 #define IP_VER "ipVersion"
@@ -102,6 +103,7 @@ static param_t default_action_params[] = {
 static param_t default_can_tuple_params[] = {
     {"msg_id", SR_STRING_T, "000"},
     {"direction", SR_STRING_T, "out"},
+    {"interface", SR_STRING_T, ""},
     {"user", SR_STRING_T, ""},
     {"program", SR_STRING_T, ""},
     {"max_rate", SR_UINT32_T, 0}
@@ -802,6 +804,11 @@ static void handle_can_policies(sr_session_ctx_t *sess, char *buf, jsmntok_t *t,
 				}
 				continue;
 			}
+			if (jsoneq(buf, &t[*i], JSON_INTERFACE) == 0) {
+				(*i)++;
+				handle_string_from_tuple(sess, buf, &t[*i], CAN_PREFIX, id, 0, "interface", "*");
+				continue;
+			}
 			if (jsoneq(buf, &t[*i], JSON_PROGRAM) == 0) {
 				(*i)++;
 				handle_string_from_tuple(sess, buf, &t[*i], CAN_PREFIX, id, 0, "program", "*");
@@ -1178,7 +1185,7 @@ static void can_packet_convert(SR_U32 msg_id,SR_U8 dir, char * msgid_str,char * 
 
 
 
-SR_32 sys_repo_mng_create_canbus_rule(sysrepo_mng_handler_t *handler, SR_32 rule_id, SR_U32 msg_id, char *exec, char *user, char *action, SR_U8 dir)
+SR_32 sys_repo_mng_create_canbus_rule(sysrepo_mng_handler_t *handler, SR_32 rule_id, SR_U32 msg_id, char *interface, char *exec, char *user, char *action, SR_U8 dir)
 {
 	char str_param[MAX_STR_SIZE];
 	char msgid_str[9];
@@ -1206,7 +1213,8 @@ SR_32 sys_repo_mng_create_canbus_rule(sysrepo_mng_handler_t *handler, SR_32 rule
 	}
 
 	ADD_CAN_FIELD("msg_id", msgid_str) 
-	ADD_CAN_FIELD("direction", dir_str) 
+	ADD_CAN_FIELD("direction", dir_str)
+	ADD_CAN_FIELD("interface", interface)
 	ADD_CAN_FIELD("user", user) 	
 	ADD_CAN_FIELD("program", exec) 
 	

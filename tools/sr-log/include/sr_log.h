@@ -61,6 +61,8 @@ enum SR_CEF_CLASS_ID {
 /*0 for inbound or “1” for outbound*/
 #define DEVICE_DIRECTION 			"deviceDirection"
 
+#define IF_ID 						"interfaceId"
+
 /*(VIN in our case)A name that uniquely identifies the device generating this event.*/
 #define DEVICE_EXTERNAL_ID 			"deviceExternalId"
 

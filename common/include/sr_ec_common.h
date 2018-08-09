@@ -119,6 +119,7 @@ struct sr_ec_can_t{
 	SR_8 exec[SR_MAX_PATH_SIZE];
 	SR_U32 	msg_id;
 	SR_U8 	dir; //inbound/outbound msg
+	SR_32  if_id;
 };
 #pragma pack(pop)
 

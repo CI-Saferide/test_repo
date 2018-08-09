@@ -443,16 +443,21 @@ SR_32 sr_classifier_canbus(disp_info_t* info)
 #ifdef ROOT_CLS_IGNORE
 	if (!info->tuple_info.id.uid) return SR_CLS_ACTION_ALLOW; /* no classification for root user (debug only) */
 #endif
+
+	if (info->can_info.if_id >= CAN_INTERFACES_MAX) { 
+		printk("ERROR invalid if_id:%d \n", info->can_info.if_id);
+		return SR_CLS_ACTION_ALLOW;
+	}
 	
 	is_def = SR_FALSE;
 	config_params = sr_control_config_params();
 	memset(&ba_res, 0, sizeof(bit_array));
 	
-	ptr = sr_cls_match_canid(info->can_info.msg_id,(info->can_info.dir==SR_CAN_OUT)?SR_CAN_OUT:SR_CAN_IN);
+	ptr = sr_cls_match_canid(info->can_info.msg_id,(info->can_info.dir==SR_CAN_OUT)?SR_CAN_OUT:SR_CAN_IN, info->can_info.if_id);
 	if (ptr) {
-		sal_or_op_arrays(ptr,(info->can_info.dir==SR_CAN_OUT)?src_cls_out_canid_any():src_cls_in_canid_any(), &ba_res);
+		sal_or_op_arrays(ptr,(info->can_info.dir==SR_CAN_OUT)?src_cls_out_canid_any(info->can_info.if_id):src_cls_in_canid_any(info->can_info.if_id), &ba_res);
 	} else { // take only inbound/any
-		sal_or_self_op_arrays(&ba_res, (info->can_info.dir==SR_CAN_OUT)?src_cls_out_canid_any():src_cls_in_canid_any());
+		sal_or_self_op_arrays(&ba_res, (info->can_info.dir==SR_CAN_OUT)?src_cls_out_canid_any(info->can_info.if_id):src_cls_in_canid_any(info->can_info.if_id));
 	}
 	
 	if (array_is_clear(ba_res)) {

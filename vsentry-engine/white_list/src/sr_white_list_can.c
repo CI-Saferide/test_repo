@@ -50,7 +50,7 @@ SR_32 sr_white_list_canbus(struct sr_ec_can_t *can_info)
 	
 		
 		for (iter = &(white_list_item->white_list_can);
-			*iter && ((*iter)->msg_id != can_info->msg_id && (*iter)->dir == can_info->dir); //check for msg_id and same direction in item
+			*iter && ((*iter)->msg_id != can_info->msg_id || (*iter)->dir != can_info->dir || (*iter)->if_id != can_info->if_id);
 			iter = &((*iter)->next));
 			
 		//If no such can msg then insert 
@@ -64,6 +64,7 @@ SR_32 sr_white_list_canbus(struct sr_ec_can_t *can_info)
 			}
 			(*iter)->msg_id = can_info->msg_id;
 			(*iter)->dir = can_info->dir;
+			(*iter)->if_id = can_info->if_id;
 		}
 
 	return SR_SUCCESS;
@@ -75,8 +76,8 @@ void sr_white_list_canbus_print(sr_wl_can_item_t *wl_canbus)
 	
 	for (iter = wl_canbus; iter; iter = iter->next) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "info", SEVERITY_LOW,
-			"%s=mid %03x dir %s ",MESSAGE, iter->msg_id,iter->dir==SR_CAN_OUT? "out":"in");
-		printf("mid=%03x dir=%s\n", iter->msg_id,iter->dir==SR_CAN_OUT? "out":"in");
+			"%s=mid %03x dir %s if_id:%d ",MESSAGE, iter->msg_id,iter->dir==SR_CAN_OUT? "out":"in", iter->if_id);
+		printf("mid=%03x dir=%s if_id:%d \n", iter->msg_id,iter->dir==SR_CAN_OUT? "out":"in", iter->if_id);
 	}
 	
 }
@@ -118,6 +119,7 @@ static SR_32 canbus_apply_cb(void *hash_data, void *data)
 {
 	sr_white_list_item_t *wl_item = (sr_white_list_item_t *)hash_data;	
 	sr_wl_can_item_t *iter;
+	char interface[CAN_INTERFACES_NAME_SIZE];
 
 	if (!hash_data)
 		return SR_ERROR;
@@ -130,7 +132,14 @@ static SR_32 canbus_apply_cb(void *hash_data, void *data)
 					REASON, iter->msg_id,iter->dir ,wl_item->exec);
 			continue; /* we do not break since we want to have log per any rule that we cannot accomodate in the persistent storage */
 		}
-		if (sys_repo_mng_create_canbus_rule(&sysrepo_handler, rule_id, iter->msg_id, wl_item->exec, "*", WHITE_LIST_ACTION, iter->dir) != SR_SUCCESS) {
+
+		if (sal_get_interface_name(iter->if_id, interface) != SR_SUCCESS) {
+			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+				"%s=can learn rule failed to get interface name for interface id %d", REASON, iter->if_id);
+			continue;
+		}
+		
+		if (sys_repo_mng_create_canbus_rule(&sysrepo_handler, rule_id, iter->msg_id, interface, wl_item->exec, "*", WHITE_LIST_ACTION, iter->dir) != SR_SUCCESS) {
 			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 				"%s=fail to create can rule in persistent db. rule id:%d mid:%x %s exec:%s",
 					REASON, rule_id, iter->msg_id,iter->dir ,wl_item->exec);

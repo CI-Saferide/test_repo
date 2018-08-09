@@ -3,6 +3,8 @@
 #include "sr_types.h"
 
 #define MSGID_ANY -1
+#define CAN_INTERFACES_MAX 10
+#define CAN_INTERFACES_NAME_SIZE 64
 
 #define SR_CAN_IN (SR_U8)0
 #define SR_CAN_OUT (SR_U8)1
@@ -20,6 +22,7 @@ struct sr_cls_canbus_msg {
 	SR_U8   dir; // SR_CAN_IN/ SR_CAN_OUT/ SR_CAN_BOTH
 	SR_U32  exec_inode;
 	SR_32   uid;
+	SR_32   if_id;
 };
 
 #endif /* SR_CLS_CANBUS_COMMON_H */

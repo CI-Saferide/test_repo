@@ -89,6 +89,7 @@ typedef union {
 		SR_U8	payload[8];
 		SR_U8 	payload_len;
 		SR_U8 	dir; //inbound/outbound msg
+		SR_32   if_id;
 #ifdef CONFIG_CAN_ML
 		SR_U64		ts;							/* time stamp of last message, in usec */
 #endif /* CONFIG_CAN_ML */
