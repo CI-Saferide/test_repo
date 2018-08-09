@@ -1042,7 +1042,7 @@ SR_32 vsentry_socket_sendmsg(struct socket *sock,struct msghdr *msg,SR_32 size)
 			CHECK_STATE
 			if (!sock->sk)
 				return 0;
-			if (sr_cls_process_add(current->tgid) != SR_SUCCESS) {
+			if (sr_cls_process_add(current->tgid, SR_FALSE) != SR_SUCCESS) {
 				CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, "%s=error adding process", REASON);
 			}
 #ifdef CONFIG_STAT_ANALYSIS
@@ -1162,7 +1162,7 @@ int vsentry_socket_recvmsg(struct socket *sock,struct msghdr *msg,int size,int f
 	const struct cred *rcred= ts->real_cred;		
 #endif
 
-	if (sr_cls_process_add(current->tgid) != SR_SUCCESS) {
+	if (sr_cls_process_add(current->tgid, SR_FALSE) != SR_SUCCESS) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, "%s=error adding process", REASON);
 	}
 
