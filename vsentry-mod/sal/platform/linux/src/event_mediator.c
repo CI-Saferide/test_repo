@@ -205,10 +205,15 @@ static void vsentry_get_sk_process_info(struct sock *sk, identifier *id, SR_32 c
 {
 	if ((sk) && (sk->sk_security)) {
 		struct sk_security_struct *sksec = sk->sk_security;
-		if (current_pid && sksec->pid != current_pid) {
-			update_sk_process_info(sksec, current_pid);
-			id->pid = sksec->pid = current_pid;
-		}
+		if (current_pid) {
+			if (sksec->pid != current_pid) {
+				update_sk_process_info(sksec, current_pid);
+				sksec->pid = current_pid;
+			}
+			id->pid = current_pid;
+		} else
+			id->pid = sksec->pid;
+
 		if (get_collector_state() == SR_TRUE) {
 			strncpy(id->exec, sksec->exec, SR_MAX_PATH_SIZE);
 		}	
