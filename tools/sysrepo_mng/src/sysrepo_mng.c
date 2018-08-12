@@ -1175,8 +1175,8 @@ static void can_packet_convert(SR_U32 msg_id,SR_U8 dir, char * msgid_str,char * 
 	sprintf(dir_str, "%s", dir==0?"in":"out");
 }
 
-#define ADD_CAN_FIELD(fieldname, fieldvalue) \
-	sprintf(str_param, "%snum='%d']/%s[id='%d']/%s", CAN_PREFIX, rule_id, TUPLE, 0, fieldname); \
+#define ADD_CAN_FIELD(fieldname, fieldvalue, tuple) \
+	sprintf(str_param, "%snum='%d']/%s[id='%d']/%s", CAN_PREFIX, rule_id, TUPLE, tuple, fieldname); \
         if (um_set_value(handler->sess, str_param, fieldvalue) != SR_SUCCESS) { \
                 CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, \
                         "%s=after um_set_value str_param:%s: ", REASON, str_param); \
@@ -1185,7 +1185,7 @@ static void can_packet_convert(SR_U32 msg_id,SR_U8 dir, char * msgid_str,char * 
 
 
 
-SR_32 sys_repo_mng_create_canbus_rule(sysrepo_mng_handler_t *handler, SR_32 rule_id, SR_U32 msg_id, char *interface, char *exec, char *user, char *action, SR_U8 dir)
+SR_32 sys_repo_mng_create_canbus_rule(sysrepo_mng_handler_t *handler, SR_32 rule_id, SR_U32 tuple_id, SR_U32 msg_id, char *interface, char *exec, char *user, char *action, SR_U8 dir)
 {
 	char str_param[MAX_STR_SIZE];
 	char msgid_str[9];
@@ -1198,7 +1198,7 @@ SR_32 sys_repo_mng_create_canbus_rule(sysrepo_mng_handler_t *handler, SR_32 rule
 			"%s=create rule : um_set_param failed",REASON);
 		return SR_ERROR;
 	}
-	sprintf(str_param, "%snum='%d']/%s[id='%d']", CAN_PREFIX, rule_id, TUPLE, 0);
+	sprintf(str_param, "%snum='%d']/%s[id='%d']", CAN_PREFIX, rule_id, TUPLE, tuple_id);
 	if (um_set_param(handler->sess, str_param) != SR_SUCCESS) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 			"%s=rule_create : um_set_param failed",REASON);
@@ -1212,11 +1212,11 @@ SR_32 sys_repo_mng_create_canbus_rule(sysrepo_mng_handler_t *handler, SR_32 rule
 		return SR_ERROR;
 	}
 
-	ADD_CAN_FIELD("msg_id", msgid_str) 
-	ADD_CAN_FIELD("direction", dir_str)
-	ADD_CAN_FIELD("interface", interface)
-	ADD_CAN_FIELD("user", user) 	
-	ADD_CAN_FIELD("program", exec) 
+	ADD_CAN_FIELD("msg_id", msgid_str, tuple_id) 
+	ADD_CAN_FIELD("direction", dir_str, tuple_id)
+	ADD_CAN_FIELD("interface", interface, tuple_id)
+	ADD_CAN_FIELD("user", user, tuple_id) 	
+	ADD_CAN_FIELD("program", exec, tuple_id) 
 	
 	return SR_SUCCESS;
 }

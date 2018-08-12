@@ -12,6 +12,14 @@
 static SR_32 rule_id; 
 static sysrepo_mng_handler_t sysrepo_handler;
 
+typedef struct can_rule_info {
+	SR_U32  msg_id;
+	struct can_rule_info *next;
+} can_rule_info_t;
+
+static can_rule_info_t *can_rules_for_if_in[CAN_INTERFACES_MAX];
+static can_rule_info_t *can_rules_for_if_out[CAN_INTERFACES_MAX];
+
 SR_32 sr_white_list_canbus(struct sr_ec_can_t *can_info)
 {
 	sr_white_list_item_t *white_list_item;
@@ -121,38 +129,97 @@ static SR_32 canbus_delete_cb(void *hash_data, void *data)
 	return SR_SUCCESS;
 }
 
+static SR_32 create_can_rule_for_exec(SR_U8 dir, SR_32 *rule_id, char *exec)
+{ 
+	SR_U32 i, tuple_id;
+	char interface[CAN_INTERFACES_NAME_SIZE];
+	can_rule_info_t **can_rules_arr, *rule_iter;
+
+	can_rules_arr = (dir == SR_CAN_IN) ? can_rules_for_if_in : can_rules_for_if_out;
+	for (i = 0 ; i < CAN_INTERFACES_MAX; i++) {
+		if (!can_rules_arr[i])
+			continue;
+		if (*rule_id > SR_CAN_WL_END_RULE_NO) {
+			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+				"%s=can learn rule exeeds list boundary. mid:%x %d exec:%s",
+					REASON, rule_iter->msg_id, dir, exec);
+			return SR_ERROR;
+		}
+		if (sal_get_interface_name(i, interface) != SR_SUCCESS) {
+			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+				"%s=can learn rule failed to get interface name for interface id %d", REASON, i);
+			continue;
+		}
+		tuple_id = 0;
+		for (rule_iter = can_rules_arr[i]; rule_iter; rule_iter = rule_iter->next) {
+#ifdef DEBUG
+			printf(">>>>>>> IN Rule:%d tuple:%d exec:%s: if:%s: msgid:%x \n", *rule_id, tuple_id, exec, interface, rule_iter->msg_id);
+#endif
+			if (sys_repo_mng_create_canbus_rule(&sysrepo_handler, *rule_id, tuple_id, rule_iter->msg_id, interface, exec, "*", WHITE_LIST_ACTION, dir) != SR_SUCCESS) {
+				CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+					"%s=fail to create can rule in persistent db. rule id:%d mid:%x %d exec:%s",
+						REASON, *rule_id, rule_iter->msg_id, dir ,exec);
+			}
+			tuple_id++;
+		}
+		(*rule_id)++;
+	}
+
+	return SR_SUCCESS;
+}
+
+static void free_rules_tables(SR_U8 dir) 
+{
+	can_rule_info_t **can_rules_arr, *rule_iter, *help;
+	SR_U32 i;
+
+	can_rules_arr = (dir == SR_CAN_IN) ? can_rules_for_if_in : can_rules_for_if_out;
+	for (i = 0 ; i < CAN_INTERFACES_MAX; i++) {
+		for (rule_iter = can_rules_arr[i]; rule_iter; ) {
+			help = rule_iter;
+			rule_iter = rule_iter->next;
+			SR_Free(help);
+		}
+		can_rules_arr[i] = NULL;
+	}
+}
+
 static SR_32 canbus_apply_cb(void *hash_data, void *data)
 {
 	sr_white_list_item_t *wl_item = (sr_white_list_item_t *)hash_data;	
 	sr_wl_can_item_t *iter;
-	char interface[CAN_INTERFACES_NAME_SIZE];
+	can_rule_info_t **list, *new_item;
 
 	if (!hash_data)
 		return SR_ERROR;
 
 	for (iter = wl_item->white_list_can; iter; iter = iter->next) {
-		//printf("rule=%d msg_id=%03x exec=%s %s\n", rule_id, iter->msg_id, wl_item->exec,iter->dir==SR_CAN_IN?"IN":"OUT");
-		if (rule_id > SR_CAN_WL_END_RULE_NO) {
-			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-				"%s=can learn rule exeeds list boundary. mid:%x %s exec:%s",
-					REASON, iter->msg_id,iter->dir ,wl_item->exec);
-			continue; /* we do not break since we want to have log per any rule that we cannot accomodate in the persistent storage */
-		}
+		list = (iter->dir == SR_CAN_IN) ? &can_rules_for_if_in[iter->if_id] : &can_rules_for_if_out[iter->if_id];
 
-		if (sal_get_interface_name(iter->if_id, interface) != SR_SUCCESS) {
+		SR_Zalloc(new_item, can_rule_info_t *, sizeof(can_rule_info_t));
+		if (!new_item) {
 			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-				"%s=can learn rule failed to get interface name for interface id %d", REASON, iter->if_id);
-			continue;
+				"%s=failed to allocate memory for white list ip exec",REASON);
+			return SR_ERROR;
 		}
-		
-		if (sys_repo_mng_create_canbus_rule(&sysrepo_handler, rule_id, iter->msg_id, interface, wl_item->exec, "*", WHITE_LIST_ACTION, iter->dir) != SR_SUCCESS) {
-			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-				"%s=fail to create can rule in persistent db. rule id:%d mid:%x %s exec:%s",
-					REASON, rule_id, iter->msg_id,iter->dir ,wl_item->exec);
-		}
-		rule_id++;
-
+		new_item->msg_id = iter->msg_id;
+		new_item->next = *list;
+		*list = new_item;
 	}
+
+	if (create_can_rule_for_exec(SR_CAN_IN, &rule_id, wl_item->exec) != SR_SUCCESS) {
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+				"%s=fail to create IN can rules exec:%s ",  REASON, wl_item->exec);
+		return SR_ERROR;
+	}
+	if (create_can_rule_for_exec(SR_CAN_OUT, &rule_id, wl_item->exec) != SR_SUCCESS) {
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+				"%s=fail to create OUT can rules exec:%s ",  REASON, wl_item->exec);
+		return SR_ERROR;
+	}
+
+	free_rules_tables(SR_CAN_IN);
+	free_rules_tables(SR_CAN_OUT);
 		
 	return SR_SUCCESS;
 }
