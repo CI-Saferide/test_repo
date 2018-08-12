@@ -5,8 +5,35 @@
 #include "sr_ml_can.h"
 #endif /* CONFIG_CAN_ML */
 
-const int timestamp_on = 1;
+
+const SR_32 timestamp_on = 1;
+static SR_32 index_translate[MAX_INF_NAMES];
 static __u32 dropcnt;
+static SR_8 can_infname[MAX_INF_NAMES][INF_NAME_LEN];
+
+SR_32 manage_can_inf_table(SR_32 infidx) {
+
+	SR_32 i;
+
+	for (i=0; i < MAX_INF_NAMES; i++) {
+		if (index_translate[i] == infidx)
+			return i; //if the index already there return it
+	}
+
+	for (i=0; i < MAX_INF_NAMES; i++)
+		if (!index_translate[i]) //find a free entry in the can name table
+			break;
+			
+	index_translate[i] = infidx;
+	sal_get_interface_name(infidx, can_infname[i]);
+	
+	CEF_log_event(SR_CEF_CID_CAN, "info", SEVERITY_HIGH,
+			"%s=new can-bus interface %s", REASON, can_infname[i]);
+			
+	//printf("new can-bus interface %d %s\n",i, can_infname[i]);
+
+	return i;
+}
 
 SR_32 can_collector_task(void *data)
 {
@@ -28,7 +55,7 @@ SR_32 can_collector_task(void *data)
     struct cmsghdr *cmsg;
     struct canfd_frame frame;
     struct timeval *timeout_current = NULL;
-    int ret;
+    int ret,can_idx;
 
     struct timeval tv;
 
@@ -86,16 +113,17 @@ SR_32 can_collector_task(void *data)
                 else if (cmsg->cmsg_type == SO_RXQ_OVFL)
                     memcpy(&dropcnt, CMSG_DATA(cmsg), sizeof(__u32));
             }
-					struct tm tm;
-					char timestring[25];
-					tm = *localtime(&tv.tv_sec);
-					strftime(timestring, 24, "%Y-%m-%d %H:%M:%S", &tm);
-					sprintf(buffer_TS,"(%s.%06ld) ", timestring, tv.tv_usec);
+            
+			struct tm tm;
+			char timestring[25];
+			tm = *localtime(&tv.tv_sec);
+			strftime(timestring, 24, "%Y-%m-%d %H:%M:%S", &tm);
+			sprintf(buffer_TS,"(%s.%06ld) ", timestring, tv.tv_usec);
 					
 					
 			strcpy(buffer,buffer_TS);
-
-            sal_sprintf(buffer_MsgID,"%9x [%d]",frame.can_id, frame.len); //buffer for MsgID and size
+			can_idx = manage_can_inf_table(addr.can_ifindex);
+            sal_sprintf(buffer_MsgID,"%9x %s [%d]",frame.can_id,can_infname[can_idx],frame.len); //buffer for MsgID and size
 
 			strcat(buffer,buffer_MsgID);
 
@@ -159,11 +187,6 @@ SR_32 init_can_socket(SR_8 *interface)
        perror("bind");
        return SR_ERROR;
    }
-
+   
    return can_fd;
 }
-
-
-
-
-

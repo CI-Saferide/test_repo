@@ -7,6 +7,9 @@
 #include "sr_config_parse.h"
 
 #define CAN_COLLECTOR_DISK "/"
+#define ANYDEV "any"  /* name of interface to receive from any CAN interface */
+#define MAX_INF_NAMES 10 /*the amount of possible different can interface names */
+#define INF_NAME_LEN 32 
 
 struct canTaskParams {
     SR_8 can_interface[CAN_NAME];		/* can interface name */
