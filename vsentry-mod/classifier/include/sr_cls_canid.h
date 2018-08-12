@@ -38,4 +38,6 @@ struct sr_hash_table_t * get_cls_in_can_table(void);
 struct sr_hash_table_t * get_cls_out_can_table(void);
 #endif
 
+char *sr_cls_get_interface_name(SR_32 if_id);
+
 #endif
