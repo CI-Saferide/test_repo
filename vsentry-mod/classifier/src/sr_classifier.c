@@ -525,11 +525,12 @@ result:
 			}
 
 			CEF_log_event(SR_CEF_CID_CAN, msg , severity, 
-				"%s=%d%s %s=%s %s=%x %s=%s",
+				"%s=%d%s %s=%s %s=%x %s=%s %s=%s(%d)",
 				RULE_NUM_KEY,rule,rule == SR_CLS_DEFAULT_RULE ? "(default)" : "",
 				DEVICE_ACTION,actionstring,
 				CAN_MSG_ID,info->can_info.msg_id,
-				DEVICE_DIRECTION,info->can_info.dir == SR_CAN_OUT?"out":"in"); /* "0" for inbound or "1" for outbound*/
+				DEVICE_DIRECTION,info->can_info.dir == SR_CAN_OUT?"out":"in",
+				IF_ID, sr_cls_get_interface_name(info->can_info.if_id) ?: "" , info->can_info.if_id); /* "0" for inbound or "1" for outbound*/
 		}
 		if (action & SR_CLS_ACTION_DROP)
 			return SR_CLS_ACTION_DROP;

@@ -10,10 +10,12 @@ struct sr_hash_table_t *sr_cls_out_canid_table[CAN_INTERFACES_MAX];
 struct sr_hash_table_t *sr_cls_in_canid_table[CAN_INTERFACES_MAX];
 bit_array sr_cls_out_canid_any_rules[CAN_INTERFACES_MAX];
 bit_array sr_cls_in_canid_any_rules[CAN_INTERFACES_MAX];
+static char *interfaces_name[CAN_INTERFACES_MAX];
 
 int sr_cls_canid_init(void)
 {
 	SR_U32 i;
+	char *if_name;
 
 	for (i = 0; i < CAN_INTERFACES_MAX; i++) {
 		memset(&sr_cls_out_canid_any_rules[i], 0, sizeof(bit_array));
@@ -30,10 +32,26 @@ int sr_cls_canid_init(void)
 			sal_kernel_print_err("[%s]: failed to allocate inbaund can mid table\n", MODULE_NAME);
 			return SR_ERROR;
 		}
+		if ((if_name = sal_get_interface_name(i))) {
+		 	interfaces_name[i] = SR_KZALLOC(strlen(if_name) + 1);
+			if (!interfaces_name[i]) {
+				sal_kernel_print_err("[%s]: failed to allocate interface name \n", MODULE_NAME);
+				return SR_ERROR;
+			}
+			strcpy(interfaces_name[i], if_name);
+		}
+		
 	}
 	sal_kernel_print_info("[%s]: successfully initialized can mid classifier\n", MODULE_NAME);
 	
 	return SR_SUCCESS;
+}
+
+char *sr_cls_get_interface_name(SR_32 if_id)
+{
+	if (if_id >= CAN_INTERFACES_MAX)
+		return NULL;
+	return interfaces_name[if_id];
 }
 
 void sr_cls_canid_empty_table(SR_BOOL is_lock)
@@ -43,8 +61,8 @@ void sr_cls_canid_empty_table(SR_BOOL is_lock)
 	for (i = 0; i < CAN_INTERFACES_MAX; i++) {
 		memset(&sr_cls_out_canid_any_rules[i], 0, sizeof(bit_array));
 		memset(&sr_cls_in_canid_any_rules[i], 0, sizeof(bit_array));
-        sr_hash_empty_table(sr_cls_out_canid_table[i], is_lock);
-        sr_hash_empty_table(sr_cls_in_canid_table[i], is_lock);
+		sr_hash_empty_table(sr_cls_out_canid_table[i], is_lock);
+		sr_hash_empty_table(sr_cls_in_canid_table[i], is_lock);
 	}
 }
 
@@ -57,6 +75,8 @@ void sr_cls_canid_uninit(void)
 		sr_cls_out_canid_table[i] = NULL;
 		sr_hash_free_table(sr_cls_in_canid_table[i]);
 		sr_cls_in_canid_table[i] = NULL;
+		if (interfaces_name[i])
+			SR_KFREE(interfaces_name[i]);
 	}
 }
 
