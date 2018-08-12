@@ -25,10 +25,12 @@ SR_32 manage_can_inf_table(SR_32 infidx) {
 			break;
 			
 	index_translate[i] = infidx;
-	sal_get_interface_name(infidx, can_infname[i]);
+	if(sal_get_interface_name(infidx, can_infname[i]) < 0)
+		CEF_log_event(SR_CEF_CID_CAN, "info", SEVERITY_HIGH,
+			"%s=failed to get can interface name", REASON);
 	
 	CEF_log_event(SR_CEF_CID_CAN, "info", SEVERITY_HIGH,
-			"%s=new can-bus interface %s", REASON, can_infname[i]);
+			"%s=new can-bus interface %s", MESSAGE, can_infname[i]);
 			
 	//printf("new can-bus interface %d %s\n",i, can_infname[i]);
 
