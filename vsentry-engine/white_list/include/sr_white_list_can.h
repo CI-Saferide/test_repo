@@ -2,7 +2,7 @@
 #define __WHITE_LIST_CAN_H__
 
 #include "sr_ec_common.h"
-#include "sr_cls_canbus_common.h"
+#include "sr_canbus_common.h"
 
 typedef struct wl_can_item {
 	SR_U32		msg_id;				/* can message id */

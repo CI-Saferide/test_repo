@@ -10,6 +10,18 @@
 #define SR_CAN_OUT (SR_U8)1
 #define SR_CAN_BOTH (SR_U8)2
 
+#define CAN_ML_START_PROTECT		0xffffffff
+#define CAN_ML_STOP_PROTECT			0xfffffffe
+
+
+#ifdef CONFIG_CAN_ML
+struct sr_ml_can_msg {
+	SR_U32		msg_id;						/* can message id */
+	SR_32		K;							/* drift blocker */
+	SR_32		h;							/* alarm threshold */
+	SR_U32		mean_delta;					/* mean value of delta from learning sequence */
+};
+#endif
 typedef enum {
 	SR_CLS_CANID_DEL_RULE = 0,
 	SR_CLS_CANID_ADD_RULE,

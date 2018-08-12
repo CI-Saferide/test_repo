@@ -2,7 +2,7 @@
 #include "sal_bitops.h"
 #include "sr_hash.h"
 #include "sr_cls_canid.h"
-#include "sr_cls_canbus_common.h"
+#include "sr_canbus_common.h"
 #include "sr_classifier.h"
 
 #define HT_canid_SIZE 32

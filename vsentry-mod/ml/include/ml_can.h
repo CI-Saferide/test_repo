@@ -3,7 +3,7 @@
 
 #include "sr_types.h"
 #include "dispatcher.h"
-#include "sr_ml_can_common.h"
+#include "sr_canbus_common.h"
 
 typedef struct ml_can_item {
 	SR_U32		msg_id;						/* can message id */

@@ -5,7 +5,7 @@
 #include "sr_shmem.h"
 #include "sr_cls_file_common.h"
 #include "sr_cls_filter_path_common.h"
-#include "sr_cls_canbus_common.h"
+#include "sr_canbus_common.h"
 #include "sr_cls_uid_common.h"
 #include "sr_cls_network_common.h"
 #include "sr_cls_port_common.h"
@@ -14,9 +14,6 @@
 #include "sr_ec_common.h"
 #ifdef CONFIG_STAT_ANALYSIS
 #include "sr_stat_analysis_common.h"
-#endif
-#ifdef CONFIG_CAN_ML
-#include "sr_ml_can_common.h"
 #endif
 #include "sr_config_common.h"
 

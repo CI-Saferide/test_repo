@@ -8,7 +8,7 @@
 #include <sal_mem.h>
 #include "sr_msg.h"
 #include "sr_msg_dispatch.h"
-#include "sr_ml_can_common.h"
+#include "sr_canbus_common.h"
 #include "sr_tasks.h"
 #include "sr_config_parse.h"
 

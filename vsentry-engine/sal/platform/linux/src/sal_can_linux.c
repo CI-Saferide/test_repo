@@ -1,26 +1,26 @@
 #include "sr_can_collector.h"
 #include "sal_linux.h"
 #include "sr_sal_common.h"
+#include "sr_canbus_common.h"
 #ifdef CONFIG_CAN_ML
 #include "sr_ml_can.h"
 #endif /* CONFIG_CAN_ML */
 
-
 const SR_32 timestamp_on = 1;
-static SR_32 index_translate[MAX_INF_NAMES];
+static SR_32 index_translate[CAN_INTERFACES_MAX];
 static __u32 dropcnt;
-static SR_8 can_infname[MAX_INF_NAMES][INF_NAME_LEN];
+static SR_8 can_infname[CAN_INTERFACES_MAX][CAN_INTERFACES_NAME_SIZE];
 
 SR_32 manage_can_inf_table(SR_32 infidx) {
 
 	SR_32 i;
 
-	for (i=0; i < MAX_INF_NAMES; i++) {
+	for (i=0; i < CAN_INTERFACES_MAX; i++) {
 		if (index_translate[i] == infidx)
 			return i; //if the index already there return it
 	}
 
-	for (i=0; i < MAX_INF_NAMES; i++)
+	for (i=0; i < CAN_INTERFACES_MAX; i++)
 		if (!index_translate[i]) //find a free entry in the can name table
 			break;
 			
