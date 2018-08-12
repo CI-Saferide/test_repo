@@ -4,7 +4,7 @@
 
 #define MSGID_ANY -1
 #define CAN_INTERFACES_MAX 10
-#define CAN_INTERFACES_NAME_SIZE 64
+#define CAN_INTERFACES_NAME_SIZE 16
 
 #define SR_CAN_IN (SR_U8)0
 #define SR_CAN_OUT (SR_U8)1
