@@ -73,11 +73,17 @@ SR_32 sr_white_list_canbus(struct sr_ec_can_t *can_info)
 void sr_white_list_canbus_print(sr_wl_can_item_t *wl_canbus)
 {
 	sr_wl_can_item_t *iter;
+	char interface[CAN_INTERFACES_NAME_SIZE];
 	
 	for (iter = wl_canbus; iter; iter = iter->next) {
+		if (sal_get_interface_name(iter->if_id, interface) != SR_SUCCESS) {
+			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+				"%s=can learn rule failed to get interface name for interface id %d", REASON, iter->if_id);
+			*interface = 0;
+		}
 		CEF_log_event(SR_CEF_CID_SYSTEM, "info", SEVERITY_LOW,
-			"%s=mid %03x dir %s if_id:%d ",MESSAGE, iter->msg_id,iter->dir==SR_CAN_OUT? "out":"in", iter->if_id);
-		printf("mid=%03x dir=%s if_id:%d \n", iter->msg_id,iter->dir==SR_CAN_OUT? "out":"in", iter->if_id);
+			"%s=mid %03x dir %s if=%s(%d) ",MESSAGE, iter->msg_id,iter->dir==SR_CAN_OUT? "out":"in", interface, iter->if_id);
+		printf("mid=%03x dir=%s if=%s(%d) \n", iter->msg_id,iter->dir==SR_CAN_OUT? "out":"in", interface, iter->if_id);
 	}
 	
 }
