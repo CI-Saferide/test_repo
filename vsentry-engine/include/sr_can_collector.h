@@ -24,7 +24,7 @@ struct candump_log
     //SR_BOOL ready; //if file is max size
 };
 
-SR_32 init_can_socket(SR_8 *interface);
+SR_32 init_can_socket(void);
 
 void log_it(char* str);
 

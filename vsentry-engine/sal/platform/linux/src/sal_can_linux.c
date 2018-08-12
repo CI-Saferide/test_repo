@@ -151,7 +151,7 @@ SR_32 can_collector_task(void *data)
 	return SR_SUCCESS;
 }
 
-SR_32 init_can_socket(SR_8 *interface) 
+SR_32 init_can_socket(void) 
 {
   SR_32 can_fd;
   struct sockaddr_can addr = {};
@@ -166,15 +166,7 @@ SR_32 init_can_socket(SR_8 *interface)
   addr.can_family = AF_CAN;
 
   memset(&ifr.ifr_name, 0, sizeof(ifr.ifr_name));
-  strncpy(ifr.ifr_name, interface, strlen(interface));
-  if (strncmp("any", ifr.ifr_name, strlen("any"))) {
-     if (ioctl(can_fd, SIOCGIFINDEX, &ifr) < 0) {
-         perror("SIOCGIFINDEX");
-         return SR_ERROR;
-     }
-     addr.can_ifindex = ifr.ifr_ifindex;
-  } else
-    addr.can_ifindex = 0; /* any can interface */
+  addr.can_ifindex = 0; /* any can interface */
 
   /* try to switch the socket into CAN FD mode */
   setsockopt(can_fd, SOL_CAN_RAW, CAN_RAW_FD_FRAMES, &canfd_on, sizeof(canfd_on));

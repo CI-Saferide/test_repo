@@ -397,7 +397,6 @@ SR_32 sr_engine_start(int argc, char *argv[])
 		sr_get_command_start();
 	}
 
-	strncpy(can_args->can_interface, config_params->can0_interface, CAN_NAME);
 	if(config_params->collector_enable){
 		ret = sr_start_task(SR_CAN_COLLECT_TASK, can_collector_init);
 		if (ret != SR_SUCCESS) {
