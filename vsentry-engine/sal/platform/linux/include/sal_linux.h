@@ -52,12 +52,6 @@ typedef enum {
 
 SR_U32 sal_get_os(sal_os_t *os);
 
-#define DEFAULT_CAN0_INTERFACE "vcan0"	/* default virtual can interface, in case no config file detected */
-#define DEFAULT_CAN1_INTERFACE "vcan1"	/* default virtual can interface, in case no config file detected */
-#define DEFAULT_CAN2_INTERFACE "vcan2"	/* default virtual can interface, in case no config file detected */
-#define DEFAULT_CAN3_INTERFACE "vcan3"	/* default virtual can interface, in case no config file detected */
-#define DEFAULT_CAN4_INTERFACE "vcan4"	/* default virtual can interface, in case no config file detected */
-
 #define SR_MUTEX pthread_mutex_t
 #define SR_MUTEX_INIT(l) pthread_mutex_init(l, NULL)
 #define SR_MUTEX_LOCK(l) pthread_mutex_lock(l)

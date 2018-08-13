@@ -3,6 +3,7 @@
 
 #define SR_MAX_LOG  512
 #define SR_MAX_PATH_SIZE 360
+#define MAX_DEVICE_NUMBER 100
 
 #define SR_MOD_CMD_SYNC_ENGINE 10
 

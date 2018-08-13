@@ -14,8 +14,6 @@
 #include <linux/time.h>
 #include <linux/mutex.h>
 
-#define MAX_DEVICE_NUMBER 100
-
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wdeclaration-after-statement"
 #pragma GCC diagnostic pop
