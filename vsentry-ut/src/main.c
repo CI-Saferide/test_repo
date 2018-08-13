@@ -523,7 +523,6 @@ static int log_is_string_exists(FILE *flog, char *str)
 	int is_found = 0;
         
 	while (fgets(buf, MAX_LOG_LINE, flog))  {
-		printf("log buf:%s: \n", buf);
 		if (strstr(buf, str))
 			is_found = 1;
 	}
@@ -689,8 +688,10 @@ static int handle_can(sysrepo_mng_handler_t *handler)
 		test_can_rule(handler, 10, "OUT user2", "cansend vcan0 123#", "123", "OUT", "vcan0", "test_user", "*", "drop", &test_count, &err_count, 1, 1, 1);
 	}
 
+	test_can_rule(handler, 10, "Again IN Create rule msgid #123 vcan0 expect drop ", "cansend vcan0 123#", "123", "IN", "vcan0", "*", "*", "drop", &test_count, &err_count, 0, 1, 1);
 	/* Delete rule */
-	sysrepo_mng_parse_json(handler, FIXED_PART_START FIXED_PART_END, NULL, 0);
+
+	test_can_rule(handler, 10, "DELETE IN rule msgid #123 send to vcan0 no drop ", "cansend vcan0 123#", "", "", "", "", "*", "", &test_count, &err_count, 1, 1, 0);
 
 	if (!err_count) {
 		printf("\n******************************* SUCESSES ******************** \n Number of tests:%d\n", test_count);
