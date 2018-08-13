@@ -82,6 +82,7 @@ $(TARGET)-objs := sal/platform/linux/src/module_init.o \
 				  main/src/main_loop.o \
 				  ../common/src/sr_ring_buf.o \
 				  ../common/src/sr_cyclic_array.o \
+				  ../common/src/sr_canbus_common.o \
 				  sal/platform/linux/src/sal_shmem_linux.o \
 				  ../common/src/sr_msg.o \
 				  ../common/src/sr_tasks.o \

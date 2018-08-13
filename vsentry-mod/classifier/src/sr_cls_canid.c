@@ -10,37 +10,23 @@ struct sr_hash_table_t *sr_cls_out_canid_table[CAN_INTERFACES_MAX];
 struct sr_hash_table_t *sr_cls_in_canid_table[CAN_INTERFACES_MAX];
 bit_array sr_cls_out_canid_any_rules[CAN_INTERFACES_MAX];
 bit_array sr_cls_in_canid_any_rules[CAN_INTERFACES_MAX];
-static SR_U8 curr_can_dev_ind;
-static SR_8 devices_map_to_can_id[MAX_DEVICE_NUMBER];
-static char interfaces_name[CAN_INTERFACES_MAX][CAN_INTERFACES_NAME_SIZE];
+static can_translator_t can_translator;
 
-SR_32 sr_cls_get_can_id(SR_U8 dev_id, SR_U8 *can_id)
+SR_32 sr_cls_canid_get_if_id(SR_U8 dev_id, SR_U8 *can_id)
 {
-	char *if_name;
+	return sr_can_tran_get_if_id(&can_translator, dev_id, can_id);
+}
 
-	if (dev_id >= MAX_DEVICE_NUMBER)
-		return SR_ERROR; 
-	if (devices_map_to_can_id[dev_id] != -1) {
-		*can_id = devices_map_to_can_id[dev_id];
-		return SR_SUCCESS;
-	}
-	if (curr_can_dev_ind >= CAN_INTERFACES_MAX)
-		return SR_ERROR;
-	/* Create can dev translation */
-	*can_id = devices_map_to_can_id[dev_id] = curr_can_dev_ind;
-	if ((if_name = sal_get_interface_name(dev_id))) {
-		strncpy(interfaces_name[curr_can_dev_ind], if_name, CAN_INTERFACES_NAME_SIZE);
-	}
-	curr_can_dev_ind++;
-
-	return SR_SUCCESS;
+char *sr_cls_canid_get_interface_name(SR_32 if_id)
+{
+	return sr_can_tran_get_interface_name(&can_translator, if_id);
 }
 
 int sr_cls_canid_init(void)
 {
 	SR_U32 i;
 
-	memset(devices_map_to_can_id, -1, sizeof(devices_map_to_can_id));
+	sr_can_tran_init(&can_translator);
 	for (i = 0; i < CAN_INTERFACES_MAX; i++) {
 		memset(&sr_cls_out_canid_any_rules[i], 0, sizeof(bit_array));
 		memset(&sr_cls_in_canid_any_rules[i], 0, sizeof(bit_array));
@@ -61,13 +47,6 @@ int sr_cls_canid_init(void)
 	sal_kernel_print_info("[%s]: successfully initialized can mid classifier\n", MODULE_NAME);
 	
 	return SR_SUCCESS;
-}
-
-char *sr_cls_get_interface_name(SR_32 if_id)
-{
-	if (if_id >= CAN_INTERFACES_MAX)
-		return NULL;
-	return interfaces_name[if_id];
 }
 
 void sr_cls_canid_empty_table(SR_BOOL is_lock)
@@ -126,8 +105,10 @@ int sr_cls_canid_add_rule(SR_32 canid, SR_U32 rulenum, SR_8 dir, SR_32 if_id)
 	struct sr_hash_ent_t *ent;
 	SR_U8 can_if_id;
 
-	if (sr_cls_get_can_id(if_id, &can_if_id) != SR_SUCCESS) {
+	if (sr_can_tran_get_if_id(&can_translator, if_id, &can_if_id) != SR_SUCCESS) {
 		printk("ERROR invalid if_id:%d \n", if_id);
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+					"%s=cls-can:failed to get can if id",REASON);
 		return SR_ERROR;
 	}
 	
@@ -170,8 +151,9 @@ int sr_cls_canid_del_rule(SR_32 canid, SR_U32 rulenum, SR_8 dir, SR_32 if_id)
 {
 	SR_U8 can_if_id;
 
-	if (sr_cls_get_can_id(if_id, &can_if_id) != SR_SUCCESS) {
-		printk("ERROR invalid if_id:%d \n", if_id);
+	if (sr_can_tran_get_if_id(&can_translator, if_id, &can_if_id) != SR_SUCCESS) {
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+					"%s=cls-can:failed to get can if id %d",REASON, if_id);
 		return SR_ERROR;
 	}
 
@@ -235,7 +217,7 @@ struct sr_hash_ent_t *sr_cls_canid_find(SR_32 canid, SR_8 dir, SR_32 if_id)
 	SR_U8 can_if_id;
 	struct sr_hash_ent_t *ent;
 
-	if (sr_cls_get_can_id(if_id, &can_if_id) != SR_SUCCESS) {
+	if (sr_can_tran_get_if_id(&can_translator, if_id, &can_if_id) != SR_SUCCESS) {
 		printk("ERROR invalid if_id:%d \n", if_id);
 		return NULL;
         }

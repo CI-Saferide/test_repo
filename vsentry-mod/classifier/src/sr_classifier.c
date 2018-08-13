@@ -445,8 +445,10 @@ SR_32 sr_classifier_canbus(disp_info_t* info)
 	if (!info->tuple_info.id.uid) return SR_CLS_ACTION_ALLOW; /* no classification for root user (debug only) */
 #endif
 
-	if (sr_cls_get_can_id(info->can_info.if_id, &can_if_id) != SR_SUCCESS) {
+	if (sr_cls_canid_get_if_id(info->can_info.if_id, &can_if_id) != SR_SUCCESS) {
 		printk("ERROR invalid if_id:%d \n", info->can_info.if_id);
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+			"%s=cls-can: invalid if id %d", info->can_info.if_id, REASON);
 		return SR_CLS_ACTION_ALLOW;
 	}
 	
@@ -531,7 +533,7 @@ result:
 				DEVICE_ACTION,actionstring,
 				CAN_MSG_ID,info->can_info.msg_id,
 				DEVICE_DIRECTION,info->can_info.dir == SR_CAN_OUT?"out":"in",
-				IF_ID, sr_cls_get_interface_name(can_if_id) ?: "" , info->can_info.if_id); /* "0" for inbound or "1" for outbound*/
+				IF_ID, sr_cls_canid_get_interface_name(can_if_id) ?: "" , info->can_info.if_id); /* "0" for inbound or "1" for outbound*/
 		}
 		if (action & SR_CLS_ACTION_DROP)
 			return SR_CLS_ACTION_DROP;

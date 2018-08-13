@@ -7,6 +7,8 @@
 
 #define SR_MOD_CMD_SYNC_ENGINE 10
 
+#define MAX_DEVICE_NUMBER 100
+
 #if defined (__KERNEL__) || defined (__linux)
 #include "sal_linux.h"
 #endif

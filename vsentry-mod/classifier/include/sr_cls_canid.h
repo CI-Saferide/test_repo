@@ -38,8 +38,7 @@ struct sr_hash_table_t * get_cls_in_can_table(void);
 struct sr_hash_table_t * get_cls_out_can_table(void);
 #endif
 
-char *sr_cls_get_interface_name(SR_32 if_id);
-
-SR_32 sr_cls_get_can_id(SR_U8 dev_id, SR_U8 *can_if_id);
+SR_32 sr_cls_canid_get_if_id(SR_U8 dev_id, SR_U8 *can_id);
+char *sr_cls_canid_get_interface_name(SR_32 if_id);
 
 #endif
