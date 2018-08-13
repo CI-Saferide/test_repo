@@ -10,13 +10,37 @@ struct sr_hash_table_t *sr_cls_out_canid_table[CAN_INTERFACES_MAX];
 struct sr_hash_table_t *sr_cls_in_canid_table[CAN_INTERFACES_MAX];
 bit_array sr_cls_out_canid_any_rules[CAN_INTERFACES_MAX];
 bit_array sr_cls_in_canid_any_rules[CAN_INTERFACES_MAX];
-static char *interfaces_name[CAN_INTERFACES_MAX];
+static SR_U8 curr_can_dev_ind;
+static SR_8 devices_map_to_can_id[MAX_DEVICE_NUMBER];
+static char interfaces_name[CAN_INTERFACES_MAX][CAN_INTERFACES_NAME_SIZE];
+
+SR_32 sr_cls_get_can_id(SR_U8 dev_id, SR_U8 *can_id)
+{
+	char *if_name;
+
+	if (dev_id >= MAX_DEVICE_NUMBER)
+		return SR_ERROR; 
+	if (devices_map_to_can_id[dev_id] != -1) {
+		*can_id = devices_map_to_can_id[dev_id];
+		return SR_SUCCESS;
+	}
+	if (curr_can_dev_ind >= CAN_INTERFACES_MAX)
+		return SR_ERROR;
+	/* Create can dev translation */
+	*can_id = devices_map_to_can_id[dev_id] = curr_can_dev_ind;
+	if ((if_name = sal_get_interface_name(dev_id))) {
+		strncpy(interfaces_name[curr_can_dev_ind], if_name, CAN_INTERFACES_NAME_SIZE);
+	}
+	curr_can_dev_ind++;
+
+	return SR_SUCCESS;
+}
 
 int sr_cls_canid_init(void)
 {
 	SR_U32 i;
-	char *if_name;
 
+	memset(devices_map_to_can_id, -1, sizeof(devices_map_to_can_id));
 	for (i = 0; i < CAN_INTERFACES_MAX; i++) {
 		memset(&sr_cls_out_canid_any_rules[i], 0, sizeof(bit_array));
 		memset(&sr_cls_in_canid_any_rules[i], 0, sizeof(bit_array));
@@ -31,14 +55,6 @@ int sr_cls_canid_init(void)
 		if (!sr_cls_in_canid_table[i]) {
 			sal_kernel_print_err("[%s]: failed to allocate inbaund can mid table\n", MODULE_NAME);
 			return SR_ERROR;
-		}
-		if ((if_name = sal_get_interface_name(i))) {
-		 	interfaces_name[i] = SR_KZALLOC(strlen(if_name) + 1);
-			if (!interfaces_name[i]) {
-				sal_kernel_print_err("[%s]: failed to allocate interface name \n", MODULE_NAME);
-				return SR_ERROR;
-			}
-			strcpy(interfaces_name[i], if_name);
 		}
 		
 	}
@@ -75,8 +91,6 @@ void sr_cls_canid_uninit(void)
 		sr_cls_out_canid_table[i] = NULL;
 		sr_hash_free_table(sr_cls_in_canid_table[i]);
 		sr_cls_in_canid_table[i] = NULL;
-		if (interfaces_name[i])
-			SR_KFREE(interfaces_name[i]);
 	}
 }
 
@@ -92,24 +106,30 @@ struct sr_hash_table_t * get_cls_out_can_table(void){
 }
 #endif
 
-bit_array *src_cls_out_canid_any(SR_32 if_id)
+bit_array *src_cls_out_canid_any(SR_32 can_if_id)
 {
-	return &sr_cls_out_canid_any_rules[if_id];
+	return &sr_cls_out_canid_any_rules[can_if_id];
 }
 
-bit_array *src_cls_in_canid_any(SR_32 if_id)
+bit_array *src_cls_in_canid_any(SR_32 can_if_id)
 {
-	return &sr_cls_in_canid_any_rules[if_id];
+	return &sr_cls_in_canid_any_rules[can_if_id];
 }
 
-void sr_cls_canid_remove(SR_32 canid, SR_8 dir, SR_32 if_id)
+void sr_cls_canid_remove(SR_32 canid, SR_8 dir, SR_32 can_if_id)
 { 
-	sr_hash_delete((dir==SR_CAN_OUT)?sr_cls_out_canid_table[if_id]:sr_cls_in_canid_table[if_id], canid);
+	sr_hash_delete((dir==SR_CAN_OUT)?sr_cls_out_canid_table[can_if_id]:sr_cls_in_canid_table[can_if_id], canid);
 }
 
 int sr_cls_canid_add_rule(SR_32 canid, SR_U32 rulenum, SR_8 dir, SR_32 if_id)
 {
 	struct sr_hash_ent_t *ent;
+	SR_U8 can_if_id;
+
+	if (sr_cls_get_can_id(if_id, &can_if_id) != SR_SUCCESS) {
+		printk("ERROR invalid if_id:%d \n", if_id);
+		return SR_ERROR;
+	}
 	
 	if(canid != MSGID_ANY) { 
                /////////////////////////////////////////////////////////////////////////
@@ -117,7 +137,7 @@ int sr_cls_canid_add_rule(SR_32 canid, SR_U32 rulenum, SR_8 dir, SR_32 if_id)
                 * but need to check if its really being used in the Automotive industry
                 * or we gonna need to change our * = 0 = ANY convention here...*/ 
                 ////////////////////////////////////////////////////////////////////////
-		ent=sr_hash_lookup((dir==SR_CAN_OUT)?sr_cls_out_canid_table[if_id]:sr_cls_in_canid_table[if_id], canid);
+		ent=sr_hash_lookup((dir==SR_CAN_OUT)?sr_cls_out_canid_table[can_if_id]:sr_cls_in_canid_table[can_if_id], canid);
 		if (!ent) {             
 			ent = SR_ZALLOC(sizeof(*ent));
 			if (!ent) {
@@ -127,13 +147,13 @@ int sr_cls_canid_add_rule(SR_32 canid, SR_U32 rulenum, SR_8 dir, SR_32 if_id)
 			} else {
 				ent->ent_type = CAN_MID;
 				ent->key = (SR_U32)canid;
-				sr_hash_insert((dir==SR_CAN_OUT)?sr_cls_out_canid_table[if_id]:sr_cls_in_canid_table[if_id],ent);
+				sr_hash_insert((dir==SR_CAN_OUT)?sr_cls_out_canid_table[can_if_id]:sr_cls_in_canid_table[can_if_id],ent);
 			}       
 		}       
 
 		sal_set_bit_array(rulenum, &ent->rules);
 	}else{
-		sal_set_bit_array(rulenum,(dir==SR_CAN_IN)?&sr_cls_in_canid_any_rules[if_id]:&sr_cls_out_canid_any_rules[if_id]);
+		sal_set_bit_array(rulenum,(dir==SR_CAN_IN)?&sr_cls_in_canid_any_rules[can_if_id]:&sr_cls_out_canid_any_rules[can_if_id]);
 		
 	}
 #ifdef DEBUG
@@ -148,8 +168,15 @@ int sr_cls_canid_add_rule(SR_32 canid, SR_U32 rulenum, SR_8 dir, SR_32 if_id)
 
 int sr_cls_canid_del_rule(SR_32 canid, SR_U32 rulenum, SR_8 dir, SR_32 if_id)
 {
+	SR_U8 can_if_id;
+
+	if (sr_cls_get_can_id(if_id, &can_if_id) != SR_SUCCESS) {
+		printk("ERROR invalid if_id:%d \n", if_id);
+		return SR_ERROR;
+	}
+
 	if(canid != MSGID_ANY) { 
-		struct sr_hash_ent_t *ent=sr_hash_lookup((dir==SR_CAN_OUT)?sr_cls_out_canid_table[if_id]:sr_cls_in_canid_table[if_id], canid);
+		struct sr_hash_ent_t *ent=sr_hash_lookup((dir==SR_CAN_OUT)?sr_cls_out_canid_table[can_if_id]:sr_cls_in_canid_table[can_if_id], canid);
 		if (!ent) {
 			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 				"%s=failed to del %s=%u %s=%x %s=%s rule not found",REASON,
@@ -160,10 +187,10 @@ int sr_cls_canid_del_rule(SR_32 canid, SR_U32 rulenum, SR_8 dir, SR_32 if_id)
 		}
 		sal_clear_bit_array(rulenum, &ent->rules);
 		if (!ent->rules.summary) {
-			sr_cls_canid_remove(canid,dir, if_id);
+			sr_cls_canid_remove(canid,dir, can_if_id);
 		}
 	}else{// "Any" rules
-		sal_clear_bit_array(rulenum, (dir==SR_CAN_OUT)?&sr_cls_out_canid_any_rules[if_id]:&sr_cls_in_canid_any_rules[if_id]);
+		sal_clear_bit_array(rulenum, (dir==SR_CAN_OUT)?&sr_cls_out_canid_any_rules[can_if_id]:&sr_cls_in_canid_any_rules[can_if_id]);
 	}
 #ifdef DEBUG
 	CEF_log_event(SR_CEF_CID_CAN, "info", SEVERITY_LOW,
@@ -205,7 +232,15 @@ void print_table_canid(struct sr_hash_table_t *table)
 
 struct sr_hash_ent_t *sr_cls_canid_find(SR_32 canid, SR_8 dir, SR_32 if_id)
 {
-	struct sr_hash_ent_t *ent=sr_hash_lookup((dir==SR_CAN_OUT)?sr_cls_out_canid_table[if_id] : sr_cls_in_canid_table[if_id], canid);
+	SR_U8 can_if_id;
+	struct sr_hash_ent_t *ent;
+
+	if (sr_cls_get_can_id(if_id, &can_if_id) != SR_SUCCESS) {
+		printk("ERROR invalid if_id:%d \n", if_id);
+		return NULL;
+        }
+
+	ent = sr_hash_lookup((dir==SR_CAN_OUT)?sr_cls_out_canid_table[can_if_id] : sr_cls_in_canid_table[can_if_id], canid);
 	if (!ent) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 			"%s=%x can mid not found",REASON,
@@ -215,10 +250,11 @@ struct sr_hash_ent_t *sr_cls_canid_find(SR_32 canid, SR_8 dir, SR_32 if_id)
 	return ent;
 }
 
-bit_array *sr_cls_match_canid(SR_32 canid, SR_8 dir, SR_32 if_id)
+bit_array *sr_cls_match_canid(SR_32 canid, SR_8 dir, SR_32 can_if_id)
 {
-	
-	struct sr_hash_ent_t *ent=sr_hash_lookup((dir==SR_CAN_OUT)?sr_cls_out_canid_table[if_id]:sr_cls_in_canid_table[if_id], canid);
+	struct sr_hash_ent_t *ent;
+
+	ent = sr_hash_lookup((dir==SR_CAN_OUT)?sr_cls_out_canid_table[can_if_id]:sr_cls_in_canid_table[can_if_id], canid);
 	if (!ent) {
 		return NULL;
 	}
