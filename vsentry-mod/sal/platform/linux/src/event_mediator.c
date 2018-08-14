@@ -950,6 +950,12 @@ int vsentry_inet_conn_request(struct sock *sk, struct sk_buff *skb, struct reque
 }
 #endif
 
+struct raw_sock {
+        struct sock sk;
+        int bound;
+        int ifindex;
+};
+
 /* @socket_sendmsg:
  *	Check permission before transmitting a message to another socket.
  *	@sock contains the socket structure.
@@ -990,6 +996,11 @@ SR_32 vsentry_socket_sendmsg(struct socket *sock,struct msghdr *msg,SR_32 size)
 		case AF_CAN:
 			do_gettimeofday(&tv);
 			disp.can_info.ts = ((tv.tv_sec * 1000000) + tv.tv_usec);
+
+			if (sock->sk) {
+				struct raw_sock *ro = (struct raw_sock *)sock->sk;
+				disp.can_info.if_id = ro->ifindex;
+			}
 
 			disp.can_info.id.uid = (int)rcred->uid.val;
 			vsentry_get_sk_process_info(sock->sk, &disp.can_info.id, current->tgid);
@@ -1105,8 +1116,7 @@ int vsentry_socket_sock_rcv_skb(struct sock *sk, struct sk_buff *skb)
 {
 	int i;
 	struct canfd_frame *cfd;
-	disp_info_t disp;	
-		
+	disp_info_t disp;
 	/* check vsentry state */
 	CHECK_STATE
 
@@ -1122,6 +1132,7 @@ int vsentry_socket_sock_rcv_skb(struct sock *sk, struct sk_buff *skb)
 			disp.can_info.msg_id = ((SR_U32)cfd->can_id) & 0x1fffffff;
 			disp.can_info.payload_len = cfd->len;
 			disp.can_info.dir = SR_CAN_IN;
+			disp.can_info.if_id = skb->dev->ifindex;
 
 			if (sk->sk_security) {
 				struct sk_security_struct *sksec = sk->sk_security;

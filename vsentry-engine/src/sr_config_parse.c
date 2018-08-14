@@ -13,12 +13,6 @@ struct config_params_t *sr_config_get_param(void)
 void config_defaults(void)
 {
 	strcpy(config_params.vin, "NA");
-	config_params.num_of_can_interface = (SR_U8)1;
-	strcpy(config_params.can0_interface, DEFAULT_CAN0_INTERFACE);
-	strcpy(config_params.can1_interface, DEFAULT_CAN1_INTERFACE);
-	strcpy(config_params.can2_interface, DEFAULT_CAN2_INTERFACE);
-	strcpy(config_params.can3_interface, DEFAULT_CAN3_INTERFACE);
-	strcpy(config_params.can4_interface, DEFAULT_CAN4_INTERFACE);
 	config_params.collector_enable = SR_TRUE;
 	config_params.collector_file_size = 30; /* in MB */
 	config_params.disk_space_treshold = 5; /* 5% */
@@ -70,35 +64,6 @@ SR_32 read_vsentry_config(char* config_filename)
         if (position) {	
             strcpy(config_params.vin, position + (strlen("VIN ")));
             config_params.vin[strlen(config_params.vin)-1]='\0';
-        }
-        position = strstr(buf, "NUM_OF_CAN_IF ");
-        if (position) {	
-            config_params.num_of_can_interface = (SR_U8)atoi(position + (strlen("NUM_OF_CAN_IF ")));
-        }
-        position = strstr(buf, "CAN0_IF ");
-        if (position) {	
-            strcpy(config_params.can0_interface, position + (strlen("CAN0_IF ")));
-            config_params.can0_interface[strlen(config_params.can0_interface)-1]='\0';
-        }
-        position = strstr(buf, "CAN1_IF ");
-        if (position) {	
-            strcpy(config_params.can1_interface, position + (strlen("CAN1_IF ")));
-            config_params.can1_interface[strlen(config_params.can1_interface)-1]='\0';
-        }
-        position = strstr(buf, "CAN2_IF ");
-        if (position) {	
-            strcpy(config_params.can2_interface, position + (strlen("CAN2_IF ")));
-            config_params.can2_interface[strlen(config_params.can2_interface)-1]='\0';
-        }
-        position = strstr(buf, "CAN3_IF ");
-        if (position) {	
-            strcpy(config_params.can3_interface, position + (strlen("CAN3_IF ")));
-            config_params.can3_interface[strlen(config_params.can3_interface)-1]='\0';
-        }
-        position = strstr(buf, "CAN4_IF ");
-        if (position) {	
-            strcpy(config_params.can4_interface, position + (strlen("CAN4_IF ")));
-            config_params.can4_interface[strlen(config_params.can4_interface)-1]='\0';
         }
         position = strstr(buf, "COLLECT_ENABLE ");
         if (position) {	

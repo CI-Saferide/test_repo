@@ -1,12 +1,41 @@
 #include "sr_can_collector.h"
 #include "sal_linux.h"
 #include "sr_sal_common.h"
+#include "sr_canbus_common.h"
 #ifdef CONFIG_CAN_ML
 #include "sr_ml_can.h"
 #endif /* CONFIG_CAN_ML */
 
-const int timestamp_on = 1;
+const SR_32 timestamp_on = 1;
+static SR_32 index_translate[CAN_INTERFACES_MAX];
 static __u32 dropcnt;
+static SR_8 can_infname[CAN_INTERFACES_MAX][CAN_INTERFACES_NAME_SIZE];
+
+SR_32 manage_can_inf_table(SR_32 infidx) {
+
+	SR_32 i;
+
+	for (i=0; i < CAN_INTERFACES_MAX; i++) {
+		if (index_translate[i] == infidx)
+			return i; //if the index already there return it
+	}
+
+	for (i=0; i < CAN_INTERFACES_MAX; i++)
+		if (!index_translate[i]) //find a free entry in the can name table
+			break;
+			
+	index_translate[i] = infidx;
+	if(sal_get_interface_name(infidx, can_infname[i]) < 0)
+		CEF_log_event(SR_CEF_CID_CAN, "info", SEVERITY_HIGH,
+			"%s=failed to get can interface name", REASON);
+	
+	CEF_log_event(SR_CEF_CID_CAN, "info", SEVERITY_HIGH,
+			"%s=new can-bus interface %s", MESSAGE, can_infname[i]);
+			
+	//printf("new can-bus interface %d %s\n",i, can_infname[i]);
+
+	return i;
+}
 
 SR_32 can_collector_task(void *data)
 {
@@ -28,7 +57,7 @@ SR_32 can_collector_task(void *data)
     struct cmsghdr *cmsg;
     struct canfd_frame frame;
     struct timeval *timeout_current = NULL;
-    int ret;
+    int ret,can_idx;
 
     struct timeval tv;
 
@@ -86,16 +115,17 @@ SR_32 can_collector_task(void *data)
                 else if (cmsg->cmsg_type == SO_RXQ_OVFL)
                     memcpy(&dropcnt, CMSG_DATA(cmsg), sizeof(__u32));
             }
-					struct tm tm;
-					char timestring[25];
-					tm = *localtime(&tv.tv_sec);
-					strftime(timestring, 24, "%Y-%m-%d %H:%M:%S", &tm);
-					sprintf(buffer_TS,"(%s.%06ld) ", timestring, tv.tv_usec);
+            
+			struct tm tm;
+			char timestring[25];
+			tm = *localtime(&tv.tv_sec);
+			strftime(timestring, 24, "%Y-%m-%d %H:%M:%S", &tm);
+			sprintf(buffer_TS,"(%s.%06ld) ", timestring, tv.tv_usec);
 					
 					
 			strcpy(buffer,buffer_TS);
-
-            sal_sprintf(buffer_MsgID,"%9x [%d]",frame.can_id, frame.len); //buffer for MsgID and size
+			can_idx = manage_can_inf_table(addr.can_ifindex);
+            sal_sprintf(buffer_MsgID,"%9x %s [%d]",frame.can_id,can_infname[can_idx],frame.len); //buffer for MsgID and size
 
 			strcat(buffer,buffer_MsgID);
 
@@ -123,7 +153,7 @@ SR_32 can_collector_task(void *data)
 	return SR_SUCCESS;
 }
 
-SR_32 init_can_socket(SR_8 *interface) 
+SR_32 init_can_socket(void) 
 {
   SR_32 can_fd;
   struct sockaddr_can addr = {};
@@ -138,15 +168,7 @@ SR_32 init_can_socket(SR_8 *interface)
   addr.can_family = AF_CAN;
 
   memset(&ifr.ifr_name, 0, sizeof(ifr.ifr_name));
-  strncpy(ifr.ifr_name, interface, strlen(interface));
-  if (strncmp("any", ifr.ifr_name, strlen("any"))) {
-     if (ioctl(can_fd, SIOCGIFINDEX, &ifr) < 0) {
-         perror("SIOCGIFINDEX");
-         return SR_ERROR;
-     }
-     addr.can_ifindex = ifr.ifr_ifindex;
-  } else
-    addr.can_ifindex = 0; /* any can interface */
+  addr.can_ifindex = 0; /* any can interface */
 
   /* try to switch the socket into CAN FD mode */
   setsockopt(can_fd, SOL_CAN_RAW, CAN_RAW_FD_FRAMES, &canfd_on, sizeof(canfd_on));
@@ -159,11 +181,6 @@ SR_32 init_can_socket(SR_8 *interface)
        perror("bind");
        return SR_ERROR;
    }
-
+   
    return can_fd;
 }
-
-
-
-
-

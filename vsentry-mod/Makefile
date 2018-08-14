@@ -21,7 +21,7 @@ EXTRA_CFLAGS += -I$(TOP_DIR)/ml/include
 #EXTRA_CFLAGS += -DUNIT_TEST
 EXTRA_CFLAGS += -DCONFIG_CAN_ML
 EXTRA_CFLAGS += -D_KERNEL
-EXTRA_CFLAGS += -DDEBUGFS_SUPPORT
+#EXTRA_CFLAGS += -DDEBUGFS_SUPPORT
 #EXTRA_CFLAGS += -DROOT_CLS_IGNORE
 EXTRA_CFLAGS += -DRL_SUPPORT
 #debug flags
@@ -82,6 +82,7 @@ $(TARGET)-objs := sal/platform/linux/src/module_init.o \
 				  main/src/main_loop.o \
 				  ../common/src/sr_ring_buf.o \
 				  ../common/src/sr_cyclic_array.o \
+				  ../common/src/sr_canbus_common.o \
 				  sal/platform/linux/src/sal_shmem_linux.o \
 				  ../common/src/sr_msg.o \
 				  ../common/src/sr_tasks.o \

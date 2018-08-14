@@ -401,7 +401,7 @@ static SR_32 add_can_rule(can_rule_t *rule)
 		return SR_ERROR;
 	}
 
-	sr_cls_canid_add_rule(rule->tuple.msg_id, program, user, rule->rulenum, convert_can_dir(rule->tuple.direction));
+	sr_cls_canid_add_rule(rule->tuple.msg_id, program, user, rule->rulenum, convert_can_dir(rule->tuple.direction), rule->tuple.interface);
 	sr_cls_rule_add(SR_CAN_RULES,
 					rule->rulenum,
 					actions_bitmap, 
@@ -433,7 +433,7 @@ static SR_32 update_can_rule(can_rule_t *rule)
 	}
 	old_user = *(old_rule->tuple.user) ? old_rule->tuple.user : "*";
 	old_program = *(old_rule->tuple.program) ? old_rule->tuple.program : "*";
-	sr_cls_canid_del_rule(old_rule->tuple.msg_id, old_program, old_user, old_rule->rulenum, convert_can_dir(old_rule->tuple.direction));
+	sr_cls_canid_del_rule(old_rule->tuple.msg_id, old_program, old_user, old_rule->rulenum, convert_can_dir(old_rule->tuple.direction), old_rule->tuple.interface);
 	if (strncmp(rule->action_name, old_rule->action_name, ACTION_STR_SIZE)) {
 		if (convert_action(rule->action_name, &actions_bitmap) != SR_SUCCESS) {
 			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
@@ -450,7 +450,8 @@ static SR_32 update_can_rule(can_rule_t *rule)
 	old_rule->tuple.direction = rule->tuple.direction;
 	strncpy(old_rule->tuple.program, rule->tuple.program, PROG_NAME_SIZE);
 	strncpy(old_rule->tuple.user, rule->tuple.user, USER_NAME_SIZE);
-	sr_cls_canid_add_rule(rule->tuple.msg_id, program, user, rule->rulenum, convert_can_dir(rule->tuple.direction));
+	strncpy(old_rule->tuple.interface, rule->tuple.interface, INTERFACE_SIZE);
+	sr_cls_canid_add_rule(rule->tuple.msg_id, program, user, rule->rulenum, convert_can_dir(rule->tuple.direction), rule->tuple.interface);
 
 	return SR_SUCCESS;
 }
@@ -467,7 +468,7 @@ static SR_32 delete_can_rule(can_rule_t *rule)
 	}
 
 	sr_cls_canid_del_rule(old_rule->tuple.msg_id, *(old_rule->tuple.program) ? old_rule->tuple.program : "*", *(old_rule->tuple.user) ? old_rule->tuple.user : "*",
-		old_rule->rulenum, convert_can_dir(old_rule->tuple.direction));
+		old_rule->rulenum, convert_can_dir(old_rule->tuple.direction), old_rule->tuple.interface);
 	sr_db_can_rule_delete(rule);
 
 	return SR_SUCCESS;
@@ -707,7 +708,7 @@ SR_BOOL read_config_file (void)
 				fclose (conf_file);
 				return SR_FALSE;
 			}
-			sr_cls_canid_add_rule(can_rec.msg_id, "*", "*", can_rec.rulenum,can_rec.direction);
+			sr_cls_canid_add_rule(can_rec.msg_id, "*", "*", can_rec.rulenum,can_rec.direction, "vcan0");
 			sr_cls_rule_add(SR_CAN_RULES, can_rec.rulenum, can_rec.action.actions_bitmap, 0, SR_RATE_TYPE_EVENT, can_rec.max_rate, can_rec.rate_action, can_rec.action.log_target, can_rec.action.email_id, can_rec.action.phone_id, can_rec.action.skip_rulenum);
 			break;
 			}

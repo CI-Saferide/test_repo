@@ -4,9 +4,11 @@
 #include "sr_types.h"
 #include "sr_tasks.h"
 #include "sr_sal_common.h"
+#include "sr_canbus_common.h"
 #include "sr_config_parse.h"
 
 #define CAN_COLLECTOR_DISK "/"
+#define ANYDEV "any"  /* name of interface to receive from any CAN interface */
 
 struct canTaskParams {
     SR_8 can_interface[CAN_NAME];		/* can interface name */
@@ -21,7 +23,7 @@ struct candump_log
     //SR_BOOL ready; //if file is max size
 };
 
-SR_32 init_can_socket(SR_8 *interface);
+SR_32 init_can_socket(void);
 
 void log_it(char* str);
 

@@ -392,3 +392,23 @@ void sal_set_interrupt_cb(void (*cb)(int))
 {
 	signal(SIGINT, cb);
 }
+
+SR_32 sal_get_interface_id(char *interface, SR_32 *if_id)
+{
+	*if_id = if_nametoindex(interface);
+	if (!*if_id) {
+		return SR_ERROR;
+	}
+
+	return SR_SUCCESS;
+}
+
+SR_32 sal_get_interface_name(SR_32 if_id, char *interface)
+{
+	interface = if_indextoname(if_id, interface);
+	if (!interface) {
+		return SR_ERROR;
+	}
+
+	return SR_SUCCESS;
+}

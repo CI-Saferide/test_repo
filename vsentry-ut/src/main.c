@@ -17,7 +17,7 @@
 
 #define CHANGED_PART_IP ", \"ipPolicies\": [{\"priority\": \"%d\", \"id\": 11, \"srcIp\": \"%s\", \"dstIp\": \"%s\", \"srcNetmask\": \"%s\", \"dstNetmask\": \"%s\", \"srcPort\":%d, \"dstPort\":%d, \"protocol\": \"%s\", \"execProgram\": \"%s\", \"user\": \"%s\", \"actionName\": \"%s\"}], \"canPolicies\": [], \"systemPolicies\": []"
 
-#define CHANGED_PART_CAN ", \"canPolicies\": [{\"priority\": \"%d\", \"id\": 11, \"msgId\": \"%s\", \"canDirection\": \"%s\", \"execProgram\": \"%s\", \"user\": \"%s\", \"actionName\": \"%s\"}], \"ipPolicies\": [], \"systemPolicies\": []"
+#define CHANGED_PART_CAN ", \"canPolicies\": [{\"priority\": \"%d\", \"id\": 11, \"msgId\": \"%s\", \"canDirection\": \"%s\", \"canInterface\": \"%s\", \"execProgram\": \"%s\", \"user\": \"%s\", \"actionName\": \"%s\"}], \"ipPolicies\": [], \"systemPolicies\": []"
 
 #define FIXED_PART_END "}"
 
@@ -107,11 +107,11 @@ static char *get_ip_json(int rule_id, char *src_addr, char *src_netmask, char *d
 	return json_str;
 }
 
-static char *get_can_json(int rule_id, char *msg_id, char *dir, char *user, char *exec_prog, char *action)
+static char *get_can_json(int rule_id, char *msg_id, char *dir, char *interface, char *user, char *exec_prog, char *action)
 {
 	static char json_str[10000];
 
-	sprintf(json_str,FIXED_PART_START CHANGED_PART_CAN FIXED_PART_END, rule_id, msg_id, dir, exec_prog, user, action);
+	sprintf(json_str,FIXED_PART_START CHANGED_PART_CAN FIXED_PART_END, rule_id, msg_id, dir, interface, exec_prog, user, action);
 
 	return json_str;
 }
@@ -619,27 +619,29 @@ static int handle_ip(sysrepo_mng_handler_t *handler)
 	return rc;
 }
 
-static int test_can_rule(sysrepo_mng_handler_t *handler, int rule_id, char *cmd, char *msg_id, char *dir,
-		char *user, char *exec, char *action, int *test_count, int *err_count, int is_success)
+static int test_can_rule(sysrepo_mng_handler_t *handler, int rule_id, char *desc, char *cmd, char *msg_id, char *dir,
+		char *interface, char *user, char *exec, char *action, int *test_count, int *err_count, int is_success, int is_clean, int is_update)
 {
 	int rc, is_string_exists;
 	char log_search_string[MAX_STR_SIZE];
 
 	(*test_count)++;
-	sysrepo_mng_parse_json(handler, FIXED_PART_START FIXED_PART_END, NULL, 0);
-	rc = sleep(1);
-	CHECK_RESULT(rc)
-	sysrepo_mng_parse_json(handler, get_can_json(rule_id, msg_id, dir, user, exec, action), NULL, 0);
-	rc = sleep(1);
-	CHECK_RESULT(rc)
-	rc = system(cmd);
-	CHECK_RESULT(rc)
+	printf("Test#%d %s\n", *test_count, desc);
+	if (is_clean) {
+		sysrepo_mng_parse_json(handler, FIXED_PART_START FIXED_PART_END, NULL, 0);
+		sleep(1);
+	}
+	if (is_update) {
+		sysrepo_mng_parse_json(handler, get_can_json(rule_id, msg_id, dir, interface, user, exec, action), NULL, 0);
+		sleep(1);
+	}
+	system(cmd);
 	if (is_verbose)
 		printf(">>>>> T#%d >>>>>>>>>>>>>>>>>>>>>> %s \n", *test_count, cmd);
 	rc = sleep(1);
 	CHECK_RESULT(rc)
 	/* Check the log */
-	sprintf(log_search_string, "RuleNumber=%d Action=", rule_id);
+	sprintf(log_search_string, "rule=%d act=drop mid=%s", rule_id, strcmp(msg_id, "any") == 0 ? "" : msg_id);
 	is_string_exists = log_is_string_exists(flog, log_search_string);
 	if ((is_string_exists && is_success) || (!is_string_exists && !is_success)) {
 		printf("%s FAILED !!!!!\n", cmd);
@@ -654,35 +656,42 @@ static int handle_can(sysrepo_mng_handler_t *handler)
 	int rc;
 	int err_count = 0, test_count = 0;
 	char *user, *can_prog, cmd[1000];
+	int stam;
 
-	rc = system("sudo useradd -m -g users test_user");
-	CHECK_RESULT(rc)
+	system("sudo useradd -m -g users test_user");
 	if (!(flog = log_init())) 
 		return -1;
 
-	test_can_rule(handler, 10, "cansend vcan0 123#", "123", "OUT", "*", "*", "drop", &test_count, &err_count, 0);
-
-	test_can_rule(handler, 10, "cansend vcan0 124#", "123", "OUT", "*", "*", "drop", &test_count, &err_count, 1);
-
-	test_can_rule(handler, 10, "cansend vcan0 125#", "any", "OUT", "*", "*", "drop", &test_count, &err_count, 0);
-
-	//test_can_rule(handler, 10, "cansend vcan0 126#", "126", "IN", "*", "*", "drop", &test_count, &err_count, 0);
+	test_can_rule(handler, 10, "IN Create rule msgid #123 vcan0 expect drop ", "cansend vcan0 123#", "123", "IN", "vcan0", "*", "*", "drop", &test_count, &err_count, 0, 1, 1);
+	test_can_rule(handler, 10, "IN rule msgid #123 send to vcan1 no drop ", "cansend vcan1 123#", "", "", "", "", "*", "", &test_count, &err_count, 1, 0, 0);
+	test_can_rule(handler, 10, "IN Update rule msgid #123 vcan1 expect drop ", "cansend vcan1 123#", "123", "IN", "vcan1", "*", "*", "drop", &test_count, &err_count, 0, 0, 1);
+	test_can_rule(handler, 10, "IN rule msgid #123 vcan0 expect no drop ", "cansend vcan0 123#", "", "", "", "", "", "",  &test_count, &err_count, 1, 0, 0);
+	test_can_rule(handler, 10, "IN Update rule msgid #124 vcan1 expect drop ", "cansend vcan1 124#", "124", "IN", "vcan1", "*", "*", "drop", &test_count, &err_count, 0, 0, 1);
+	test_can_rule(handler, 10, "IN rule msgid #123 vcan1 expect no drop ", "cansend vcan1 123#", "", "", "", "", "", "",  &test_count, &err_count, 1, 0, 0);
+	test_can_rule(handler, 10, "IN Update rule msgid #124 vcan0 expect NO drop ", "cansend vcan1 124#", "124", "IN", "vcan0", "*", "*", "drop", &test_count, &err_count, 1, 0, 1);
+	test_can_rule(handler, 10, "IN rule msgid #124 vcan0 expect drop ", "cansend vcan0 124#", "", "", "", "", "", "",  &test_count, &err_count, 0, 0, 0);
+	test_can_rule(handler, 10, "OUT Create rule msgid #123 vcan0 expect drop ", "cansend vcan0 123#", "123", "OUT", "vcan0", "*", "*", "drop", &test_count, &err_count, 0, 1, 1);
+	test_can_rule(handler, 10, "OUT rule msgid #123 send to vcan1 no drop ", "cansend vcan1 123#", "", "", "", "", "*", "", &test_count, &err_count, 1, 0, 0);
+	test_can_rule(handler, 10, "OUT Update rule msgid #123 vcan1 expect drop ", "cansend vcan1 123#", "123", "OUT", "vcan1", "*", "*", "drop", &test_count, &err_count, 0, 0, 1);
+	test_can_rule(handler, 10, "OUT 124 ","cansend vcan0 124#", "123", "OUT", "vcan0", "*", "*", "drop", &test_count, &err_count, 1, 1, 1);
+	test_can_rule(handler, 10, "OUT any ", "cansend vcan0 125#", "any", "OUT", "vcan0", "*", "*", "drop", &test_count, &err_count, 0, 1, 1);
 
 	if ((can_prog = get_cmd_output("which cansend"))) {
-		test_can_rule(handler, 10, "cansend vcan0 123#", "123", "OUT", "*", can_prog, "drop", &test_count, &err_count, 0);
+		test_can_rule(handler, 10, "OUT prog cansend",  " cansend vcan0 123#", "123", "OUT", "vcan0", "*", can_prog, "drop", &test_count, &err_count, 0, 1, 1);
 		sprintf(cmd,"sudo cp %s %s1\n", can_prog, can_prog);
 		rc = system(cmd);
-		CHECK_RESULT(rc)
-		test_can_rule(handler, 10, "cansend1 vcan0 123#", "123", "OUT", "*", can_prog, "drop", &test_count, &err_count, 1);
+		test_can_rule(handler, 10, "OUT prog cansend1 no drop", "cansend1 vcan0 123#", "123", "OUT", "vcan0", "*", can_prog, "drop", &test_count, &err_count, 1, 1, 1);
 	}
 
 	if ((user = getenv("USER"))) {
-		test_can_rule(handler, 10, "cansend vcan0 123#", "123", "OUT", "user", "*", "drop", &test_count, &err_count, 0);
-		test_can_rule(handler, 10, "cansend vcan0 123#", "123", "OUT", "test_user", "*", "drop", &test_count, &err_count, 1);
+		test_can_rule(handler, 10, "OUT user", "cansend vcan0 123#", "123", "OUT", "vcan0", "user", "*", "drop", &test_count, &err_count, 0, 1, 1);
+		test_can_rule(handler, 10, "OUT user2", "cansend vcan0 123#", "123", "OUT", "vcan0", "test_user", "*", "drop", &test_count, &err_count, 1, 1, 1);
 	}
 
+	test_can_rule(handler, 10, "Again IN Create rule msgid #123 vcan0 expect drop ", "cansend vcan0 123#", "123", "IN", "vcan0", "*", "*", "drop", &test_count, &err_count, 0, 1, 1);
 	/* Delete rule */
-	sysrepo_mng_parse_json(handler, FIXED_PART_START FIXED_PART_END, NULL, 0);
+
+	test_can_rule(handler, 10, "DELETE IN rule msgid #123 send to vcan0 no drop ", "cansend vcan0 123#", "", "", "", "", "*", "", &test_count, &err_count, 1, 1, 0);
 
 	if (!err_count) {
 		printf("\n******************************* SUCESSES ******************** \n Number of tests:%d\n", test_count);
@@ -749,6 +758,31 @@ static int handle_system(sysrepo_mng_handler_t *handler)
 	return rc;
 }
 
+static int handle_can_manual(sysrepo_mng_handler_t *handler)
+{
+	int stam;
+
+	sysrepo_mng_parse_json(handler, FIXED_PART_START FIXED_PART_END, NULL, 0);
+	sysrepo_mng_parse_json(handler, get_can_json(10, "123", "OUT", "vcan0", "*", "*", "drop"), NULL, 0);
+	printf("Enter num for update to interface to vcan1:");
+	scanf("%d",  &stam);
+	sysrepo_mng_parse_json(handler, get_can_json(10, "123", "OUT", "vcan1", "*", "*", "drop"), NULL, 0);
+	printf("Enter num for update to 124:");
+	scanf("%d",  &stam);
+	sysrepo_mng_parse_json(handler, get_can_json(10, "124", "OUT", "vcan1", "*", "*", "drop"), NULL, 0);
+	printf("Enter num for update to 123:");
+	scanf("%d",  &stam);
+	sysrepo_mng_parse_json(handler, get_can_json(10, "123", "OUT", "vcan1", "*", "*", "drop"), NULL, 0);
+	printf("Enter num for update to interface to vcan0:");
+	scanf("%d",  &stam);
+	sysrepo_mng_parse_json(handler, get_can_json(10, "123", "OUT", "vcan0", "*", "*", "drop"), NULL, 0);
+	printf("Enter num for update to delete:");
+	scanf("%d",  &stam);
+	sysrepo_mng_parse_json(handler, FIXED_PART_START FIXED_PART_END, NULL, 0);
+
+	return 0;
+}
+
 int main(int argc, char **argv)
 {
 	sysrepo_mng_handler_t handler;
@@ -803,6 +837,10 @@ int main(int argc, char **argv)
 	}
 	if (!strcmp(type, "system")) {
 		rc = handle_system(&handler);
+		goto cleanup;
+	}
+	if (!strcmp(type, "can_m")) {
+		rc = handle_can_manual(&handler);
 		goto cleanup;
 	}
 

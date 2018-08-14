@@ -2,11 +2,12 @@
 #define __WHITE_LIST_CAN_H__
 
 #include "sr_ec_common.h"
-#include "sr_cls_canbus_common.h"
+#include "sr_canbus_common.h"
 
 typedef struct wl_can_item {
 	SR_U32		msg_id;				/* can message id */
 	SR_U8 	dir; //inbound/outbound msg
+	SR_32 if_id;
 	struct wl_can_item *next;		/* ptr for linked list of can MSGID */
 }sr_wl_can_item_t;
 

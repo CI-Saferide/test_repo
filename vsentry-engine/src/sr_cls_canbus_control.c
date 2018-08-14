@@ -1,16 +1,20 @@
 #include "sr_sal_common.h"
-#include "sr_cls_canbus_common.h"
+#include "sr_canbus_common.h"
 #include "sr_shmem.h"
 #include "sr_msg.h"
 #include "sr_msg_dispatch.h"
 #include "sr_engine_utils.h"
 
-int sr_cls_canid_add_rule(SR_U32 canid, char *exec, char *user, SR_U32 rulenum,SR_U8 dir)
+static SR_32 get_can_interface_id(char *interface, SR_32 *if_id)
+{
+	return sal_get_interface_id(interface, if_id);
+}
+
+int sr_cls_canid_add_rule(SR_U32 canid, char *exec, char *user, SR_U32 rulenum,SR_U8 dir, char *interface)
 {
 	sr_canbus_msg_cls_t *msg;
  	SR_U32 inode;
- 	SR_32 uid;
-	int st;
+ 	SR_32 uid, if_id, st;
 
 	if ((st = sr_get_inode(exec, &inode)) != SR_SUCCESS)  {
 	    CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
@@ -18,6 +22,11 @@ int sr_cls_canid_add_rule(SR_U32 canid, char *exec, char *user, SR_U32 rulenum,S
 	    return st;
 	}
 	uid = sr_get_uid(user);
+	if (get_can_interface_id(interface, &if_id) != SR_SUCCESS) {
+		 CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+					"%s=can add:failed to get id for interface %s, rule %d",REASON, interface, rulenum);
+		 return SR_ERROR;
+	}
 	
 	msg = (sr_canbus_msg_cls_t*)sr_get_msg(ENG2MOD_BUF, ENG2MOD_MSG_MAX_SIZE);
 		if (msg) {
@@ -27,7 +36,8 @@ int sr_cls_canid_add_rule(SR_U32 canid, char *exec, char *user, SR_U32 rulenum,S
 			msg->sub_msg.canid=canid;	
 			msg->sub_msg.dir=dir;					
 			msg->sub_msg.exec_inode=inode;						
-			msg->sub_msg.uid=uid;						
+			msg->sub_msg.uid=uid;
+			msg->sub_msg.if_id = if_id;
 			sr_send_msg(ENG2MOD_BUF, (SR_32)sizeof(msg));
 		}
 
@@ -36,11 +46,12 @@ int sr_cls_canid_add_rule(SR_U32 canid, char *exec, char *user, SR_U32 rulenum,S
 }
 
 
-int sr_cls_canid_del_rule(SR_U32 canid, char *exec, char *user, SR_U32 rulenum,SR_U8 dir)
+int sr_cls_canid_del_rule(SR_U32 canid, char *exec, char *user, SR_U32 rulenum, SR_U8 dir, char *interface)
 {
 	sr_canbus_msg_cls_t *msg;
  	SR_U32 inode;
- 	SR_32 uid;
+ 	SR_32 uid, if_id;
+
 	int st;
 
         if ((st = sr_get_inode(exec, &inode)) != SR_SUCCESS)  {
@@ -49,6 +60,11 @@ int sr_cls_canid_del_rule(SR_U32 canid, char *exec, char *user, SR_U32 rulenum,S
             return st;
         }
 	uid = sr_get_uid(user);
+	if (get_can_interface_id(interface, &if_id) != SR_SUCCESS) {
+		 CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+					"%s=can add:failed to get id for interface %s, rule %d",REASON, interface, rulenum);
+		 return SR_ERROR;
+	}
 
 	msg = (sr_canbus_msg_cls_t*)sr_get_msg(ENG2MOD_BUF, ENG2MOD_MSG_MAX_SIZE);
 		if (msg) {
@@ -58,7 +74,8 @@ int sr_cls_canid_del_rule(SR_U32 canid, char *exec, char *user, SR_U32 rulenum,S
 			msg->sub_msg.canid=canid;
 			msg->sub_msg.dir=dir;						
 			msg->sub_msg.exec_inode=inode;						
-			msg->sub_msg.uid=uid;						
+			msg->sub_msg.uid=uid;
+			msg->sub_msg.if_id = if_id;
 			sr_send_msg(ENG2MOD_BUF, (SR_32)sizeof(msg));
 		}
 

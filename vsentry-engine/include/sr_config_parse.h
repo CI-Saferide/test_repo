@@ -15,14 +15,6 @@ struct config_params_t {
 	/* vin paramas */
 	SR_8 	vin[32];
 	
-	/* can params */
-	SR_U8 	num_of_can_interface;
-	SR_8 	can0_interface[CAN_NAME];
-	SR_8 	can1_interface[CAN_NAME];
-	SR_8 	can2_interface[CAN_NAME];
-	SR_8 	can3_interface[CAN_NAME];
-	SR_8 	can4_interface[CAN_NAME];
-	
 	/* collector params */
 	SR_BOOL collector_enable;
 	SR_U16	collector_file_size;				/* size of each log file, in mega bytes */

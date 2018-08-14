@@ -88,7 +88,7 @@ SR_32 can_collector_init(void *data)
 
 	config_params = sr_config_get_param();
 
-	if ((can_args.can_fd = init_can_socket(can_args.can_interface)) < 0) {
+	if ((can_args.can_fd = init_can_socket()) < 0) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_LOW,
 			"%s=failed to init can socket",REASON);
 		return SR_ERROR;

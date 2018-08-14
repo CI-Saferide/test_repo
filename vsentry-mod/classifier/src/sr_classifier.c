@@ -439,20 +439,28 @@ SR_32 sr_classifier_canbus(disp_info_t* info)
 	SR_U16 def_action = SR_CLS_ACTION_ALLOW; /* if we don't have default rule from user, then we just allow the packet */
 	int st;
 	struct config_params_t *config_params;
+	SR_U8 can_if_id;
 	
 #ifdef ROOT_CLS_IGNORE
 	if (!info->tuple_info.id.uid) return SR_CLS_ACTION_ALLOW; /* no classification for root user (debug only) */
 #endif
+
+	if (sr_cls_canid_get_if_id(info->can_info.if_id, &can_if_id) != SR_SUCCESS) {
+		printk("ERROR invalid if_id:%d \n", info->can_info.if_id);
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+			"%s=cls-can: invalid if id %d", info->can_info.if_id, REASON);
+		return SR_CLS_ACTION_ALLOW;
+	}
 	
 	is_def = SR_FALSE;
 	config_params = sr_control_config_params();
 	memset(&ba_res, 0, sizeof(bit_array));
 	
-	ptr = sr_cls_match_canid(info->can_info.msg_id,(info->can_info.dir==SR_CAN_OUT)?SR_CAN_OUT:SR_CAN_IN);
+	ptr = sr_cls_match_canid(info->can_info.msg_id,(info->can_info.dir==SR_CAN_OUT)?SR_CAN_OUT:SR_CAN_IN, can_if_id);
 	if (ptr) {
-		sal_or_op_arrays(ptr,(info->can_info.dir==SR_CAN_OUT)?src_cls_out_canid_any():src_cls_in_canid_any(), &ba_res);
+		sal_or_op_arrays(ptr,(info->can_info.dir==SR_CAN_OUT)?src_cls_out_canid_any(can_if_id):src_cls_in_canid_any(can_if_id), &ba_res);
 	} else { // take only inbound/any
-		sal_or_self_op_arrays(&ba_res, (info->can_info.dir==SR_CAN_OUT)?src_cls_out_canid_any():src_cls_in_canid_any());
+		sal_or_self_op_arrays(&ba_res, (info->can_info.dir==SR_CAN_OUT)?src_cls_out_canid_any(can_if_id):src_cls_in_canid_any(can_if_id));
 	}
 	
 	if (array_is_clear(ba_res)) {
@@ -520,11 +528,12 @@ result:
 			}
 
 			CEF_log_event(SR_CEF_CID_CAN, msg , severity, 
-				"%s=%d%s %s=%s %s=%x %s=%s",
+				"%s=%d%s %s=%s %s=%x %s=%s %s=%s(%d)",
 				RULE_NUM_KEY,rule,rule == SR_CLS_DEFAULT_RULE ? "(default)" : "",
 				DEVICE_ACTION,actionstring,
 				CAN_MSG_ID,info->can_info.msg_id,
-				DEVICE_DIRECTION,info->can_info.dir == SR_CAN_OUT?"out":"in"); /* "0" for inbound or "1" for outbound*/
+				DEVICE_DIRECTION,info->can_info.dir == SR_CAN_OUT?"out":"in",
+				IF_ID, sr_cls_canid_get_interface_name(can_if_id) ?: "" , info->can_info.if_id); /* "0" for inbound or "1" for outbound*/
 		}
 		if (action & SR_CLS_ACTION_DROP)
 			return SR_CLS_ACTION_DROP;
