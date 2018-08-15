@@ -76,30 +76,30 @@ int sr_ec_send_event(SR_U8 buf_type, SR_U8 event_type, void *data)
 		case MOD2STAT_BUF:
 			switch (event_type) {
 				case SR_EVENT_STATS_CONNECTION:
-					sr_ec_append_event(buf_type, event_type, data, sizeof(struct sr_ec_connection_stat_t), SR_FALSE);
+					sr_ec_append_event(buf_type, event_type, data, sizeof(struct sr_ec_connection_stat_t), SR_TRUE);
 					break;
 				case SR_EVENT_STATS_CONNECTION_WL:
-					sr_ec_append_event(buf_type, event_type, data, sizeof(struct sr_ec_connection_stat_wl_t), SR_FALSE);
+					sr_ec_append_event(buf_type, event_type, data, sizeof(struct sr_ec_connection_stat_wl_t), SR_TRUE);
 					break;
 				case SR_EVENT_STATS_CONNECTION_TRANSMIT:
-					sr_ec_append_event(buf_type, event_type, data, sizeof(struct sr_ec_connection_transmit_t), SR_FALSE);
+					sr_ec_append_event(buf_type, event_type, data, sizeof(struct sr_ec_connection_transmit_t), SR_TRUE);
 					sal_linux_mng_readbuf_up(SYNC_INFO_GATHER);									
 					break;
 				case SR_EVENT_STATS_FILE_WL:
-					sr_ec_append_event(buf_type, event_type, data, sizeof(struct sr_ec_file_wl_t), SR_FALSE);
+					sr_ec_append_event(buf_type, event_type, data, sizeof(struct sr_ec_file_wl_t), SR_TRUE);
 					break;
 				case SR_EVENT_STATS_CANBUS:
-					sr_ec_append_event(buf_type, event_type, data, sizeof(struct sr_ec_can_t), SR_FALSE);
+					sr_ec_append_event(buf_type, event_type, data, sizeof(struct sr_ec_can_t), SR_TRUE);
 					break;
 				case SR_EVENT_STATS_NEW_CONNECTION_WL:
-					sr_ec_append_event(buf_type, event_type, data, sizeof(struct sr_ec_new_connection_wl_t), SR_FALSE);
+					sr_ec_append_event(buf_type, event_type, data, sizeof(struct sr_ec_new_connection_wl_t), SR_TRUE);
 					break;
 #ifdef CONFIG_SYSTEM_POLICER
 				case SR_EVENT_STATS_SYSTEM:
-					sr_ec_append_event(buf_type, event_type, data, sizeof(struct sr_ec_system_stat_t), SR_FALSE);
+					sr_ec_append_event(buf_type, event_type, data, sizeof(struct sr_ec_system_stat_t), SR_TRUE);
 					break;
 				case SR_EVENT_STATS_SYSTEM_FINISH:
-					sr_ec_append_event(buf_type, event_type, data, sizeof(struct sr_ec_system_finish_t), SR_FALSE);
+					sr_ec_append_event(buf_type, event_type, data, sizeof(struct sr_ec_system_finish_t), SR_TRUE);
 					break;
 #endif
 				default:

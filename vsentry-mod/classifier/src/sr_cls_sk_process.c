@@ -40,7 +40,7 @@ static SR_BOOL check_aged_cb(void *hash_data)
 #ifdef SR_DEBUG
 	if (sk_process_item->process_info.pid == 67333) { 
 	CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, 
-		"%s= Arik in sk aged cb sk:%p pid:%d uid:%d elpsed rime:%d", REASON,
+		"%s=in sk aged cb sk:%p pid:%d uid:%d elpsed rime:%d", REASON,
 		sk_process_item->sk, 
 		sk_process_item->process_info.pid, 
 		sk_process_item->process_info.uid, 
