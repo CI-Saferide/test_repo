@@ -7,7 +7,8 @@
 
 #define HASH_SIZE 500
 
-static sr_wl_mode_t wl_mode;
+static sr_wl_mode_t wl_mode = SR_WL_MODE_OFF;
+static SR_BOOL is_wl_init;
 
 static struct sr_gen_hash *white_list_hash;
 
@@ -105,7 +106,8 @@ SR_32 sr_white_list_init(void)
 			"%s=file_hash_init: sr_gen_hash_new failed",REASON);
 		return SR_ERROR;
 	}
-	wl_mode = SR_WL_MODE_OFF;
+
+	is_wl_init = SR_TRUE;
 
 	return SR_SUCCESS;
 }
@@ -166,29 +168,19 @@ SR_32 sr_white_list_set_mode(sr_wl_mode_t new_wl_mode)
 
 	if (wl_mode == new_wl_mode)
 		return SR_SUCCESS;
-	switch (wl_mode) {
-		case SR_WL_MODE_LEARN:
-			break;
-		case SR_WL_MODE_APPLY:
-			// Remove the rules
-			if ((rc = sr_white_list_file_apply(SR_FALSE)) != SR_SUCCESS) {
-               			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-					"%s=sr_white_list_file_apply failed",REASON);
-                		return SR_ERROR;
-			}
-			if ((rc = sr_white_list_canbus_apply(SR_FALSE)) != SR_SUCCESS) {
-               			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-					"%s=sr_white_list_canbus_apply failed",REASON);
-                		return SR_ERROR;
-			}
-			break;
-		case SR_WL_MODE_OFF:
-			break;
-		default:
-			return SR_ERROR;
-	}
 	switch (new_wl_mode) { 
 		case SR_WL_MODE_LEARN:
+			if (sr_white_list_init() != SR_SUCCESS) {
+				CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+					"%s=white list init failed",REASON);
+				return SR_ERROR;
+			}
+			if (sr_white_list_ip_init() != SR_SUCCESS) {
+				CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+					"%s=white list ip init failed",REASON);
+				sr_white_list_uninit();
+				return SR_ERROR;
+			}	
 			/* Set default rule to be allow */
  			CEF_log_event(SR_CEF_CID_SYSTEM, "info", SEVERITY_LOW,
 					"%s=move to mode wl_learn", MESSAGE);
@@ -206,6 +198,11 @@ SR_32 sr_white_list_set_mode(sr_wl_mode_t new_wl_mode)
 			sr_white_list_reset();
 			break;
 		case SR_WL_MODE_APPLY:
+			if (!is_wl_init) {
+				CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+					"%s=white list is not init", REASON);
+				return SR_ERROR;
+			}
  			CEF_log_event(SR_CEF_CID_SYSTEM, "info", SEVERITY_LOW,
 					"%s=move to mode wl_apply", MESSAGE);
 			sr_white_list_create_action();
@@ -213,7 +210,7 @@ SR_32 sr_white_list_set_mode(sr_wl_mode_t new_wl_mode)
 			printf("Applying file rules\n");
  			CEF_log_event(SR_CEF_CID_SYSTEM, "info", SEVERITY_LOW,
 					"%s=applying file rules", MESSAGE);
-			if ((rc = sr_white_list_file_apply(SR_TRUE)) != SR_SUCCESS) {
+			if ((rc = sr_white_list_file_apply()) != SR_SUCCESS) {
                			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 					"%s=sr_white_list_file_apply failed",REASON);
                 		return SR_ERROR;
@@ -221,7 +218,7 @@ SR_32 sr_white_list_set_mode(sr_wl_mode_t new_wl_mode)
 			printf("Applying file CAN rules\n");
  			CEF_log_event(SR_CEF_CID_SYSTEM, "info", SEVERITY_LOW,
 					"%s=applying CAN rules", MESSAGE);
-			if ((rc = sr_white_list_canbus_apply(SR_TRUE)) != SR_SUCCESS) {
+			if ((rc = sr_white_list_canbus_apply()) != SR_SUCCESS) {
                			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 					"%s=sr_white_list_canbus_apply failed",REASON);
                 		return SR_ERROR;
@@ -249,6 +246,8 @@ SR_32 sr_white_list_set_mode(sr_wl_mode_t new_wl_mode)
 			} else
  				CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 					"%s=failed to transfer config info to kernel",REASON);
+			sr_white_list_uninit();
+			sr_white_list_ip_uninit();
 			break;
 		case SR_WL_MODE_OFF:
 			break;
@@ -316,27 +315,13 @@ sr_white_list_item_t *sr_white_list_hash_get(char *exec)
 
 void sr_white_list_uninit(void)
 {
-	switch (wl_mode) {
-		case SR_WL_MODE_LEARN:
-			break;
-		case SR_WL_MODE_APPLY:
-			// Remove the rules
-			if (sr_white_list_file_apply(SR_FALSE) != SR_SUCCESS) {
-				CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-				"%s=sr_white_list_file_apply failed",REASON);
-			}
-			if (sr_white_list_canbus_apply(SR_FALSE) != SR_SUCCESS) {
-				CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-				"%s=sr_white_list_canbus_apply failed",REASON);
-			}
-			break;
-		case SR_WL_MODE_OFF:
-			break;
-		default:
-			break;
-	}
-        sr_gen_hash_destroy(white_list_hash);
+	if (!is_wl_init)
+		return;
+
+	sr_gen_hash_destroy(white_list_hash);
 	sr_white_list_file_uninit();
+
+	is_wl_init = SR_FALSE;
 }
 
 SR_32 sr_white_list_hash_exec_for_all(SR_32 (*cb)(void *hash_data, void *data))
@@ -362,5 +347,7 @@ SR_32 sr_white_list_delete_all(void)
 
 void sr_white_list_hash_print(void)
 {
+	if (!is_wl_init)
+		return;
 	sr_gen_hash_print(white_list_hash);
 }

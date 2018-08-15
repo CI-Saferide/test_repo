@@ -19,6 +19,8 @@
 
 #define WL_IP_RULE_ID 4095
 
+static SR_BOOL is_wl_ip_init;
+
 typedef struct wl_ip_item { 
 	SR_U32 ip;
 	struct wl_ip_item *next;
@@ -99,12 +101,18 @@ SR_32 sr_white_list_ip_init(void)
 		return (SR_ERROR);
 	}
 
+	is_wl_ip_init = SR_TRUE;
+
 	return SR_SUCCESS;
 }
 
 void sr_white_list_ip_uninit(void)
 {
+	if (!is_wl_ip_init)
+		return;
+
 	sr_gen_hash_destroy(wl_ip_binary_hash);
+	is_wl_ip_init = SR_FALSE;
 }
 
 void sr_wl_ip_binary_print(void)
@@ -359,6 +367,9 @@ void sr_wl_conngraph_print_tree(void)
 
 void sr_white_list_ip_print(void)
 {
+	if (!is_wl_ip_init)
+		return;
+
 	printf("radix tree:\n");
 	CEF_log_event(SR_CEF_CID_SYSTEM, "info", SEVERITY_LOW,
 					"%s=ip addresses learned:",MESSAGE);
