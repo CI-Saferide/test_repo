@@ -12,7 +12,6 @@
 
 static SR_BOOL is_run_cmd  = SR_TRUE;
 
-#define GET_CMD_URL "http://saferide-policies.eu-west-1.elasticbeanstalk.com/commands/sync"
 #define CMD_LEARN "StateLearn"
 #define CMD_OFF "StateOff"
 #define CMD_PROTECT "StateProtect"
@@ -83,8 +82,8 @@ static SR_32 handle_command(void)
 
 	config_params = sr_config_get_param();
 
-	SR_CURL_INIT(GET_CMD_URL);
-	curl_easy_setopt(curl, CURLOPT_URL, GET_CMD_URL);
+	SR_CURL_INIT(config_params->sr_commands_url);
+	curl_easy_setopt(curl, CURLOPT_URL, config_params->sr_commands_url);
 	curl_easy_setopt(curl, CURLOPT_NOSIGNAL, 1);
 
 	fetch->payload = (char *) calloc(1, sizeof(fetch->payload));

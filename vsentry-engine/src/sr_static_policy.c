@@ -11,7 +11,6 @@
 static SR_BOOL is_run_db_mng = SR_TRUE;
 static SR_U32 static_policy_version;
 
-#define STATIC_POLICY_URL "http://saferide-policies.eu-west-1.elasticbeanstalk.com/policy/static/sync"
 #define STATIC_POLICY_VERSION_FILE "/etc/sentry/version"
 #define STATIC_POLICY_CPU_FILE "/etc/sentry/cpu_info.txt"
 #define STATIC_POLICY_IP_VERSION "X-IP-VERSION"
@@ -71,7 +70,7 @@ static SR_32 get_server_db(sysrepo_mng_handler_t *handler)
 
 	config_params = sr_config_get_param();
 
-	SR_CURL_INIT(STATIC_POLICY_URL);
+	SR_CURL_INIT(config_params->static_policy_url);
 	
 	fetch->payload = NULL;
 	fetch->size = 0;

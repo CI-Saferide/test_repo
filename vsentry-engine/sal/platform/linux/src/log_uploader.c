@@ -126,7 +126,7 @@ static int upload_log_file(char* filename, int offset)
         curl_easy_setopt(upload_curl_handle, CURLOPT_FAILONERROR, 1L);
         curl_easy_setopt(upload_curl_handle, CURLOPT_NOPROGRESS, 1L);
         curl_easy_setopt(upload_curl_handle, CURLOPT_TIMEOUT, 5L);
-        curl_easy_setopt(upload_curl_handle, CURLOPT_URL, "http://saferide-log-collector-staging.eu-west-1.elasticbeanstalk.com/logs");
+        curl_easy_setopt(upload_curl_handle, CURLOPT_URL, config_params->log_uploader_url);
 
         snprintf(post_vin, 64, "X-VIN: %s", config_params->vin);
         chunk = curl_slist_append(chunk, post_vin);
@@ -354,7 +354,7 @@ static int can_log_upload(void)
     curl = curl_easy_init();
     if (curl) {
         /* upload to this place */
-        curl_easy_setopt(curl, CURLOPT_URL, "saferide-can-collector.eu-west-1.elasticbeanstalk.com/can");
+        curl_easy_setopt(curl, CURLOPT_URL, config_params->can_collector_url);
         //curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
         curl_formadd(&post, &last, CURLFORM_COPYNAME, "can",
               CURLFORM_FILE, candump_file_name_tgz, CURLFORM_END);

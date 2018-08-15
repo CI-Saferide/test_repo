@@ -4,7 +4,8 @@
 #include "sr_types.h"
 #include "sr_actions_common.h"
 
-#define PATH_BUFF 	128
+#define PATH_BUFF 128
+#define URL_MAX_SIZE 	256
 #define CAN_NAME 	16
 #define LOG_TYPE_CURL (1 << 0)
 #define LOG_TYPE_SYSLOG (1 << 1)
@@ -44,6 +45,12 @@ struct config_params_t {
 	SR_U8	system_policer_interval;
 	SR_U8	system_policer_threshold_percent;
 #endif
+	SR_8	log_uploader_url[URL_MAX_SIZE];
+	SR_8	can_collector_url[URL_MAX_SIZE];
+	SR_8	dynamic_policy_url[URL_MAX_SIZE];
+	SR_8	ml_can_url[URL_MAX_SIZE];
+	SR_8	sr_commands_url[URL_MAX_SIZE];
+	SR_8	static_policy_url[URL_MAX_SIZE];
 };
 
 SR_32 read_vsentry_config(char* config_filename);

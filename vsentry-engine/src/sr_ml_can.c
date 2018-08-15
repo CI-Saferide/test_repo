@@ -119,7 +119,7 @@ SR_32 can_ml_learn_info_task(void *data)
 	curl_global_init(CURL_GLOBAL_DEFAULT);
 	curl = curl_easy_init();
 	if(curl) {
-		curl_easy_setopt(curl, CURLOPT_URL, "http://saferide-policies.eu-west-1.elasticbeanstalk.com/policy/can/dynamic");
+		curl_easy_setopt(curl, CURLOPT_URL, config_params->ml_can_url);
 		//curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
 		chunk = curl_slist_append(chunk, "application/x-www-form-urlencoded");
 		curl_easy_setopt(curl, CURLOPT_HTTPHEADER, chunk);

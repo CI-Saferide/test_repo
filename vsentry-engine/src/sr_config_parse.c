@@ -38,6 +38,13 @@ void config_defaults(void)
 	config_params.system_policer_threshold_percent = 5;
 	strncpy(config_params.system_prolicer_learn_file, "/etc/vsentry/system_learn.txt", PATH_BUFF);
 #endif
+
+	strncpy(config_params.log_uploader_url, "http://saferide-log-collector-staging.eu-west-1.elasticbeanstalk.com/logs", URL_MAX_SIZE);
+	strncpy(config_params.can_collector_url, "saferide-can-collector.eu-west-1.elasticbeanstalk.com/can", URL_MAX_SIZE);
+	strncpy(config_params.dynamic_policy_url, "http://saferide-policies.eu-west-1.elasticbeanstalk.com/policy/ip/dynamic", URL_MAX_SIZE);
+	strncpy(config_params.ml_can_url, "http://saferide-policies.eu-west-1.elasticbeanstalk.com/policy/can/dynamic", URL_MAX_SIZE);
+	strncpy(config_params.sr_commands_url, "http://saferide-policies.eu-west-1.elasticbeanstalk.com/commands/sync", URL_MAX_SIZE);
+	strncpy(config_params.static_policy_url, "http://saferide-policies.eu-west-1.elasticbeanstalk.com/policy/static/sync", URL_MAX_SIZE);
 }
 
 SR_32 read_vsentry_config(char* config_filename)
@@ -185,6 +192,24 @@ SR_32 read_vsentry_config(char* config_filename)
 			config_params.system_policer_threshold_percent = atoi(value);
 		}
 #endif
+	if (!strcmp(param, "LOG_UPLOADER_URL")) {
+		strncpy(config_params.log_uploader_url, value, URL_MAX_SIZE);
+	}
+	if (!strcmp(param, "CAN_COLLECTOR_URL")) {
+		strncpy(config_params.can_collector_url, value, URL_MAX_SIZE);
+	}
+	if (!strcmp(param, "ML_CAN_URL")) {
+		strncpy(config_params.ml_can_url, value, URL_MAX_SIZE);
+	}
+	if (!strcmp(param, "SR_COMMANS_URL")) {
+		strncpy(config_params.sr_commands_url, value, URL_MAX_SIZE);
+	}
+	if (!strcmp(param, "DYNAMIC_POLICY_URL")) {
+		strncpy(config_params.dynamic_policy_url, value, URL_MAX_SIZE);
+	}
+	if (!strcmp(param, "STATIC_POLICY_URL")) {
+		strncpy(config_params.static_policy_url, value, URL_MAX_SIZE);
+	}
     }
     fclose(fp);
     CEF_log_event(SR_CEF_CID_SYSTEM, "info", SEVERITY_LOW,
