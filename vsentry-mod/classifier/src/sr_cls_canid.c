@@ -246,6 +246,7 @@ bit_array *sr_cls_match_canid(SR_32 canid, SR_8 dir, SR_32 can_if_id)
 SR_8 sr_cls_canid_msg_dispatch(struct sr_cls_canbus_msg *msg)
 {
 	int st;
+	SR_U8 can_if_id;
 
 	switch (msg->msg_type) {
 		case SR_CLS_CANID_DEL_RULE:
@@ -270,13 +271,19 @@ SR_8 sr_cls_canid_msg_dispatch(struct sr_cls_canbus_msg *msg)
 			   return st;
 			return sr_cls_uid_del_rule(SR_CAN_RULES, msg->uid, msg->rulenum);
 		case SR_CLS_CANID_ADD_RULE:
+			if (sr_cls_canid_get_if_id(msg->if_id, &can_if_id) != SR_SUCCESS) {
+                		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+				"%s=cls-can: invalid if id %d", msg->if_id, REASON);
+				return SR_ERROR;
+			}
+
 			CEF_log_event(SR_CEF_CID_CAN, "info", SEVERITY_LOW,
-				"%s=add %s=%d %s=%d %s=%x %s=%s",MESSAGE,
+				"%s=add %s=%d %s=%d %s=%x %s=%s %s=%s(%d)",MESSAGE,
 				RULE_NUM_KEY,msg->rulenum, 
 				DEVICE_UID,msg->uid, 
 				CAN_MSG_ID,msg->canid, 
 				DEVICE_DIRECTION,(msg->dir==SR_CAN_OUT)? "out" : ((msg->dir==SR_CAN_IN)? "in" : "in-out"),
-				IF_ID, msg->if_id);
+				IF_ID, sr_cls_canid_get_interface_name(can_if_id) ?: "", msg->if_id);
 			if (msg->dir==SR_CAN_BOTH) {
 				// add IN
 				if ((st = sr_cls_canid_add_rule(msg->canid, msg->rulenum, SR_CAN_IN, msg->if_id)) != SR_SUCCESS)
