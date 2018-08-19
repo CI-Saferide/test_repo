@@ -635,7 +635,7 @@ static int test_can_rule(sysrepo_mng_handler_t *handler, int rule_id, char *desc
 		sysrepo_mng_parse_json(handler, get_can_json(rule_id, msg_id, dir, interface, user, exec, action), NULL, 0);
 		sleep(1);
 	}
-	system(cmd);
+	rc = system(cmd);
 	if (is_verbose)
 		printf(">>>>> T#%d >>>>>>>>>>>>>>>>>>>>>> %s \n", *test_count, cmd);
 	rc = sleep(1);
@@ -653,12 +653,12 @@ static int test_can_rule(sysrepo_mng_handler_t *handler, int rule_id, char *desc
 
 static int handle_can(sysrepo_mng_handler_t *handler)
 {
-	int rc;
 	int err_count = 0, test_count = 0;
 	char *user, *can_prog, cmd[1000];
-	int stam;
+	int stam __attribute__((unused));
+	int rc __attribute__((unused));
 
-	system("sudo useradd -m -g users test_user");
+	rc = system("sudo useradd -m -g users test_user");
 	if (!(flog = log_init())) 
 		return -1;
 
@@ -761,23 +761,24 @@ static int handle_system(sysrepo_mng_handler_t *handler)
 static int handle_can_manual(sysrepo_mng_handler_t *handler)
 {
 	int stam;
+	int n __attribute__((unused));
 
 	sysrepo_mng_parse_json(handler, FIXED_PART_START FIXED_PART_END, NULL, 0);
 	sysrepo_mng_parse_json(handler, get_can_json(10, "123", "OUT", "vcan0", "*", "*", "drop"), NULL, 0);
 	printf("Enter num for update to interface to vcan1:");
-	scanf("%d",  &stam);
+	n = scanf("%d",  &stam);
 	sysrepo_mng_parse_json(handler, get_can_json(10, "123", "OUT", "vcan1", "*", "*", "drop"), NULL, 0);
 	printf("Enter num for update to 124:");
-	scanf("%d",  &stam);
+	n = scanf("%d",  &stam);
 	sysrepo_mng_parse_json(handler, get_can_json(10, "124", "OUT", "vcan1", "*", "*", "drop"), NULL, 0);
 	printf("Enter num for update to 123:");
-	scanf("%d",  &stam);
+	n = scanf("%d",  &stam);
 	sysrepo_mng_parse_json(handler, get_can_json(10, "123", "OUT", "vcan1", "*", "*", "drop"), NULL, 0);
 	printf("Enter num for update to interface to vcan0:");
-	scanf("%d",  &stam);
+	n = scanf("%d",  &stam);
 	sysrepo_mng_parse_json(handler, get_can_json(10, "123", "OUT", "vcan0", "*", "*", "drop"), NULL, 0);
 	printf("Enter num for update to delete:");
-	scanf("%d",  &stam);
+	n = scanf("%d",  &stam);
 	sysrepo_mng_parse_json(handler, FIXED_PART_START FIXED_PART_END, NULL, 0);
 
 	return 0;
