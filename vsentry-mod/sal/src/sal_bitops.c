@@ -131,7 +131,7 @@ void sal_and_self_op_arrays (bit_array *base, bit_array *addon)
 	while ((index = sal_ffs_and_clear_bitmask(&summary)) != -1) {
 		base->level2[index] &= addon->level2[index];
 		if (!base->level2[index]) { // need to clean summary bit !!!
-			base->summary &= (~((SR_U64)1<<index));
+			base->summary &= (~(1ULL<<index));
 		}
 	}
 }
@@ -144,7 +144,7 @@ void sal_and_self_op_two_arrays (bit_array *base, bit_array *A, bit_array *B)
 	while ((index = sal_ffs_and_clear_bitmask(&summary)) != -1) {
 		base->level2[index] &= (A->level2[index]|B->level2[index]);
 		if (!base->level2[index]) { // need to clean summary bit !!!
-			base->summary &= (~((SR_U64)1<<index));
+			base->summary &= (~(1ULL<<index));
 		}
 	}
 }
@@ -159,16 +159,71 @@ SR_BOOL sal_test_bit_array(SR_U16 bit, bit_array *arr)
 }
 
 void sal_print_bit_array(bit_array *arr)
- {
- 	bit_array tmp;
+{
+	bit_array tmp;
  	SR_16 rule;
  
  	memcpy(&tmp, arr, sizeof (bit_array));
  
- 	sal_kernel_print_info("sal_print_bit_array: Printing ruleset for array %p\n", arr);
+	sal_kernel_print_info("list of set bits for ba %p:\n", arr);
  
  	while ((rule = sal_ffs_and_clear_array (&tmp)) != -1) {
-                 sal_kernel_print_info("Rule #%d is set\n", rule);
+                 sal_kernel_print_info("%d\n", rule);
  	}
- 	sal_kernel_print_info("sal_print_bit_array: Done printing\n");
- }
+}
+
+void sal_print_ba(bit_array *ba)
+{
+	SR_U8	index;
+	sal_kernel_print_info ("summary:    ");
+	sal_print_register(64, ba->summary);
+	//sal_kernel_print_info ("\n");
+	for (index=0; index<64; index++) {
+		if (!ba->level2[index])
+			sal_kernel_print_info ("level2[%02d]: empty\n", index);
+		else {
+			sal_kernel_print_info ("level2[%02d]: ", index);
+			sal_print_register(64, ba->level2[index]);
+		}
+		//sal_kernel_print_info ("\n");
+	}
+}
+
+#define DELIMITER	4
+void sal_print_register (SR_U8 bits, SR_U64 num)
+{
+	SR_U8   index;
+	SR_U8   str_inx;
+	SR_U8   delimiter;
+	SR_U64  tmp;
+	SR_U8 	str[80];
+
+	index = bits-1;
+	str_inx = 0;
+	delimiter = (DELIMITER-1);
+
+	switch (bits) {
+		case 8:  tmp = 0x80; break;
+		case 16: tmp = 0x8000; break;
+		case 32: tmp = 0x80000000; break;
+		case 64: tmp = 0x8000000000000000; break;
+		default:
+			sal_kernel_print_err ("[%s] printing %d bits is not supported\n", __FUNCTION__, bits);
+			return;
+	};
+	while (index >= 0) {
+		str[str_inx] = (num & tmp)? '1':'0';
+		tmp = (tmp >> 1);
+		if (index == 0)
+			break;
+		index--;
+		if (str_inx == delimiter)  {
+			str_inx++;
+			str[str_inx] = ' ';
+			delimiter+= (DELIMITER+1);
+		}
+		str_inx++;
+	}
+	str[++str_inx] = 0;
+	sal_kernel_print_info ("%s\n", str);
+}

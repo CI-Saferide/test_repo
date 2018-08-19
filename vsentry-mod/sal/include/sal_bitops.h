@@ -44,5 +44,9 @@ void sal_not_op_array (bit_array *arr);
 void sal_print_bit_array(bit_array *arr);
 SR_BOOL sal_bit_array_is_set (SR_U16 bit, bit_array *arr);
 
+/* debug capabilities */
+void sal_print_register (SR_U8 bits, SR_U64 num);
+void sal_print_ba(bit_array *ba);
+
 
 #endif /* SAL_BITOPS_H*/
