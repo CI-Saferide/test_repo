@@ -98,7 +98,9 @@ enum cls_actions sr_cls_rl_check(struct sr_rl_t *rl, SR_U32 timestamp, SR_U32 si
 		SR_ATOMIC_SET(&rl->count, 1);
 		rl->timestamp = timestamp;
 		return SR_CLS_ACTION_ALLOW;
-	}
+	}else if(unlikely(rl->timestamp == UINT_MAX/HZ))
+		rl->timestamp = 0;
+		
 	if (rl->rate_type == SR_RATE_TYPE_EVENT && SR_ATOMIC_INC_RETURN(&rl->count) > rl->max_rate) {
 		return rl->exceed_action;
 	}
