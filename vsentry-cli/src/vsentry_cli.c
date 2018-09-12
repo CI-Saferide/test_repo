@@ -13,7 +13,7 @@
 #include "can_rule.h"
 #include "file_rule.h"
 #include "sal_linux.h"
-#include "sal_cli_interface.h"
+#include "sr_engine_cli.h"
 #include "sr_canbus_common.h"
 #include "db_tools.h"
 
@@ -431,9 +431,9 @@ static SR_32 handle_load(void)
 			goto out;
 		}
 		switch (cval) {
-			case '&': /* Finish load */
+			case SR_CLI_END_OF_TRANSACTION: /* Finish load */
 				goto out;
-			case '#': /* Finish rule */
+			case SR_CLI_END_OF_ENTITY: /* Finish entity */
 				buf[ind] = 0;
 				handle_load_data(buf);
 				buf[0] = 0;
@@ -721,7 +721,10 @@ static char *get_string_user_input(SR_BOOL is_current, char *def_val, char *prom
 	sprintf(buf, "%s is %s", is_current ? "current" : "default", def_val ?: "NONE");
 	while (1) { 
 		printf(">%s: (%s):", prompt, buf);
-		fgets(input, sizeof(input), stdin);
+		if (!fgets(input, sizeof(input), stdin)) {
+			printf("Error_reading\n");
+			continue;
+		}
 		chop_nl(input);
 		if (*input) {
 			if (is_valid_cb && !is_valid_cb(input)) {
@@ -1077,8 +1080,8 @@ static void actions_commit(SR_32 fd)
 	char buf[MAX_BUF_SIZE];
 
 	for (i = 0; i < num_of_actions; i++) {
-		sprintf(buf, "action,%s,%s,%s#", actions[i].action_name, get_action_string(actions[i].action),
-                        get_action_log_facility_string(actions[i].log_facility));
+		sprintf(buf, "action,%s,%s,%s%c", actions[i].action_name, get_action_string(actions[i].action),
+                        get_action_log_facility_string(actions[i].log_facility), SR_CLI_END_OF_ENTITY);
                 len = strlen(buf);
                 if (write(fd, buf, len) < len) {
                         printf("Write to engine failed !!\n");
@@ -1165,7 +1168,7 @@ static void rules_commit(SR_32 fd)
 static SR_32 handle_commit(void)
 {
 	SR_32 fd, rc, len, st = SR_SUCCESS;
-	char cmd[100], cval;
+	char cmd[100], cval, buf[2] = {};
 	
 	if ((fd = engine_connect()) < 0) {
 		printf("Failed engine connect\n");
@@ -1192,7 +1195,9 @@ static SR_32 handle_commit(void)
 
 	actions_commit(fd);
 	rules_commit(fd);
-	write(fd, "&", 1);
+	buf[0] = SR_CLI_END_OF_TRANSACTION;
+	if (write(fd, buf, 1) < 1)
+		printf("write of SR_CLI_END_OF_TRANSACTION failed!\n");
 out:
         sleep(1);
         close(fd);

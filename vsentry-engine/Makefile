@@ -39,6 +39,7 @@ SRCS 		:=  main.c \
 				sr_ring_buf.c \
 				sr_tasks.c \
 				sr_engine_utils.c \
+				sr_engine_cli.c \
 				sr_event_receiver.c \
 				sr_event_stats_receiver.c \
 				sr_engine_main.c \

@@ -9,66 +9,18 @@
 #include "sr_white_list.h"
 #include "sr_stat_analysis.h"
 #include "sr_control.h"
-#include "sr_db.h"
-#include "sr_db_file.h"
-#include "sr_db_ip.h"
-#include "sr_db_can.h"
+#include "sr_engine_cli.h"
 
 static SR_BOOL is_run;
 static pthread_t t;
-
-static void handle_cli_load(SR_32 fd)
-{
-	action_dump(fd);
-	file_rule_dump_rules(fd);
-	ip_rule_dump_rules(fd);
-	can_rule_dump_rules(fd);
-	write(fd, "&", 1);
-}
-
-static void handle_cli_commit(SR_32 fd)
-{
-	SR_U32 len, ind;
-	char cval;
-	char buf[10000];
-
-	// Snc 
-	write(fd, "&", 1);
-
-	buf[0] = 0;
-	ind = 0;
-	for (;;) {
-		len = read(fd, &cval, 1);
-		if (!len) {
-			printf("Failed reading from socket");
-			return;
-		}
-		switch (cval) {
-			case '&': /* Finish load */
-                                goto out;
-                        case '#': /* Finish rule */
-                                buf[ind] = 0;
-                                printf("Got buffer:%s: \n", buf);
-                                buf[0] = 0;
-                                ind = 0;
-                                break;
-                        default:
-                                buf[ind++] = cval;
-                                break;
-                }
-        }
-
-out:
-	return;
-}
 
 static SR_32 handle_data(char *buf, SR_32 fd)
 {
 	printf("Got buf:%s: \n", buf);
 	if (!memcmp(buf, "cli_load", strlen("cli_load")))
-		handle_cli_load(fd);
+		sr_engine_cli_load(fd);
 	if (!memcmp(buf, "cli_commit", strlen("cli_commit")))
-		handle_cli_commit(fd);
+		sr_engine_cli_commit(fd);
 
 	return SR_SUCCESS;
 }

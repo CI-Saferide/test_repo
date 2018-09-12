@@ -5,6 +5,7 @@
 #include "list.h"
 #include "file_rule.h"
 #include "sr_cls_wl_common.h"
+#include "sr_engine_cli.h"
 
 static list_t file_rules_list;
 
@@ -16,9 +17,9 @@ static void dump_file_rule(void *data, void *param)
 	file_rule_t *file_rule = (file_rule_t *)data;
 
 	is_wl = (file_rule->rulenum >= SR_FILE_WL_START_RULE_NO);
-	sprintf(buf, "file%s,%d,%d,%s,%s,%s,%s,%s#",
+	sprintf(buf, "file%s,%d,%d,%s,%s,%s,%s,%s%c",
 		is_wl ? "_wl" : "", file_rule->rulenum, file_rule->tuple.id, file_rule->action_name,
-		file_rule->tuple.filename, file_rule->tuple.permission, file_rule->tuple.user, file_rule->tuple.program);
+		file_rule->tuple.filename, file_rule->tuple.permission, file_rule->tuple.user, file_rule->tuple.program, SR_CLI_END_OF_ENTITY);
 	len = strlen(buf);
 	if ((n = write(fd, buf, len)) < len) {
 		printf("Write to CLI file failed \n");

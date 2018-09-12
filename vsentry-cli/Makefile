@@ -2,7 +2,7 @@ ifdef CROSS_COMPILE
 export CC=$(CROSS_COMPILE)gcc
 endif
 
-CPPFLAGS += -I../common/include -I../vsentry-lib/include -I../vsentry-engine/sal/platform/linux/include -I../tools/sr-log/include -I../tools/db_tools/include
+CPPFLAGS += -I../common/include -I../vsentry-lib/include -I../vsentry-engine/sal/platform/linux/include -I../vsentry-engine/include -I../tools/sr-log/include -I../tools/db_tools/include
 
 
 TOP_DIR		:= $(shell pwd)

@@ -4,6 +4,7 @@
 #include "sal_mem.h"
 #include "list.h"
 #include "sr_cls_wl_common.h"
+#include "sr_engine_cli.h"
 
 static list_t ip_rules_list;
 
@@ -21,10 +22,10 @@ static void dump_ip_rule(void *data, void *param)
 	strncpy(src_netmask, sal_get_str_ip_address(htonl(ip_rule->tuple.srcnetmask.s_addr)), IPV4_STR_MAX_LEN);
 	strncpy(dst_addr, sal_get_str_ip_address(htonl(ip_rule->tuple.dstaddr.s_addr)), IPV4_STR_MAX_LEN);
 	strncpy(dst_netmask, sal_get_str_ip_address(htonl(ip_rule->tuple.dstnetmask.s_addr)), IPV4_STR_MAX_LEN);
-        sprintf(buf, "ip%s,%d,%d,%s,%s,%s,%s,%s,%d,%d,%d,%s,%s#",
+        sprintf(buf, "ip%s,%d,%d,%s,%s,%s,%s,%s,%d,%d,%d,%s,%s%c",
                 is_wl ? "_wl" : "", ip_rule->rulenum, ip_rule->tuple.id, ip_rule->action_name,
 		src_addr, src_netmask, dst_addr, dst_netmask, ip_rule->tuple.proto,
-		ip_rule->tuple.srcport, ip_rule->tuple.dstport, ip_rule->tuple.user, ip_rule->tuple.program);
+		ip_rule->tuple.srcport, ip_rule->tuple.dstport, ip_rule->tuple.user, ip_rule->tuple.program, SR_CLI_END_OF_ENTITY);
         len = strlen(buf);
         if ((n = write(fd, buf, len)) < len) {
 		perror("write");

@@ -4,6 +4,7 @@
 #include "list.h"
 #include "action.h"
 #include "db_tools.h"
+#include "sr_engine_cli.h"
 
 typedef struct {
 	SR_BOOL is_populated;
@@ -100,8 +101,8 @@ SR_32 action_dump(int fd)
 	for (i = 0; i < DB_MAX_NUM_OF_ACTIONS; i++) {
 		if (!db_actions[i].is_populated)
 			continue;
-        	sprintf(buf, "action,%s,%s,%s#", db_actions[i].action.action_name, get_action_string(db_actions[i].action.action), 
-			get_action_log_facility_string(db_actions[i].action.log_facility));
+        	sprintf(buf, "action,%s,%s,%s%c", db_actions[i].action.action_name, get_action_string(db_actions[i].action.action), 
+			get_action_log_facility_string(db_actions[i].action.log_facility), SR_CLI_END_OF_ENTITY);
 		len = strlen(buf);
 		if (write(fd, buf, len) < len) {
 			printf("Write to cli failed !!\n");

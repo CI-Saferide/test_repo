@@ -5,6 +5,7 @@
 #include "list.h"
 #include "can_rule.h"
 #include "sr_cls_wl_common.h"
+#include "sr_engine_cli.h"
 
 static list_t can_rules_list;
 
@@ -17,10 +18,10 @@ static void dump_can_rule(void *data, void *param)
         can_rule_t *can_rule = (can_rule_t *)data;
 
 	is_wl = (can_rule->rulenum >= SR_CAN_WL_START_RULE_NO);
-        sprintf(buf, "can%s,%d,%d,%s,%d,%d,%s,%s,%s#",
+        sprintf(buf, "can%s,%d,%d,%s,%d,%d,%s,%s,%s%c",
                 is_wl ? "_wl" : "", can_rule->rulenum, can_rule->tuple.id, can_rule->action_name,
                 can_rule->tuple.msg_id, can_rule->tuple.direction, can_rule->tuple.interface,
-		can_rule->tuple.user, can_rule->tuple.program); 
+		can_rule->tuple.user, can_rule->tuple.program, SR_CLI_END_OF_ENTITY); 
         len = strlen(buf);
         if ((n = write(fd, buf, len)) < len) {
                 perror("write");
