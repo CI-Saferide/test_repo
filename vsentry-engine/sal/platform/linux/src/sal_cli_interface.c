@@ -16,7 +16,6 @@ static pthread_t t;
 
 static SR_32 handle_data(char *buf, SR_32 fd)
 {
-	printf("Got buf:%s: \n", buf);
 	if (!memcmp(buf, "cli_load", strlen("cli_load")))
 		sr_engine_cli_load(fd);
 	if (!memcmp(buf, "cli_commit", strlen("cli_commit")))

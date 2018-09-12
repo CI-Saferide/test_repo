@@ -357,6 +357,7 @@ static SR_32 handle_load_data(char *buf)
 	SR_U32 rule_id, tuple_id;
 	rule_info_t *new_rule;
 	SR_32 rc = SR_SUCCESS;
+	SR_BOOL is_wl;
 
 	if (!memcmp(buf, "action", strlen("action")))
 		return handle_action_load(buf);
@@ -367,7 +368,6 @@ static SR_32 handle_load_data(char *buf)
 	rule_id = atoi(ptr);
 	ptr = strtok(NULL, ",");
 	tuple_id = atoi(ptr);
-	SR_BOOL is_wl;
 
 	if (!(new_rule = malloc(sizeof(rule_info_t)))) {
 		rc =  SR_ERROR;
@@ -783,6 +783,7 @@ static SR_32 handle_update_can(SR_BOOL is_wl, SR_U32 rule_id, SR_U32 tuple_id)
 	strncpy(update_rule.can_rule.action_name, get_string_user_input(rule_info != NULL, rule_info ? rule_info->can_rule.action_name : NULL , "action", is_valid_action), ACTION_STR_SIZE);
 
 	update_rule.tuple_id = update_rule.can_rule.tuple.id = tuple_id;
+	update_rule.can_rule.rulenum = rule_id;
 	update_rule.rule_type = RULE_TYPE_CAN;
 #ifndef CLI_DEBUG
 	printf("tuple id :%d \n", update_rule.tuple_id);
@@ -855,6 +856,7 @@ static SR_32 handle_update_ip(SR_BOOL is_wl, SR_U32 rule_id, SR_U32 tuple_id)
 	strncpy(update_rule.ip_rule.tuple.user, get_string_user_input(rule_info != NULL, rule_info ? rule_info->ip_rule.tuple.user : "*" , "user", NULL), USER_NAME_SIZE);
 	strncpy(update_rule.ip_rule.action_name, get_string_user_input(rule_info != NULL, rule_info ? rule_info->ip_rule.action_name : NULL , "action", is_valid_action), ACTION_STR_SIZE);
 	update_rule.tuple_id = update_rule.ip_rule.tuple.id = tuple_id;
+	update_rule.ip_rule.rulenum = rule_id;
 	update_rule.rule_type = RULE_TYPE_IP;
 
 #ifdef CLI_DEBUG
@@ -911,7 +913,8 @@ static SR_32 handle_update_file(SR_BOOL is_wl, SR_U32 rule_id, SR_U32 tuple_id)
 	printf("user :%s \n", update_rule.file_rule.tuple.user);
 	printf("program :%s \n", update_rule.file_rule.tuple.program);
 #endif
-	update_rule.tuple_id = update_rule.ip_rule.tuple.id = tuple_id;
+	update_rule.tuple_id = update_rule.file_rule.tuple.id = tuple_id;
+	update_rule.file_rule.rulenum = rule_id;
 	update_rule.rule_type = RULE_TYPE_FILE;
 
 	if (!rule_info) { 

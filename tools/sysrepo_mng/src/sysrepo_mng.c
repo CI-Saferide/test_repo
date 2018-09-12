@@ -1063,6 +1063,25 @@ SR_32 sysrepo_mng_session_end(sysrepo_mng_handler_t *handler)
 	return SR_SUCCESS;
 }
 
+SR_U8 sys_repo_mng_perm_get_code(char *perms)
+{
+	SR_8 help;
+	SR_U8 res = 0;
+	
+	if (!perms || strlen(perms) != 3)
+		return 0;
+
+	help = atoi(perms + 2);
+	if(help & 4)
+		res |= SR_FILEOPS_READ;
+	if(help & 2)
+		res |= SR_FILEOPS_WRITE;
+	if(help & 1)
+		res |= SR_FILEOPS_EXEC;
+
+	return res;
+}
+
 static void file_op_convert(SR_U8 file_op, char *perms)
 {
 	SR_U8 res = 0;
