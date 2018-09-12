@@ -36,6 +36,7 @@
 #include <ifaddrs.h>
 #include <linux/if_link.h>
 #include <sys/sysinfo.h>
+#include <sys/un.h>
 #include <ctype.h>
 
 #define VS_FILE_NAME 	"/dev/vsentry"
@@ -83,6 +84,7 @@ void sal_closelog(void);
 void sal_log(char *cef_buffer, SR_32 severity);
 char *sal_get_home_user(void);
 char *sal_get_str_ip_address(SR_U32 ip);
+void sal_get_ip_address_from_str(char *ip_addr, SR_U32 *ip);
 
 SR_32 sal_vsentry_fd_open(void);
 int sal_get_vsentry_fd(void);
@@ -98,5 +100,7 @@ void sal_set_interrupt_cb(void (*cb)(int));
 
 SR_32 sal_get_interface_id(char *interface, SR_32 *if_id);
 SR_32 sal_get_interface_name(SR_32 if_id, char *interface);
+
+SR_32 sal_linux_local_interface(char *file_name, SR_32 (*handle_data_cb)(char *buf, SR_32 fd), SR_BOOL (*is_run_cb)(void));
 
 #endif /* SAL_LINUX_ENGINE_H*/

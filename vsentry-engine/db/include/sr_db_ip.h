@@ -9,6 +9,7 @@ SR_32 sr_db_ip_rule_deinit(void);
 SR_32 sr_db_ip_rule_add(ip_rule_t *ip_rule);
 SR_32 sr_db_ip_rule_delete(ip_rule_t *ip_rule);
 ip_rule_t * sr_db_ip_rule_get(ip_rule_t *ip_rule);
+SR_32 ip_rule_dump_rules(int fd);
 void sr_db_ip_rule_print(void);
 
 #endif

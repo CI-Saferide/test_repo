@@ -2,8 +2,8 @@
 #include "string.h"
 #include "sal_linux.h"
 #include "list.h"
-
-#define DB_MAX_NUM_OF_ACTIONS 20
+#include "action.h"
+#include "db_tools.h"
 
 typedef struct {
 	SR_BOOL is_populated;
@@ -91,3 +91,25 @@ action_t *sr_db_action_get_action(char *action_name)
 
 	return NULL;
 }
+
+SR_32 action_dump(int fd)
+{
+	SR_U32 i, len;
+        char buf[10000];
+
+	for (i = 0; i < DB_MAX_NUM_OF_ACTIONS; i++) {
+		if (!db_actions[i].is_populated)
+			continue;
+        	sprintf(buf, "action,%s,%s,%s#", db_actions[i].action.action_name, get_action_string(db_actions[i].action.action), 
+			get_action_log_facility_string(db_actions[i].action.log_facility));
+		len = strlen(buf);
+		if (write(fd, buf, len) < len) {
+			printf("Write to cli failed !!\n");
+			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+				"%s=write to cli for file failed.",REASON);
+		}
+	}
+
+	return SR_SUCCESS;
+}
+

@@ -13,7 +13,7 @@
 static SR_BOOL is_run;
 static pthread_t t;
 
-static void handle_data(char *buf)
+static SR_32 handle_data(char *buf, SR_32 fd)
 {
 	printf("Got buf:%s: \n", buf);
 	if (!memcmp(buf, "wl_learn", strlen("wl_learn")))
@@ -34,54 +34,25 @@ static void handle_data(char *buf)
 		sr_stat_analysis_learn_mode_set(SR_STAT_MODE_PROTECT);
 	if (!memcmp(buf, "sp_off", strlen("sp_off")))
 		sr_stat_analysis_learn_mode_set(SR_STAT_MODE_OFF);
+
+	return SR_SUCCESS;
+}
+
+static SR_BOOL is_run_cb(void)
+{
+        return is_run;
 }
 
 static void *third_party_server(void *p)
 {
-	int sock, msgsock, rval;
-	struct sockaddr_un server = {};
-	char buf[1024];
+	SR_32 rc;
 
-	unlink(SR_THIRD_PARTY_FILE);
-
-	sock = socket(AF_UNIX, SOCK_STREAM, 0);
-	if (sock < 0) {
-		printf("opening stream socket %s\n", strerror(errno));
-		return NULL;
+	rc = sal_linux_local_interface(SR_THIRD_PARTY_FILE, handle_data, is_run_cb);
+	if (rc != SR_SUCCESS) {
+		printf("linux local interface failed for thrid party \n");
 	}
 
-	server.sun_family = AF_UNIX;
-	strcpy(server.sun_path, SR_THIRD_PARTY_FILE);
-	if (bind(sock, (struct sockaddr *) &server, sizeof(struct sockaddr_un))) {
-		printf("binding stream socket %s\n", strerror(errno));
-		return NULL;
-	}
-
-	printf("Socket name %s\n", server.sun_path);
-	listen(sock, 1);
-
-	while (is_run) {
-		msgsock = accept(sock, 0, 0);
-
-		if (msgsock == -1)
-			printf("accept %s\n", strerror(errno));
-		else do {
-			bzero(buf, sizeof(buf));
-			rval = read(msgsock, buf, 1024);
-			if (rval < 0)
-				printf("reading stream message %s\n", strerror(errno));
-			else if (rval == 0)
-				printf("ending connection\n");
-			else
-				handle_data(buf);
-			} while (rval > 0);
-		
-		close(msgsock);
-	}
-	close(sock);
-	unlink(SR_THIRD_PARTY_FILE);
-
-	return NULL;
+        return NULL;
 }
 
 SR_32 sal_third_party_interface_init(void)
