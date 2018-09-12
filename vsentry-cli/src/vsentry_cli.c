@@ -1102,11 +1102,11 @@ static char *get_str_ip_address(SR_U32 ip)
 
 static void commit_file_buf_cb(rule_info_t *iter, SR_BOOL is_wl, char *buf)
 {
-	sprintf(buf, "file%s,%d,%d,%s,%s,%s,%s,%s#",
+	sprintf(buf, "file%s,%d,%d,%s,%s,%s,%s,%s%c",
 		is_wl ? "_wl" : "", iter->file_rule.rulenum, iter->file_rule.tuple.id,
 		iter->file_rule.action_name, iter->file_rule.tuple.filename,
 		iter->file_rule.tuple.permission, iter->file_rule.tuple.user,
-		iter->file_rule.tuple.program);
+		iter->file_rule.tuple.program, SR_CLI_END_OF_ENTITY);
 }
 
 static void commit_ip_buf_cb(rule_info_t *iter, SR_BOOL is_wl, char *buf)
@@ -1118,18 +1118,19 @@ static void commit_ip_buf_cb(rule_info_t *iter, SR_BOOL is_wl, char *buf)
 	strncpy(src_netmask, get_str_ip_address(iter->ip_rule.tuple.srcnetmask.s_addr), IPV4_STR_MAX_LEN);
 	strncpy(dst_addr, get_str_ip_address(iter->ip_rule.tuple.dstaddr.s_addr), IPV4_STR_MAX_LEN);
 	strncpy(dst_netmask, get_str_ip_address(iter->ip_rule.tuple.dstnetmask.s_addr), IPV4_STR_MAX_LEN);
-	sprintf(buf, "ip%s,%d,%d,%s,%s,%s,%s,%s,%d,%d,%d,%s,%s#",
+	sprintf(buf, "ip%s,%d,%d,%s,%s,%s,%s,%s,%d,%d,%d,%s,%s%c",
 						is_wl ? "_wl" : "", iter->ip_rule.rulenum, iter->ip_rule.tuple.id, iter->ip_rule.action_name,
 						src_addr, src_netmask, dst_addr, dst_netmask, iter->ip_rule.tuple.proto,
-						iter->ip_rule.tuple.srcport, iter->ip_rule.tuple.dstport, iter->ip_rule.tuple.user, iter->ip_rule.tuple.program);
+						iter->ip_rule.tuple.srcport, iter->ip_rule.tuple.dstport, iter->ip_rule.tuple.user, iter->ip_rule.tuple.program,
+						SR_CLI_END_OF_ENTITY);
 }
 
 static void commit_can_buf_cb(rule_info_t *iter, SR_BOOL is_wl, char *buf)
 {
-	sprintf(buf, "can%s,%d,%d,%s,%d,%d,%s,%s,%s#",
+	sprintf(buf, "can%s,%d,%d,%s,%d,%d,%s,%s,%s%c",
 		is_wl ? "_wl" : "", iter->can_rule.rulenum, iter->can_rule.tuple.id, iter->can_rule.action_name,
 		iter->can_rule.tuple.msg_id, iter->can_rule.tuple.direction, iter->can_rule.tuple.interface,
-		iter->can_rule.tuple.user, iter->can_rule.tuple.program);
+		iter->can_rule.tuple.user, iter->can_rule.tuple.program, SR_CLI_END_OF_ENTITY);
 }
 
 static void rule_type_commit(SR_BOOL is_wl, rule_info_t *table[], SR_32 fd, void (*buf_cb)(rule_info_t *iter, SR_BOOL is_wl, char *buf))
