@@ -1103,15 +1103,21 @@ static SR_32 handle_commit(void)
             st = SR_ERROR;
             goto out;
         }
-	printf("cahr read:%c \n", cval);
 
 	actions_commit(fd);
 	rules_commit(fd);
 	buf[0] = SR_CLI_END_OF_TRANSACTION;
 	if (write(fd, buf, 1) < 1)
 		printf("write of SR_CLI_END_OF_TRANSACTION failed!\n");
+	sleep(1);
+	len = read(fd, &cval, 1);
+	if (!len) {
+		printf("Failed reading from socket");
+		st = SR_ERROR;
+		goto out;
+	}
+
 out:
-        sleep(1);
         close(fd);
 
 	return st;

@@ -56,8 +56,6 @@ static SR_32 handle_action_commit(sysrepo_mng_handler_t *handler, char *buf)
 	}
 	log_facility = get_action_log_facility_code(ptr);
 
-	printf("handle buffer action:%s action:%d lof_facility:%d \n", action_name, action, log_facility);
-
 	if (sys_repo_mng_create_action(handler, action_name, action == ACTION_ALLOW, log_facility != LOG_NONE) != SR_SUCCESS) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
                         "%s=asction buf correpted ",REASON);
@@ -364,6 +362,13 @@ out:
                 CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
                 "%s=sysrepod session end failed ", REASON);
 		st = SR_ERROR;
+	}
+
+	// Snc 
+	syncbuf[0] = SR_CLI_END_OF_TRANSACTION;
+	if (write(fd, syncbuf, 1) < 1) {
+		printf("Failed writing sync buf\n");
+		return SR_ERROR;
 	}
 
         return st;
