@@ -12,6 +12,7 @@
 #include <string.h>
 #include <ctype.h>
 #include "sr_cls_wl_common.h"
+#include "db_tools.h"
 
 #ifdef NO_CEF
 #define REASON 		"reason" // shut up GCC
@@ -1196,7 +1197,7 @@ SR_32 sys_repo_mng_create_net_rule(sysrepo_mng_handler_t *handler, SR_32 rule_id
 static void can_packet_convert(SR_U32 msg_id,SR_U8 dir, char * msgid_str,char * dir_str)
 {
 	sprintf(msgid_str, "%08x", msg_id);
-	sprintf(dir_str, "%s", dir==0?"in":"out");
+	strcpy(dir_str, get_dir_desc(dir));
 }
 
 #define ADD_CAN_FIELD(fieldname, fieldvalue, tuple) \

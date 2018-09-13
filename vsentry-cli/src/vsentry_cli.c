@@ -80,105 +80,6 @@ static void chop_nl(char *str)
 		str[len - 1] = '\0';
 }
 
-static char *get_dir_desc(SR_8 dir)
-{
-	static char res[100];
-
-	switch (dir) {
-		case SENTRY_DIR_IN:
-			strcpy(res, "in");	
-			break;
-		case SENTRY_DIR_OUT:
-			strcpy(res, "out");	
-			break;
-		case SENTRY_DIR_BOTH:
-			strcpy(res, "both");	
-			break;
-		default:
-			strcpy(res, "invalid");	
-			break;
-	};
-
-	return res;
-} 
-
-static SR_8 get_dir_id(char *dir)
-{
-	if (!strcmp(dir, "in"))
-		return SENTRY_DIR_IN;
-	if (!strcmp(dir, "out"))
-		return SENTRY_DIR_OUT;
-	if (!strcmp(dir, "both"))
-		return SENTRY_DIR_BOTH;
-	return -1;	
-}
-
-static char *get_ip_proto_name(SR_U8 ip_proto)
-{
-	static char proto_name[16];
-
-	switch (ip_proto) {
-		case 6:
-			strcpy(proto_name, "tcp");
-			break;
-		case 17:
-			strcpy(proto_name, "udp");
-			break;
-		case 0:
-			strcpy(proto_name, "any");
-			break;
-		default:
-			strcpy(proto_name, "invalid");
-			break;
-	}
-
-	return proto_name;
-}
-
-static SR_8 get_ip_proto_code(char *ip_proto)
-{
-	if (!strcmp(ip_proto, "tcp"))
-		return 6;
-	if (!strcmp(ip_proto, "udp"))
-		return 17;
-	if (!strcmp(ip_proto, "any"))
-		return 0;
-	return -1;
-}
-
-static char *prem_db_to_cli(char *prem_str)
-{
-	static char cli_perm[4];
-	SR_U8 perm = atoi(prem_str + 2);
-
-	cli_perm[0] = 0;
-	if (perm & FILE_PERM_R)
-		strcat(cli_perm, "r");
-	if (perm & FILE_PERM_W)
-		strcat(cli_perm, "w");
-	if (perm & FILE_PERM_X)
-		strcat(cli_perm, "x");
-
-	return cli_perm;
-}
-
-static char *perm_cli_to_db(char *perm_str)
-{
-	SR_U8 perm = 0;
-	static char db_perm[4];
-	
-	if (strstr(perm_str, "r"))
-		perm |= FILE_PERM_R;
-	if (strstr(perm_str, "w"))
-		perm |= FILE_PERM_W;
-	if (strstr(perm_str, "x"))
-		perm |= FILE_PERM_X;
-
-	sprintf(db_perm, "77%d", perm);
-
-	return db_perm;
-}
-
 static int engine_connect(void)
 {
 	int fd;
@@ -296,7 +197,7 @@ static rule_info_t *get_rule_sorted(rule_info_t *table, SR_U32 tuple_id)
 
 	for (iter = table; iter && iter->tuple_id < tuple_id; iter = iter->next);
 
-	return iter;
+	return (iter && iter->tuple_id == tuple_id) ? iter : NULL;
 }
 
 static SR_32 delete_rule(rule_info_t **table, SR_U32 tuple_id)
@@ -774,7 +675,6 @@ static SR_32 handle_update_can(SR_BOOL is_wl, SR_U32 rule_id, SR_U32 tuple_id)
 		get_string_user_input(rule_info != NULL, rule_info ? rule_info->can_rule.tuple.interface : NULL , "interface", is_valid_interface), INTERFACE_SIZE);
 
 	dir_input = get_string_user_input(rule_info != NULL, dir_def, "direction (in, out, both)", is_valid_dir);
-	printf("dir input :%s: \n", dir_input);
 	update_rule.can_rule.tuple.direction = get_dir_id(dir_input);
 
 	strncpy(update_rule.can_rule.tuple.program, get_string_user_input(rule_info != NULL, rule_info ? rule_info->can_rule.tuple.program : "*" , "program", NULL), PROG_NAME_SIZE);

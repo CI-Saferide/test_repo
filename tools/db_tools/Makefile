@@ -13,7 +13,7 @@ INCLUDES	:= -I$(shell pwd)/include \
 			   -I$(TOP_DIR)/../common/include \
 			   -I$(TOP_DIR)/../tools/sr-log/include \
 			   -I$(TOP_DIR)/../vsentry-lib/include \
-
+			   -I$(TOP_DIR)/../vsentry-engine/sal/platform/linux/include \
 
 OBJS 		:= $(addprefix $(OBJDIR)/,$(SRCS:.c=.o))
 DEPS 		:= $(OBJS:.o=.d)
