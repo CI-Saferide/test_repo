@@ -15,5 +15,6 @@ SR_U8 can_dir_convert(SR_U8 dir);
 SR_8 get_ip_proto_code(char *ip_proto);
 char *prem_db_to_cli(char *prem_str);
 char *perm_cli_to_db(char *perm_str);
+SR_BOOL is_valid_ip(char *ip_addr);
 
 #endif

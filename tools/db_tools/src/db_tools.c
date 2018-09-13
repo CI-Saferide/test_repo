@@ -188,3 +188,31 @@ char *perm_cli_to_db(char *perm_str)
 	return db_perm;
 }
 
+SR_BOOL is_valid_ip(char *ip_addr)
+{
+	char buf[100] = {}, num_of_dots = 0;
+	SR_U32 ind = 0;
+
+	for (; *ip_addr; ip_addr++) { 
+		if (*ip_addr) {
+			if (*ip_addr == '.') {
+				num_of_dots++;
+				if (num_of_dots > 3)
+					return SR_FALSE;
+				if (atoi(buf) > 255)
+					return SR_FALSE;
+				buf[0] = 0;
+				ind = 0;
+			} else if (isdigit(*ip_addr)) {
+				if (ind > 2)
+					return SR_FALSE;
+				buf[ind++] = *ip_addr;
+			 } else
+				return SR_FALSE;
+		}
+	}
+
+	if (num_of_dots < 3)
+		return SR_FALSE;
+	return (atoi(buf) <= 255);
+}

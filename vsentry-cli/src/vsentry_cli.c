@@ -594,11 +594,6 @@ static SR_BOOL is_valid_dir(char *dir)
 	return get_dir_id(dir) != -1;
 }
 
-static SR_BOOL is_valid_ip_address(char *ip_address)
-{
-	return SR_TRUE;
-}
-
 static SR_BOOL is_valid_ip_proto(char *ip_proto)
 {
 	return (!strcmp(ip_proto, "tcp") || !strcmp(ip_proto, "udp") || !strcmp(ip_proto, "any"));
@@ -608,6 +603,19 @@ static SR_BOOL is_valid_port(char *port)
 {
 	for (; *port; port++) {
 		if (!isdigit(*port))
+			return SR_FALSE;
+	}
+
+	return SR_TRUE;
+}
+
+static SR_BOOL is_perm_valid(char *perm)
+{
+	if (strlen(perm) > 3)
+		return SR_FALSE;
+
+	for(; *perm; perm++) {
+		if (*perm != 'r' && *perm != 'w' && *perm != 'x')
 			return SR_FALSE;
 	}
 
@@ -737,13 +745,13 @@ static SR_32 handle_update_ip(SR_BOOL is_wl, SR_U32 rule_id, SR_U32 tuple_id)
 		strcpy(dst_port_def, "0");
 	}
 
-	param = get_string_user_input(rule_info != NULL, src_ip_address_def , "source addr", is_valid_ip_address);
+	param = get_string_user_input(rule_info != NULL, src_ip_address_def , "source addr", is_valid_ip);
 	inet_aton(param, &update_rule.ip_rule.tuple.srcaddr);
-	param = get_string_user_input(rule_info != NULL, src_netmask_def , "source netmask", is_valid_ip_address);
+	param = get_string_user_input(rule_info != NULL, src_netmask_def , "source netmask", is_valid_ip);
 	inet_aton(param, &update_rule.ip_rule.tuple.srcnetmask);
-	param = get_string_user_input(rule_info != NULL, dst_ip_address_def , "dest addr", is_valid_ip_address);
+	param = get_string_user_input(rule_info != NULL, dst_ip_address_def , "dest addr", is_valid_ip);
 	inet_aton(param, &update_rule.ip_rule.tuple.dstaddr);
-	param = get_string_user_input(rule_info != NULL, dst_netmask_def , "dest netmask", is_valid_ip_address);
+	param = get_string_user_input(rule_info != NULL, dst_netmask_def , "dest netmask", is_valid_ip);
 	inet_aton(param, &update_rule.ip_rule.tuple.dstnetmask);
 	param = get_string_user_input(rule_info != NULL, ip_proto_def , "ip proto", is_valid_ip_proto);
 	update_rule.ip_rule.tuple.proto = get_ip_proto_code(param);
@@ -800,9 +808,9 @@ static SR_32 handle_update_file(SR_BOOL is_wl, SR_U32 rule_id, SR_U32 tuple_id)
 	}
 
 	strncpy(update_rule.file_rule.tuple.filename,
-		get_string_user_input(rule_info != NULL, rule_info ? rule_info->file_rule.tuple.filename : "" , "file", NULL), FILE_NAME_SIZE);
+		get_string_user_input(rule_info != NULL, rule_info ? rule_info->file_rule.tuple.filename : NULL , "file", NULL), FILE_NAME_SIZE);
 	strncpy(update_rule.file_rule.tuple.permission,
-		perm_cli_to_db(get_string_user_input(rule_info != NULL, rule_info ? prem_db_to_cli(rule_info->file_rule.tuple.permission) : NULL , "premission", NULL)), 4);
+		perm_cli_to_db(get_string_user_input(rule_info != NULL, rule_info ? prem_db_to_cli(rule_info->file_rule.tuple.permission) : NULL , "premission", is_perm_valid)), 4);
 	strncpy(update_rule.file_rule.tuple.program, get_string_user_input(rule_info != NULL, rule_info ? rule_info->file_rule.tuple.program : "*" , "program", NULL), PROG_NAME_SIZE);
 	strncpy(update_rule.file_rule.tuple.user, get_string_user_input(rule_info != NULL, rule_info ? rule_info->file_rule.tuple.user : "*" , "user", NULL), USER_NAME_SIZE);
 	strncpy(update_rule.file_rule.action_name, get_string_user_input(rule_info != NULL, rule_info ? rule_info->file_rule.action_name : NULL , "action", is_valid_action), ACTION_STR_SIZE);
