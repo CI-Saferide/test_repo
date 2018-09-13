@@ -885,16 +885,21 @@ SR_32 sysrepo_mng_delete_db(sysrepo_mng_handler_t *handler)
 	return SR_SUCCESS;
 }
 
-SR_32 sysrepo_mng_delete_all(sysrepo_mng_handler_t *handler)
+SR_32 sysrepo_mng_delete_all(sysrepo_mng_handler_t *handler, SR_BOOL is_commit)
 {
+	char str_param[MAX_STR_SIZE];
 	SR_32 rc;
 
-	rc = sr_delete_item(handler->sess, "/saferide:config", SR_EDIT_DEFAULT);
+	sprintf(str_param, "/%s", DB_PREFIX);
+	rc = sr_delete_item(handler->sess, str_param, SR_EDIT_DEFAULT);
 	if (SR_ERR_OK != rc) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 			"%s= Delete all failed : %s", REASON, sr_strerror(rc));
 		return SR_ERROR;
 	}
+	if (!is_commit)
+		return SR_SUCCESS;
+
 	rc = sr_commit(handler->sess);
 	if (SR_ERR_OK != rc) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,

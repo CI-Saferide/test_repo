@@ -465,7 +465,7 @@ static void print_show_usage(void)
 
 static void print_update_usage(void)
 {
-	printf("update [action|rule|wl] [action_obj|can|ipv4|file] [rule=x] [tuple=y]\n");
+	printf("update|delete [action|rule|wl] [action_obj|can|ipv4|file] [rule=x] [tuple=y]\n");
 	printf("  update tables\n");
 	printf("[action|rule|wl] - action table, user defied tabel or white list table \n");
 	printf("[can|ipv4|file] - specifies the desired table\n");

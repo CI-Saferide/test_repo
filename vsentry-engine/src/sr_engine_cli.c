@@ -314,6 +314,13 @@ SR_32 sr_engine_cli_commit(SR_32 fd)
                 return SR_ERROR;
         }
 
+	/* Delete all DB */
+	if (sysrepo_mng_delete_all(&sysrepo_handler, SR_FALSE)) {
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+		"%s=cli commit failed delete DB failed", REASON);
+		return SR_ERROR;
+	}
+
         buf[0] = 0;
         ind = 0;
         for (;;) {
