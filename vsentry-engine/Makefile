@@ -26,7 +26,6 @@ SRCS 		:=  main.c \
 				sal_linux.c \
 				sal_can_linux.c \
 				sal_third_party_interface.c \
-				sal_cli_interface.c \
 				sr_cls_file_control.c \
 				sr_cls_network_control.c \
 				sr_cls_canbus_control.c \
@@ -39,7 +38,6 @@ SRCS 		:=  main.c \
 				sr_ring_buf.c \
 				sr_tasks.c \
 				sr_engine_utils.c \
-				sr_engine_cli.c \
 				sr_event_receiver.c \
 				sr_event_stats_receiver.c \
 				sr_engine_main.c \
@@ -65,6 +63,8 @@ SRCS 		:=  main.c \
 				sr_ml_can.c \
 				log_uploader.c \
 				sr_stat_system_policer.c
+
+SRCS 		+= $(if $(SR_CLI),sal_cli_interface.c sr_engine_cli.c)
 
 # include folders
 INCLUDES 	:=  -I../common/include \
@@ -101,6 +101,7 @@ CFLAGS 		+= -DSR_CAN_DEBUG_PRINT
 #CFLAGS 		+= -DSR_RB_DEBUG -DSR_MSG_DEBUG
 CFLAGS 		+= -D__linux
 #CFLAGS 		+= -DUNIT_TEST
+CFLAGS		+= $(if $(SR_CLI),-DSR_CLI)
 
 ifdef DEBUG
 CFLAGS		+= -g -O0

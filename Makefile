@@ -13,19 +13,30 @@ KERNEL_SRC  ?= /lib/modules/$(shell uname -r)/build
 #		make ARCH=arm64 KERNEL_SRC=~/git/raspberrypi/linux CROSS_COMPILE=aarch64-linux-gnu- 
 #  SR_STAT_ANALYSIS_DEBUG=y - set stat analysis debug flag
 
-all:
+ENG_FLAGS += $(if $(SR_CLI),SR_CLI=1)
+MORE_TARGETS += $(if $(SR_CLI),cli)
+MORE_CLEAN_TARGETS += $(if $(SR_CLI),clean_cli)
+
+all: $(MORE_TRAGETS)
 	@echo "***** enter vsentry-mod *****"
 	@$(MAKE) -C vsentry-mod KERNEL_SRC=${KERNEL_SRC}
 	@echo "***** enter vsentry-engine *****"
-	@$(MAKE) -s -C vsentry-engine
+	@$(MAKE) -s -C vsentry-engine $(ENG_FLAGS)
 	@echo "***** enter vsentry-control *****"
 	@$(MAKE) -s -C vsentry-control
 	@sudo make install -s -C vsentry-control
 	@echo "***** enter vsentry-ut *****"
 	@$(MAKE) -s -C vsentry-ut
 
-clean:
+cli:
+	@echo "***** enter vsentry-cli *****"
+	@$(MAKE) -s -C vsentry-cli
+
+clean: $(MORE_CLEAN_TARGETS)
 	@$(MAKE) -C vsentry-mod clean
 	@$(MAKE) -s -C vsentry-engine clean
 	@$(MAKE) -s -C vsentry-control clean
 	@$(MAKE) -s -C vsentry-ut clean
+
+clean_cli:
+	@$(MAKE) -s -C vsentry-cli clean
