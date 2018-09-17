@@ -16,10 +16,13 @@
 #include "sr_engine_cli.h"
 #include "sr_canbus_common.h"
 #include "db_tools.h"
+#include <termios.h>
 
 #define NUM_OF_RULES 4096
 #define MAX_BUF_SIZE 10000
+#define NUM_OF_CMD_ENTRIES 100
 
+#define CLI_PROMPT "vsentry cli>"
 #define RULE "rule"
 #define TUPLE "tuple"
 #define FILENAME "file"
@@ -70,7 +73,46 @@ rule_info_t *ip_wl[NUM_OF_RULES] = {};
 rule_info_t *can_wl[NUM_OF_RULES] = {};
 action_t actions[DB_MAX_NUM_OF_ACTIONS] = {};
 
+char *cmds[NUM_OF_CMD_ENTRIES] = {};
+
 static SR_U8 num_of_actions;
+
+static SR_U32 cmd_curr;
+
+static void cmd_insert(char *arr[], char *str)
+{
+	SR_U32 i;
+
+	/// Always insert at first
+	if (arr[NUM_OF_CMD_ENTRIES - 1])
+		free(arr[NUM_OF_CMD_ENTRIES - 1]);
+	for (i = NUM_OF_CMD_ENTRIES - 1; i > 0; i--) {
+		arr[i] = arr[i - 1];
+	}
+	arr[0] = strdup(str);
+}
+
+static char *cmd_get_first(char *arr[])
+{
+	cmd_curr = 0;
+	return arr[0];
+}
+
+static char *cmd_get_next(char *arr[])
+{
+	if (cmd_curr == NUM_OF_CMD_ENTRIES || !arr[cmd_curr + 1])
+		return NULL;
+	cmd_curr++;
+	return arr[cmd_curr];
+}
+
+static char *cmd_get_prev(char *arr[])
+{
+	if (cmd_curr == 0 || !arr[cmd_curr - 1])
+		return NULL;
+	cmd_curr--;
+	return arr[cmd_curr];
+}
 
 static void chop_nl(char *str)
 {
@@ -801,7 +843,6 @@ static SR_32 handle_update_file(SR_BOOL is_wl, SR_U32 rule_id, SR_U32 tuple_id)
 	rule_info = get_rule_sorted(is_wl ? file_wl[rule_id] : file_rules[rule_id], tuple_id);
 	if (rule_info) {
 		update_rule = *rule_info;
-		printf("prems:%s: clip:%s:\n",  rule_info->file_rule.tuple.permission, prem_db_to_cli(rule_info->file_rule.tuple.permission));
 		printf(">Updating an existing rule...\n");
 	} else {
 		printf(">Adding a new rule...\n");
@@ -1206,6 +1247,7 @@ static void parse_command(char *cmd)
 		return handle_update(SR_TRUE);
 	}
 	if (!strcmp(ptr, "commit")) {
+		printf("committing...\n");
 		if (handle_commit() != SR_SUCCESS) {
 			printf("Commit failed !!!\n");
 		}
@@ -1215,9 +1257,133 @@ static void parse_command(char *cmd)
 	print_usage();
 }
 
+static void term_reset(int count)
+{
+	struct termios t;
+
+	tcgetattr(STDIN_FILENO, &t);
+	t.c_lflag |= ECHO;
+	tcsetattr(STDIN_FILENO, TCSANOW, &t);
+
+	printf("\033[%dD", count);
+	if (system ("/bin/stty cooked")) { 
+		printf("Error reseting term\n");
+		return;
+	}
+}
+
+static void get_cmd(char *buf, SR_U32 size, char *prompt)
+{
+	char c;
+	char *last_cmd;
+	SR_32 ind = 0, count = 0, pos, min_pos;
+	struct termios t;
+	SR_BOOL is_up = SR_FALSE;
+
+	if (system("/bin/stty raw")) {
+		printf("Error seting the term\n");
+		return;
+	}
+	tcgetattr(STDIN_FILENO, &t);
+	t.c_lflag &= ~ECHO;
+	tcsetattr(STDIN_FILENO, TCSANOW, &t);
+
+	memset(buf, 0, size);
+	pos = min_pos = strlen(prompt);
+
+	while (1) {
+		c = getchar();
+		switch (c) {
+			case '\033': // Escape
+				c = getchar();
+				switch (c) { 
+					case '[':
+						c = getchar();
+						switch (c) { 
+							case 'A': // up
+								last_cmd = is_up ? cmd_get_next(cmds) : cmd_get_first(cmds);
+								if (!last_cmd)
+									break;
+								if (strlen(buf))
+									printf("\033[%dD", (int)strlen(buf));
+								printf("\033[K");
+								strcpy(buf, last_cmd);
+								ind = strlen(buf);
+								is_up = SR_TRUE;
+								printf("%s", buf);
+								pos = strlen(buf) + strlen(prompt);
+								break;
+							case 'B': // down
+								if (!is_up)
+									break;
+								last_cmd = cmd_get_prev(cmds);
+								if (!last_cmd)
+									break;
+								if (strlen(buf))
+									printf("\033[%dD", (int)strlen(buf));
+								printf("\033[K");
+								strcpy(buf, last_cmd);
+								ind = strlen(buf);
+								is_up = SR_TRUE;
+								printf("%s", buf);
+								pos = strlen(buf) + strlen(prompt);
+								break;
+							case 'D': // left
+								if (pos <= min_pos)
+									break;
+								pos--;
+								printf("\033[1D");
+								break;
+							case 'C': //right
+								printf("\033[1C");
+								pos++;
+								break;
+							default:
+								printf("XXXXX char:%c \n", c);
+								break;
+						}
+						break;
+					default:
+						break;
+				}
+				break;
+			case 0xd: // Enter
+				if (!strlen(buf)) {
+					printf("\n");
+					printf("\033[%dD", (int)strlen(prompt));
+				}
+				goto out;
+			case 0x3: // Cntrl C
+				term_reset(count);
+				exit(0);
+			case 0x7f:  //  backword
+				if (pos == min_pos)
+					break;
+				pos--;
+				printf("\033[1D");
+				printf("\033[K");
+				buf[--ind] = 0;
+				break;
+			default:
+				if (isprint(c)) {
+					count++;
+					printf("%c", c);
+					pos++;
+					buf[ind++] = c;
+				} else {
+					printf("%x", c);
+				}
+				break;
+		}
+	}
+
+out:
+	term_reset(count);
+}
+
 SR_32 main(int argc, char **argv)
 {
-	char cmd[1000];
+	char cmd[MAX_BUF_SIZE];
 
 	if (handle_load() != 0) {
 		printf("Error handling load\n");
@@ -1225,12 +1391,13 @@ SR_32 main(int argc, char **argv)
 	}
 
 	while (is_run) {
-		printf("vsentry cli>");
-		if (!fgets(cmd, sizeof(cmd), stdin))
-			continue;
-		chop_nl(cmd);
+		printf(CLI_PROMPT);
+		get_cmd(cmd, MAX_BUF_SIZE, CLI_PROMPT);
+		if (strlen(cmd))
+			cmd_insert(cmds, cmd);
 		parse_command(cmd);
 	}
+	printf("\033[%dD", (int)strlen(CLI_PROMPT));
 
 	return SR_SUCCESS;
 }
