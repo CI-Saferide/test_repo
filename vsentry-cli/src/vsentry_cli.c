@@ -408,10 +408,10 @@ static void print_show_usage(void)
 
 static void print_update_usage(void)
 {
-	printf("update|delete [action|rule|wl] [action_obj|can|ipv4|file] [rule=x] [tuple=y]\n");
+	printf("update|delete [action|rule|wl] [action_obj|can|ip|file] [rule=x] [tuple=y]\n");
 	printf("  update tables\n");
 	printf("[action|rule|wl] - action table, user defied tabel or white list table \n");
-	printf("[can|ipv4|file] - specifies the desired table\n");
+	printf("[can|ip|file] - specifies the desired table\n");
 	printf("[rule=x] - if exists, shows all tuples on the specific rule\n");
 	printf("[tuple=y] - if exists, shows specific tuple\n");
 	printf("\n");
@@ -561,13 +561,17 @@ static void handle_show(void)
 		is_wl = is_rule = is_action = is_can = is_file = is_ip = SR_TRUE;
 		goto print;
 	}
+	if (*ptr == '?') {
+		print_show_usage();
+		return;
+	}
 	if (!strcmp(ptr, "rule") || !strcmp(ptr, "wl")) {
 		if (!strcmp(ptr, "rule"))
 			is_rule = SR_TRUE;
 		else
 			is_wl = SR_TRUE;
 		if (get_rule_type(&is_can, &is_file, &is_ip, SR_TRUE) != SR_SUCCESS) {
-			printf("Error getting rule type\n:");
+			printf("Error getting rule type\n");
 			return;
 		}
 		get_num_param(&rule_id, &tuple_id);
@@ -1175,12 +1179,16 @@ static void handle_update(SR_BOOL is_delete)
 		print_update_usage();
 		return;
 	}
+	if (*ptr == '?') {
+		print_update_usage();
+		return;
+	}
 
 	if (!strcmp(ptr, "rule") || !strcmp(ptr, "wl")) {
 		if (!strcmp(ptr, "wl"))
 			is_wl = SR_TRUE;
 		if (get_rule_type(&is_can, &is_file, &is_ip, SR_FALSE) != SR_SUCCESS) {
-			printf("Error getting rule type\n:");
+			printf("Error getting rule type\n");
 			return;
 		}
 		if (!is_can && !is_ip && !is_file) {
