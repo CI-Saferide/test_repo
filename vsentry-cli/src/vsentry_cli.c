@@ -17,6 +17,8 @@
 #include "sr_canbus_common.h"
 #include "db_tools.h"
 #include <termios.h>
+#include <sys/stat.h>
+#include <pwd.h>
 
 #define NUM_OF_RULES 4096
 #define MAX_BUF_SIZE 10000
@@ -73,7 +75,7 @@ rule_info_t *ip_wl[NUM_OF_RULES] = {};
 rule_info_t *can_wl[NUM_OF_RULES] = {};
 action_t actions[DB_MAX_NUM_OF_ACTIONS] = {};
 
-char *cmds[NUM_OF_CMD_ENTRIES] = {};
+static char *cmds[NUM_OF_CMD_ENTRIES] = {};
 
 static SR_U8 num_of_actions;
 
@@ -406,14 +408,19 @@ static void print_show_usage(void)
 	printf("\n");
 }
 
+static void print_update_rule_usage(SR_BOOL is_type)
+{
+	if (is_type)
+		printf("can|ip|file - specifies the desired table\n");
+	printf("rule=x, tuple=y\n");
+}
+
 static void print_update_usage(void)
 {
-	printf("update|delete [action|rule|wl] [action_obj|can|ip|file] [rule=x] [tuple=y]\n");
+	printf("update|delete action|rule|wl action_obj|can|ip|file rule=x tuple=y\n");
 	printf("  update tables\n");
-	printf("[action|rule|wl] - action table, user defied tabel or white list table \n");
-	printf("[can|ip|file] - specifies the desired table\n");
-	printf("[rule=x] - if exists, shows all tuples on the specific rule\n");
-	printf("[tuple=y] - if exists, shows specific tuple\n");
+	printf("action|rule|wl - action table, user defied tabel or white list table \n");
+	print_update_rule_usage(SR_TRUE);
 	printf("\n");
 }
 
@@ -527,7 +534,7 @@ static void get_num_param(SR_32 *rule_id, SR_32 *tuple_id)
 		*tuple_id = atoi(iter);
 }
 
-static SR_32 get_rule_type(SR_BOOL *is_can, SR_BOOL *is_file, SR_BOOL *is_ip, SR_BOOL def_val)
+static SR_32 get_rule_type(SR_BOOL *is_can, SR_BOOL *is_file, SR_BOOL *is_ip, SR_BOOL *is_help, SR_BOOL def_val)
 {
 	char *ptr; 
 
@@ -542,6 +549,8 @@ static SR_32 get_rule_type(SR_BOOL *is_can, SR_BOOL *is_file, SR_BOOL *is_ip, SR
 		*is_can = SR_TRUE;
 	else if (!strcmp(ptr, "ip"))
 		*is_ip = SR_TRUE;
+	else if (*ptr == '?') 
+		*is_help = SR_TRUE;
 	else {
 		printf("Invalid show param.");
 		return SR_ERROR;;
@@ -552,7 +561,7 @@ static SR_32 get_rule_type(SR_BOOL *is_can, SR_BOOL *is_file, SR_BOOL *is_ip, SR
 
 static void handle_show(void)
 {
-	SR_BOOL is_wl = SR_FALSE, is_rule = SR_FALSE, is_action = SR_FALSE, is_can = SR_FALSE, is_file = SR_FALSE, is_ip = SR_FALSE;
+	SR_BOOL is_wl = SR_FALSE, is_rule = SR_FALSE, is_action = SR_FALSE, is_can = SR_FALSE, is_file = SR_FALSE, is_ip = SR_FALSE, is_help = SR_FALSE;
 	char *ptr;
 	SR_32 rule_id = -1, tuple_id = -1;
 
@@ -570,7 +579,7 @@ static void handle_show(void)
 			is_rule = SR_TRUE;
 		else
 			is_wl = SR_TRUE;
-		if (get_rule_type(&is_can, &is_file, &is_ip, SR_TRUE) != SR_SUCCESS) {
+		if (get_rule_type(&is_can, &is_file, &is_ip, &is_help, SR_TRUE) != SR_SUCCESS) {
 			printf("Error getting rule type\n");
 			return;
 		}
@@ -668,7 +677,7 @@ static SR_BOOL is_perm_valid(char *perm)
 	return SR_TRUE;
 }
 
-static char *get_string_user_input(SR_BOOL is_current, char *def_val, char *prompt, SR_BOOL (*is_valid_cb)(char *data))
+static char *get_string_user_input(SR_BOOL is_current, char *def_val, char *prompt, SR_BOOL (*is_valid_cb)(char *data), void (*help_cb)(void))
 {
 	char buf[512];
 	static char input[512];
@@ -682,6 +691,11 @@ static char *get_string_user_input(SR_BOOL is_current, char *def_val, char *prom
 		}
 		chop_nl(input);
 		if (*input) {
+			if (*input == '?') {
+				if (help_cb)
+					help_cb();
+				continue;
+			}
 			if (is_valid_cb && !is_valid_cb(input)) {
 				printf("Invalid value\n");
 				continue;
@@ -696,6 +710,84 @@ static char *get_string_user_input(SR_BOOL is_current, char *def_val, char *prom
 	}
 
 	return NULL;
+}
+
+static void msg_id_help(void)
+{
+	printf("Hex digits, for any msg id - \"any\", default: \"any\" \n");
+}
+
+static void can_interface_help(void)
+{
+	struct ifaddrs *addrs,*tmp;
+	char buf[1000] = {};
+
+	getifaddrs(&addrs);
+	for (tmp = addrs; tmp; tmp = tmp->ifa_next) {
+		if (tmp->ifa_name && strstr(tmp->ifa_name, "can"))
+			sprintf(buf + strlen(buf), "%s ", tmp->ifa_name);
+	}
+	
+	if (strlen(buf))
+		printf("CAN Interfaces: %s\n", buf);
+	else
+		printf("No CAN interfaces available!!\n");
+
+	freeifaddrs(addrs);
+}
+
+static SR_BOOL is_valid_program(char *program)
+{
+	struct stat buf;
+
+	if (*program == '*')
+		return SR_TRUE;
+
+	if (stat(program, &buf)) {
+		printf("program does not exist\n");
+		return SR_FALSE;
+	}
+
+        if (!(buf.st_mode & S_IXUSR)) {
+		printf("program does reflect an executable.\n");
+		return SR_FALSE;
+	}
+
+	return SR_TRUE;
+
+}
+
+static SR_BOOL is_valid_user(char *user)
+{
+	if (*user == '*')
+		return SR_TRUE;
+
+	if (getpwnam(user))
+		return SR_TRUE;
+
+	return SR_FALSE;
+}
+
+static SR_BOOL is_valid_file(char *file)
+{
+	struct stat buf;
+
+	if (stat(file, &buf)) {
+		printf("file does not exist\n");
+		return SR_FALSE;
+	}
+
+	return SR_TRUE;
+}
+
+static void file_perm_help(void)
+{
+	printf("r - read, w -write, x -executable\n");
+}
+
+static void ip_proto_help(void)
+{
+	printf("tcp, ud, any\n");
 }
 
 static SR_32 handle_update_can(SR_BOOL is_wl, SR_U32 rule_id, SR_U32 tuple_id)
@@ -719,22 +811,22 @@ static SR_32 handle_update_can(SR_BOOL is_wl, SR_U32 rule_id, SR_U32 tuple_id)
 		strcpy(dir_def, "both");
 	}
 
-	msg_id_input = get_string_user_input(rule_info != NULL, msg_id_def , "msg_id", is_valid_msg_ig);
+	msg_id_input = get_string_user_input(rule_info != NULL, msg_id_def , "msg_id", is_valid_msg_ig, msg_id_help);
 	if (!strcmp(msg_id_input, "any"))
 		update_rule.can_rule.tuple.msg_id = MSGID_ANY;
 	else
 		update_rule.can_rule.tuple.msg_id = strtoul(msg_id_input, &ptr, 16);
 
 	strncpy(update_rule.can_rule.tuple.interface, 
-		get_string_user_input(rule_info != NULL, rule_info ? rule_info->can_rule.tuple.interface : NULL , "interface", is_valid_interface), INTERFACE_SIZE);
+		get_string_user_input(rule_info != NULL, rule_info ? rule_info->can_rule.tuple.interface : NULL , "interface", is_valid_interface, can_interface_help), INTERFACE_SIZE);
 
-	dir_input = get_string_user_input(rule_info != NULL, dir_def, "direction (in, out, both)", is_valid_dir);
+	dir_input = get_string_user_input(rule_info != NULL, dir_def, "direction (in, out, both)", is_valid_dir, NULL);
 	update_rule.can_rule.tuple.direction = get_dir_id(dir_input);
 
-	strncpy(update_rule.can_rule.tuple.program, get_string_user_input(rule_info != NULL, rule_info ? rule_info->can_rule.tuple.program : "*" , "program", NULL), PROG_NAME_SIZE);
-	strncpy(update_rule.can_rule.tuple.user, get_string_user_input(rule_info != NULL, rule_info ? rule_info->can_rule.tuple.user : "*" , "user", NULL), USER_NAME_SIZE);
+	strncpy(update_rule.can_rule.tuple.program, get_string_user_input(rule_info != NULL, rule_info ? rule_info->can_rule.tuple.program : "*" , "program", is_valid_program, NULL), PROG_NAME_SIZE);
+	strncpy(update_rule.can_rule.tuple.user, get_string_user_input(rule_info != NULL, rule_info ? rule_info->can_rule.tuple.user : "*" , "user", is_valid_user, NULL), USER_NAME_SIZE);
 
-	strncpy(update_rule.can_rule.action_name, get_string_user_input(rule_info != NULL, rule_info ? rule_info->can_rule.action_name : NULL , "action", is_valid_action), ACTION_STR_SIZE);
+	strncpy(update_rule.can_rule.action_name, get_string_user_input(rule_info != NULL, rule_info ? rule_info->can_rule.action_name : NULL , "action", is_valid_action, NULL), ACTION_STR_SIZE);
 
 	update_rule.tuple_id = update_rule.can_rule.tuple.id = tuple_id;
 	update_rule.can_rule.rulenum = rule_id;
@@ -791,24 +883,26 @@ static SR_32 handle_update_ip(SR_BOOL is_wl, SR_U32 rule_id, SR_U32 tuple_id)
 		strcpy(dst_port_def, "0");
 	}
 
-	param = get_string_user_input(rule_info != NULL, src_ip_address_def , "source addr", is_valid_ip);
+	param = get_string_user_input(rule_info != NULL, src_ip_address_def , "source addr", is_valid_ip, NULL);
 	inet_aton(param, &update_rule.ip_rule.tuple.srcaddr);
-	param = get_string_user_input(rule_info != NULL, src_netmask_def , "source netmask", is_valid_ip);
+	param = get_string_user_input(rule_info != NULL, src_netmask_def , "source netmask", is_valid_ip, NULL);
 	inet_aton(param, &update_rule.ip_rule.tuple.srcnetmask);
-	param = get_string_user_input(rule_info != NULL, dst_ip_address_def , "dest addr", is_valid_ip);
+	param = get_string_user_input(rule_info != NULL, dst_ip_address_def , "dest addr", is_valid_ip, NULL);
 	inet_aton(param, &update_rule.ip_rule.tuple.dstaddr);
-	param = get_string_user_input(rule_info != NULL, dst_netmask_def , "dest netmask", is_valid_ip);
+	param = get_string_user_input(rule_info != NULL, dst_netmask_def , "dest netmask", is_valid_ip, NULL);
 	inet_aton(param, &update_rule.ip_rule.tuple.dstnetmask);
-	param = get_string_user_input(rule_info != NULL, ip_proto_def , "ip proto", is_valid_ip_proto);
+	param = get_string_user_input(rule_info != NULL, ip_proto_def , "ip proto", is_valid_ip_proto, ip_proto_help);
 	update_rule.ip_rule.tuple.proto = get_ip_proto_code(param);
-	param = get_string_user_input(rule_info != NULL, src_port_def , "src port", is_valid_port);
+	param = get_string_user_input(rule_info != NULL, src_port_def , "src port", is_valid_port, NULL);
 	update_rule.ip_rule.tuple.srcport = atoi(param);
-	param = get_string_user_input(rule_info != NULL, dst_port_def , "dst port", is_valid_port);
+	param = get_string_user_input(rule_info != NULL, dst_port_def , "dst port", is_valid_port, NULL);
 	update_rule.ip_rule.tuple.dstport = atoi(param);
 
-	strncpy(update_rule.ip_rule.tuple.program, get_string_user_input(rule_info != NULL, rule_info ? rule_info->ip_rule.tuple.program : "*" , "program", NULL), PROG_NAME_SIZE);
-	strncpy(update_rule.ip_rule.tuple.user, get_string_user_input(rule_info != NULL, rule_info ? rule_info->ip_rule.tuple.user : "*" , "user", NULL), USER_NAME_SIZE);
-	strncpy(update_rule.ip_rule.action_name, get_string_user_input(rule_info != NULL, rule_info ? rule_info->ip_rule.action_name : NULL , "action", is_valid_action), ACTION_STR_SIZE);
+	strncpy(update_rule.ip_rule.tuple.program, get_string_user_input(rule_info != NULL, rule_info ? rule_info->ip_rule.tuple.program : "*" , "program", is_valid_program, NULL),
+		 PROG_NAME_SIZE);
+	strncpy(update_rule.ip_rule.tuple.user, get_string_user_input(rule_info != NULL, rule_info ? rule_info->ip_rule.tuple.user : "*" , "user", is_valid_user, NULL),
+		USER_NAME_SIZE);
+	strncpy(update_rule.ip_rule.action_name, get_string_user_input(rule_info != NULL, rule_info ? rule_info->ip_rule.action_name : NULL , "action", is_valid_action, NULL), ACTION_STR_SIZE);
 	update_rule.tuple_id = update_rule.ip_rule.tuple.id = tuple_id;
 	update_rule.ip_rule.rulenum = rule_id;
 	update_rule.rule_type = RULE_TYPE_IP;
@@ -853,12 +947,13 @@ static SR_32 handle_update_file(SR_BOOL is_wl, SR_U32 rule_id, SR_U32 tuple_id)
 	}
 
 	strncpy(update_rule.file_rule.tuple.filename,
-		get_string_user_input(rule_info != NULL, rule_info ? rule_info->file_rule.tuple.filename : NULL , "file", NULL), FILE_NAME_SIZE);
+		get_string_user_input(rule_info != NULL, rule_info ? rule_info->file_rule.tuple.filename : NULL , "file", is_valid_file, NULL), FILE_NAME_SIZE);
 	strncpy(update_rule.file_rule.tuple.permission,
-		perm_cli_to_db(get_string_user_input(rule_info != NULL, rule_info ? prem_db_to_cli(rule_info->file_rule.tuple.permission) : NULL , "premission", is_perm_valid)), 4);
-	strncpy(update_rule.file_rule.tuple.program, get_string_user_input(rule_info != NULL, rule_info ? rule_info->file_rule.tuple.program : "*" , "program", NULL), PROG_NAME_SIZE);
-	strncpy(update_rule.file_rule.tuple.user, get_string_user_input(rule_info != NULL, rule_info ? rule_info->file_rule.tuple.user : "*" , "user", NULL), USER_NAME_SIZE);
-	strncpy(update_rule.file_rule.action_name, get_string_user_input(rule_info != NULL, rule_info ? rule_info->file_rule.action_name : NULL , "action", is_valid_action), ACTION_STR_SIZE);
+		perm_cli_to_db(get_string_user_input(rule_info != NULL, rule_info ? prem_db_to_cli(rule_info->file_rule.tuple.permission) : NULL , "premission", is_perm_valid,
+			 file_perm_help)), 4);
+	strncpy(update_rule.file_rule.tuple.program, get_string_user_input(rule_info != NULL, rule_info ? rule_info->file_rule.tuple.program : "*" , "program", is_valid_program, NULL), PROG_NAME_SIZE);
+	strncpy(update_rule.file_rule.tuple.user, get_string_user_input(rule_info != NULL, rule_info ? rule_info->file_rule.tuple.user : "*" , "user", is_valid_user, NULL), USER_NAME_SIZE);
+	strncpy(update_rule.file_rule.action_name, get_string_user_input(rule_info != NULL, rule_info ? rule_info->file_rule.action_name : NULL , "action", is_valid_action, NULL), ACTION_STR_SIZE);
 
 #ifndef CLI_DEBUG
 	printf("file :%s \n", update_rule.file_rule.tuple.filename);
@@ -1170,7 +1265,7 @@ out:
 
 static void handle_update(SR_BOOL is_delete)
 {
-	SR_BOOL is_wl = SR_FALSE, is_can = SR_FALSE, is_file = SR_FALSE, is_ip = SR_FALSE;
+	SR_BOOL is_wl = SR_FALSE, is_can = SR_FALSE, is_file = SR_FALSE, is_ip = SR_FALSE, is_help = SR_FALSE;
 	SR_32 rule_id = -1, tuple_id = -1;
 	char *ptr;
 
@@ -1187,20 +1282,25 @@ static void handle_update(SR_BOOL is_delete)
 	if (!strcmp(ptr, "rule") || !strcmp(ptr, "wl")) {
 		if (!strcmp(ptr, "wl"))
 			is_wl = SR_TRUE;
-		if (get_rule_type(&is_can, &is_file, &is_ip, SR_FALSE) != SR_SUCCESS) {
+		if (get_rule_type(&is_can, &is_file, &is_ip, &is_help, SR_FALSE) != SR_SUCCESS) {
 			printf("Error getting rule type\n");
+			return;
+		}
+		if (is_help) {
+			printf("\n");
+			print_update_rule_usage(SR_TRUE);
 			return;
 		}
 		if (!is_can && !is_ip && !is_file) {
 			printf("Rule type is missing\n");
-			print_update_usage();
+			print_update_rule_usage(SR_TRUE);
 			return;
 		}
 		get_num_param(&rule_id, &tuple_id);
 		get_num_param(&rule_id, &tuple_id);
 		if (rule_id == -1 || tuple_id == -1) {
 			printf("Rule id or tuple id are missing\n");
-			print_update_usage();
+			print_update_rule_usage(SR_FALSE);
 			return;
 		}
 		if (is_can) {
