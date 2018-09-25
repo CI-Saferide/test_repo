@@ -3,7 +3,16 @@
 
 #include <sr_types.h>
 #include <action.h>
+    
+typedef enum {
+        RULE_TYPE_CAN,
+        RULE_TYPE_FILE,
+        RULE_TYPE_IP,
+} rule_type_t;
 
+#define MAX_RULE_TYPE 20
+
+char *get_rule_string(rule_type_t rule_type);
 char *get_action_string(action_e action);
 action_e get_action_code(char *action);
 char *get_action_log_facility_string(log_facility_e log_facility);

@@ -9,6 +9,28 @@
 #include <string.h>
 #include <ctype.h>
 
+char *get_rule_string(rule_type_t rule_type)
+{
+        static char rule_string[MAX_RULE_TYPE];
+
+        switch (rule_type) {
+          case RULE_TYPE_CAN:
+                strcpy(rule_string, "CAN");
+                break;
+          case RULE_TYPE_IP:
+                strcpy(rule_string, "IP");
+                break;
+          case RULE_TYPE_FILE:
+                strcpy(rule_string, "File");
+                break;
+          default:
+                strcpy(rule_string, "invalid");
+                break;
+        }
+
+        return rule_string;
+}
+
 char *get_action_string(action_e action)
 {
         static char action_string[ACTION_STR_SIZE];

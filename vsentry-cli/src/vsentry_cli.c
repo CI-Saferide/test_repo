@@ -24,6 +24,11 @@
 #define MAX_BUF_SIZE 10000
 #define NUM_OF_CMD_ENTRIES 100
 
+#define COLOR_RED "\033[31m"
+#define COLOR_GREEN "\033[32m"
+#define CLEAR_RIGHT "\033[K"
+#define COLOR_RESET "\033[0m"
+
 #define CLI_PROMPT "vsentry cli>"
 #define RULE "rule"
 #define TUPLE "tuple"
@@ -47,14 +52,9 @@
 #define LOG "log"
 
 static action_t *get_action(char *action_name);
+static void term_reset(int count);
 
 SR_BOOL is_run = SR_TRUE;
-
-typedef enum {
-	RULE_TYPE_CAN,
-	RULE_TYPE_FILE,
-	RULE_TYPE_IP,
-} rule_type_t;
 
 typedef struct rule_info {
 	SR_U32 tuple_id;
@@ -80,6 +80,65 @@ static char *cmds[NUM_OF_CMD_ENTRIES] = {};
 static SR_U8 num_of_actions;
 
 static SR_U32 cmd_curr;
+
+static void error(char *msg, SR_BOOL is_nl)
+{
+	if (is_nl)
+		printf("\n");
+	printf(COLOR_RED);
+	printf("%s\n", msg);
+	printf(COLOR_RESET);
+}
+		
+static void notify_info(char *msg)
+{
+	printf(COLOR_GREEN);
+	printf("\n%s\n", msg);
+	printf(COLOR_RESET);
+}
+		
+static void notify_updated_can_rule(SR_U32 rule_id, rule_info_t *update_rule)
+{
+	printf(COLOR_GREEN);
+	printf("CAN rule update:\n");
+	printf("  rule:%d tuple:%d\n", rule_id, update_rule->tuple_id);
+	printf("  msg id :%x interface :%s direction :%s user:%s program:%s action:%s \n",
+		update_rule->can_rule.tuple.msg_id,
+		update_rule->can_rule.tuple.interface,
+		get_dir_desc(update_rule->can_rule.tuple.direction),
+		update_rule->can_rule.tuple.program, update_rule->can_rule.tuple.user,
+		update_rule->can_rule.action_name);
+	printf(COLOR_RESET);
+}
+
+static void notify_updated_ip_rule(SR_U32 rule_id, rule_info_t *update_rule)
+{
+	char src_addr[IPV4_STR_MAX_LEN], src_netmask[IPV4_STR_MAX_LEN], dst_addr[IPV4_STR_MAX_LEN], dst_netmask[IPV4_STR_MAX_LEN];
+
+	printf(COLOR_GREEN);
+	inet_ntop(AF_INET, &update_rule->ip_rule.tuple.srcaddr, src_addr, IPV4_STR_MAX_LEN);
+	inet_ntop(AF_INET, &update_rule->ip_rule.tuple.srcnetmask, src_netmask, IPV4_STR_MAX_LEN);
+	inet_ntop(AF_INET, &update_rule->ip_rule.tuple.dstaddr, dst_addr, IPV4_STR_MAX_LEN);
+	inet_ntop(AF_INET, &update_rule->ip_rule.tuple.dstnetmask, dst_netmask, IPV4_STR_MAX_LEN);
+	printf("IP rule updated: \n");
+	printf("  rule:%d tuple:%d \n", rule_id, update_rule->tuple_id);
+        printf("  src addr:%s/%s dst addr:%s/%s proto:%d sport:%d dport:%d user:%s program:%s action:%s \n", 
+		src_addr, src_netmask, dst_addr, dst_netmask, update_rule->ip_rule.tuple.proto,
+		update_rule->ip_rule.tuple.srcport, update_rule->ip_rule.tuple.dstport,
+		update_rule->ip_rule.tuple.user, update_rule->ip_rule.tuple.program, update_rule->ip_rule.action_name);
+	printf(COLOR_RESET);
+}
+		
+static void notify_updated_file_rule(SR_U32 rule_id, rule_info_t *update_rule)
+{
+	printf(COLOR_GREEN);
+	printf("FIULE rule updated: \n");
+	printf("  rule:%d tuple:%d \n", rule_id, update_rule->tuple_id);
+	printf("  file:%s perms:%s user:%s program:%s action:%s \n ",
+		update_rule->file_rule.tuple.filename, prem_db_to_cli(update_rule->file_rule.tuple.permission),
+		update_rule->file_rule.tuple.user, update_rule->file_rule.tuple.program, update_rule->file_rule.action_name);
+	printf(COLOR_RESET);
+}
 
 static void cmd_insert(char *arr[], char *str)
 {
@@ -552,8 +611,7 @@ static SR_32 get_rule_type(SR_BOOL *is_can, SR_BOOL *is_file, SR_BOOL *is_ip, SR
 	else if (*ptr == '?') 
 		*is_help = SR_TRUE;
 	else {
-		printf("Invalid show param.");
-		return SR_ERROR;;
+		return SR_ERROR;
 	}
 
 	return SR_SUCCESS;
@@ -697,13 +755,13 @@ static char *get_string_user_input(SR_BOOL is_current, char *def_val, char *prom
 				continue;
 			}
 			if (is_valid_cb && !is_valid_cb(input)) {
-				printf("Invalid value\n");
+				error("Invalid value", SR_FALSE);
 				continue;
 			}
 			return input;
 		}
 		if (!def_val) {
-			printf("Enter field value\n");
+			error("Enter field value", SR_FALSE);
 			continue;
 		}
 		return def_val;
@@ -831,7 +889,8 @@ static SR_32 handle_update_can(SR_BOOL is_wl, SR_U32 rule_id, SR_U32 tuple_id)
 	update_rule.tuple_id = update_rule.can_rule.tuple.id = tuple_id;
 	update_rule.can_rule.rulenum = rule_id;
 	update_rule.rule_type = RULE_TYPE_CAN;
-#ifndef CLI_DEBUG
+
+#ifdef CLI_DEBUG
 	printf("tuple id :%d \n", update_rule.tuple_id);
 	printf("msg id :%x \n", update_rule.can_rule.tuple.msg_id);
 	printf("interface :%s \n", update_rule.can_rule.tuple.interface);
@@ -840,6 +899,7 @@ static SR_32 handle_update_can(SR_BOOL is_wl, SR_U32 rule_id, SR_U32 tuple_id)
 	printf("user :%s \n", update_rule.can_rule.tuple.user);
 	printf("action :%s \n", update_rule.can_rule.action_name);
 #endif
+	notify_updated_can_rule(rule_id, &update_rule);
 	
 	if (!rule_info) { 
 		if (!(new_rule = malloc(sizeof(rule_info_t)))) {
@@ -907,18 +967,7 @@ static SR_32 handle_update_ip(SR_BOOL is_wl, SR_U32 rule_id, SR_U32 tuple_id)
 	update_rule.ip_rule.rulenum = rule_id;
 	update_rule.rule_type = RULE_TYPE_IP;
 
-#ifdef CLI_DEBUG
-	printf("src addr:%-8x \n", update_rule.ip_rule.tuple.srcaddr);
-	printf("src netmask:%-8x \n", update_rule.ip_rule.tuple.srcnetmask);
-	printf("dst addr:%8x \n", update_rule.ip_rule.tuple.dstaddr);
-	printf("dst netmask:%-8x \n", update_rule.ip_rule.tuple.dstnetmask);
-	printf("ip proto:%d \n", update_rule.ip_rule.tuple.proto);
-	printf("src port:%d \n", update_rule.ip_rule.tuple.srcport);
-	printf("dst port:%d \n", update_rule.ip_rule.tuple.dstport);
-	printf("user :%s \n", update_rule.ip_rule.tuple.user);
-	printf("user :%s \n", update_rule.ip_rule.tuple.user);
-	printf("program :%s \n", update_rule.ip_rule.tuple.program);
-#endif
+	notify_updated_ip_rule(rule_id, &update_rule);
 
 	if (!rule_info) { 
 		if (!(new_rule = malloc(sizeof(rule_info_t)))) {
@@ -955,15 +1004,11 @@ static SR_32 handle_update_file(SR_BOOL is_wl, SR_U32 rule_id, SR_U32 tuple_id)
 	strncpy(update_rule.file_rule.tuple.user, get_string_user_input(rule_info != NULL, rule_info ? rule_info->file_rule.tuple.user : "*" , "user", is_valid_user, NULL), USER_NAME_SIZE);
 	strncpy(update_rule.file_rule.action_name, get_string_user_input(rule_info != NULL, rule_info ? rule_info->file_rule.action_name : NULL , "action", is_valid_action, NULL), ACTION_STR_SIZE);
 
-#ifndef CLI_DEBUG
-	printf("file :%s \n", update_rule.file_rule.tuple.filename);
-	printf("permission :%s \n", update_rule.file_rule.tuple.permission);
-	printf("user :%s \n", update_rule.file_rule.tuple.user);
-	printf("program :%s \n", update_rule.file_rule.tuple.program);
-#endif
 	update_rule.tuple_id = update_rule.file_rule.tuple.id = tuple_id;
 	update_rule.file_rule.rulenum = rule_id;
 	update_rule.rule_type = RULE_TYPE_FILE;
+
+	notify_updated_file_rule(rule_id, &update_rule);
 
 	if (!rule_info) { 
 		if (!(new_rule = malloc(sizeof(rule_info_t)))) {
@@ -978,19 +1023,35 @@ static SR_32 handle_update_file(SR_BOOL is_wl, SR_U32 rule_id, SR_U32 tuple_id)
 	return SR_SUCCESS;
 }
 
+static SR_32 handle_delete(rule_type_t rule_type, rule_info_t **rule_info, SR_U32 rule_id, SR_U32 tuple_id)
+{
+	char rule_type_str[MAX_RULE_TYPE], msg[256]; 
+
+	strcpy(rule_type_str, get_rule_string(rule_type));
+	if (delete_rule(rule_info, tuple_id) != SR_SUCCESS) {
+		sprintf(msg, "%s delete failed", rule_type_str);
+		error(msg, SR_TRUE);
+		return SR_ERROR;
+	}
+	sprintf(msg, "%s rule id:%d tuple id:%d was deleted", rule_type_str, rule_id, tuple_id);
+	notify_info(msg);
+
+	return SR_SUCCESS;
+}
+
 static SR_32 handle_delete_can(SR_BOOL is_wl, SR_U32 rule_id, SR_U32 tuple_id)
 {
-	return delete_rule(is_wl ? &can_wl[rule_id] : &can_rules[rule_id], tuple_id);
+	return handle_delete(RULE_TYPE_CAN, is_wl ? &can_wl[rule_id] : &can_rules[rule_id], rule_id, tuple_id);
 }
 
 static SR_32 handle_delete_ip(SR_BOOL is_wl, SR_U32 rule_id, SR_U32 tuple_id)
 {
-	return delete_rule(is_wl ? &ip_wl[rule_id] : &ip_rules[rule_id], tuple_id);
+	return handle_delete(RULE_TYPE_IP, is_wl ? &ip_wl[rule_id] : &ip_rules[rule_id], rule_id, tuple_id);
 }
 
 static SR_32 handle_delete_file(SR_BOOL is_wl, SR_U32 rule_id, SR_U32 tuple_id)
 {
-	return delete_rule(is_wl ? &file_wl[rule_id] : &file_rules[rule_id], tuple_id);
+	return handle_delete(RULE_TYPE_FILE, is_wl ? &file_wl[rule_id] : &file_rules[rule_id], rule_id, tuple_id);
 }
 
 static action_t *get_action(char *action_name)
@@ -1038,6 +1099,7 @@ static SR_BOOL is_action_exist_in_rule(rule_info_t *table[], char *action_name)
 static SR_32 delete_action(char *action_name)
 {
 	SR_U32 i;
+	char msg[128];
 
 	for (i = 0; i < num_of_actions && strcmp(action_name, actions[i].action_name) != 0; i++);
 	if (i == num_of_actions) {
@@ -1047,15 +1109,18 @@ static SR_32 delete_action(char *action_name)
 
 	/* check if the action exists in any of the rules */
 	if (is_action_exist_in_rule(file_rules, action_name)) {
-		printf("Action %s exists in file rules\n", action_name);
+		sprintf(msg, "Action %s exists in file rules", action_name);
+		error(msg, SR_TRUE);
 		return SR_ERROR;
 	}
 	if (is_action_exist_in_rule(can_rules, action_name)) {
-		printf("Action %s exists in can rules\n", action_name);
+		sprintf(msg, "Action %s exists in can rules", action_name);
+		error(msg, SR_TRUE);
 		return SR_ERROR;
 	}
 	if (is_action_exist_in_rule(ip_rules, action_name)) {
-		printf("Action %s exists in ip rules\n", action_name);
+		sprintf(msg, "Action %s exists in ip rules", action_name);
+		error(msg, SR_TRUE);
 		return SR_ERROR;
 	}
 
@@ -1068,14 +1133,14 @@ static SR_32 delete_action(char *action_name)
 
 static SR_32 handle_update_action(SR_BOOL is_delete)
 {
-	char *action_name, *action_type, *log, *log_facility;
+	char *action_name, *action_type, *log, *log_facility, msg[256];
 	action_t *action;
 	log_facility_e log_facility_code = LOG_NONE;
 	action_e action_code;
 
 	action_name = strtok(NULL, " ");
 	if (!action_name) {
-		printf("action name is missing!!\n");
+		error("action name is missing!!", SR_TRUE);
 		printf("usage: update action action_name action_type (none|allow|drop) [log=syslog|file|none]\n");
 		return SR_ERROR;
 	}
@@ -1095,7 +1160,7 @@ static SR_32 handle_update_action(SR_BOOL is_delete)
 
 	action_type = strtok(NULL, " ");
 	if (!action_type || (action_code = get_action_code(action_type)) == ACTION_INVALID) {
-		printf("Invalid action type \n");
+		error("Invalid action type" ,SR_TRUE);
 		printf("usage: update action action_name action_type (none|allow|drop) log\n");
 		return SR_ERROR;
 	}
@@ -1103,13 +1168,13 @@ static SR_32 handle_update_action(SR_BOOL is_delete)
 	log = strtok(NULL, " ");
 	if (log) {
 		if (memcmp(log, "log=", strlen("log="))) {
-			printf("Invalid action type \n");
+			error("Invalid action log", SR_TRUE);
 			printf("usage: update action action_name action_type (none|allow|drop) [log=syslog|file|none]\n");
 			return SR_ERROR;
 		}
 		log_facility = log + strlen("log=");
 		if ((log_facility_code = get_action_log_facility_code(log_facility)) == LOG_INVALID) {
-			printf("Invalid log facility\n");
+			error("Invalid log facility", SR_TRUE);
 			printf("usage: update action action_name action_type (none|allow|drop) [log=syslog|file|none]\n");
 			return SR_ERROR;
 		}
@@ -1119,6 +1184,8 @@ static SR_32 handle_update_action(SR_BOOL is_delete)
 	printf("update action:%s: action type:%s: action code:%d  log:%s log facility code:%d \n",
 		action_name, action_type, action_code, log_facility, log_facility_code);
 #endif
+	sprintf(msg, "Action %s was updated", action_name);
+	notify_info(msg);
 	action->action = action_code;
 	action->log_facility = log_facility_code;
 
@@ -1271,6 +1338,7 @@ static void handle_update(SR_BOOL is_delete)
 
 	ptr = strtok(NULL, " "); 
 	if (!ptr) {
+		printf("\n");
 		print_update_usage();
 		return;
 	}
@@ -1283,7 +1351,7 @@ static void handle_update(SR_BOOL is_delete)
 		if (!strcmp(ptr, "wl"))
 			is_wl = SR_TRUE;
 		if (get_rule_type(&is_can, &is_file, &is_ip, &is_help, SR_FALSE) != SR_SUCCESS) {
-			printf("Error getting rule type\n");
+			error("Error getting rule type", SR_TRUE);
 			return;
 		}
 		if (is_help) {
@@ -1299,7 +1367,7 @@ static void handle_update(SR_BOOL is_delete)
 		get_num_param(&rule_id, &tuple_id);
 		get_num_param(&rule_id, &tuple_id);
 		if (rule_id == -1 || tuple_id == -1) {
-			printf("Rule id or tuple id are missing\n");
+			error("Rule id or tuple id are missing", SR_TRUE);
 			print_update_rule_usage(SR_FALSE);
 			return;
 		}
@@ -1355,13 +1423,13 @@ static void parse_command(char *cmd)
 		return handle_update(SR_TRUE);
 	}
 	if (!strcmp(ptr, "commit")) {
-		printf("committing...\n");
+		printf("\ncommitting...\n");
 		if (handle_commit() != SR_SUCCESS) {
 			printf("Commit failed !!!\n");
 		}
 		return;
 	}
-	printf("Invalid argument\n");
+	error("Invalid argument", SR_TRUE);
 	print_usage();
 }
 
@@ -1414,7 +1482,7 @@ static void get_cmd(char *buf, SR_U32 size, char *prompt)
 									break;
 								if (strlen(buf))
 									printf("\033[%dD", (int)strlen(buf));
-								printf("\033[K");
+								printf(CLEAR_RIGHT);
 								strcpy(buf, last_cmd);
 								ind = strlen(buf);
 								is_up = SR_TRUE;
@@ -1429,7 +1497,7 @@ static void get_cmd(char *buf, SR_U32 size, char *prompt)
 									break;
 								if (strlen(buf))
 									printf("\033[%dD", (int)strlen(buf));
-								printf("\033[K");
+								printf(CLEAR_RIGHT);
 								strcpy(buf, last_cmd);
 								ind = strlen(buf);
 								is_up = SR_TRUE;
@@ -1469,7 +1537,7 @@ static void get_cmd(char *buf, SR_U32 size, char *prompt)
 					break;
 				pos--;
 				printf("\033[1D");
-				printf("\033[K");
+				printf(CLEAR_RIGHT);
 				buf[--ind] = 0;
 				break;
 			default:
