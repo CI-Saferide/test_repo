@@ -81,6 +81,8 @@ static SR_U8 num_of_actions;
 
 static SR_U32 cmd_curr;
 
+static SR_BOOL is_dirty = SR_FALSE;
+
 static void error(char *msg, SR_BOOL is_nl)
 {
 	if (is_nl)
@@ -122,7 +124,7 @@ static void notify_updated_ip_rule(SR_U32 rule_id, rule_info_t *update_rule)
 	inet_ntop(AF_INET, &update_rule->ip_rule.tuple.dstnetmask, dst_netmask, IPV4_STR_MAX_LEN);
 	printf("IP rule updated: \n");
 	printf("  rule:%d tuple:%d \n", rule_id, update_rule->tuple_id);
-        printf("  src addr:%s/%s dst addr:%s/%s proto:%d sport:%d dport:%d user:%s program:%s action:%s \n", 
+        printf("  src addr:%s/%s dst addr:%s/%s proto:%d sport:%d dport:%d user:%s program:%s action:%s\n", 
 		src_addr, src_netmask, dst_addr, dst_netmask, update_rule->ip_rule.tuple.proto,
 		update_rule->ip_rule.tuple.srcport, update_rule->ip_rule.tuple.dstport,
 		update_rule->ip_rule.tuple.user, update_rule->ip_rule.tuple.program, update_rule->ip_rule.action_name);
@@ -134,7 +136,7 @@ static void notify_updated_file_rule(SR_U32 rule_id, rule_info_t *update_rule)
 	printf(COLOR_GREEN);
 	printf("FIULE rule updated: \n");
 	printf("  rule:%d tuple:%d \n", rule_id, update_rule->tuple_id);
-	printf("  file:%s perms:%s user:%s program:%s action:%s \n ",
+	printf("  file:%s perms:%s user:%s program:%s action:%s \n",
 		update_rule->file_rule.tuple.filename, prem_db_to_cli(update_rule->file_rule.tuple.permission),
 		update_rule->file_rule.tuple.user, update_rule->file_rule.tuple.program, update_rule->file_rule.action_name);
 	printf(COLOR_RESET);
@@ -864,7 +866,7 @@ static SR_32 handle_update_can(SR_BOOL is_wl, SR_U32 rule_id, SR_U32 tuple_id)
 			sprintf(msg_id_def, "%x", rule_info->can_rule.tuple.msg_id);
 		strcpy(dir_def, get_dir_desc(rule_info->can_rule.tuple.direction));
 	} else {
-		printf(">Adding a new rule...\n");
+		printf("\n>Adding a new rule...\n");
 		strcpy(msg_id_def, "any");
 		strcpy(dir_def, "both");
 	}
@@ -933,7 +935,7 @@ static SR_32 handle_update_ip(SR_BOOL is_wl, SR_U32 rule_id, SR_U32 tuple_id)
 		sprintf(src_port_def, "%d", rule_info->ip_rule.tuple.srcport);
 		sprintf(dst_port_def, "%d", rule_info->ip_rule.tuple.dstport);
 	} else {
-		printf(">Adding a new rule...\n");
+		printf("\n>Adding a new rule...\n");
 		strcpy(src_ip_address_def, "0.0.0.0");
 		strcpy(dst_ip_address_def, "0.0.0.0");
 		strcpy(dst_netmask_def, "255.255.255.255");
@@ -992,7 +994,7 @@ static SR_32 handle_update_file(SR_BOOL is_wl, SR_U32 rule_id, SR_U32 tuple_id)
 		update_rule = *rule_info;
 		printf(">Updating an existing rule...\n");
 	} else {
-		printf(">Adding a new rule...\n");
+		printf("\n>Adding a new rule...\n");
 	}
 
 	strncpy(update_rule.file_rule.tuple.filename,
@@ -1327,6 +1329,9 @@ static SR_32 handle_commit(void)
 out:
         close(fd);
 
+	if (st == SR_SUCCESS)
+		is_dirty = SR_FALSE;
+
 	return st;
 }
 
@@ -1389,9 +1394,11 @@ static void handle_update(SR_BOOL is_delete)
 			else
 				handle_delete_file(is_wl, rule_id, tuple_id);
 		}
+		is_dirty = SR_TRUE;
 
 	} else if (!strcmp(ptr, "action")) {
 		handle_update_action(is_delete);
+		is_dirty = SR_TRUE;
 	} else {
 		printf("Invalid agruments\n");
 		print_update_usage();
@@ -1401,6 +1408,7 @@ static void handle_update(SR_BOOL is_delete)
 static void parse_command(char *cmd)
 {
 	char *ptr;
+	char buf[128];
 
 	ptr = strtok(cmd, " ");
 	if (!ptr)
@@ -1410,6 +1418,12 @@ static void parse_command(char *cmd)
 		return;
 	}
 	if (!strcmp(ptr, "quit")) {
+		if (is_dirty) {
+			printf("\n>There are uncommited changes. Are you sure? [Y|n]\n");
+			ptr = fgets(buf, 128, stdin);
+			if (ptr && *buf == 'n')
+				return;
+		}
 		is_run = SR_FALSE;
 		return;
 	}
