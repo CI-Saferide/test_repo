@@ -20,6 +20,24 @@ static SR_32 handle_data(char *buf, SR_32 fd)
 		sr_engine_cli_load(fd);
 	if (!memcmp(buf, "cli_commit", strlen("cli_commit")))
 		sr_engine_cli_commit(fd);
+	if (!memcmp(buf, "wl_learn", strlen("wl_learn")))
+		sr_white_list_set_mode(SR_WL_MODE_LEARN);
+	if (!memcmp(buf, "wl_apply", strlen("wl_apply")))
+		sr_white_list_set_mode(SR_WL_MODE_APPLY);
+	if (!memcmp(buf, "wl_print", strlen("wl_ptint"))) {
+		sr_white_list_hash_print();
+		sr_white_list_ip_print();
+		printf("print connection object:\n");
+		sr_control_util(SR_CONTROL_PRINT);
+	}
+	if (!memcmp(buf, "wl_reset", strlen("wl_reset")))
+		sr_white_list_reset();
+	if (!memcmp(buf, "sp_learn", strlen("sp_learn")))
+		sr_stat_analysis_learn_mode_set(SR_STAT_MODE_LEARN);
+	if (!memcmp(buf, "sp_apply", strlen("sp_apply")))
+		sr_stat_analysis_learn_mode_set(SR_STAT_MODE_PROTECT);
+	if (!memcmp(buf, "sp_off", strlen("sp_off")))
+		sr_stat_analysis_learn_mode_set(SR_STAT_MODE_OFF);
 
 	return SR_SUCCESS;
 }

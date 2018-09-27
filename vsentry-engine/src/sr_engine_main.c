@@ -38,7 +38,6 @@
 #include "sr_config_common.h"
 #include "sr_can_collector.h"
 #include "sr_config_parse.h"
-#include "sal_third_party_interface.h"
 #ifdef SR_CLI
 #include "sal_cli_interface.h"
 #endif
@@ -185,7 +184,6 @@ static void engine_shutdown(void)
 #ifdef SR_CLI
 	sal_cli_interface_uninit();
 #endif
-	sal_third_party_interface_uninit();
 	if (config_params->remote_server_support_enable) {
 		sr_get_command_stop();
 	}
@@ -380,13 +378,6 @@ SR_32 sr_engine_start(int argc, char *argv[])
 	if (ret != SR_SUCCESS){
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 						"%s=failed to init sr_create_fileter_paths",REASON);
-		return SR_ERROR;
-	}
-
-	ret = sal_third_party_interface_init();
-	if (ret != SR_SUCCESS){
-	CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-		"%s=failed to init trird partry interface",REASON);
 		return SR_ERROR;
 	}
 

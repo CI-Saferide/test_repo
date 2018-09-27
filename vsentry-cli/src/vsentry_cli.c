@@ -142,6 +142,54 @@ static void notify_updated_file_rule(SR_U32 rule_id, rule_info_t *update_rule)
 	printf(COLOR_RESET);
 }
 
+static SR_32 get_control_cmd(char *ptr, char *cmd)
+{
+	if (!strcmp(ptr, "whitelist")) {
+		ptr = strtok(NULL, " ");
+		if (!ptr)
+			return SR_ERROR;
+		if (!strcmp(ptr, "learn")) {
+			strcpy(cmd, "wl_learn");
+			return SR_SUCCESS;
+		}
+		if (!strcmp(ptr, "apply")) {
+			strcpy(cmd, "wl_apply");
+			return SR_SUCCESS;
+		}
+		if (!strcmp(ptr, "apply")) {
+			strcpy(cmd, "wl_apply");
+			return SR_SUCCESS;
+		}
+		if (!strcmp(ptr, "print")) {
+			strcpy(cmd, "wl_print");
+			return SR_SUCCESS;
+		}
+		if (!strcmp(ptr, "reset")) {
+			strcpy(cmd, "wl_reset");
+			return SR_SUCCESS;
+		}
+	}
+	if (!strcmp(ptr, "system-policer")) {
+		ptr = strtok(NULL, " ");
+		if (!ptr)
+			return SR_ERROR;
+		if (!strcmp(ptr, "learn")) {
+			strcpy(cmd, "sp_learn");
+			return SR_SUCCESS;
+		}
+		if (!strcmp(ptr, "apply")) {
+			strcpy(cmd, "sp_apply");
+			return SR_SUCCESS;
+		}
+		if (!strcmp(ptr, "off")) {
+			strcpy(cmd, "sp_off");
+			return SR_SUCCESS;
+		}
+	}
+
+        return SR_ERROR;
+}
+
 static void cmd_insert(char *arr[], char *str)
 {
 	SR_U32 i;
@@ -1405,6 +1453,52 @@ static void handle_update(SR_BOOL is_delete)
 	}
 }
 
+static void print_control_usage(void)
+{
+	printf("\ncontrol [whitelist | system-policer]  [learn | apply | print | reset]\n");
+}
+
+static void handle_control(void)
+{
+	SR_32 fd, rc;
+	char *ptr, cmd[128];
+
+	ptr = strtok(NULL, " "); 
+	if (!ptr) {
+		printf("\n");
+		print_control_usage();
+		return; 
+	}
+	if (*ptr == '?') {
+		print_control_usage();
+		return;
+	}
+	
+	if (get_control_cmd(ptr, cmd) != SR_SUCCESS) {
+		error("Invalid control command", SR_TRUE);
+		print_control_usage();
+		return;
+	}
+	
+	if ((fd = engine_connect()) < 0) {
+		error("Failed engine connect", SR_TRUE);
+		return;
+	}
+
+	rc = write(fd, cmd , strlen(cmd));
+	if (rc < 0) {
+		error("write error", SR_TRUE);
+		return;
+	}
+	if (rc < strlen(cmd)) {
+		error("partial write", SR_TRUE);
+		return;
+	}
+	printf("\n");
+
+	close(fd);
+}
+
 static void parse_command(char *cmd)
 {
 	char *ptr;
@@ -1442,6 +1536,9 @@ static void parse_command(char *cmd)
 			printf("Commit failed !!!\n");
 		}
 		return;
+	}
+	if (!strcmp(ptr, "control")) {
+		return handle_control();
 	}
 	error("Invalid argument", SR_TRUE);
 	print_usage();
