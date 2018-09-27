@@ -144,7 +144,7 @@ static void notify_updated_file_rule(SR_U32 rule_id, rule_info_t *update_rule)
 
 static SR_32 get_control_cmd(char *ptr, char *cmd)
 {
-	if (!strcmp(ptr, "whitelist")) {
+	if (!strcmp(ptr, "wl")) {
 		ptr = strtok(NULL, " ");
 		if (!ptr)
 			return SR_ERROR;
@@ -169,7 +169,7 @@ static SR_32 get_control_cmd(char *ptr, char *cmd)
 			return SR_SUCCESS;
 		}
 	}
-	if (!strcmp(ptr, "system-policer")) {
+	if (!strcmp(ptr, "sp")) {
 		ptr = strtok(NULL, " ");
 		if (!ptr)
 			return SR_ERROR;
@@ -1455,7 +1455,7 @@ static void handle_update(SR_BOOL is_delete)
 
 static void print_control_usage(void)
 {
-	printf("\ncontrol [whitelist | system-policer]  [learn | apply | print | reset]\n");
+	printf("\ncontrol [wl | sp]  [learn | apply | print | reset]\n");
 }
 
 static void handle_control(void)
