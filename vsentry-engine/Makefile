@@ -11,6 +11,8 @@ BINDIR 		:= $(BUILD_DIR)/bin
 
 TARGET 		:= sr_engine
 
+SR_CLI		:= 1
+
 # where to search for sources
 VPATH 		:=  $(TOP_DIR)/sal/platform/linux/src \
 				$(TOP_DIR)/src \
