@@ -1458,6 +1458,31 @@ static void print_control_usage(void)
 	printf("\ncontrol [whitelist | system-policer]  [learn | apply | print | reset]\n");
 }
 
+static void cleanup_rule_table(rule_info_t *table[])
+{
+	SR_U32 i;
+	rule_info_t **iter, *help;
+
+	for (i = 0; i < NUM_OF_RULES; i++) {
+		for (iter = &table[i]; *iter;) {
+			help = *iter;
+			*iter = (*iter)->next;
+			free(help);
+		}
+	}
+}
+
+void db_cleanup(void)
+{
+	cleanup_rule_table(file_rules);
+	cleanup_rule_table(can_rules);
+	cleanup_rule_table(ip_rules);
+	cleanup_rule_table(file_wl);
+	cleanup_rule_table(can_wl);
+	cleanup_rule_table(ip_wl);
+	num_of_actions = 0;
+}
+
 static void handle_control(void)
 {
 	SR_32 fd, rc;
@@ -1529,6 +1554,14 @@ static void parse_command(char *cmd)
 	}
 	if (!strcmp(ptr, "delete")) {
 		return handle_update(SR_TRUE);
+	}
+	if (!strcmp(ptr, "load")) {
+		db_cleanup();
+		if (handle_load() != SR_SUCCESS) {
+			printf("Error handling load\n");
+		}
+		notify_info("Load finished.");
+		return;
 	}
 	if (!strcmp(ptr, "commit")) {
 		printf("\ncommitting...\n");
