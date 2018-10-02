@@ -51,6 +51,11 @@
 #define ACTION "action"
 #define LOG "log"
 
+#define GET_NEXT_TOKEN(ptr, del) \
+	ptr = strtok(NULL, del); \
+	if (!ptr) \
+		return SR_ERROR;
+
 static action_t *get_action(char *action_name);
 static void term_reset(int count);
 
@@ -261,16 +266,16 @@ static SR_32 handle_file_data(rule_info_t *new_rule, SR_U32 rule_num, SR_U32 tup
 	new_rule->rule_type = RULE_TYPE_FILE;
 	new_rule->file_rule.rulenum= rule_num;
 	new_rule->file_rule.tuple.id = tuple_id;
-	ptr = strtok(NULL, ",");
+	GET_NEXT_TOKEN(ptr, ",");
 	strncpy(new_rule->file_rule.action_name, ptr, ACTION_STR_SIZE);
 
-	ptr = strtok(NULL, ",");
+	GET_NEXT_TOKEN(ptr, ",");
 	strncpy(new_rule->file_rule.tuple.filename, ptr, FILE_NAME_SIZE);
-	ptr = strtok(NULL, ",");
+	GET_NEXT_TOKEN(ptr, ",");
 	strncpy(new_rule->file_rule.tuple.permission, ptr, 4);
-	ptr = strtok(NULL, ",");
+	GET_NEXT_TOKEN(ptr, ",");
 	strncpy(new_rule->file_rule.tuple.user, ptr, USER_NAME_SIZE);
-	ptr = strtok(NULL, ",");
+	GET_NEXT_TOKEN(ptr, ",");
 	strncpy(new_rule->file_rule.tuple.program, ptr, PROG_NAME_SIZE);
 #if DEBUG
 	printf("FILE:  tuple:%d action:%s: file:%s perm:%s user:%s prog:%s \n", new_rule->file_rule.tuple.id, new_rule->file_rule.action_name,
@@ -287,18 +292,18 @@ static SR_32 handle_can_data(rule_info_t *new_rule, SR_U32 rule_num, SR_U32 tupl
 	new_rule->rule_type = RULE_TYPE_CAN;
 	new_rule->can_rule.rulenum= rule_num;
 	new_rule->can_rule.tuple.id = tuple_id;
-	ptr = strtok(NULL, ",");
+	GET_NEXT_TOKEN(ptr, ",");
 	strncpy(new_rule->can_rule.action_name, ptr, ACTION_STR_SIZE);
 
-	ptr = strtok(NULL, ",");
+	GET_NEXT_TOKEN(ptr, ",");
 	new_rule->can_rule.tuple.msg_id = atoi(ptr);
-	ptr = strtok(NULL, ",");
+	GET_NEXT_TOKEN(ptr, ",");
 	new_rule->can_rule.tuple.direction = atoi(ptr);
-	ptr = strtok(NULL, ",");
+	GET_NEXT_TOKEN(ptr, ",");
 	strncpy(new_rule->can_rule.tuple.interface, ptr, INTERFACE_SIZE);
-	ptr = strtok(NULL, ",");
+	GET_NEXT_TOKEN(ptr, ",");
 	strncpy(new_rule->can_rule.tuple.user, ptr, USER_NAME_SIZE);
-	ptr = strtok(NULL, ",");
+	GET_NEXT_TOKEN(ptr, ",");
 	strncpy(new_rule->can_rule.tuple.program, ptr, PROG_NAME_SIZE);
 
 	return SR_SUCCESS;
@@ -311,25 +316,25 @@ static SR_32 handle_ip_data(rule_info_t *new_rule, SR_U32 rule_num, SR_U32 tuple
 	new_rule->rule_type = RULE_TYPE_IP;
 	new_rule->ip_rule.rulenum= rule_num;
 	new_rule->ip_rule.tuple.id = tuple_id;
-	ptr = strtok(NULL, ",");
+	GET_NEXT_TOKEN(ptr, ",");
 	strncpy(new_rule->ip_rule.action_name, ptr, ACTION_STR_SIZE);
-	ptr = strtok(NULL, ",");
+	GET_NEXT_TOKEN(ptr, ",");
 	inet_aton(ptr, &(new_rule->ip_rule.tuple.srcaddr));
-	ptr = strtok(NULL, ",");
+	GET_NEXT_TOKEN(ptr, ",");
 	inet_aton(ptr, &(new_rule->ip_rule.tuple.srcnetmask));
-	ptr = strtok(NULL, ",");
+	GET_NEXT_TOKEN(ptr, ",");
 	inet_aton(ptr, &(new_rule->ip_rule.tuple.dstaddr));
-	ptr = strtok(NULL, ",");
+	GET_NEXT_TOKEN(ptr, ",");
 	inet_aton(ptr, &(new_rule->ip_rule.tuple.dstnetmask));
-	ptr = strtok(NULL, ",");
+	GET_NEXT_TOKEN(ptr, ",");
 	new_rule->ip_rule.tuple.proto = atoi(ptr);
-	ptr = strtok(NULL, ",");
+	GET_NEXT_TOKEN(ptr, ",");
 	new_rule->ip_rule.tuple.srcport = atoi(ptr);
-	ptr = strtok(NULL, ",");
+	GET_NEXT_TOKEN(ptr, ",");
 	new_rule->ip_rule.tuple.dstport = atoi(ptr);
-	ptr = strtok(NULL, ",");
+	GET_NEXT_TOKEN(ptr, ",");
 	strncpy(new_rule->ip_rule.tuple.user, ptr, USER_NAME_SIZE);
-	ptr = strtok(NULL, ",");
+	GET_NEXT_TOKEN(ptr, ",");
 	strncpy(new_rule->ip_rule.tuple.program, ptr, PROG_NAME_SIZE);
 
 	return SR_SUCCESS;
@@ -431,20 +436,32 @@ static SR_32 handle_load_data(char *buf)
 
 	if (!memcmp(buf, "file", strlen("file"))) {
 		is_wl = !memcmp(buf, "file_wl", strlen("file_wl"));
+		if ((rc = handle_file_data(new_rule, rule_id, tuple_id)) != SR_SUCCESS) {
+			printf("\nError parsing file rule id:%d tuple:%d \n", rule_id, tuple_id);
+			free(new_rule);
+			goto out;
+		}
 		insert_rule_sorted(is_wl ? &file_wl[rule_id] : &file_rules[rule_id], new_rule, tuple_id);
-		rc = handle_file_data(new_rule, rule_id, tuple_id);
 		goto out;
 	} 
 	if (!memcmp(buf, "ip", strlen("ip"))) {
 		is_wl = !memcmp(buf, "ip_wl", strlen("ip_wl"));
+		if ((rc = handle_ip_data(new_rule, rule_id, tuple_id)) != SR_SUCCESS) {
+			printf("\nError parsing IP rule id:%d tuple:%d \n", rule_id, tuple_id);
+			free(new_rule);
+			goto out;
+		}
 		insert_rule_sorted(is_wl ? &ip_wl[rule_id] : &ip_rules[rule_id], new_rule, tuple_id);
-		rc = handle_ip_data(new_rule, rule_id, tuple_id);
 		goto out;
 	}
 	if (!memcmp(buf, "can", strlen("can"))) {
 		is_wl = !memcmp(buf, "can_wl", strlen("can_wl"));
+		if ((rc = handle_can_data(new_rule, rule_id, tuple_id)) != SR_SUCCESS) {
+			printf("\nError parsing IP rule id:%d tuple:%d \n", rule_id, tuple_id);
+			free(new_rule);
+			goto out;
+		}
 		insert_rule_sorted(is_wl ? &can_wl[rule_id] : &can_rules[rule_id], new_rule, tuple_id);
-		rc = handle_can_data(new_rule, rule_id, tuple_id);
 		goto out;
 	}
 
