@@ -1120,9 +1120,6 @@ int vsentry_socket_sock_rcv_skb(struct sock *sk, struct sk_buff *skb)
 	/* check vsentry state */
 	CHECK_STATE
 
-	/* check hook filter */
-	HOOK_FILTER
-	
 	memset(&disp, 0, sizeof(disp_info_t));	
 	
 	switch (sk->sk_family) {
