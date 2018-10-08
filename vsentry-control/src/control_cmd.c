@@ -77,7 +77,7 @@ int main(int argc, char **argv)
 	}
 
  	addr.sun_family = AF_UNIX;
-	strcpy(addr.sun_path, "/tmp/sr_umanager.socket");
+	strcpy(addr.sun_path, "/tmp/sr_engine.socket");
 
 	if (connect(fd, (struct sockaddr*)&addr, sizeof(addr)) == -1) {
 		perror("connect error");
