@@ -103,6 +103,12 @@ static SR_32 notify_learning(char *exec, sr_stat_con_stats_t *stats)
 
 	config_params = sr_config_get_param();
 
+	if (!(*config_params->dynamic_policy_url)) {
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_LOW,
+			"%s=No dynamic policy URL",REASON);
+		return SR_ERROR;
+	}
+
 	sprintf(buf, "PROCESS:%s TX:%llu RX:%llu;", exec, 8 * stats->tx_bytes, 8 * stats->rx_bytes);
 	CEF_log_event(SR_CEF_CID_STAT_IP, "info", SEVERITY_LOW,
 		"%s=learn rule: %s",MESSAGE,

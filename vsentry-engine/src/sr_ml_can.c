@@ -107,7 +107,7 @@ static SR_32 can_ml_send_dynamic_data(CURL *curl)
 	return SR_SUCCESS;
 }
 
-SR_32 can_ml_learn_info_task(void *data)
+static SR_32 can_ml_learn_info_task(void *data)
 {
 	CURL *curl;
 	SR_8 post_vin[64];
@@ -186,6 +186,14 @@ static SR_U32 can_ml_create_key(void *data)
 SR_32 sr_ml_can_hash_init(void)
 {
 	hash_ops_t can_ml_hash_ops = {};
+	struct config_params_t *config_params;
+
+	config_params = sr_config_get_param();
+	if (!*(config_params->ml_can_url)) {
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+			"%s=No ml can url. ML task finished.",REASON);
+		return SR_SUCCESS;
+	}
 
 	can_ml_hash_ops.create_key = can_ml_create_key;
 	can_ml_hash_ops.comp = can_ml_comp;
@@ -206,6 +214,11 @@ SR_32 sr_ml_can_hash_init(void)
 
 void sr_ml_can_print_hash(void)
 {
+	struct config_params_t *config_params;
+
+	config_params = sr_config_get_param();
+	if (!*(config_params->ml_can_url))
+		return;
 	sr_gen_hash_print(can_ml_hash);
 }
 

@@ -163,6 +163,14 @@ static SR_32 command_management(void *p)
 
 SR_32 sr_get_command_start(void)
 {
+	struct config_params_t *config_params;
+
+	config_params = sr_config_get_param();
+	if (!*(config_params->sr_commands_url)) {
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+			"%s=No get commands URL ",REASON);
+		return SR_SUCCESS;
+	}
 	is_run_cmd = SR_TRUE;
 	if (sr_start_task(SR_GET_COMMAND, command_management) != SR_SUCCESS) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
@@ -175,6 +183,11 @@ SR_32 sr_get_command_start(void)
 
 void sr_get_command_stop(void)
 {
+	struct config_params_t *config_params;
+
+	config_params = sr_config_get_param();
+	if (!*(config_params->sr_commands_url))
+		return;
 	is_run_cmd = SR_FALSE;
 
 	sr_stop_task(SR_GET_COMMAND);

@@ -538,10 +538,13 @@ static void* monitor_file(void *data)
     fd_set rfds;
     unsigned int notify_mask = (IN_MODIFY | IN_MOVED_FROM | IN_MOVED_TO | IN_CLOSE_WRITE);
     pthread_t thread_id;
-    bool run = true;
+    bool run = true, is_log, is_can;
     struct config_params_t *config_params;
 
     config_params = sr_config_get_param();
+
+    is_log = !!*(config_params->log_uploader_url);
+    is_can = !!*(config_params->can_collector_url);
 
     /* create the file descriptor for accessing the inotify API */
     fd = inotify_init1(IN_NONBLOCK);
@@ -565,20 +568,22 @@ static void* monitor_file(void *data)
         return NULL;
     }
 
-    sem_init(&sem_log_uploader, 0, 0);
-    sem_init(&sem_can_log_uploader, 0, 0);
-
-    /* start the log uploader thread */
-    ret = pthread_create(&thread_id, NULL, &log_uploader, &run);
-    if (ret != 0) {
-        uploader_err("pthread_create: %s\n", strerror(errno));
-        return NULL;
+    if (is_log) {
+       sem_init(&sem_log_uploader, 0, 0);
+       /* start the log uploader thread */
+       ret = pthread_create(&thread_id, NULL, &log_uploader, &run);
+       if (ret != 0) {
+           uploader_err("pthread_create: %s\n", strerror(errno));
+           return NULL;
+       }
     }
-
-    ret = pthread_create(&thread_id, NULL, &can_log_uploader, &run);
-    if (ret != 0) {
-        uploader_err("pthread_create: %s\n", strerror(errno));
-        return NULL;
+    if (is_can) {
+       sem_init(&sem_can_log_uploader, 0, 0);
+       ret = pthread_create(&thread_id, NULL, &can_log_uploader, &run);
+       if (ret != 0) {
+           uploader_err("pthread_create: %s\n", strerror(errno));
+           return NULL;
+       }
     }
 
     while (true) {
@@ -597,8 +602,10 @@ static void* monitor_file(void *data)
             /* event on pipe .. we need to exit */
             uploader_debug("monitor_file exit\n");
             run = false;
-            sem_post(&sem_log_uploader);
-            sem_post(&sem_can_log_uploader);
+            if (is_log)
+               sem_post(&sem_log_uploader);
+            if (is_can)
+               sem_post(&sem_can_log_uploader);
             break;
         }
 
