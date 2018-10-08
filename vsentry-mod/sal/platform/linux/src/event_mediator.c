@@ -582,9 +582,6 @@ SR_32 vsentry_incoming_connection(struct sk_buff *skb)
 	/* check vsentry state */
 	CHECK_STATE
 
-	/* check hook filter */
-	HOOK_FILTER
-
 	/* gather metadata */
 	disp.tuple_info.id.uid = UID_ANY;
 	disp.tuple_info.saddr.v4addr.s_addr = sal_packet_src_addr(skb);
@@ -1120,9 +1117,6 @@ int vsentry_socket_sock_rcv_skb(struct sock *sk, struct sk_buff *skb)
 	/* check vsentry state */
 	CHECK_STATE
 
-	/* check hook filter */
-	HOOK_FILTER
-	
 	memset(&disp, 0, sizeof(disp_info_t));	
 	
 	switch (sk->sk_family) {
