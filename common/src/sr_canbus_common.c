@@ -10,7 +10,7 @@ SR_32 sr_can_tran_init(can_translator_t *can_traslator)
 
 SR_32 sr_can_tran_get_if_id(can_translator_t *can_traslator, SR_U8 dev_id, SR_U8 *can_id)
 {
-        char *if_name;
+	SR_32 rc;
 
         if (dev_id >= MAX_DEVICE_NUMBER)
                 return SR_ERROR;
@@ -23,9 +23,12 @@ SR_32 sr_can_tran_get_if_id(can_translator_t *can_traslator, SR_U8 dev_id, SR_U8
         /* Create can dev translation */
         can_traslator->devices_map_to_can_id[dev_id] = can_traslator->curr_can_dev_ind;
         *can_id = can_traslator->curr_can_dev_ind;
-        if ((if_name = sal_get_interface_name(dev_id))) {
-                strncpy(can_traslator->interfaces_name[can_traslator->curr_can_dev_ind], if_name, CAN_INTERFACES_NAME_SIZE);
-        }
+	rc = sal_get_interface_name(dev_id, can_traslator->interfaces_name[can_traslator->curr_can_dev_ind]);
+	if (rc != SR_SUCCESS) {
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+			"%s=failed getting interface name ",REASON);
+		strcpy(can_traslator->interfaces_name[can_traslator->curr_can_dev_ind], "invalid");
+	}
         (can_traslator->curr_can_dev_ind)++;
 
         return SR_SUCCESS;

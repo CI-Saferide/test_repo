@@ -89,6 +89,7 @@ static SR_32 sr_white_list_create_action(void)
 SR_32 sr_white_list_init(void)
 {
 	hash_ops_t hash_ops = {};
+	SR_32 rc;
 
 	if (sr_white_list_file_init() != SR_SUCCESS) {
                 CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
@@ -106,6 +107,12 @@ SR_32 sr_white_list_init(void)
 		return SR_ERROR;
 	}
 	wl_mode = SR_WL_MODE_OFF;
+
+	if ((rc = sr_white_list_canbus_init()) != SR_SUCCESS) { 
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+			"%s=white list init , init white list can failed",REASON);
+		return SR_ERROR;
+	}
 
 	return SR_SUCCESS;
 }
@@ -152,6 +159,8 @@ SR_32 sr_white_list_reset(void)
 	sr_white_list_delete_rules();
  	CEF_log_event(SR_CEF_CID_SYSTEM, "info", SEVERITY_LOW,
 			"%s=white list rules successfuly deleted", MESSAGE);
+	sr_white_list_canbus_init();
+
 	return SR_SUCCESS;
 }
 

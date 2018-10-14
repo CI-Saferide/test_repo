@@ -122,6 +122,6 @@ void* sal_get_parent_dir(void* info);
 
 SR_32 sal_exec_for_all_tasks(SR_32 (*cb)(void *data));
 
-char *sal_get_interface_name(SR_32 if_id);
+SR_32 sal_get_interface_name(SR_32 if_id, char *interface_name);
 
 #endif /* SAL_LINUX_H*/

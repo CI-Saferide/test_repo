@@ -14,8 +14,11 @@ static sysrepo_mng_handler_t sysrepo_handler;
 
 typedef struct can_rule_info {
 	SR_U32  msg_id;
+	SR_U32  if_id;
 	struct can_rule_info *next;
 } can_rule_info_t;
+
+static can_translator_t can_translator;
 
 static can_rule_info_t *can_rules_for_if_in[CAN_INTERFACES_MAX];
 static can_rule_info_t *can_rules_for_if_out[CAN_INTERFACES_MAX];
@@ -145,7 +148,7 @@ static SR_32 create_can_rule_for_exec(SR_U8 dir, SR_32 *rule_id, char *exec)
 					REASON, rule_iter->msg_id, dir, exec);
 			return SR_ERROR;
 		}
-		if (sal_get_interface_name(i, interface) != SR_SUCCESS) {
+		if (sal_get_interface_name(can_rules_arr[i]->if_id, interface) != SR_SUCCESS) {
 			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 				"%s=can learn rule failed to get interface name for interface id %d", REASON, i);
 			continue;
@@ -189,12 +192,14 @@ static SR_32 canbus_apply_cb(void *hash_data, void *data)
 	sr_white_list_item_t *wl_item = (sr_white_list_item_t *)hash_data;	
 	sr_wl_can_item_t *iter;
 	can_rule_info_t **list, *new_item;
+	SR_U8 can_id;
 
 	if (!hash_data)
 		return SR_ERROR;
 
 	for (iter = wl_item->white_list_can; iter; iter = iter->next) {
-		list = (iter->dir == SR_CAN_IN) ? &can_rules_for_if_in[iter->if_id] : &can_rules_for_if_out[iter->if_id];
+		sr_can_tran_get_if_id(&can_translator, iter->if_id, &can_id);
+		list = (iter->dir == SR_CAN_IN) ? &can_rules_for_if_in[can_id] : &can_rules_for_if_out[can_id];
 
 		SR_Zalloc(new_item, can_rule_info_t *, sizeof(can_rule_info_t));
 		if (!new_item) {
@@ -203,6 +208,7 @@ static SR_32 canbus_apply_cb(void *hash_data, void *data)
 			return SR_ERROR;
 		}
 		new_item->msg_id = iter->msg_id;
+		new_item->if_id = iter->if_id;
 		new_item->next = *list;
 		*list = new_item;
 	}
@@ -250,3 +256,8 @@ SR_32 sr_white_list_canbus_apply(SR_BOOL is_apply)
 
 	return SR_SUCCESS;
 }
+
+SR_32 sr_white_list_canbus_init(void) {
+        return sr_can_tran_init(&can_translator);
+}
+
