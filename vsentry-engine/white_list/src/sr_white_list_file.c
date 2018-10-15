@@ -358,14 +358,7 @@ static SR_32 file_apply_cb(void *hash_data, void *data)
 	return SR_SUCCESS;
 }
 
-static SR_32 wl_file_delete_cb(void *hash_data, void *data)
-{
-	// TODO : delete rulues.
-
-	return SR_SUCCESS;
-}
-
-SR_32 sr_white_list_file_apply(SR_BOOL is_apply)
+SR_32 sr_white_list_file_apply(void)
 {
 	SR_32 rc;
 	cls_file_mem_optimization_t mem_opt;
@@ -405,7 +398,7 @@ SR_32 sr_white_list_file_apply(SR_BOOL is_apply)
 
 	rule_id = SR_FILE_WL_START_RULE_NO;
 	
-	if ((rc = sr_white_list_hash_exec_for_all(is_apply ? file_apply_cb : wl_file_delete_cb)) != SR_SUCCESS) {
+	if ((rc = sr_white_list_hash_exec_for_all(file_apply_cb)) != SR_SUCCESS) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 			"%s=file wl hash exec failed",REASON);
 		return SR_ERROR;

@@ -303,13 +303,6 @@ SR_32 sr_engine_start(int argc, char *argv[])
 		}
 	}
 
-	ret = sr_white_list_init();
-	if (ret != SR_SUCCESS){
-		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-						"%s=failed to init white list",REASON);
-		return SR_ERROR;
-	}
-
 	ret = sal_vsentry_fd_open();
 	if (ret != SR_SUCCESS){
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
@@ -354,13 +347,6 @@ SR_32 sr_engine_start(int argc, char *argv[])
 	if (ret != SR_SUCCESS){
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 						"%s=failed to init sr_stat_analysis_init",REASON);
-		return SR_ERROR;
-	}
-
-	ret = sr_white_list_ip_init();
-	if (ret != SR_SUCCESS){
-		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-						"%s=failed to init sr_white_list_ip_init",REASON);
 		return SR_ERROR;
 	}
 

@@ -18,8 +18,6 @@
 #define HASH_SIZE 500
 #define START_RULE_NUM 300
 
-#define SR_DYNAMIC_POLICY_URL "http://saferide-policies.eu-west-1.elasticbeanstalk.com/policy/ip/dynamic"
-
 static SR_U16 rule_number = START_RULE_NUM;
 
 static struct sr_gen_hash *learn_rule_hash;
@@ -105,6 +103,12 @@ static SR_32 notify_learning(char *exec, sr_stat_con_stats_t *stats)
 
 	config_params = sr_config_get_param();
 
+	if (!(*config_params->dynamic_policy_url)) {
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_LOW,
+			"%s=No dynamic policy URL",REASON);
+		return SR_ERROR;
+	}
+
 	sprintf(buf, "PROCESS:%s TX:%llu RX:%llu;", exec, 8 * stats->tx_bytes, 8 * stats->rx_bytes);
 	CEF_log_event(SR_CEF_CID_STAT_IP, "info", SEVERITY_LOW,
 		"%s=learn rule: %s",MESSAGE,
@@ -119,7 +123,7 @@ static SR_32 notify_learning(char *exec, sr_stat_con_stats_t *stats)
 	/* First set the URL that is about to receive our POST. This URL can
 	just as well be a https:// URL if that is what should receive the
 	data. */
-	curl_easy_setopt(curl, CURLOPT_URL, SR_DYNAMIC_POLICY_URL);
+	curl_easy_setopt(curl, CURLOPT_URL, config_params->dynamic_policy_url);
 	/* Now specify the POST data */
 	//curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
 	chunk = curl_slist_append(chunk, "application/x-www-form-urlencoded");
