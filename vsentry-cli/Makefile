@@ -2,6 +2,8 @@ ifdef CROSS_COMPILE
 export CC=$(CROSS_COMPILE)gcc
 endif
 
+CPPFLAGS += -I../common/include -I../vsentry-lib/include -I../vsentry-engine/sal/platform/linux/include -I../vsentry-engine/include -I../tools/sr-log/include -I../tools/db_tools/include
+
 
 TOP_DIR		:= $(shell pwd)
 BUILD_DIR 	:= $(TOP_DIR)/build
@@ -9,13 +11,13 @@ OBJDIR		:= $(BUILD_DIR)/objs
 LIBDIR		:= $(BUILD_DIR)/lib
 BINDIR 		:= $(BUILD_DIR)/bin
 
-TARGET 		:= vsentry_ctrl
+TARGET 		:= vsentry_cli
 
 # where to search for sources
 VPATH 		:=  $(TOP_DIR)/src \
 
 # sources to compile
-SRCS 		:=  control_cmd.c \
+SRCS 		:=  vsentry_cli.c \
 
 # include folders
 INCLUDES 	:=
@@ -24,7 +26,7 @@ OBJS		:=  $(addprefix $(OBJDIR)/,$(SRCS:.c=.o))
 DEPS		:=  $(OBJS:.o=.d)
 
 # libs to link with
-LIBS		:= -l$(TARGET)
+LIBS		:= -l$(TARGET) -lsentry -ldb_tools
 # and where to search them 
 LIB_PATH 	:= -L$(LIBDIR)
 
@@ -38,9 +40,9 @@ endif
 
 all: $(TARGET)
 
-$(TARGET): lib$(TARGET)
+$(TARGET): lib$(TARGET) libdb_tools
 	@echo "linking $(notdir $@)"
-	@$(CC) $(LDFLAGS) -o $(BINDIR)/$(TARGET) $(LIB_PATH) $(LIBS)
+	$(CC) $(LDFLAGS) -o $(BINDIR)/$(TARGET) $(LIB_PATH) $(LIBS)
 
 lib$(TARGET): OBJSDIR $(OBJS)
 	@echo "archiving $(notdir $@)"
@@ -51,9 +53,12 @@ OBJSDIR:
 	@mkdir -p $(LIBDIR)
 	@mkdir -p $(BINDIR)
 
+libdb_tools:
+	@$(MAKE) -s -C ../tools/db_tools TOP_DIR=$(TOP_DIR)
+
 $(OBJDIR)/%.o: %.c
 	@echo "compiling $(notdir $<)"
-	@$(CC) $(CFLAGS) $(INCLUDES) -c $< -o $@
+	$(CC) $(CPPFLAGS) -g $(CFLAGS) $(INCLUDES) -c $< -o $@
 
 clean:
 	@rm -fr $(BUILD_DIR)

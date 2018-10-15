@@ -38,8 +38,22 @@
 #include "sr_config_common.h"
 #include "sr_can_collector.h"
 #include "sr_config_parse.h"
-#include "sal_third_party_interface.h"
+#ifdef SR_CLI
+#include "sal_cli_interface.h"
+#endif
 #include "sr_stat_system_policer.h"
+
+static SR_BOOL is_engine_on;
+
+SR_BOOL get_engine_state(void)
+{
+	return is_engine_on;
+}
+
+void set_engine_state(SR_BOOL is_on)
+{
+	is_engine_on = is_on;
+}
 
 static SR_32 engine_main_loop(void *data)
 {
@@ -179,7 +193,9 @@ static void engine_shutdown(void)
 	struct config_params_t *config_params;
 
 	config_params = sr_config_get_param();
-	sal_third_party_interface_uninit();
+#ifdef SR_CLI
+	sal_cli_interface_uninit();
+#endif
 	if (config_params->remote_server_support_enable) {
 		sr_get_command_stop();
 	}
@@ -377,12 +393,14 @@ SR_32 sr_engine_start(int argc, char *argv[])
 		return SR_ERROR;
 	}
 
-	ret = sal_third_party_interface_init();
+#ifdef SR_CLI
+	ret = sal_cli_interface_init();
 	if (ret != SR_SUCCESS){
 	CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-		"%s=failed to init trird partry interface",REASON);
+		"%s=failed to init cli interface",REASON);
 		return SR_ERROR;
 	}
+#endif
 
 	sr_db_init();
 	sentry_init(sr_config_vsentry_db_cb);

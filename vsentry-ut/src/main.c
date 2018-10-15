@@ -818,7 +818,7 @@ int main(int argc, char **argv)
 		goto cleanup;
         }
 
-	sysrepo_mng_delete_all(&handler);
+	sysrepo_mng_delete_all(&handler, SR_TRUE);
 
 	if (!strcmp(type, "file")) {
 		rc = handle_file(&handler);

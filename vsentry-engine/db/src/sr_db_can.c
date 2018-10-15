@@ -4,8 +4,38 @@
 #include "sal_mem.h"
 #include "list.h"
 #include "can_rule.h"
+#include "sr_cls_wl_common.h"
+#include "sr_engine_cli.h"
 
 static list_t can_rules_list;
+
+static void dump_can_rule(void *data, void *param)
+{
+        int fd = (int)(long)param, n, len;
+	char buf[MAX_BUF_SIZE];
+	SR_BOOL is_wl;
+
+        can_rule_t *can_rule = (can_rule_t *)data;
+
+	is_wl = (can_rule->rulenum >= SR_CAN_WL_START_RULE_NO);
+        sprintf(buf, "can%s,%d,%d,%s,%d,%d,%s,%s,%s%c",
+                is_wl ? "_wl" : "", can_rule->rulenum, can_rule->tuple.id, can_rule->action_name,
+                can_rule->tuple.msg_id, can_rule->tuple.direction, can_rule->tuple.interface,
+		can_rule->tuple.user, can_rule->tuple.program, SR_CLI_END_OF_ENTITY); 
+        len = strlen(buf);
+        if ((n = write(fd, buf, len)) < len) {
+                perror("write");
+                CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+                        "%s=write to cli for file failed.",REASON);
+        }
+}
+
+SR_32 can_rule_dump_rules(int fd)
+{
+        list_exec_for_each(&can_rules_list, dump_can_rule, (void *)(long)fd);
+
+        return SR_SUCCESS;
+}
 
 static bool can_rule_search_cb(void *candidate, void *data)
 {

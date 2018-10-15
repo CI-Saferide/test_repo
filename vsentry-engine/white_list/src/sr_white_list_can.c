@@ -8,6 +8,8 @@
 #include "sr_cls_rules_control.h"
 #include "sysrepo_mng.h"
 #include "sr_cls_wl_common.h"
+#include "sentry.h"
+#include "db_tools.h"
 
 static SR_32 rule_id; 
 static sysrepo_mng_handler_t sysrepo_handler;
@@ -155,7 +157,8 @@ static SR_32 create_can_rule_for_exec(SR_U8 dir, SR_32 *rule_id, char *exec)
 #ifdef DEBUG
 			printf(">>>>>>> IN Rule:%d tuple:%d exec:%s: if:%s: msgid:%x \n", *rule_id, tuple_id, exec, interface, rule_iter->msg_id);
 #endif
-			if (sys_repo_mng_create_canbus_rule(&sysrepo_handler, *rule_id, tuple_id, rule_iter->msg_id, interface, exec, "*", WHITE_LIST_ACTION, dir) != SR_SUCCESS) {
+			if (sys_repo_mng_create_canbus_rule(&sysrepo_handler, *rule_id, tuple_id, rule_iter->msg_id, interface, exec, "*", WHITE_LIST_ACTION,
+				can_dir_convert(dir)) != SR_SUCCESS) {
 				CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 					"%s=fail to create can rule in persistent db. rule id:%d mid:%x %d exec:%s",
 						REASON, *rule_id, rule_iter->msg_id, dir ,exec);

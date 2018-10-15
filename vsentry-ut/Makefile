@@ -29,7 +29,7 @@ OBJS		:=  $(addprefix $(OBJDIR)/,$(SRCS:.c=.o))
 DEPS		:=  $(OBJS:.o=.d)
 
 # libs to link with
-LIBS		:= -lpthread -lsysrepo_mng -ljsmn -lsentry -lsysrepo
+LIBS		:= -lpthread -lsysrepo_mng -ljsmn -lsentry -lsysrepo -ldb_tools
 # and where to search them 
 LIB_PATH 	:= -L$(LIBDIR) -L../vsentry-lib/lib
 
@@ -54,7 +54,7 @@ TARGET_SYSTEM_TEST = $(BINDIR)/system_test_process
 
 all: $(TARGET) $(TARGET_SYSTEM_TEST)
 
-$(TARGET): $(OBJDIR) $(OBJS) libjsmn libsysrepo_mng
+$(TARGET): $(OBJDIR) $(OBJS) libjsmn libsysrepo_mng libdb_tools
 	@echo "linking $(notdir $@)"
 	$(CC) $(OBJS) -o $(BINDIR)/$(TARGET) $(LIB_PATH) $(LIBS) $(LDFLAGS)
 
@@ -71,6 +71,9 @@ libjsmn:
 
 libsysrepo_mng:
 	@$(MAKE) -s -C ../tools/sysrepo_mng NO_CEF=1 TOP_DIR=$(TOP_DIR)
+
+libdb_tools:
+	@$(MAKE) -s -C ../tools/db_tools NO_CEF=1 TOP_DIR=$(TOP_DIR)
 
 $(OBJDIR)/%.o: %.c
 	@echo "compiling $(notdir $<)"

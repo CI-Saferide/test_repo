@@ -8,11 +8,15 @@
 
 #define ACTION_NAME_XPATH_PREFIX "/saferide:config/sr_actions/list_actions[name='%s"
 
+#define LOG_FACILITY_SIZE 30
+#define DB_MAX_NUM_OF_ACTIONS 20
+
 typedef enum {
     ACTION_NONE,
     ACTION_DROP,
     ACTION_ALLOW,
-    ACTION_MAX = ACTION_ALLOW,
+    ACTION_INVALID,
+    ACTION_MAX = ACTION_INVALID,
     ACTION_TOTAL = (ACTION_MAX + 1),
 } action_e;
 
@@ -20,7 +24,8 @@ typedef enum {
     LOG_NONE,
     LOG_TO_SYSLOG, /* TODO: not supported yet */
     LOG_TO_FILE,
-    LOG_MAX = LOG_TO_FILE,
+    LOG_INVALID,
+    LOG_MAX = LOG_INVALID,
     LOG_TOTAL = (LOG_MAX + 1),
 } log_facility_e;
 

@@ -388,6 +388,15 @@ char *sal_get_str_ip_address(SR_U32 ip)
 	return str_address;
 }
 
+void sal_get_ip_address_from_str(char *ip_addr, SR_U32 *ip)
+{
+	struct in_addr addr = {};
+
+	inet_aton(ip_addr, &addr);
+
+	*ip = addr.s_addr;
+}
+
 void sal_set_interrupt_cb(void (*cb)(int))
 {
 	signal(SIGINT, cb);
@@ -409,6 +418,58 @@ SR_32 sal_get_interface_name(SR_32 if_id, char *interface)
 	if (!interface) {
 		return SR_ERROR;
 	}
+
+	return SR_SUCCESS;
+}
+
+SR_32 sal_linux_local_interface(char *file_name, SR_32 (*handle_data_cb)(char *buf, SR_32 fd), SR_BOOL (*is_run_cb)(void))
+{
+	int sock, msgsock, rval, rc;
+	struct sockaddr_un server = {};
+	char buf[1024];
+
+	unlink(file_name);
+
+	sock = socket(AF_UNIX, SOCK_STREAM, 0);
+	if (sock < 0) {
+		printf("opening stream socket %s\n", strerror(errno));
+		return SR_ERROR;
+	}
+
+	server.sun_family = AF_UNIX;
+	strcpy(server.sun_path, file_name);
+	if (bind(sock, (struct sockaddr *) &server, sizeof(struct sockaddr_un))) {
+		printf("binding stream socket %s\n", strerror(errno));
+		return SR_ERROR;
+	}
+
+	printf("Socket name %s\n", server.sun_path);
+	listen(sock, 1);
+
+	while (is_run_cb()) {
+		msgsock = accept(sock, 0, 0);
+
+		if (msgsock == -1)
+			printf("accept %s\n", strerror(errno));
+		else do {
+				bzero(buf, sizeof(buf));
+				rval = read(msgsock, buf, 1024);
+				if (rval < 0)
+					printf("reading stream message %s\n", strerror(errno));
+				else if (rval == 0)
+					printf("ending connection\n");
+				else {
+					rc = handle_data_cb(buf, msgsock);
+					if (rc != SR_SUCCESS) {
+						printf("handle data failed \n");
+					}
+				}
+			} while (rval > 0);
+		
+		close(msgsock);
+	}
+	close(sock);
+	unlink(file_name);
 
 	return SR_SUCCESS;
 }

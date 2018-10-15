@@ -968,9 +968,14 @@ SR_32 vsentry_socket_sendmsg(struct socket *sock,struct msghdr *msg,SR_32 size)
 				struct raw_sock *ro = (struct raw_sock *)sock->sk;
 				disp.can_info.if_id = ro->ifindex;
 			}
-
 			disp.can_info.id.uid = (int)rcred->uid.val;
 			disp.can_info.id.pid = current->tgid;
+			if (!skb) {
+				CEF_log_event(SR_CEF_CID_SYSTEM, "Error", SEVERITY_HIGH,
+									"fail to allocate skb for can message");
+				/* we cannot handle this message */
+				return 0;
+			}
 
 			err = memcpy_from_msg(skb_put(skb, size), &copy_msg, size);
 			if (err < 0) {

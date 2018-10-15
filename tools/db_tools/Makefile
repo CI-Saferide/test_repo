@@ -5,18 +5,15 @@ BUILD_DIR 	:= $(TOP_DIR)/build
 OBJDIR 		:= $(BUILD_DIR)/objs
 LIBDIR 		:= $(BUILD_DIR)/lib
 
-TARGET 		:= libsysrepo_mng
+TARGET 		:= libdb_tools
 VPATH 		:= ./src
-SRCS 		:= sysrepo_mng.c \
+SRCS 		:= db_tools.c \
 
 INCLUDES	:= -I$(shell pwd)/include \
 			   -I$(TOP_DIR)/../common/include \
 			   -I$(TOP_DIR)/../tools/sr-log/include \
-			   -I$(TOP_DIR)/../tools/json \
-			   -I$(TOP_DIR)/../tools/db_tools/include \
-			   -I$(TOP_DIR)/sal/platform/linux/include \
 			   -I$(TOP_DIR)/../vsentry-lib/include \
-
+			   -I$(TOP_DIR)/../vsentry-engine/sal/platform/linux/include \
 
 OBJS 		:= $(addprefix $(OBJDIR)/,$(SRCS:.c=.o))
 DEPS 		:= $(OBJS:.o=.d)

@@ -12,6 +12,7 @@
 #include <string.h>
 #include <ctype.h>
 #include "sr_cls_wl_common.h"
+#include "db_tools.h"
 
 #ifdef NO_CEF
 #define REASON 		"reason" // shut up GCC
@@ -885,16 +886,21 @@ SR_32 sysrepo_mng_delete_db(sysrepo_mng_handler_t *handler)
 	return SR_SUCCESS;
 }
 
-SR_32 sysrepo_mng_delete_all(sysrepo_mng_handler_t *handler)
+SR_32 sysrepo_mng_delete_all(sysrepo_mng_handler_t *handler, SR_BOOL is_commit)
 {
+	char str_param[MAX_STR_SIZE];
 	SR_32 rc;
 
-	rc = sr_delete_item(handler->sess, "/saferide:config", SR_EDIT_DEFAULT);
+	sprintf(str_param, "/%s", DB_PREFIX);
+	rc = sr_delete_item(handler->sess, str_param, SR_EDIT_DEFAULT);
 	if (SR_ERR_OK != rc) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 			"%s= Delete all failed : %s", REASON, sr_strerror(rc));
 		return SR_ERROR;
 	}
+	if (!is_commit)
+		return SR_SUCCESS;
+
 	rc = sr_commit(handler->sess);
 	if (SR_ERR_OK != rc) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
@@ -1063,6 +1069,25 @@ SR_32 sysrepo_mng_session_end(sysrepo_mng_handler_t *handler)
 	return SR_SUCCESS;
 }
 
+SR_U8 sys_repo_mng_perm_get_code(char *perms)
+{
+	SR_8 help;
+	SR_U8 res = 0;
+	
+	if (!perms || strlen(perms) != 3)
+		return 0;
+
+	help = atoi(perms + 2);
+	if(help & 4)
+		res |= SR_FILEOPS_READ;
+	if(help & 2)
+		res |= SR_FILEOPS_WRITE;
+	if(help & 1)
+		res |= SR_FILEOPS_EXEC;
+
+	return res;
+}
+
 static void file_op_convert(SR_U8 file_op, char *perms)
 {
 	SR_U8 res = 0;
@@ -1172,7 +1197,7 @@ SR_32 sys_repo_mng_create_net_rule(sysrepo_mng_handler_t *handler, SR_32 rule_id
 static void can_packet_convert(SR_U32 msg_id,SR_U8 dir, char * msgid_str,char * dir_str)
 {
 	sprintf(msgid_str, "%08x", msg_id);
-	sprintf(dir_str, "%s", dir==0?"in":"out");
+	strcpy(dir_str, get_dir_desc(dir));
 }
 
 #define ADD_CAN_FIELD(fieldname, fieldvalue, tuple) \
@@ -1237,6 +1262,20 @@ SR_32 sys_repo_mng_commit(sysrepo_mng_handler_t *handler)
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 			"%s=sr_copy_config: %s",REASON,
 			sr_strerror(rc));
+		return SR_ERROR;
+	}
+
+	return SR_SUCCESS;
+}
+
+SR_32 sys_repo_mng_update_engine_state(sysrepo_mng_handler_t *handler, SR_BOOL is_on)
+{
+	char str_param[MAX_STR_SIZE];
+
+	sprintf(str_param, "/saferide:control/engine");
+	if (um_set_value(handler->sess, str_param, is_on ? "start" : "stop") != SR_SUCCESS)  {
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+			"%s=after um_set_value str_param:%s: ",REASON, str_param);
 		return SR_ERROR;
 	}
 

@@ -9,6 +9,7 @@ SR_32 sr_db_can_rule_deinit(void);
 SR_32 sr_db_can_rule_add(can_rule_t *can_rule);
 SR_32 sr_db_can_rule_delete(can_rule_t *can_rule);
 can_rule_t * sr_db_can_rule_get(can_rule_t *can_rule);
+SR_32 can_rule_dump_rules(int fd);
 void arik_print(char *msg);
 
 #endif
