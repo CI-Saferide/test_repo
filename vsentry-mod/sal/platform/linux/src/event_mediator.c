@@ -192,35 +192,6 @@ static void parse_sinaddr(const struct in_addr saddr, SR_8* buffer, SR_32 length
 }
 #endif // DEBUG
 
-static void update_sk_process_info (struct sk_security_struct *sksec, SR_U32 current_pid)
-{
-	CEF_log_event(SR_CEF_CID_SYSTEM, "info", SEVERITY_LOW, "%s=socket process changed: old_process=%s old_pid=%d", MESSAGE, sksec->exec, sksec->pid);
-	if ((get_process_name(current_pid, sksec->exec, SR_MAX_PATH_SIZE)) != SR_SUCCESS) {
-		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, "%s=failed get process name at sk allocation pid:%d ", REASON, current_pid);
-	}
-	CEF_log_event(SR_CEF_CID_SYSTEM, "info", SEVERITY_LOW, "%s=socket process new values: process_name=%s pid=%d", MESSAGE, sksec->exec, sksec->pid);
-}
-
-static void vsentry_get_sk_process_info(struct sock *sk, identifier *id, SR_32 current_pid)
-{
-	if ((sk) && (sk->sk_security)) {
-		struct sk_security_struct *sksec = sk->sk_security;
-		if (current_pid) {
-			if (sksec->pid != current_pid) {
-				update_sk_process_info(sksec, current_pid);
-				sksec->pid = current_pid;
-			}
-			id->pid = current_pid;
-		} else
-			id->pid = sksec->pid;
-
-		if (get_collector_state() == SR_TRUE) {
-			strncpy(id->exec, sksec->exec, SR_MAX_PATH_SIZE);
-		}	
-	} else
-		id->pid = current_pid;	
-}
-
 SR_32 vsentry_inode_mkdir(struct inode *dir, struct dentry *dentry, umode_t mask)
 {
 	disp_info_t disp;
@@ -554,7 +525,7 @@ SR_32 vsentry_socket_connect(struct socket *sock, struct sockaddr *address, SR_3
 	disp.tuple_info.dport = ntohs(((struct sockaddr_in *)address)->sin_port);
 	disp.tuple_info.ip_proto = sock->sk->sk_protocol;
 
-	vsentry_get_sk_process_info(sock->sk, &disp.tuple_info.id, current->tgid);
+	disp.tuple_info.id.pid = current->tgid;
 
 #ifdef DEBUG_EVENT_MEDIATOR
 	CEF_log_event(SR_CEF_CID_SYSTEM, "info" , SEVERITY_LOW,
@@ -593,7 +564,7 @@ SR_32 vsentry_incoming_connection(struct sk_buff *skb)
 	disp.tuple_info.dport = sal_packet_dest_port(skb);
 	disp.tuple_info.ip_proto = sal_packet_ip_proto(skb);
 
-	vsentry_get_sk_process_info(skb->sk, &disp.tuple_info.id, 0);
+	disp.tuple_info.id.pid = 0;
 
 //#ifdef DEBUG_EVENT_MEDIATOR
 	CEF_log_event(SR_CEF_CID_SYSTEM, "info" , SEVERITY_LOW,
@@ -967,10 +938,9 @@ SR_32 vsentry_socket_sendmsg(struct socket *sock,struct msghdr *msg,SR_32 size)
 {
 	int err;
 	int i;
-	struct sk_buff *skb;
+	struct sk_buff *skb = NULL;
 	struct canfd_frame *cfd;
 	const u8 family = sock->sk->sk_family;
-	struct socket copy_sock = *sock;
 	struct msghdr copy_msg = *msg;
 #ifdef CONFIG_STAT_ANALYSIS
 	sr_connection_data_t con = {}, *conp;
@@ -1003,16 +973,8 @@ SR_32 vsentry_socket_sendmsg(struct socket *sock,struct msghdr *msg,SR_32 size)
 			}
 
 			disp.can_info.id.uid = (int)rcred->uid.val;
-			vsentry_get_sk_process_info(sock->sk, &disp.can_info.id, current->tgid);
-			skb = sock_alloc_send_skb(copy_sock.sk, size + sizeof(struct can_skb_priv),
-						  copy_msg.msg_flags & MSG_DONTWAIT, &err);
-						  
-			if (!skb) {
-				CEF_log_event(SR_CEF_CID_SYSTEM, "Error", SEVERITY_HIGH,
-								"fail to allocate skb for can message");
-				/* we cannot handle this message */
-				return 0;
-			}
+			disp.can_info.id.pid = current->tgid;
+
 			err = memcpy_from_msg(skb_put(skb, size), &copy_msg, size);
 			if (err < 0) {
 				CEF_log_event(SR_CEF_CID_SYSTEM, "Error", SEVERITY_HIGH,
@@ -1134,15 +1096,7 @@ int vsentry_socket_sock_rcv_skb(struct sock *sk, struct sk_buff *skb)
 			disp.can_info.dir = SR_CAN_IN;
 			disp.can_info.if_id = skb->dev->ifindex;
 
-			if (sk->sk_security) {
-				struct sk_security_struct *sksec = sk->sk_security;
-				disp.can_info.id.pid = sksec->pid;
-				if (get_collector_state() == SR_TRUE){
-					strncpy(disp.can_info.id.exec, sksec->exec, SR_MAX_PATH_SIZE);
-				}
-			}
-			else
-				disp.can_info.id.pid = 0;
+			disp.can_info.id.pid = 0;
 
 			for (i = 0; i < cfd->len; i++) {
 				disp.can_info.payload[i] = cfd->data[i];
@@ -1283,32 +1237,4 @@ void vsentry_task_free(struct task_struct *task)
 #if 0  
 	sr_stat_analysis_report_porcess_die(task->pid);
 #endif
-}
-
-void vsentry_sk_free_security(struct sock *sk)
-{
-	struct sk_security_struct *sksec = sk->sk_security;
-
-	sk->sk_security = NULL;
-	kfree(sksec);
-}
-
-int vsentry_sk_alloc_security(struct sock *sk, int family, gfp_t priority)
-{
-	struct sk_security_struct *sksec;
-	SR_32 rc;
-
-	sksec = kzalloc(sizeof(*sksec), priority);
-	if (!sksec) {
-		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, "%s=failed to allocate memory for sk security pid:%d ", REASON, current->tgid);
-		return -ENOMEM;
-	}
-
-	sksec->pid = current->tgid;
-	if ((rc = get_process_name(current->tgid, sksec->exec, SR_MAX_PATH_SIZE)) != SR_SUCCESS) {
-		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, "%s=failed get process name at sk allocation pid:%d ", REASON, current->tgid);
-	}
-
-	sk->sk_security = sksec;
-	return 0;
 }
