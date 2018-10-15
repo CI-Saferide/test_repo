@@ -10,9 +10,19 @@
 #include "sr_stat_analysis.h"
 #include "sr_control.h"
 #include "sr_engine_cli.h"
+#include "sr_ver.h"
 
 static SR_BOOL is_run;
 static pthread_t t;
+
+static void handle_ver_cmd(int fd)
+{
+	char out_buf[512] = {};
+
+	sprintf(out_buf, "version is %d.%d (%s)", VSENTRY_VER_MAJOR, VSENTRY_VER_MINOR, VSENTRY_VER_BUILD);
+	if (write(fd, out_buf, strlen(out_buf) + 1) < strlen(out_buf) + 1)
+		printf("write error\n");
+}
 
 static SR_32 handle_data(char *buf, SR_32 fd)
 {
@@ -38,6 +48,8 @@ static SR_32 handle_data(char *buf, SR_32 fd)
 		sr_stat_analysis_learn_mode_set(SR_STAT_MODE_PROTECT);
 	if (!memcmp(buf, "sp_off", strlen("sp_off")))
 		sr_stat_analysis_learn_mode_set(SR_STAT_MODE_OFF);
+	if (!memcmp(buf, "sr_ver", strlen("sr_ver")))
+		handle_ver_cmd(fd);
 
 	return SR_SUCCESS;
 }

@@ -193,6 +193,11 @@ static SR_32 get_control_cmd(char *ptr, char *cmd)
 		}
 	}
 
+	if (!strcmp(ptr, "sr_ver")) {
+		strcpy(cmd, "sr_ver");
+		return SR_SUCCESS;
+	}
+
         return SR_ERROR;
 }
 
@@ -1515,7 +1520,7 @@ static void handle_update(SR_BOOL is_delete)
 
 static void print_control_usage(void)
 {
-	printf("\ncontrol [wl | sp]  [learn | apply | print | reset]\n");
+	printf("\ncontrol [wl | sp | sr_ver]  [learn | apply | print | reset] \n");
 }
 
 static void cleanup_rule_table(rule_info_t *table[])
@@ -1581,7 +1586,7 @@ static void handle_engine(void)
 static void handle_control(void)
 {
 	SR_32 fd, rc;
-	char *ptr, cmd[128];
+	char *ptr, cmd[128], buf[512];
 
 	ptr = strtok(NULL, " "); 
 	if (!ptr) {
@@ -1614,6 +1619,16 @@ static void handle_control(void)
 		error("partial write", SR_TRUE);
 		return;
 	}
+	
+	if (!strcmp(cmd, "sr_ver")) {
+		usleep(30000);
+		rc = read(fd, buf, 512);
+		if (rc < 0) {
+			perror("read error");
+			return;
+		}
+		printf("\n%s\n", buf);
+       }
 	printf("\n");
 
 	close(fd);
