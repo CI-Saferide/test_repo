@@ -149,6 +149,9 @@ $(OBJDIR)/%.o: %.c
 	@echo "compiling $(notdir $<)"
 	@$(CC) $(CFLAGS) $(INCLUDES) -c $< -o $@
 
+install:
+	install -m 755 build/bin/* /usr/bin/
+
 clean:
 	@rm -fr $(BUILD_DIR)
 

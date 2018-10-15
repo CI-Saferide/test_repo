@@ -24,7 +24,6 @@ all: $(MORE_TRAGETS)
 	@$(MAKE) -s -C vsentry-engine $(ENG_FLAGS)
 	@echo "***** enter vsentry-cli *****"
 	@$(MAKE) -s -C vsentry-cli
-	@sudo make install -s -C vsentry-cli
 	@echo "***** enter vsentry-ut *****"
 	@$(MAKE) -s -C vsentry-ut
 
@@ -33,3 +32,8 @@ clean: $(MORE_CLEAN_TARGETS)
 	@$(MAKE) -s -C vsentry-engine clean
 	@$(MAKE) -s -C vsentry-cli clean
 	@$(MAKE) -s -C vsentry-ut clean
+
+install:
+	make install -s -C vsentry-mod
+	make install -s -C vsentry-engine
+	make install -s -C vsentry-cli
