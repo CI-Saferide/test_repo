@@ -1,4 +1,5 @@
 #include "sr_types.h"
+#include "sr_engine_main.h"
 #include "sr_engine_cli.h"
 #include "sr_db.h"
 #include "sr_db_file.h"
@@ -8,10 +9,25 @@
 #include "sysrepo_mng.h"
 #include "db_tools.h"
 
+static void engine_status_dump(int fd)
+{
+	char buf[100];
+	SR_32 len, n;
+
+	sprintf(buf, "engine,%s%c", get_engine_state() ? "on" : "off", SR_CLI_END_OF_ENTITY);
+	len = strlen(buf);
+	if ((n = write(fd, buf, len)) < len) {
+                printf("Write to CLI file failed \n");
+                CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+                        "%s=write to cli for file failed.",REASON);
+        }       
+}
+
 void sr_engine_cli_load(SR_32 fd)
 {
 	char buf[2] = {};
 
+	engine_status_dump(fd);
 	action_dump(fd);
 	file_rule_dump_rules(fd);
 	ip_rule_dump_rules(fd);
@@ -20,6 +36,33 @@ void sr_engine_cli_load(SR_32 fd)
 	if (write(fd, buf, 1) < 1) {
 		printf("write failed buf\n");
 	}
+}
+
+static SR_32 handle_engine_commit(sysrepo_mng_handler_t *handler, char *buf)
+{
+	char *ptr, *help_str = NULL;
+	SR_32 rc = SR_SUCCESS;
+
+	help_str = strdup(buf);
+	ptr = strtok(help_str, ",");
+	if (!(ptr = strtok(NULL, ","))) {
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+                        "%s=engine buf correpted ",REASON);
+		rc = SR_ERROR;
+		goto out;
+	}
+
+	if (sys_repo_mng_update_engine_state(handler, strcmp(ptr, "on") == 0 ? SR_TRUE : SR_FALSE) != SR_SUCCESS) {
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+                        "%s=engine buf correpted ",REASON);
+		rc = SR_ERROR;
+		goto out;
+	}
+
+out:
+	if (help_str)
+		free(help_str);
+	return rc;
 }
 
 static SR_32 handle_action_commit(sysrepo_mng_handler_t *handler, char *buf)
@@ -269,6 +312,8 @@ static SR_32 handle_buffer(sysrepo_mng_handler_t *handler, char *buf)
 
 	if (!memcmp(buf, "action", strlen("action")))
                 return handle_action_commit(handler, buf);
+	if (!memcmp(buf, "engine", strlen("engine")))
+                return handle_engine_commit(handler, buf);
 
 	help_str = strdup(buf);
         ptr = strtok(help_str, ",");

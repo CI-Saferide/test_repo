@@ -1268,6 +1268,20 @@ SR_32 sys_repo_mng_commit(sysrepo_mng_handler_t *handler)
 	return SR_SUCCESS;
 }
 
+SR_32 sys_repo_mng_update_engine_state(sysrepo_mng_handler_t *handler, SR_BOOL is_on)
+{
+	char str_param[MAX_STR_SIZE];
+
+	sprintf(str_param, "/saferide:control/engine");
+	if (um_set_value(handler->sess, str_param, is_on ? "start" : "stop") != SR_SUCCESS)  {
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+			"%s=after um_set_value str_param:%s: ",REASON, str_param);
+		return SR_ERROR;
+	}
+
+	return SR_SUCCESS;
+}
+
 SR_32 sys_repo_mng_create_action(sysrepo_mng_handler_t *handler, char *action_name, SR_BOOL is_allow, SR_BOOL is_log)
 {
 	char str_param[MAX_STR_SIZE], str_value[MAX_STR_SIZE];

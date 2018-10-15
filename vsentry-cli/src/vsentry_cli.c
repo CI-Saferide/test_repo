@@ -79,6 +79,7 @@ rule_info_t *file_wl[NUM_OF_RULES] = {};
 rule_info_t *ip_wl[NUM_OF_RULES] = {};
 rule_info_t *can_wl[NUM_OF_RULES] = {};
 action_t actions[DB_MAX_NUM_OF_ACTIONS] = {};
+SR_BOOL engine_state;
 
 static char *cmds[NUM_OF_CMD_ENTRIES] = {};
 
@@ -374,6 +375,27 @@ static SR_32 delete_rule(rule_info_t **table, SR_U32 tuple_id)
 	return SR_SUCCESS;
 }
 
+static SR_32 handle_engine_load(char *buf)
+{
+	char *ptr, *help_str = NULL;
+	SR_32 rc = SR_SUCCESS;
+
+	help_str = strdup(buf);
+	ptr = strtok(help_str, ",");
+	if (!(ptr = strtok(NULL, ","))) {
+		printf("invalid engine message:%s: \n", buf);
+		rc =  SR_ERROR;
+		goto out;
+	}
+
+	engine_state = strcmp(ptr, "on") == 0 ? SR_TRUE : SR_FALSE;
+
+out:
+	if (help_str)
+		free(help_str);
+	return rc;
+}
+
 static SR_32 handle_action_load(char *buf)
 {
 	char *ptr, *help_str = NULL;
@@ -420,6 +442,9 @@ static SR_32 handle_load_data(char *buf)
 
 	if (!memcmp(buf, "action", strlen("action")))
 		return handle_action_load(buf);
+
+	if (!memcmp(buf, "engine", strlen("engine")))
+		return handle_engine_load(buf);
 
 	help_str = strdup(buf);
 	ptr = strtok(help_str, ",");
@@ -523,6 +548,10 @@ out:
 	return st;
 }
 
+static void print_engine_usage(void) {
+	printf("\nengine [state|update [on|off]]\n");
+}
+
 static void print_show_usage(void) 
 {
 	printf("show [action|rule|wl] [can|ipv4|file] [rule=x] [tuple=y] \n");
@@ -547,13 +576,13 @@ static void print_update_usage(void)
 	printf("  update tables\n");
 	printf("action|rule|wl - action table, user defied tabel or white list table \n");
 	print_update_rule_usage(SR_TRUE);
-	printf("\n");
 }
 
 static void print_usage(void)
 {
 	print_show_usage();
 	print_update_usage();
+	print_engine_usage();
 }
 
 static void print_actions(void)
@@ -1259,6 +1288,19 @@ static SR_32 handle_update_action(SR_BOOL is_delete)
 	return SR_SUCCESS;
 }
 
+static void engine_commit(SR_32 fd)
+{
+	char buf[MAX_BUF_SIZE];
+	SR_U32 len;
+
+	sprintf(buf, "engine,%s%c", engine_state ? "on" :  "off", SR_CLI_END_OF_ENTITY);
+	len = strlen(buf);
+	if (write(fd, buf, len) < len) {
+		printf("Write to engine failed !!\n");
+		return;
+	}
+}
+
 static void actions_commit(SR_32 fd)
 {
 	SR_U32 i, len;
@@ -1378,6 +1420,7 @@ static SR_32 handle_commit(void)
             goto out;
         }
 
+	engine_commit(fd);
 	actions_commit(fd);
 	rules_commit(fd);
 	buf[0] = SR_CLI_END_OF_TRANSACTION;
@@ -1500,6 +1543,41 @@ void db_cleanup(void)
 	num_of_actions = 0;
 }
 
+static void handle_engine(void)
+{
+	char *ptr;
+
+	ptr = strtok(NULL, " "); 
+	if (!ptr) { 
+		print_engine_usage();
+		return;
+	}
+
+	if (!strcmp(ptr, "state")) {
+		printf("\n state:%s\n", engine_state ? "ON" : "OFF");
+		return;
+	}
+	if (strcmp(ptr, "update") != 0) {
+		print_engine_usage();
+		return;
+	}
+
+	ptr = strtok(NULL, " "); 
+	if (!ptr) { 
+		print_engine_usage();
+		return;
+	}
+	if (!strcmp(ptr, "on"))
+		engine_state = SR_TRUE;
+	else if (!strcmp(ptr, "off"))
+		engine_state = SR_FALSE;
+	else {
+		print_engine_usage();
+		return;
+	}
+	notify_info("Engine state changed.");
+}
+
 static void handle_control(void)
 {
 	SR_32 fd, rc;
@@ -1590,6 +1668,9 @@ static void parse_command(char *cmd)
 	if (!strcmp(ptr, "control")) {
 		return handle_control();
 	}
+	if (!strcmp(ptr, "engine")) {
+		return handle_engine();
+	}
 	error("Invalid argument", SR_TRUE);
 	print_usage();
 }
@@ -1669,10 +1750,10 @@ static void get_cmd(char *buf, SR_U32 size, char *prompt)
 								if (pos <= min_pos)
 									break;
 								pos--;
-								printf("\033[1D");
+								printf("\033[1D"); // cursor left
 								break;
 							case 'C': //right
-								printf("\033[1C");
+								printf("\033[1C"); // cursor right
 								pos++;
 								break;
 							default:
