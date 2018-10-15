@@ -22,21 +22,14 @@ all: $(MORE_TRAGETS)
 	@$(MAKE) -C vsentry-mod KERNEL_SRC=${KERNEL_SRC}
 	@echo "***** enter vsentry-engine *****"
 	@$(MAKE) -s -C vsentry-engine $(ENG_FLAGS)
-	@echo "***** enter vsentry-control *****"
-	@$(MAKE) -s -C vsentry-control
-	@sudo make install -s -C vsentry-control
-	@echo "***** enter vsentry-ut *****"
-	@$(MAKE) -s -C vsentry-ut
-
-cli:
 	@echo "***** enter vsentry-cli *****"
 	@$(MAKE) -s -C vsentry-cli
+	@sudo make install -s -C vsentry-cli
+	@echo "***** enter vsentry-ut *****"
+	@$(MAKE) -s -C vsentry-ut
 
 clean: $(MORE_CLEAN_TARGETS)
 	@$(MAKE) -C vsentry-mod clean
 	@$(MAKE) -s -C vsentry-engine clean
-	@$(MAKE) -s -C vsentry-control clean
-	@$(MAKE) -s -C vsentry-ut clean
-
-clean_cli:
 	@$(MAKE) -s -C vsentry-cli clean
+	@$(MAKE) -s -C vsentry-ut clean

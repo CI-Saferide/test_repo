@@ -40,7 +40,7 @@ modules.order
 *.mod.c
 vsentry-engine/build/
 vsentry-ut/build/
-vsentry-control/build/
+vsentry-cli/build/
 vsentry-mod/Module.symvers
 sr_config.cfg
 sr_build_ver.h

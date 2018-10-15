@@ -297,60 +297,59 @@ int sr_cls_del_ipv4(SR_U32 addr, SR_U32 netmask, int rulenum, SR_8 dir)
 	struct addrule_data addrule_data;
 
 	if (likely(netmask && addr)) { // regular subnet - not "ANY"
-	ip = SR_ZALLOC(sizeof(struct sockaddr_in));
-	mask = SR_ZALLOC(sizeof(struct sockaddr_in));
+		ip = SR_ZALLOC(sizeof(struct sockaddr_in));
+		mask = SR_ZALLOC(sizeof(struct sockaddr_in));
 
-	if (!ip || !mask) {
-		if (ip)
-			SR_FREE(ip);
-		if (mask)
-			SR_FREE(mask);
-		return -1;
-	}
+		if (!ip || !mask) {
+			if (ip)
+				SR_FREE(ip);
+			if (mask)
+				SR_FREE(mask);
+			return -1;
+		}
 
-	/* before deleting from tree, apply mask on given IP, to avoid user mistakes
-	 * such as: IP = 0x12341234 with mask = 0xffff0000
-	 * in this case we want: IP = 0x1234000 in tree
-	 */
-	ip->sin_family = AF_INET;
-	ip->sin_addr.s_addr = sr_cls_ipv4_apply_mask(addr, netmask);
-	//ip.sin_len = 32; // ????
-	mask->sin_family = AF_INET;
-	mask->sin_addr.s_addr = netmask;
+		/* before deleting from tree, apply mask on given IP, to avoid user mistakes
+		 * such as: IP = 0x12341234 with mask = 0xffff0000
+		 * in this case we want: IP = 0x1234000 in tree
+		 */
+		ip->sin_family = AF_INET;
+		ip->sin_addr.s_addr = sr_cls_ipv4_apply_mask(addr, netmask);
+		//ip.sin_len = 32; // ????
+		mask->sin_family = AF_INET;
+		mask->sin_addr.s_addr = netmask;
 
-	node = rn_lookup((void*)ip, (void*)mask, tree_head);
-	if (!node) {
-		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-			"%s=failed to del ipv4 for rule %d, node not found!",REASON,
-			rulenum);
-		SR_FREE(ip);
-		SR_FREE(mask);
-		return SR_ERROR;
-	}
-
-	//sal_kernel_print_info("\ndel rule %d:\n", rulenum);
-	addrule_data.add_rule = 0; // delete
-	addrule_data.rulenum = rulenum;
-	addrule_data.node = node;
-	addrule_data.head = tree_head;
-
-	// sr_cls_walker_update_rule() will clear the rule from ba and delete nodes if necessary (if ba is empty)
-	rn_walktree_from(tree_head, ip, mask, sr_cls_walker_update_rule, (void*)&addrule_data);
-	SR_FREE(ip);
-	SR_FREE(mask);
-
-	if (!node->sr_private.rules.summary) {
-		node = rn_delete((void*)node->rn_key, (void*)node->rn_mask, tree_head);
+		node = rn_lookup((void*)ip, (void*)mask, tree_head);
 		if (!node) {
 			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-					"%s=failed to del ipv4, node not found!",REASON);
+					"%s=failed to del ipv4 for rule %d, node not found!",REASON,
+					rulenum);
+			SR_FREE(ip);
+			SR_FREE(mask);
 			return SR_ERROR;
 		}
-		SR_FREE(node);
-	}
 
+		//sal_kernel_print_info("\ndel rule %d:\n", rulenum);
+		addrule_data.add_rule = 0; // delete
+		addrule_data.rulenum = rulenum;
+		addrule_data.node = node;
+		addrule_data.head = tree_head;
+
+		// sr_cls_walker_update_rule() will clear the rule from ba and delete nodes if necessary (if ba is empty)
+		rn_walktree_from(tree_head, ip, mask, sr_cls_walker_update_rule, (void*)&addrule_data);
+		SR_FREE(ip);
+		SR_FREE(mask);
+
+		if (!node->sr_private.rules.summary) {
+			node = rn_delete((void*)node->rn_key, (void*)node->rn_mask, tree_head);
+			if (!node) {
+				CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+						"%s=failed to del ipv4, node not found!",REASON);
+				return SR_ERROR;
+			}
+			SR_FREE(node);
+		}
 	} else if (netmask) {
-		sal_set_bit_array((SR_U32)(long)rulenum, (dir==SR_DIR_SRC)?&sr_cls_network_src_local_rules:&sr_cls_network_dst_local_rules);
+		sal_clear_bit_array((SR_U32)(long)rulenum, (dir==SR_DIR_SRC)?&sr_cls_network_src_local_rules:&sr_cls_network_dst_local_rules);
 	} else { // "ANY" rule
 		sal_clear_bit_array((SR_U32)(long)rulenum, (dir==SR_DIR_SRC)?&sr_cls_network_src_any_rules:&sr_cls_network_dst_any_rules);
 	}
