@@ -34,3 +34,12 @@ SYSTEM_POLICER_LEARN_FILE /etc/vsentry/system_learn.txt
 SYSTEM_POLICER_THRESHOLD_PERCENT 5
 # Interval for system inforamtion transmition by the Kernel.
 SYSTEM_POLICER_INTERVAL 1
+
+#urls
+LOG_UPLOADER_URL http://saferide-log-collector-staging.eu-west-1.elasticbeanstalk.com/logs
+CAN_COLLECTOR_URL saferide-can-collector.eu-west-1.elasticbeanstalk.com/can
+SR_COMMANDS_URL  http://saferide-policies.eu-west-1.elasticbeanstalk.com/commands/sync
+ML_CAN_URL http://saferide-policies.eu-west-1.elasticbeanstalk.com/policy/can/dynamic
+DYNAMIC_POLICY_URL http://saferide-policies.eu-west-1.elasticbeanstalk.com/policy/ip/dynamic
+STATIC_POLICY_URL http://saferide-policies.eu-west-1.elasticbeanstalk.com/policy/static/sync
+
