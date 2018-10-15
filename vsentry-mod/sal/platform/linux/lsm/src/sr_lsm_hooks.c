@@ -335,10 +335,6 @@ static int vsentry_socket_shutdown(struct socket *sock,int how)
 {
 	if(hook_filter())
 		return 0;
-	if (sock->sk->sk_security) {
-		kfree(sock->sk->sk_security);
-		sock->sk->sk_security = NULL;
-	}
 	//TODO: handle permission for sys call
 	return 0;
 }
@@ -354,8 +350,6 @@ typedef struct {
 } vs_hook_t;
 
 static vs_hook_t vsentry_hooks[] = {
-	{ VS_HOOK_SK_ALLOC_SECURITY, (void*)vsentry_sk_alloc_security },
-	{ VS_HOOK_SK_FREE_SECURITY, (void*)vsentry_sk_free_security },
 	{ VS_HOOK_BPRM_CHECK_SECURITY, (void*)vsentry_bprm_check_security },
 #ifdef CONFIG_SECURITY_PATH
 	{ VS_HOOK_PATH_UNLINK, (void*)vsentry_path_unlink },
