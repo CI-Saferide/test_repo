@@ -43,6 +43,18 @@
 #endif
 #include "sr_stat_system_policer.h"
 
+static SR_BOOL is_engine_on;
+
+SR_BOOL get_engine_state(void)
+{
+	return is_engine_on;
+}
+
+void set_engine_state(SR_BOOL is_on)
+{
+	is_engine_on = is_on;
+}
+
 static SR_32 engine_main_loop(void *data)
 {
 	SR_32 ret;
