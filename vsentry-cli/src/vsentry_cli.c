@@ -1839,9 +1839,11 @@ SR_32 main(int argc, char **argv)
 {
 	char cmd[MAX_BUF_SIZE];
 
-	if (handle_load() != 0) {
-		printf("error handling load\n");
-		return SR_ERROR;
+	if (!(argc > 1 && !strcmp(argv[1], "nl"))) {
+		if (handle_load() != 0) {
+			printf("error handling load\n");
+			return SR_ERROR;
+		}
 	}
 
 	while (is_run) {
