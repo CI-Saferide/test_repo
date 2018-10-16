@@ -32,6 +32,8 @@
 #include "sr_control.h"
 #include "sal_linux_mng.h"
 #include "sr_ec_common.h"
+#include "event_mediator.h"
+#include "sal_ext_can_drivers.h"
 
 #ifdef CONFIG_CAN_ML
 #include "ml_can.h"
@@ -212,6 +214,10 @@ static int dummy_tx_thread_loop(void *arg)
 }
 #endif
 
+static int pcan_security_cb(SR_U32 msg_id, int is_dir_in, int can_dev_id) {
+	return vsentry_can_driver_security(msg_id, is_dir_in, can_dev_id);
+}
+
 static int __init vsentry_init(void)
 {
 	int rc = 0;
@@ -293,6 +299,9 @@ static int __init vsentry_init(void)
 #if 0
 	tx_thread = kthread_run(dummy_tx_thread_loop, NULL, "vsentry dummy tx thread");
 #endif
+
+	security_cb_register(pcan_security_cb);
+
 	return rc;
 }
 

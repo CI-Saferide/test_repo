@@ -48,7 +48,6 @@ SR_32 sr_white_list_canbus(struct sr_ec_can_t *can_info)
 	printf("MsgID=%03x",wl_can->msg_id);
 	printf("%s\n********\n",wl_can->dir==SR_CAN_IN?"IN":"OUT");
 #endif		
-
 	if (!(white_list_item = sr_white_list_hash_get(can_info->exec))) {		
 		if (sr_white_list_hash_insert(can_info->exec, &white_list_item) != SR_SUCCESS) {
 			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
@@ -135,7 +134,7 @@ static SR_32 canbus_delete_cb(void *hash_data, void *data)
 static SR_32 create_can_rule_for_exec(SR_U8 dir, SR_32 *rule_id, char *exec)
 { 
 	SR_U32 i, tuple_id;
-	char interface[CAN_INTERFACES_NAME_SIZE];
+	char *if_name;
 	can_rule_info_t **can_rules_arr, *rule_iter;
 
 	can_rules_arr = (dir == SR_CAN_IN) ? can_rules_for_if_in : can_rules_for_if_out;
@@ -148,7 +147,7 @@ static SR_32 create_can_rule_for_exec(SR_U8 dir, SR_32 *rule_id, char *exec)
 					REASON, rule_iter->msg_id, dir, exec);
 			return SR_ERROR;
 		}
-		if (sal_get_interface_name(can_rules_arr[i]->if_id, interface) != SR_SUCCESS) {
+		if (!(if_name = sr_can_tran_get_interface_name(&can_translator, i))) {
 			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 				"%s=can learn rule failed to get interface name for interface id %d", REASON, i);
 			continue;
@@ -156,9 +155,9 @@ static SR_32 create_can_rule_for_exec(SR_U8 dir, SR_32 *rule_id, char *exec)
 		tuple_id = 0;
 		for (rule_iter = can_rules_arr[i]; rule_iter; rule_iter = rule_iter->next) {
 #ifdef DEBUG
-			printf(">>>>>>> IN Rule:%d tuple:%d exec:%s: if:%s: msgid:%x \n", *rule_id, tuple_id, exec, interface, rule_iter->msg_id);
+			printf(">>>>>>> IN Rule:%d tuple:%d exec:%s: if:%s: msgid:%x \n", *rule_id, tuple_id, exec, if_name, rule_iter->msg_id);
 #endif
-			if (sys_repo_mng_create_canbus_rule(&sysrepo_handler, *rule_id, tuple_id, rule_iter->msg_id, interface, exec, "*", WHITE_LIST_ACTION, dir) != SR_SUCCESS) {
+			if (sys_repo_mng_create_canbus_rule(&sysrepo_handler, *rule_id, tuple_id, rule_iter->msg_id, if_name, exec, "*", WHITE_LIST_ACTION, dir) != SR_SUCCESS) {
 				CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 					"%s=fail to create can rule in persistent db. rule id:%d mid:%x %d exec:%s",
 						REASON, *rule_id, rule_iter->msg_id, dir ,exec);

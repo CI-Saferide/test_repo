@@ -14,6 +14,10 @@
 #define CAN_ML_START_PROTECT		0xffffffff
 #define CAN_ML_STOP_PROTECT			0xfffffffe
 
+#define CAN_DEV_BASE 100
+#define PCAN_DEV CAN_DEV_BASE
+
+#define  PCAN_DEV_NAME "pcan"
 
 #ifdef CONFIG_CAN_ML
 struct sr_ml_can_msg {
@@ -47,5 +51,6 @@ typedef struct can_trsnalator {
 SR_32 sr_can_tran_init(can_translator_t *can_traslator);
 SR_32 sr_can_tran_get_if_id(can_translator_t *can_traslator, SR_U8 dev_id, SR_U8 *can_id);
 char *sr_can_tran_get_interface_name(can_translator_t *can_translator, SR_32 if_id);
+SR_32 sr_can_get_special_dev_id(char *name, SR_U32 *dev_id);
 
 #endif /* SR_CLS_CANBUS_COMMON_H */
