@@ -96,6 +96,7 @@ SR_32 sr_cls_sk_process_hash_update(void *sk, sk_process_info_t *process_info)
 		sk_process_item->sk = sk;
 		sk_process_item->process_info.pid = process_info->pid;
 		sk_process_item->process_info.uid = process_info->uid;
+		strncpy(sk_process_item->process_info.exec, process_info->exec, SR_MAX_PATH_SIZE);
 		sal_update_time_counter(&(sk_process_item->process_info.time_stamp));
 		if ((sr_gen_hash_insert(sk_process_hash, sk , sk_process_item, 0)) != SR_SUCCESS) {
 			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
@@ -109,6 +110,11 @@ SR_32 sr_cls_sk_process_hash_update(void *sk, sk_process_info_t *process_info)
 	}
 
 	return SR_SUCCESS;
+}
+
+SR_32 sr_cls_sk_process_hash_delete(void *sk)
+{
+	return sr_gen_hash_delete(sk_process_hash, sk, 0);
 }
 
 sk_process_item_t *sr_cls_sk_process_hash_get(void *sk)

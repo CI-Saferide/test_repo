@@ -32,8 +32,8 @@ SR_32 sr_white_list_canbus(struct sr_ec_can_t *can_info)
 	
 	if (!*can_info->exec) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-			"%s=wl-can: no exec name , pid:%d mid:%d dir:%d",
-			REASON, can_info->pid, can_info->msg_id, can_info->dir);
+			"%s=wl-can: no exec name, pid: %d mid: %x dir: %s",
+			REASON, can_info->pid, can_info->msg_id, can_info->dir==SR_CAN_IN?"in":"out");
 		return SR_ERROR;
 	}
 
@@ -51,8 +51,8 @@ SR_32 sr_white_list_canbus(struct sr_ec_can_t *can_info)
 	if (!(white_list_item = sr_white_list_hash_get(can_info->exec))) {		
 		if (sr_white_list_hash_insert(can_info->exec, &white_list_item) != SR_SUCCESS) {
 			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-				"%s=failed to insert CAN message to white list, pid:%d mid:%d dir:%d",
-				REASON, can_info->pid, can_info->msg_id, can_info->dir);
+				"%s=failed to insert can message to white list, pid: %d mid: %x dir: %d",
+				REASON, can_info->pid, can_info->msg_id, can_info->dir==SR_CAN_IN?"in":"out");
 			return SR_ERROR;
 		}
 		
@@ -68,8 +68,8 @@ SR_32 sr_white_list_canbus(struct sr_ec_can_t *can_info)
 			SR_Zalloc(*iter, sr_wl_can_item_t *, sizeof(sr_wl_can_item_t));
 			if (!*iter) {
 				CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-					"%s=failed to allocate memory for white list CAN message, pid:%d mid:%d dir:%d",
-					REASON, can_info->pid, can_info->msg_id, can_info->dir);
+					"%s=failed to allocate memory for white list can message, pid: %d mid: %x dir: %s",
+					REASON, can_info->pid, can_info->msg_id, can_info->dir==SR_CAN_IN?"in":"out");
 				return SR_ERROR;
 			}
 			(*iter)->msg_id = can_info->msg_id;
@@ -92,8 +92,8 @@ void sr_white_list_canbus_print(sr_wl_can_item_t *wl_canbus)
 			*interface = 0;
 		}
 		CEF_log_event(SR_CEF_CID_SYSTEM, "info", SEVERITY_LOW,
-			"%s=mid %03x dir %s if=%s(%d) ",MESSAGE, iter->msg_id,iter->dir==SR_CAN_OUT? "out":"in", interface, iter->if_id);
-		printf("mid=%03x dir=%s if=%s(%d) \n", iter->msg_id,iter->dir==SR_CAN_OUT? "out":"in", interface, iter->if_id);
+			"%s=mid %08x dir %s if=%s(%d) ",MESSAGE, iter->msg_id,iter->dir==SR_CAN_OUT? "out":"in", interface, iter->if_id);
+		printf("mid=%08x dir=%s if=%s(%d) \n", iter->msg_id,iter->dir==SR_CAN_OUT? "out":"in", interface, iter->if_id);
 	}
 	
 }
@@ -122,8 +122,8 @@ static SR_32 create_can_rule_for_exec(SR_U8 dir, SR_32 *rule_id, char *exec)
 			continue;
 		if (*rule_id > SR_CAN_WL_END_RULE_NO) {
 			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-				"%s=can learn rule exeeds list boundary. mid:%x %d exec:%s",
-					REASON, rule_iter->msg_id, dir, exec);
+				"%s=can learn rule exeeds list boundary. mid: %x dir: %s exec: %s",
+					REASON, rule_iter->msg_id, dir==SR_CAN_OUT? "out":"in", exec);
 			return SR_ERROR;
 		}
 		if (sal_get_interface_name(i, interface) != SR_SUCCESS) {
@@ -139,8 +139,8 @@ static SR_32 create_can_rule_for_exec(SR_U8 dir, SR_32 *rule_id, char *exec)
 			if (sys_repo_mng_create_canbus_rule(&sysrepo_handler, *rule_id, tuple_id, rule_iter->msg_id, interface, exec, "*", WHITE_LIST_ACTION,
 				can_dir_convert(dir)) != SR_SUCCESS) {
 				CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-					"%s=fail to create can rule in persistent db. rule id:%d mid:%x %d exec:%s",
-						REASON, *rule_id, rule_iter->msg_id, dir ,exec);
+					"%s=fail to create can rule in persistent db. rule id: %d mid:%x dir: %s exec: %s",
+						REASON, *rule_id, rule_iter->msg_id, dir==SR_CAN_OUT? "out":"in" ,exec);
 			}
 			tuple_id++;
 		}
@@ -191,12 +191,12 @@ static SR_32 canbus_apply_cb(void *hash_data, void *data)
 
 	if (create_can_rule_for_exec(SR_CAN_IN, &rule_id, wl_item->exec) != SR_SUCCESS) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-				"%s=fail to create IN can rules exec:%s ",  REASON, wl_item->exec);
+				"%s=fail to create inbound can rules exec: %s ",  REASON, wl_item->exec);
 		return SR_ERROR;
 	}
 	if (create_can_rule_for_exec(SR_CAN_OUT, &rule_id, wl_item->exec) != SR_SUCCESS) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-				"%s=fail to create OUT can rules exec:%s ",  REASON, wl_item->exec);
+				"%s=fail to create outbound can rules exec: %s ",  REASON, wl_item->exec);
 		return SR_ERROR;
 	}
 

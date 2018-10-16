@@ -45,6 +45,7 @@ vsentry-mod/Module.symvers
 sr_config.cfg
 sr_build_ver.h
 scripts/tmp/
+run.sh
 
 .cproject
 .project

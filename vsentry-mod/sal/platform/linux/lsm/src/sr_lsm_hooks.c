@@ -350,6 +350,8 @@ typedef struct {
 } vs_hook_t;
 
 static vs_hook_t vsentry_hooks[] = {
+	{ VS_HOOK_SK_ALLOC_SECURITY, (void*)vsentry_sk_alloc_security },
+	{ VS_HOOK_SK_FREE_SECURITY, (void*)vsentry_sk_free_security },
 	{ VS_HOOK_BPRM_CHECK_SECURITY, (void*)vsentry_bprm_check_security },
 #ifdef CONFIG_SECURITY_PATH
 	{ VS_HOOK_PATH_UNLINK, (void*)vsentry_path_unlink },

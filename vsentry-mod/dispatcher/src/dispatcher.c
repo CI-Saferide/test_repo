@@ -269,11 +269,11 @@ SR_32 disp_can_recvmsg(disp_info_t* info)
 	struct sr_ec_can_t can_data; // event collector data for white list
 	
 	if(get_collector_state() == SR_TRUE){
-		can_data.pid = info->tuple_info.id.pid;
+		can_data.pid = info->can_info.id.pid;
 		can_data.msg_id = info->can_info.msg_id;
 		can_data.dir = SR_CAN_IN;
 		can_data.if_id = info->can_info.if_id;
-		strncpy(can_data.exec, info->tuple_info.id.exec, SR_MAX_PATH_SIZE);
+		strncpy(can_data.exec, info->can_info.id.exec, SR_MAX_PATH_SIZE);
 		sr_ec_send_event(MOD2STAT_BUF, SR_EVENT_STATS_CANBUS, &can_data);
 	}
 	hook_event_names = event_mediator_hooks_event_names();

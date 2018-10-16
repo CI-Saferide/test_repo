@@ -192,11 +192,44 @@ static void parse_sinaddr(const struct in_addr saddr, SR_8* buffer, SR_32 length
 }
 #endif // DEBUG
 
+static void update_process_info (identifier *id, struct sock *sk)
+{
+	sk_process_item_t *process_info_p;
+
+	if (sk) {
+		/* we have sk info, i.e. socket based hook called us */
+		if ((process_info_p = sr_cls_sk_process_hash_get(sk))) {
+			id->pid = process_info_p->process_info.pid;
+			id->uid = process_info_p->process_info.uid;
+			if (get_collector_state() == SR_TRUE) {
+				/* we are in learn mode, resolve exec fullpath */
+				strncpy(id->exec, process_info_p->process_info.exec, SR_MAX_PATH_SIZE);
+			}
+		}
+	} else if (in_interrupt()) {
+		/* we are in interrupt context and we don't have sk info. this should not happen */
+		id->pid = 0;
+		id->uid = 0;
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_MEDIUM, "%s=failed to get process info within interrupt context", REASON);
+	} else {
+		/* not socket based hook called us */
+		struct task_struct *ts = current;
+		const struct cred *rcred= ts->real_cred;
+
+		id->pid = current->tgid;
+		id->uid = (int)rcred->uid.val;
+		if (get_collector_state() == SR_TRUE) {
+			/* we are in learn mode, resolve exec fullpath */
+			if ((get_process_name(id->pid, id->exec, SR_MAX_PATH_SIZE)) != SR_SUCCESS) {
+				CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_MEDIUM, "%s=failed to get process name for pid:%d ", REASON, id->pid);
+			}
+		}
+	}
+}
+
 SR_32 vsentry_inode_mkdir(struct inode *dir, struct dentry *dentry, umode_t mask)
 {
 	disp_info_t disp;
-	struct task_struct *ts = current;
-	const struct cred *rcred= ts->real_cred;
 	SR_32 rc;
 	
 	memset(&disp, 0, sizeof(disp_info_t));
@@ -214,8 +247,7 @@ SR_32 vsentry_inode_mkdir(struct inode *dir, struct dentry *dentry, umode_t mask
 	}else
 		CEF_log_event(SR_CEF_CID_SYSTEM, "Error reading parent inode" , SEVERITY_HIGH, 
 						"[%s] parent inode in null\n", hook_event_names[HOOK_MKDIR].name);
-	disp.fileinfo.id.uid = (SR_32)rcred->uid.val;
-	disp.fileinfo.id.pid = current->tgid;
+	update_process_info(&disp.fileinfo.id, NULL);
 	disp.fileinfo.fileop = SR_FILEOPS_WRITE;
 
 #ifdef DEBUG_EVENT_MEDIATOR
@@ -260,8 +292,6 @@ SR_32 vsentry_inode_mkdir(struct inode *dir, struct dentry *dentry, umode_t mask
 SR_32 vsentry_inode_unlink(struct inode *dir, struct dentry *dentry)
 {
 	disp_info_t disp;
-	struct task_struct *ts = current;
-	const struct cred *rcred = ts->real_cred;		
 	SR_32 rc;
 	
 	memset(&disp, 0, sizeof(disp_info_t));
@@ -285,8 +315,7 @@ SR_32 vsentry_inode_unlink(struct inode *dir, struct dentry *dentry)
 		CEF_log_event(SR_CEF_CID_SYSTEM, "Error", SEVERITY_HIGH,
 						"[%s] parent inode in null\n", hook_event_names[HOOK_UNLINK].name);
 
-	disp.fileinfo.id.uid = (int)rcred->uid.val;
-	disp.fileinfo.id.pid = current->tgid;
+	update_process_info(&disp.fileinfo.id, NULL);
 	disp.fileinfo.fileop = SR_FILEOPS_WRITE;
 	
 #ifdef DEBUG_EVENT_MEDIATOR
@@ -324,8 +353,6 @@ SR_32 vsentry_inode_unlink(struct inode *dir, struct dentry *dentry)
 int vsentry_inode_rename(struct inode *old_dir, struct dentry *old_dentry, struct inode *new_dir,struct dentry *new_dentry)
 {
 	disp_info_t disp;
-	struct task_struct *ts = current;
-	const struct cred *rcred = ts->real_cred;		
 	SR_32 rc;
 	
 	memset(&disp, 0, sizeof(disp_info_t));
@@ -347,8 +374,7 @@ int vsentry_inode_rename(struct inode *old_dir, struct dentry *old_dentry, struc
 	if (new_dir)
            disp.fileinfo.parent_inode = new_dir->i_ino;
 
-	disp.fileinfo.id.uid = (int)rcred->uid.val;
-	disp.fileinfo.id.pid = current->tgid;
+	update_process_info(&disp.fileinfo.id, NULL);
 	disp.fileinfo.fileop = SR_FILEOPS_WRITE | SR_FILEOPS_READ;
 
 #ifdef DEBUG_EVENT_MEDIATOR
@@ -389,10 +415,7 @@ int vsentry_inode_rename(struct inode *old_dir, struct dentry *old_dentry, struc
 SR_32 vsentry_inode_symlink(struct inode *dir, struct dentry *dentry, const SR_8 *name)
 {
 	disp_info_t disp;
-	
-	struct task_struct *ts = current;
-	const struct cred *rcred= ts->real_cred;		
-	
+
 	memset(&disp, 0, sizeof(disp_info_t));
 	
 	/* check vsentry state */
@@ -409,8 +432,7 @@ SR_32 vsentry_inode_symlink(struct inode *dir, struct dentry *dentry, const SR_8
 		CEF_log_event(SR_CEF_CID_SYSTEM, "Error", SEVERITY_HIGH,
 						"[%s] parent inode in null\n", hook_event_names[HOOK_SYMLINK].name);
 
-	disp.fileinfo.id.uid = (int)rcred->uid.val;
-	disp.fileinfo.id.pid = current->tgid;
+	update_process_info(&disp.fileinfo.id, NULL);
 	disp.fileinfo.fileop = SR_FILEOPS_WRITE;
 	
 #ifdef DEBUG_EVENT_MEDIATOR
@@ -440,10 +462,7 @@ SR_32 vsentry_inode_rmdir(struct inode *dir, struct dentry *dentry)
 {
 	SR_32 rc;
 	disp_info_t disp;
-	
-	struct task_struct *ts = current;
-	const struct cred *rcred= ts->real_cred;		
-	
+
 	memset(&disp, 0, sizeof(disp_info_t));
 	
 	/* check vsentry state */
@@ -465,8 +484,7 @@ SR_32 vsentry_inode_rmdir(struct inode *dir, struct dentry *dentry)
 		CEF_log_event(SR_CEF_CID_SYSTEM, "Error", SEVERITY_HIGH,
 						"[%s] parent inode in null\n", hook_event_names[HOOK_RMDIR].name);
 		
-	disp.fileinfo.id.uid = (int)rcred->uid.val;
-	disp.fileinfo.id.pid = current->tgid;
+	update_process_info(&disp.fileinfo.id, NULL);
 	disp.fileinfo.fileop = SR_FILEOPS_WRITE;
 
 #ifdef DEBUG_EVENT_MEDIATOR
@@ -501,8 +519,6 @@ SR_32 vsentry_inode_rmdir(struct inode *dir, struct dentry *dentry)
 SR_32 vsentry_socket_connect(struct socket *sock, struct sockaddr *address, SR_32 addrlen)
 {
 	disp_info_t disp = {};
-        struct task_struct *ts = current;
-        const struct cred *rcred= ts->real_cred;
 	
 	if (sock->sk->sk_family != AF_INET) { // TODO: AF_INET6
 		return 0;
@@ -517,15 +533,13 @@ SR_32 vsentry_socket_connect(struct socket *sock, struct sockaddr *address, SR_3
 	HOOK_FILTER
 
 	/* gather metadata */
-	disp.tuple_info.id.uid = (int)rcred->uid.val;
 	disp.tuple_info.saddr.v4addr.s_addr = 0;
 	disp.tuple_info.sport = 0;
 
 	disp.tuple_info.daddr.v4addr.s_addr = ntohl(((struct sockaddr_in *)address)->sin_addr.s_addr);
 	disp.tuple_info.dport = ntohs(((struct sockaddr_in *)address)->sin_port);
 	disp.tuple_info.ip_proto = sock->sk->sk_protocol;
-
-	disp.tuple_info.id.pid = current->tgid;
+	update_process_info(&disp.tuple_info.id, sock->sk);
 
 #ifdef DEBUG_EVENT_MEDIATOR
 	CEF_log_event(SR_CEF_CID_SYSTEM, "info" , SEVERITY_LOW,
@@ -560,8 +574,7 @@ SR_32 vsentry_incoming_connection(struct sk_buff *skb)
 	disp.tuple_info.sport = sal_packet_src_port(skb);
 	disp.tuple_info.dport = sal_packet_dest_port(skb);
 	disp.tuple_info.ip_proto = sal_packet_ip_proto(skb);
-
-	disp.tuple_info.id.pid = 0;
+	update_process_info(&disp.tuple_info.id, skb->sk);
 
 //#ifdef DEBUG_EVENT_MEDIATOR
 	CEF_log_event(SR_CEF_CID_SYSTEM, "info" , SEVERITY_LOW,
@@ -580,8 +593,6 @@ SR_32 vsentry_incoming_connection(struct sk_buff *skb)
 SR_32 vsentry_path_chmod(struct path *path, umode_t mode)
 {
 	disp_info_t disp;
-	struct task_struct *ts = current;
-	const struct cred *rcred= ts->real_cred;		
 	
 	memset(&disp, 0, sizeof(disp_info_t));
 	
@@ -604,8 +615,7 @@ SR_32 vsentry_path_chmod(struct path *path, umode_t mode)
 	}else						
 		disp.fileinfo.parent_inode = 0;
 		
-	disp.fileinfo.id.uid = (int)rcred->uid.val;
-	disp.fileinfo.id.pid = current->tgid;
+	update_process_info(&disp.fileinfo.id, NULL);
 	disp.fileinfo.fileop = SR_FILEOPS_WRITE;
 
 #ifdef DEBUG_EVENT_MEDIATOR
@@ -630,8 +640,6 @@ SR_32 vsentry_path_chmod(struct path *path, umode_t mode)
 SR_32 vsentry_inode_create(struct inode *dir, struct dentry *dentry, umode_t mode)
 {
 	disp_info_t disp;
-	struct task_struct *ts = current;
-	const struct cred *rcred= ts->real_cred;		
 	SR_32 rc;
 	
 	memset(&disp, 0, sizeof(disp_info_t));
@@ -650,8 +658,7 @@ SR_32 vsentry_inode_create(struct inode *dir, struct dentry *dentry, umode_t mod
 		CEF_log_event(SR_CEF_CID_SYSTEM, "Error", SEVERITY_HIGH,
 						"[%s] parent inode in null\n", hook_event_names[HOOK_INODE_CREATE].name);
 		
-	disp.fileinfo.id.uid = (int)rcred->uid.val;
-	disp.fileinfo.id.pid = current->tgid;
+	update_process_info(&disp.fileinfo.id, NULL);
 	disp.fileinfo.fileop = SR_FILEOPS_WRITE;
 	
 #ifdef DEBUG_EVENT_MEDIATOR
@@ -690,8 +697,6 @@ SR_32 vsentry_inode_create(struct inode *dir, struct dentry *dentry, umode_t mod
 SR_32 vsentry_file_open(struct file *file, const struct cred *cred)
 {
 	disp_info_t disp;
-	struct task_struct *ts = current;
-	const struct cred *rcred = ts->real_cred;
 	SR_32 rc;
 	
 	memset(&disp, 0, sizeof(disp_info_t));
@@ -714,8 +719,7 @@ SR_32 vsentry_file_open(struct file *file, const struct cred *cred)
 	}else
 		disp.fileinfo.parent_inode = 0;
 
-	disp.fileinfo.id.uid = (int)rcred->uid.val;
-	disp.fileinfo.id.pid = current->tgid;
+	update_process_info(&disp.fileinfo.id, NULL);
 	/* A File is opned to read or write, not to exec */
 	if (file->f_mode & FMODE_WRITE)
 		disp.fileinfo.fileop |= SR_FILEOPS_WRITE;
@@ -770,8 +774,6 @@ SR_32 vsentry_file_open(struct file *file, const struct cred *cred)
 SR_32 vsentry_inode_link(struct dentry *old_dentry, struct inode *dir, struct dentry *new_dentry)
 {
 	disp_info_t disp;
-	struct task_struct *ts = current;
-	const struct cred *rcred= ts->real_cred;
 
 	memset(&disp, 0, sizeof(disp_info_t));
 	
@@ -797,8 +799,7 @@ SR_32 vsentry_inode_link(struct dentry *old_dentry, struct inode *dir, struct de
 	if (old_dentry->d_inode)
 		disp.fileinfo.old_inode = old_dentry->d_inode->i_ino;
 
-	disp.fileinfo.id.uid = (int)rcred->uid.val;
-	disp.fileinfo.id.pid = current->tgid;
+	update_process_info(&disp.fileinfo.id, NULL);
 	disp.fileinfo.fileop = SR_FILEOPS_WRITE | SR_FILEOPS_READ;
 	
 #ifdef DEBUG_EVENT_MEDIATOR
@@ -838,8 +839,6 @@ SR_32 vsentry_inode_link(struct dentry *old_dentry, struct inode *dir, struct de
 SR_32 vsentry_socket_create(SR_32 family, SR_32 type, SR_32 protocol, SR_32 kern)
 {
 	disp_info_t disp = {};
-	struct task_struct *ts = current;
-	const struct cred *rcred= ts->real_cred;		
 	return 0;
 	// TODO: might want to add some bookkeeping logic here
 	
@@ -860,8 +859,8 @@ SR_32 vsentry_socket_create(SR_32 family, SR_32 type, SR_32 protocol, SR_32 kern
 	disp.socket_info.protocol = protocol;
 	disp.socket_info.kern = kern;
 	
-	disp.socket_info.id.uid = (int)rcred->uid.val;
-	disp.socket_info.id.pid = current->tgid;
+	/* here we cannot use sk based update as it is not created yet */
+	update_process_info(&disp.socket_info.id, NULL);
 
 #ifdef DEBUG_EVENT_MEDIATOR
 	/*TODO: handle debug print */
@@ -935,9 +934,10 @@ SR_32 vsentry_socket_sendmsg(struct socket *sock,struct msghdr *msg,SR_32 size)
 {
 	int err;
 	int i;
-	struct sk_buff *skb = NULL;
+	struct sk_buff *skb;
 	struct canfd_frame *cfd;
 	const u8 family = sock->sk->sk_family;
+	struct socket copy_sock = *sock;
 	struct msghdr copy_msg = *msg;
 #ifdef CONFIG_STAT_ANALYSIS
 	sr_connection_data_t con = {}, *conp;
@@ -947,9 +947,6 @@ SR_32 vsentry_socket_sendmsg(struct socket *sock,struct msghdr *msg,SR_32 size)
 	struct timeval tv;
 #endif /* CONFIG_CAN_ML */
 	disp_info_t disp = {};
-	struct task_struct *ts = current;
-	const struct cred *rcred= ts->real_cred;
-	sk_process_info_t process_info;
 	
 	memset(&disp, 0, sizeof(disp_info_t));
 	
@@ -968,10 +965,11 @@ SR_32 vsentry_socket_sendmsg(struct socket *sock,struct msghdr *msg,SR_32 size)
 				struct raw_sock *ro = (struct raw_sock *)sock->sk;
 				disp.can_info.if_id = ro->ifindex;
 			}
-			disp.can_info.id.uid = (int)rcred->uid.val;
-			disp.can_info.id.pid = current->tgid;
+			update_process_info(&disp.can_info.id, sock->sk);
+			skb = sock_alloc_send_skb(copy_sock.sk, size + sizeof(struct can_skb_priv),
+						  copy_msg.msg_flags & MSG_DONTWAIT, &err);
 			if (!skb) {
-				CEF_log_event(SR_CEF_CID_SYSTEM, "Error", SEVERITY_HIGH,
+				CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 									"fail to allocate skb for can message");
 				/* we cannot handle this message */
 				return 0;
@@ -1050,17 +1048,18 @@ SR_32 vsentry_socket_sendmsg(struct socket *sock,struct msghdr *msg,SR_32 size)
 			/* Hook is relevant only for UDP */
 			if (sock->sk->sk_protocol != IPPROTO_UDP)
 				return 0;
-			process_info.pid = current->tgid;
-			process_info.uid = (int)rcred->uid.val;
-			if (sr_cls_sk_process_hash_update(sock->sk, &process_info) != SR_SUCCESS) {
-                		CEF_log_event(SR_CEF_CID_SYSTEM, "Error", SEVERITY_HIGH,
-				"ERROR failed sr_cls_sk_process_hash_update\n");
-                		return 0;
-			}
+			/* this code is probably redundant */
+			//process_info.pid = current->tgid;
+			//process_info.uid = (int)rcred->uid.val;
+			//if (sr_cls_sk_process_hash_update(sock->sk, &process_info) != SR_SUCCESS) {
+				//CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+								//"failed sr_cls_sk_process_hash_update");
+                //return 0;
+			//}
 
 #ifdef DEBUG_EVENT_MEDIATOR
         		CEF_log_event(SR_CEF_CID_SYSTEM, "info" , SEVERITY_LOW,
-								"vsentry_socket_connect=%lx[%d] -> %lx[%d]\n",
+								"vsentry_socket_connect=%lx[%d] -> %lx[%d]",
                         		(unsigned long)disp.tuple_info.saddr.v4addr.s_addr,
                         		disp.tuple_info.sport,
                         		(unsigned long)disp.tuple_info.daddr.v4addr.s_addr,
@@ -1094,8 +1093,7 @@ int vsentry_socket_sock_rcv_skb(struct sock *sk, struct sk_buff *skb)
 			disp.can_info.payload_len = cfd->len;
 			disp.can_info.dir = SR_CAN_IN;
 			disp.can_info.if_id = skb->dev->ifindex;
-
-			disp.can_info.id.pid = 0;
+			update_process_info(&disp.can_info.id, sk);
 
 			for (i = 0; i < cfd->len; i++) {
 				disp.can_info.payload[i] = cfd->data[i];
@@ -1236,4 +1234,32 @@ void vsentry_task_free(struct task_struct *task)
 #if 0  
 	sr_stat_analysis_report_porcess_die(task->pid);
 #endif
+}
+
+void vsentry_sk_free_security(struct sock *sk)
+{
+	if (sk)
+		sr_cls_sk_process_hash_delete(sk);
+}
+
+int vsentry_sk_alloc_security(struct sock *sk, int family, gfp_t priority)
+{
+	sk_process_info_t process_info;
+	struct task_struct *ts = current;
+	const struct cred *rcred= ts->real_cred;
+
+	if (!sk)
+		return 0;
+
+	process_info.pid = current->tgid;
+	process_info.uid = (int)rcred->uid.val;
+	if ((get_process_name(process_info.pid, process_info.exec, SR_MAX_PATH_SIZE)) != SR_SUCCESS) {
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_MEDIUM, "%s=failed get process name at sk allocation for pid:%d ", REASON, process_info.pid);
+	}
+
+	if (sr_cls_sk_process_hash_update(sk, &process_info) != SR_SUCCESS) {
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_MEDIUM,
+			"failed to update process info for pid %d uid %d", process_info.pid, process_info.uid);
+	}
+	return 0;
 }
