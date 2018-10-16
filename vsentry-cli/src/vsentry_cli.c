@@ -575,7 +575,7 @@ static void print_show_usage(void)
 	printf("	[rule=x] - if exists, shows all tuples on the specific rule\n");
 	printf("	[tuple=y] - if exists, shows specific tuple\n");
 	printf ("\n");
-	printf("control [whitelist | system-policer]  [learn | apply | print | reset] \n");
+	printf("control [whitelist | system-policer | sr_ver]  [learn | apply | print | reset] \n");
 	printf("	[whitelist | system-policer] - specifies specific module \n");
 	printf("	[learn | apply | print | reset] - specifies specific action to preform\n");
 	printf ("\n");
