@@ -567,11 +567,11 @@ static void print_show_usage(void)
 	printf("control	- control vsentry \n");
 	printf("engine	- control engine state\n");
 	printf ("\n");
-	printf("show [action | rule | wl] [can | ipv4 | file] [rule=x] [tuple=y] \n");
-	printf("update [action | rule | wl] [action_obj | can | ipv4 | file] [rule=x] [tuple=y] \n");
-	printf("del [action | rule | wl] [action_obj | can | ipv4 | file] [rule=x] [tuple=y] \n");
+	printf("show [action | rule | wl] [can | ip | file] [rule=x] [tuple=y] \n");
+	printf("update [action | rule | wl] [action_obj | can | ip | file] [rule=x] [tuple=y] \n");
+	printf("del [action | rule | wl] [action_obj | can | ip | file] [rule=x] [tuple=y] \n");
 	printf("	[action | rule | wl] - action table, user defied table or white list table \n");
-	printf("	[can | ipv4 | file] - specifies the desired table\n");
+	printf("	[can | ip | file] - specifies the desired table\n");
 	printf("	[rule=x] - if exists, shows all tuples on the specific rule\n");
 	printf("	[tuple=y] - if exists, shows specific tuple\n");
 	printf ("\n");
@@ -590,7 +590,7 @@ static void print_show_usage(void)
 static void print_update_rule_usage(SR_BOOL is_type)
 {
 	if (is_type)
-		printf("[can | ipv4 | file] - specifies the desired table\n");
+		printf("[can | ip | file] - specifies the desired table\n");
 	printf("rule=x, tuple=y\n");
 }
 
@@ -1748,6 +1748,15 @@ static void get_cmd(char *buf, SR_U32 size, char *prompt)
 	while (1) {
 		c = getchar();
 		switch (c) {
+			// Backspace as Control-H
+			case 0x8:  //  backword
+				if (pos == min_pos)
+					break;
+				pos--;
+				printf("\033[1D");
+				printf(CLEAR_RIGHT);
+				buf[--ind] = 0;
+				break;
 			case '\033': // Escape
 				c = getchar();
 				switch (c) { 
