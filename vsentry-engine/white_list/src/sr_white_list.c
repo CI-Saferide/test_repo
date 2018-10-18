@@ -147,6 +147,8 @@ static SR_32 sr_white_list_delete_rules(void)
 
 SR_32 sr_white_list_reset(void)
 {
+	if (!is_wl_init)
+		return SR_SUCCESS;
 	CEF_log_event(SR_CEF_CID_SYSTEM, "info", SEVERITY_LOW,
 			"%s=delete white list rules", MESSAGE);
 	sr_white_list_delete_all();
