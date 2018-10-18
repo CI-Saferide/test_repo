@@ -1238,8 +1238,18 @@ void vsentry_task_free(struct task_struct *task)
 
 void vsentry_sk_free_security(struct sock *sk)
 {
-	if (sk)
+	sk_process_item_t *process_info_p;
+
+	if (sk) {
+		if ((process_info_p = sr_cls_sk_process_hash_get(sk))) {
+			CEF_log_event(SR_FORENSIC_NETWORK, "info", SEVERITY_LOW,
+				"socket deleted sk %p pid %d uid %d exec %s", sk, process_info_p->process_info.pid, process_info_p->process_info.uid, process_info_p->process_info.exec);
+		} else {
+			CEF_log_event(SR_FORENSIC_NETWORK, "error", SEVERITY_MEDIUM,
+				"failed to get forensic information for deleting socket %p", sk);
+		}
 		sr_cls_sk_process_hash_delete(sk);
+	}
 }
 
 int vsentry_sk_alloc_security(struct sock *sk, int family, gfp_t priority)
@@ -1254,12 +1264,16 @@ int vsentry_sk_alloc_security(struct sock *sk, int family, gfp_t priority)
 	process_info.pid = current->tgid;
 	process_info.uid = (int)rcred->uid.val;
 	if ((get_process_name(process_info.pid, process_info.exec, SR_MAX_PATH_SIZE)) != SR_SUCCESS) {
-		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_MEDIUM, "%s=failed get process name at sk allocation for pid:%d ", REASON, process_info.pid);
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_MEDIUM, 
+			"%s=failed get process name at sk allocation for pid:%d ", REASON, process_info.pid);
 	}
 
 	if (sr_cls_sk_process_hash_update(sk, &process_info) != SR_SUCCESS) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_MEDIUM,
-			"failed to update process info for pid %d uid %d", process_info.pid, process_info.uid);
+			"failed to update process info for pid %d uid %d exec %s", process_info.pid, process_info.uid, process_info.exec);
+	} else {
+		CEF_log_event(SR_FORENSIC_NETWORK, "info", SEVERITY_LOW,
+			"new socket created sk %p pid %d uid %d exec %s", sk, process_info.pid, process_info.uid, process_info.exec);
 	}
 	return 0;
 }
