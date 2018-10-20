@@ -57,6 +57,7 @@
 		return SR_ERROR;
 
 static action_t *get_action(char *action_name);
+static SR_32 cli_handle_reply(SR_32 fd, SR_32 (*handle_data_cb)(char *buf));
 static void term_reset(int count);
 
 SR_BOOL is_run = SR_TRUE;
@@ -502,10 +503,48 @@ out:
 	return rc;
 }
 
+static SR_32 cli_handle_reply(SR_32 fd, SR_32 (*handle_data_cb)(char *buf))
+{
+	SR_32 ind, len;
+	char buf[2000], cval;
+
+	if (!handle_data_cb) {
+		printf("Handle reply failed, no handle data cb\n");
+		return SR_ERROR;
+	}
+
+	buf[0] = 0;
+	ind = 0;
+	for (;;) { 
+		len = read(fd, &cval, 1);
+		if (!len) {
+			printf("failed to read from socket");
+			return SR_ERROR;
+		}
+		switch (cval) {
+			case SR_CLI_END_OF_TRANSACTION: /* Finish reply */
+				goto out;
+			case SR_CLI_END_OF_ENTITY: /* Finish entity */
+				buf[ind] = 0;
+				if (handle_data_cb(buf) != SR_SUCCESS) {
+					printf(" Handle buf:%s: failed \n", buf);
+				}
+				buf[0] = 0;
+				ind = 0;
+				break;
+			default:
+				buf[ind++] = cval;
+				break;
+		}
+	}
+out:
+	return SR_SUCCESS;
+}
+
 static SR_32 handle_load(void)
 {
-	SR_32 fd, rc, ind, len, st = SR_SUCCESS;
-	char cmd[100], buf[2000], cval;
+	SR_32 fd, rc, st = SR_SUCCESS;
+	char cmd[100];
 
 	if ((fd = engine_connect()) < 0) {
 		printf("connection to engine failed\n");
@@ -522,31 +561,11 @@ static SR_32 handle_load(void)
                 fprintf(stderr,"partial write");
                 return SR_ERROR;
 	}
-	buf[0] = 0;
-	ind = 0;
-	for (;;) { 
-		len = read(fd, &cval, 1);
-		if (!len) {
-			printf("failed to read from socket");
-			st = SR_ERROR;
-			goto out;
-		}
-		switch (cval) {
-			case SR_CLI_END_OF_TRANSACTION: /* Finish load */
-				goto out;
-			case SR_CLI_END_OF_ENTITY: /* Finish entity */
-				buf[ind] = 0;
-				handle_load_data(buf);
-				buf[0] = 0;
-				ind = 0;
-				break;
-			default:
-				buf[ind++] = cval;
-				break;
-		}
+	if (cli_handle_reply(fd, handle_load_data) != SR_SUCCESS) {
+                fprintf(stderr,"cli handle reply failed");
+                return SR_ERROR;
 	}
 
-out:
 	sleep(1);
         close(fd);
 
@@ -1602,6 +1621,12 @@ static void handle_engine(void)
 	notify_info("Engine state changed.");
 }
 
+static SR_32 handle_print_cb(char *buf)
+{
+	printf("%s", buf);
+	return SR_SUCCESS;
+}
+
 static void handle_control(void)
 {
 	SR_32 fd, rc;
@@ -1647,7 +1672,11 @@ static void handle_control(void)
 			return;
 		}
 		printf("\n%s\n", buf);
-       }
+	}
+	if (!strcmp(cmd, "wl_print")) {
+		if (cli_handle_reply(fd, handle_print_cb) != SR_SUCCESS)
+			printf("print Failed\n");
+        }
 	printf("\n");
 
 	close(fd);

@@ -80,10 +80,10 @@ SR_32 sr_white_list_canbus(struct sr_ec_can_t *can_info)
 	return SR_SUCCESS;
 }
 
-void sr_white_list_canbus_print(sr_wl_can_item_t *wl_canbus)
+void sr_white_list_canbus_print(sr_wl_can_item_t *wl_canbus, void (*print_cb)(char *buf))
 {
 	sr_wl_can_item_t *iter;
-	char interface[CAN_INTERFACES_NAME_SIZE];
+	char interface[CAN_INTERFACES_NAME_SIZE], print_buf[512];
 	
 	for (iter = wl_canbus; iter; iter = iter->next) {
 		if (sal_get_interface_name(iter->if_id, interface) != SR_SUCCESS) {
@@ -93,7 +93,10 @@ void sr_white_list_canbus_print(sr_wl_can_item_t *wl_canbus)
 		}
 		CEF_log_event(SR_CEF_CID_SYSTEM, "info", SEVERITY_LOW,
 			"%s=mid %08x dir %s if=%s(%d) ",MESSAGE, iter->msg_id,iter->dir==SR_CAN_OUT? "out":"in", interface, iter->if_id);
-		printf("mid=%08x dir=%s if=%s(%d) \n", iter->msg_id,iter->dir==SR_CAN_OUT? "out":"in", interface, iter->if_id);
+		sprintf(print_buf, "mid=%08x dir=%s if=%s(%d) \n", iter->msg_id,iter->dir==SR_CAN_OUT? "out":"in", interface, iter->if_id);
+		printf("%s", print_buf);
+		if (print_cb)
+			print_cb(print_buf);
 	}
 	
 }

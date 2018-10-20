@@ -163,16 +163,19 @@ SR_32 sr_white_list_file_wl(struct sr_ec_file_wl_t *file_wl_info)
 	return SR_SUCCESS;
 }
 
-void sr_white_list_file_print(sr_white_list_file_t *white_list_file)
+void sr_white_list_file_print(sr_white_list_file_t *white_list_file, void (*print_cb)(char *buf))
 {
 	sr_white_list_file_t *iter;
-	char permissions[4];
+	char permissions[4], print_buf[512];
 
 	for (iter = white_list_file; iter; iter = iter->next) {
 		sr_get_file_perm_from_bits(iter->fileop, permissions);
+		sprintf(print_buf, "file:%s: permissions:%s file_op:%u\n", iter->file, permissions, iter->fileop);
 		CEF_log_event(SR_CEF_CID_SYSTEM, "info", SEVERITY_LOW,
                 	        "%s=file learned: file:%s permissions:%s ", MESSAGE,  iter->file, permissions);
-		printf("  file:%s: permissions:%s file_op:%u\n", iter->file, permissions, iter->fileop);
+		printf("%s", print_buf);
+		if (print_cb)
+			print_cb(print_buf);
 	}
 }
 

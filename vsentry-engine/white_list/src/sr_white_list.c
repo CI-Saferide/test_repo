@@ -4,6 +4,7 @@
 #include "sysrepo_mng.h"
 #include "sr_cls_wl_common.h"
 #include "sr_config_parse.h"
+#include "sr_engine_cli.h"
 
 #define HASH_SIZE 500
 
@@ -11,6 +12,13 @@ static sr_wl_mode_t wl_mode = SR_WL_MODE_OFF;
 static SR_BOOL is_wl_init;
 
 static struct sr_gen_hash *white_list_hash;
+
+void (*print_cb)(char *buf);
+
+void white_list_print_cb_register(void (*i_print_cb)(char *buf))
+{
+	print_cb = i_print_cb;
+}
 
 static SR_32 white_list_comp(void *data_in_hash, void *comp_val)
 {
@@ -26,13 +34,22 @@ static SR_32 white_list_comp(void *data_in_hash, void *comp_val)
 static void white_list_print(void *data_in_hash)
 {
 	sr_white_list_item_t *white_list_item = (sr_white_list_item_t *)data_in_hash;
+	char buf[512];
 
 	CEF_log_event(SR_CEF_CID_SYSTEM, "info", SEVERITY_LOW,
 		"%s=white list learnt program:%s ", MESSAGE, white_list_item->exec);
-	printf("exec:%s: \n", white_list_item->exec);
+	sprintf(buf, "\nExec:%s: \n%c", white_list_item->exec, SR_CLI_END_OF_ENTITY);
+	printf("%s", buf);
+	print_cb(buf);
+	sprintf(buf, "File learnt:\n%c", SR_CLI_END_OF_ENTITY);
+	printf("%s", buf);
+	print_cb(buf);
+	sr_white_list_file_print(white_list_item->white_list_file, print_cb);
 
-	sr_white_list_file_print(white_list_item->white_list_file);
-	sr_white_list_canbus_print(white_list_item->white_list_can);
+	sprintf(buf, "\nCAN learnt:\n%c", SR_CLI_END_OF_ENTITY);
+	printf("%s", buf);
+	print_cb(buf);
+	sr_white_list_canbus_print(white_list_item->white_list_can, print_cb);
 }
 
 static SR_U32 white_list_create_key(void *data)

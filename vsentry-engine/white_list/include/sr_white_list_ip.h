@@ -8,4 +8,5 @@ SR_32 sr_white_list_ip_new_connection( struct sr_ec_new_connection_wl_t *pNewCon
 void sr_white_list_ip_print(void);
 SR_32 sr_white_list_ip_delete_all(void);
 SR_32 sr_white_list_ip_apply(SR_32 is_apply);
+void white_list_ip_print_cb_register(void (*i_print_cb)(char *buf));
 #endif

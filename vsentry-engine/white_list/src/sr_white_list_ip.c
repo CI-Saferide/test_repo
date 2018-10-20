@@ -40,6 +40,13 @@ typedef struct wl_ip_binary_item  {
         char exec[SR_MAX_PATH_SIZE];
 } sr_wl_ip_binary_t;
 
+void (*print_cb)(char *buf);
+
+void white_list_ip_print_cb_register(void (*i_print_cb)(char *buf))
+{
+        print_cb = i_print_cb;
+}
+
 static SR_32 wl_ip_binary_comp(void *data_in_hash, void *comp_val)
 {
 	sr_wl_ip_binary_t *wl_ip_binary_item = (sr_wl_ip_binary_t *)data_in_hash;
@@ -54,8 +61,12 @@ static SR_32 wl_ip_binary_comp(void *data_in_hash, void *comp_val)
 static void wl_ip_binary_print(void *data_in_hash)
 {
 	sr_wl_ip_binary_t *wl_ip_binary_item = (sr_wl_ip_binary_t *)data_in_hash;
+	char print_buf[512];
 
-	printf("exec:%s: \n", wl_ip_binary_item->exec);
+	sprintf(print_buf, "exec:%s: \n", wl_ip_binary_item->exec);
+	printf("%s", print_buf);
+	if (print_cb)
+		print_cb(print_buf);
 }
 
 static SR_U32 wl_ip_binary_create_key(void *data)
@@ -350,11 +361,16 @@ SR_32 sr_white_list_ip_new_connection(struct sr_ec_new_connection_wl_t *pNewConn
 static int sr_wl_node_printer(struct radix_node *node, void *unused)
 { 
 	struct sockaddr_in *ip;
+	char print_buf[512];
 
 	ip = (struct sockaddr_in *)(node->rn_u.rn_leaf.rn_Key);
 	CEF_log_event(SR_CEF_CID_SYSTEM, "info", SEVERITY_LOW,
 					"%s=address learned: %s", MESSAGE, sal_get_str_ip_address(ip->sin_addr.s_addr));
-	printf("Address learned: %s\n", sal_get_str_ip_address(ip->sin_addr.s_addr));
+	sprintf(print_buf, "Address learned: %s\n", sal_get_str_ip_address(ip->sin_addr.s_addr));
+	printf("%s", print_buf);
+
+	if (print_cb)
+		print_cb(print_buf);
 					
 
 	return 0;
@@ -367,12 +383,18 @@ void sr_wl_conngraph_print_tree(void)
 
 void sr_white_list_ip_print(void)
 {
+	char print_buf[512];
+
 	if (!is_wl_ip_init)
 		return;
 
 	printf("radix tree:\n");
+	sprintf(print_buf, "ip addresses learned:\n");
 	CEF_log_event(SR_CEF_CID_SYSTEM, "info", SEVERITY_LOW,
-					"%s=ip addresses learned:",MESSAGE);
+					"%s=%s",MESSAGE, print_buf);
+	if (print_cb)
+		print_cb(print_buf);
+
 	sr_wl_conngraph_print_tree();
 	printf("\nbinary hash:\n");
 	sr_wl_ip_binary_print();
