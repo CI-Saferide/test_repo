@@ -1652,7 +1652,7 @@ static SR_32 handle_print_cb(char *buf)
 static void handle_control(void)
 {
 	SR_32 fd, rc;
-	char *ptr, cmd[128], buf[512];
+	char *ptr, cmd[128], buf[512], cval;
 
 	ptr = strtok(NULL, " "); 
 	if (!ptr) {
@@ -1699,6 +1699,14 @@ static void handle_control(void)
 		if (cli_handle_reply(fd, handle_print_cb) != SR_SUCCESS)
 			printf("print Failed\n");
         }
+
+	if (!strcmp(cmd, "wl_apply")) {
+		printf("\napplying ...\n");
+		sleep(1);
+		if (read(fd, &cval, 1) < 1)
+			printf("failed reading from socket");
+		notify_info("apply finished.");
+	}
 	printf("\n");
 
 	close(fd);

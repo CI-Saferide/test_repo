@@ -13,6 +13,7 @@
 #include "sr_control.h"
 #include "sr_cls_wl_common.h"
 #include "sr_engine_utils.h"
+#include "sr_engine_cli.h"
 
 static SR_32 rule_id; 
 //static sysrepo_mng_handler_t sysrepo_handler;
@@ -167,6 +168,13 @@ void sr_white_list_file_print(sr_white_list_file_t *white_list_file, void (*prin
 {
 	sr_white_list_file_t *iter;
 	char permissions[4], print_buf[512];
+
+	if (white_list_file) {
+		sprintf(print_buf, "File learnt:\n%c", SR_CLI_END_OF_ENTITY);
+		printf("%s", print_buf);
+		if (print_cb)
+			print_cb(print_buf);
+	}
 
 	for (iter = white_list_file; iter; iter = iter->next) {
 		sr_get_file_perm_from_bits(iter->fileop, permissions);

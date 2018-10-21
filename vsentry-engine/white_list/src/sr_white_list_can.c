@@ -10,6 +10,7 @@
 #include "sr_cls_wl_common.h"
 #include "sentry.h"
 #include "db_tools.h"
+#include "sr_engine_cli.h"
 
 static SR_32 rule_id; 
 //static sysrepo_mng_handler_t sysrepo_handler;
@@ -84,6 +85,13 @@ void sr_white_list_canbus_print(sr_wl_can_item_t *wl_canbus, void (*print_cb)(ch
 {
 	sr_wl_can_item_t *iter;
 	char interface[CAN_INTERFACES_NAME_SIZE], print_buf[512];
+
+	 if (wl_canbus) {
+                sprintf(print_buf, "CAN learnt:\n%c", SR_CLI_END_OF_ENTITY);
+                printf("%s", print_buf);
+                if (print_cb)
+                        print_cb(print_buf);
+        }
 	
 	for (iter = wl_canbus; iter; iter = iter->next) {
 		if (sal_get_interface_name(iter->if_id, interface) != SR_SUCCESS) {

@@ -472,16 +472,16 @@ SR_32 sr_engine_start(int argc, char *argv[])
 #endif /* CONFIG_CAN_ML */
 			case 'e':
 					printf ("Move to WL learn mode \n");
-					sr_white_list_set_mode(SR_WL_MODE_LEARN);
+					sr_white_list_set_mode(SR_WL_MODE_LEARN, NULL);
 				break;
 			case 'f':
 				printf ("Move to WL prootect mode \n");
 				sr_stat_analysis_learn_mode_set(SR_STAT_MODE_PROTECT);
-				//sr_white_list_set_mode(SR_WL_MODE_APPLY);
+				//sr_white_list_set_mode(SR_WL_MODE_APPLY, NULL);
 				break;
 			case 'g':
 				printf ("Move to WL OFF mode \n");
-				sr_white_list_set_mode(SR_WL_MODE_OFF);
+				sr_white_list_set_mode(SR_WL_MODE_OFF, NULL);
 				break;
 			case 'z':
 				printf("print the white list !!!\n");

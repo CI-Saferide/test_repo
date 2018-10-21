@@ -14,6 +14,7 @@
 
 static SR_BOOL is_run;
 static pthread_t t;
+static int g_fd;
 
 static void handle_ver_cmd(int fd)
 {
@@ -24,6 +25,16 @@ static void handle_ver_cmd(int fd)
 		printf("write error\n");
 }
 
+static void notify_apply(void)
+{
+	char syncbuf[2];
+
+	// Snc 
+	syncbuf[0] = SR_CLI_END_OF_TRANSACTION;
+        if (write(g_fd, syncbuf, 1) < 1)
+                printf("Failed writing sync buf\n");
+}
+
 static SR_32 handle_data(char *buf, SR_32 fd)
 {
 	if (!memcmp(buf, "cli_load", strlen("cli_load")))
@@ -31,9 +42,11 @@ static SR_32 handle_data(char *buf, SR_32 fd)
 	if (!memcmp(buf, "cli_commit", strlen("cli_commit")))
 		sr_engine_cli_commit(fd);
 	if (!memcmp(buf, "wl_learn", strlen("wl_learn")))
-		sr_white_list_set_mode(SR_WL_MODE_LEARN);
-	if (!memcmp(buf, "wl_apply", strlen("wl_apply")))
-		sr_white_list_set_mode(SR_WL_MODE_APPLY);
+		sr_white_list_set_mode(SR_WL_MODE_LEARN, NULL);
+	if (!memcmp(buf, "wl_apply", strlen("wl_apply"))) {
+		g_fd = fd;
+		sr_white_list_set_mode(SR_WL_MODE_APPLY, notify_apply);
+	}
 	if (!memcmp(buf, "wl_print", strlen("wl_ptint"))) {
 		sr_engine_cli_print(fd);
 	}

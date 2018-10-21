@@ -187,7 +187,7 @@ SR_32 sr_white_list_reset(void)
 	return SR_SUCCESS;
 }
 
-SR_32 sr_white_list_set_mode(sr_wl_mode_t new_wl_mode)
+SR_32 sr_white_list_set_mode(sr_wl_mode_t new_wl_mode, void (*notify_cb)(void))
 {
 	SR_32 rc;
 	sr_ec_msg_t *msg;
@@ -284,6 +284,8 @@ SR_32 sr_white_list_set_mode(sr_wl_mode_t new_wl_mode)
 					"%s=failed to transfer config info to kernel",REASON);
 			sr_white_list_uninit();
 			sr_white_list_ip_uninit();
+			if (notify_cb)
+				notify_cb();
 			break;
 		case SR_WL_MODE_OFF:
 			break;

@@ -31,7 +31,7 @@ SR_32 sr_white_list_hash_exec_for_all(SR_32 (*cb)(void *hash_data, void *data));
 SR_32 sr_white_list_hash_delete(char *exec);
 SR_32 sr_white_list_delete_all(void);
 void sr_white_list_hash_print(void);
-SR_32 sr_white_list_set_mode(sr_wl_mode_t new_wl_mode);
+SR_32 sr_white_list_set_mode(sr_wl_mode_t new_wl_mode, void (*notify_cb)(void));
 sr_wl_mode_t sr_white_list_get_mode(void);
 SR_32 sr_white_list_reset(void);
 void white_list_print_cb_register(void (*print_cb)(char *buf));
