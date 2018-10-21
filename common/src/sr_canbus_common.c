@@ -14,7 +14,7 @@ SR_32 sr_can_tran_get_if_id(can_translator_t *can_traslator, SR_U8 dev_id, SR_U8
 
         if (dev_id >= MAX_DEVICE_NUMBER)
                 return SR_ERROR;
-        if (can_traslator->devices_map_to_can_id[dev_id] != -1) {
+        if (can_traslator->devices_map_to_can_id[dev_id] != (SR_8)-1) {
                 *can_id = can_traslator->devices_map_to_can_id[dev_id];
                 return SR_SUCCESS;
         }

@@ -11,7 +11,6 @@ static SR_32 cls_housekeeping_task_func(void *data)
 {
         while (is_run_cls_housekeeping) {
                 sal_schedule_timeout(CLS_HOUSEKEEPING_SHCEDULE_USECS);
-		sr_sk_process_cleanup();
 		sr_conn_obj_cleanup();
 		local_ips_array_init();
         }

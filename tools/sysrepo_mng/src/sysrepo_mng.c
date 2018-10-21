@@ -1249,6 +1249,14 @@ SR_32 sys_repo_mng_commit(sysrepo_mng_handler_t *handler)
 {
 	SR_32 rc;
 
+	if (sr_config_get_mod_state()) {
+		printf("during mod 1\n");
+		while (sr_config_get_mod_state())
+			usleep(10000);
+	}
+
+	printf("ready for commit\n");
+
 	rc = sr_commit(handler->sess);
 	if (SR_ERR_OK != rc) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
@@ -1256,6 +1264,14 @@ SR_32 sys_repo_mng_commit(sysrepo_mng_handler_t *handler)
 			sr_strerror(rc));
 		return SR_ERROR;
 	}
+
+	if (sr_config_get_mod_state()) {
+		printf("during mod 2\n");
+		while (sr_config_get_mod_state())
+			usleep(10000);
+	}
+
+	printf("commit done\n");
 
 	rc = sr_copy_config(handler->sess, "saferide", SR_DS_RUNNING, SR_DS_STARTUP);
 	if (SR_ERR_OK != rc) {

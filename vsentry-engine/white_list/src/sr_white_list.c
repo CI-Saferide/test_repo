@@ -10,7 +10,7 @@
 
 static sr_wl_mode_t wl_mode = SR_WL_MODE_OFF;
 static SR_BOOL is_wl_init;
-
+static sysrepo_mng_handler_t sysrepo_handler;
 static struct sr_gen_hash *white_list_hash;
 
 void (*print_cb)(char *buf);
@@ -37,11 +37,18 @@ static void white_list_print(void *data_in_hash)
 	char buf[512];
 
 	CEF_log_event(SR_CEF_CID_SYSTEM, "info", SEVERITY_LOW,
-		"%s=white list learnt program:%s ", MESSAGE, white_list_item->exec);
-	sprintf(buf, "\nExec:%s: \n%c", white_list_item->exec, SR_CLI_END_OF_ENTITY);
+		"%s=white list learned program %s ", MESSAGE, white_list_item->exec);
+	sprintf(buf, "\nexec:%s: \n%c", white_list_item->exec, SR_CLI_END_OF_ENTITY);
+	printf("%s", buf);
+	print_cb(buf);
+	sprintf(buf, "file learned:\n%c", SR_CLI_END_OF_ENTITY);
 	printf("%s", buf);
 	print_cb(buf);
 	sr_white_list_file_print(white_list_item->white_list_file, print_cb);
+
+	sprintf(buf, "\ncan learned:\n%c", SR_CLI_END_OF_ENTITY);
+	printf("%s", buf);
+	print_cb(buf);
 	sr_white_list_canbus_print(white_list_item->white_list_can, print_cb);
 }
 
@@ -73,13 +80,13 @@ static void white_list_free(void *data_in_hash)
 
 static SR_32 sr_white_list_create_action(void)
 {
-	sysrepo_mng_handler_t sysrepo_handler;
+/*	sysrepo_mng_handler_t sysrepo_handler;
  
         if (sysrepo_mng_session_start(&sysrepo_handler) != SR_SUCCESS) {
                 CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
                         "%s=sysrepo_mng_session_start failed",REASON);
                 return SR_ERROR;
-        }
+        }*/
                         
 	if (sys_repo_mng_create_action(&sysrepo_handler, WHITE_LIST_ACTION, SR_TRUE, SR_FALSE) != SR_ERR_OK) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
@@ -87,12 +94,12 @@ static SR_32 sr_white_list_create_action(void)
 		return SR_ERROR;
 	}
 
-	if (sys_repo_mng_commit(&sysrepo_handler) != SR_SUCCESS) { 
+/*	if (sys_repo_mng_commit(&sysrepo_handler) != SR_SUCCESS) { 
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 		"%s=sys_repo_mng_commit failed ", REASON);
 	}
 
-	sysrepo_mng_session_end(&sysrepo_handler);
+	sysrepo_mng_session_end(&sysrepo_handler);*/
 
 	return SR_SUCCESS;
 }
@@ -100,6 +107,12 @@ static SR_32 sr_white_list_create_action(void)
 SR_32 sr_white_list_init(void)
 {
 	hash_ops_t hash_ops = {};
+
+	if (sysrepo_mng_session_start(&sysrepo_handler) != SR_SUCCESS) {
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+			"%s=sysrepo_mng_session_start failed",REASON);
+		return SR_ERROR;
+	}
 
 	if (sr_white_list_file_init() != SR_SUCCESS) {
                 CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
@@ -122,15 +135,20 @@ SR_32 sr_white_list_init(void)
 	return SR_SUCCESS;
 }
 
+sysrepo_mng_handler_t *sr_white_list_get_hadler(void)
+{
+	return &sysrepo_handler;
+}
+
 static SR_32 sr_white_list_delete_rules(void)
 {
-	sysrepo_mng_handler_t sysrepo_handler;
+/*	sysrepo_mng_handler_t sysrepo_handler;
 
 	if (sysrepo_mng_session_start(&sysrepo_handler)) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
                         "%s=wl file:fail to init persistent db",REASON);
 		return SR_ERROR;
-	}
+	}*/
 
 	if (sys_repo_mng_delete_ip_rules(&sysrepo_handler, SR_IP_WL_START_RULE_NO, SR_IP_WL_END_RULE_NO + 1) != SR_SUCCESS) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, "%s=wl file:fail to delete ip rules",REASON);
@@ -150,7 +168,7 @@ static SR_32 sr_white_list_delete_rules(void)
 		"%s=failed to commit wl file rules from persistent db", REASON);
 	}
 
-	sysrepo_mng_session_end(&sysrepo_handler);
+//	sysrepo_mng_session_end(&sysrepo_handler);
 
 	return SR_SUCCESS;
 }
@@ -180,6 +198,7 @@ SR_32 sr_white_list_set_mode(sr_wl_mode_t new_wl_mode, void (*notify_cb)(void))
 
 	if (wl_mode == new_wl_mode)
 		return SR_SUCCESS;
+
 	switch (new_wl_mode) { 
 		case SR_WL_MODE_LEARN:
 			if (sr_white_list_init() != SR_SUCCESS) {
@@ -243,7 +262,12 @@ SR_32 sr_white_list_set_mode(sr_wl_mode_t new_wl_mode, void (*notify_cb)(void))
 					"%s=sr_white_list_ip_apply failed",REASON);
 				return SR_ERROR;
 			}
-			printf("Finish applying rules\n");
+
+			if (sys_repo_mng_commit(&sysrepo_handler) != SR_SUCCESS) {
+				CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+					"%s=ip wl: failed to commit changes to persistent storage", REASON);
+			} else
+				printf("Finish applying rules\n");
  			CEF_log_event(SR_CEF_CID_SYSTEM, "info", SEVERITY_LOW,
 					"%s=white list rules applied successfuly", MESSAGE);
 			/* Set default rule to be as defined in sr_config */

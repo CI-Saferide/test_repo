@@ -277,8 +277,10 @@ SR_32 sal_exec_for_all_tasks(SR_32 (*cb)(void *data))
 			system_stat.num_of_threads++;
                         task_io_accounting_add(&acct, &t->ioac);
 		}
+#ifdef CONFIG_TASK_XACCT
 		system_stat.bytes_read = acct.rchar;
 		system_stat.bytes_write = acct.wchar;
+#endif
 		system_stat.curr_time = jiffies * 1000 / HZ;
 		cb(&system_stat);
 	}
