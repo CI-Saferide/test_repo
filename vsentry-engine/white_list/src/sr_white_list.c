@@ -37,16 +37,16 @@ static void white_list_print(void *data_in_hash)
 	char buf[512];
 
 	CEF_log_event(SR_CEF_CID_SYSTEM, "info", SEVERITY_LOW,
-		"%s=white list learnt program:%s ", MESSAGE, white_list_item->exec);
-	sprintf(buf, "\nExec:%s: \n%c", white_list_item->exec, SR_CLI_END_OF_ENTITY);
+		"%s=white list learned program %s ", MESSAGE, white_list_item->exec);
+	sprintf(buf, "\nexec:%s: \n%c", white_list_item->exec, SR_CLI_END_OF_ENTITY);
 	printf("%s", buf);
 	print_cb(buf);
-	sprintf(buf, "File learnt:\n%c", SR_CLI_END_OF_ENTITY);
+	sprintf(buf, "file learned:\n%c", SR_CLI_END_OF_ENTITY);
 	printf("%s", buf);
 	print_cb(buf);
 	sr_white_list_file_print(white_list_item->white_list_file, print_cb);
 
-	sprintf(buf, "\nCAN learnt:\n%c", SR_CLI_END_OF_ENTITY);
+	sprintf(buf, "\ncan learned:\n%c", SR_CLI_END_OF_ENTITY);
 	printf("%s", buf);
 	print_cb(buf);
 	sr_white_list_canbus_print(white_list_item->white_list_can, print_cb);

@@ -37,7 +37,7 @@ static int sr_cls_walker_delete(struct radix_node *node, void *data)
 	del_node = rn_delete((void*)node->rn_key, (void*)node->rn_mask, data);
 	if (!del_node) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-			"%s=failed to del ipv4, node not found!",REASON);
+			"%s=failed to del ipv4 node not found",REASON);
 		return SR_ERROR;
 	}
 	SR_FREE(del_node);
@@ -52,7 +52,7 @@ SR_32 local_ips_array_init(void)
 
 	if (sal_get_local_ips(local_ips, &count, MAX_NUM_OF_LOCAL_IPS)) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, 
-		"%s=sal_get_local_ips failed",REASON);
+		"%s=get local ips failed",REASON);
 		return SR_ERROR;
 	}
 
@@ -77,14 +77,14 @@ void sr_cls_network_init(void)
 	memset(&sr_cls_network_dst_any_rules, 0, sizeof(bit_array));
 
 	if (!rn_inithead((void **)&sr_cls_src_ipv4, (8 * offsetof(struct sockaddr_in, sin_addr)))) {
-		sal_kernel_print_err("Error Initializing src radix tree\n");
+		sal_kernel_print_err("error Initializing src radix tree\n");
 	} else {
 		if (!rn_inithead((void **)&sr_cls_dst_ipv4, (8 * offsetof(struct sockaddr_in, sin_addr)))) {
 			rn_detachhead((void **)&sr_cls_src_ipv4);
 			sr_cls_src_ipv4 = NULL;
-			sal_kernel_print_err("Error Initializing dst radix tree\n");
+			sal_kernel_print_err("error Initializing dst radix tree\n");
 		} else {
-			sal_kernel_print_info("Successfully Initialized radix tree\n");
+			sal_kernel_print_info("successfully initialized radix tree\n");
 		}
 	}
 
@@ -321,7 +321,7 @@ int sr_cls_del_ipv4(SR_U32 addr, SR_U32 netmask, int rulenum, SR_8 dir)
 		node = rn_lookup((void*)ip, (void*)mask, tree_head);
 		if (!node) {
 			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-					"%s=failed to del ipv4 for rule %d, node not found!",REASON,
+					"%s=failed to del ipv4 for rule %d node not found",REASON,
 					rulenum);
 			SR_FREE(ip);
 			SR_FREE(mask);
@@ -343,7 +343,7 @@ int sr_cls_del_ipv4(SR_U32 addr, SR_U32 netmask, int rulenum, SR_8 dir)
 			node = rn_delete((void*)node->rn_key, (void*)node->rn_mask, tree_head);
 			if (!node) {
 				CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-						"%s=failed to del ipv4, node not found!",REASON);
+						"%s=failed to del ipv4 node not found",REASON);
 				return SR_ERROR;
 			}
 			SR_FREE(node);
@@ -447,7 +447,7 @@ int sr_cls_walker_update_rule(struct radix_node *node, void *data)
 			del_node = rn_delete((void*)node->rn_key, (void*)node->rn_mask, ad->head);
 			if (!del_node) {
 				CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-						"%s=failed to del ipv4, node not found!",REASON);
+						"%s=failed to del ipv4 node not found",REASON);
 				return SR_ERROR;
 			}
 			SR_FREE(del_node);
@@ -465,7 +465,7 @@ SR_8 sr_cls_network_msg_dispatch(struct sr_cls_network_msg *msg)
 		case SR_CLS_IPV4_DEL_RULE:
 		
 			CEF_log_event(SR_CEF_CID_NETWORK, "info", SEVERITY_LOW,
-				"%s=del_ipv4 addr 0x%x netmask 0x%x %s=%d",MESSAGE,
+				"%s=del_ipv4 addr %pI4 netmask %pI4 %s=%d",MESSAGE,
 				msg->addr, 
 				msg->netmask, 
 				RULE_NUM_KEY,msg->rulenum);	
@@ -479,7 +479,7 @@ SR_8 sr_cls_network_msg_dispatch(struct sr_cls_network_msg *msg)
 		case SR_CLS_IPV4_ADD_RULE:
 		
 			CEF_log_event(SR_CEF_CID_NETWORK, "info", SEVERITY_LOW,
-				"%s=add_ipv4 addr %x netmask %x %s=%d",MESSAGE,
+				"%s=add_ipv4 addr %pI4 netmask %pI4 %s=%d",MESSAGE,
 				msg->addr, 
 				msg->netmask, 
 				RULE_NUM_KEY,msg->rulenum);

@@ -248,7 +248,7 @@ SR_32 sr_white_list_ip_apply(SR_32 is_apply)
 		if (sys_repo_mng_create_net_rule(&sysrepo_handler, WL_IP_RULE_ID, tuple_id, "0.0.0.0", "0.0.0.0", sal_get_str_ip_address(ip_iter->ip), "255.255.255.255",
 			0, 0, 0, exec_iter->exec, "*", WHITE_LIST_ACTION) != SR_SUCCESS) {
 			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-				"%s=failed to create ip rule (id %d, ip and exec)",
+				"%s=failed to create ip rule (id %d ip and exec)",
 					REASON, WL_IP_RULE_ID);
 		}
 		tuple_id++;
@@ -258,7 +258,7 @@ SR_32 sr_white_list_ip_apply(SR_32 is_apply)
 		if (sys_repo_mng_create_net_rule(&sysrepo_handler, WL_IP_RULE_ID, tuple_id, "0.0.0.0", "0.0.0.0", sal_get_str_ip_address(ip_item_list->ip), "255.255.255.255",
 			0, 0, 0, exec_iter->exec, "*", WHITE_LIST_ACTION) != SR_SUCCESS) {
 			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-				"%s=failed to create ip rule (id %d, exec only)",
+				"%s=failed to create ip rule (id %d exec only)",
 					REASON, WL_IP_RULE_ID);
 		}
 		tuple_id++;
@@ -268,7 +268,7 @@ SR_32 sr_white_list_ip_apply(SR_32 is_apply)
 		if (sys_repo_mng_create_net_rule(&sysrepo_handler, WL_IP_RULE_ID, tuple_id, "0.0.0.0", "0.0.0.0", sal_get_str_ip_address(ip_iter->ip), "255.255.255.255",
 			0, 0, 0, exec_item_list->exec, "*", WHITE_LIST_ACTION) != SR_SUCCESS) {
 			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-				"%s=failed to create ip rule (id %d, ip only)",
+				"%s=failed to create ip rule (id %d ip only)",
 					REASON, WL_IP_RULE_ID);
 		}
 		tuple_id++;
@@ -301,7 +301,7 @@ static SR_32 white_list_ip_update_pid(char *exec, struct sockaddr_in *ip)
 {
 	if (sr_wl_ip_binary_insert(exec) == SR_ERROR) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-			"%s=%s: ip binary insert failed",REASON);
+			"%s=ip wl: ip binary insert failed",REASON);
 		return SR_ERROR;
 	}
 
@@ -325,7 +325,7 @@ SR_32 sr_white_list_ip_new_connection(struct sr_ec_new_connection_wl_t *pNewConn
 	ip->sin_addr.s_addr = pNewConnection->con.remote_addr.v4addr;
 
 	if (!*pNewConnection->exec) {
-		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, "%s=no exec learnt for ip:%x ",
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, "%s=no exec learned for ip: %x",
 				MESSAGE, ip->sin_addr.s_addr);
 		return SR_ERROR;
 	}

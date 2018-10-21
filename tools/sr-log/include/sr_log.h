@@ -27,7 +27,9 @@ enum SR_CEF_CLASS_ID {
 	SR_CEF_CID_SYSTEM = 400,		/* general vsentry system events */
 	SR_CEF_CID_ML_CAN = 500,		/* CAN machine learning events */
 	SR_CEF_CID_STAT_IP = 600,		/* IP statisstical analysis events */
-	SR_CEF_CID_SP = 700,                    /* System policer */
+	SR_CEF_CID_SP = 700,            /* System policer */
+
+	SR_FORENSIC_NETWORK = 2000		/* forensic network information */
 };
 
 

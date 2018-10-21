@@ -174,9 +174,11 @@ const event_name *event_mediator_hooks_event_names(void)
 static SR_32 hook_filter(void)
 {
 	//TODO: get sr_engine pid from chdrv open fops
-	if ((vsentry_get_pid()) == (current->tgid))
+	if ((!in_interrupt()) && ((vsentry_get_pid()) == (current->tgid)))
 		return SR_TRUE;
-		
+	// if kernel thread invoked this hook
+	if ((current->flags & PF_KTHREAD) || !current->mm || !current->mm->exe_file)
+		return SR_TRUE;
 	return SR_FALSE;
 }
 
@@ -205,6 +207,8 @@ static void update_process_info (identifier *id, struct sock *sk)
 				/* we are in learn mode, resolve exec fullpath */
 				strncpy(id->exec, process_info_p->process_info.exec, SR_MAX_PATH_SIZE);
 			}
+		} else {
+			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_MEDIUM, "failed to get from hash sk %p", REASON, sk);
 		}
 	} else if (in_interrupt()) {
 		/* we are in interrupt context and we don't have sk info. this should not happen */
@@ -221,7 +225,7 @@ static void update_process_info (identifier *id, struct sock *sk)
 		if (get_collector_state() == SR_TRUE) {
 			/* we are in learn mode, resolve exec fullpath */
 			if ((get_process_name(id->pid, id->exec, SR_MAX_PATH_SIZE)) != SR_SUCCESS) {
-				CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_MEDIUM, "%s=failed to get process name for pid:%d ", REASON, id->pid);
+				CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_MEDIUM, "%s=failed to get process name for pid %d ", REASON, id->pid);
 			}
 		}
 	}
@@ -245,8 +249,8 @@ SR_32 vsentry_inode_mkdir(struct inode *dir, struct dentry *dentry, umode_t mask
 		disp.fileinfo.parent_inode = dentry->d_parent->d_inode->i_ino;
 		disp.fileinfo.parent_info = dentry->d_parent;
 	}else
-		CEF_log_event(SR_CEF_CID_SYSTEM, "Error reading parent inode" , SEVERITY_HIGH, 
-						"[%s] parent inode in null\n", hook_event_names[HOOK_MKDIR].name);
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error" , SEVERITY_HIGH,
+						"%s=[%s] parent inode is null", REASON, hook_event_names[HOOK_MKDIR].name);
 	update_process_info(&disp.fileinfo.id, NULL);
 	disp.fileinfo.fileop = SR_FILEOPS_WRITE;
 
@@ -263,7 +267,7 @@ SR_32 vsentry_inode_mkdir(struct inode *dir, struct dentry *dentry, umode_t mask
 		strncpy(fullpath, "NA", 3);
 	
 	CEF_log_event(SR_CEF_CID_SYSTEM, "info" , SEVERITY_LOW, 
-					"[HOOK %s] parent inode=%u, file=%s, path=%s, pid=%d, uid=%d\n", 
+					"[HOOK %s] parent inode=%u, file=%s, path=%s, pid=%d, uid=%d",
 					hook_event_names[HOOK_MKDIR].name,
 					disp.fileinfo.parent_inode,
 					filename, 
@@ -282,7 +286,7 @@ SR_32 vsentry_inode_mkdir(struct inode *dir, struct dentry *dentry, umode_t mask
 		}
 		if (!sr_cls_filter_path_is_match(disp.fileinfo.fullpath) && disp_file_created(&disp) != SR_SUCCESS) {
 			CEF_log_event(SR_CEF_CID_SYSTEM, "Error", SEVERITY_HIGH,
-							"[%s] failed disp_file_created\n", hook_event_names[HOOK_INODE_CREATE].name);
+							"[%s] failed disp_file_created", hook_event_names[HOOK_INODE_CREATE].name);
 		}
 	}
 
@@ -306,14 +310,14 @@ SR_32 vsentry_inode_unlink(struct inode *dir, struct dentry *dentry)
 	if (dentry->d_inode)
 		disp.fileinfo.current_inode = dentry->d_inode->i_ino;
 	else
-		CEF_log_event(SR_CEF_CID_SYSTEM, "Error", SEVERITY_HIGH,
-						"[%s] parent inode in null\n", hook_event_names[HOOK_UNLINK].name);
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+						"%s=[%s] parent inode in null", REASON, hook_event_names[HOOK_UNLINK].name);
 	if ((dentry->d_parent) && (dentry->d_parent->d_inode)){
 		disp.fileinfo.parent_inode = dentry->d_parent->d_inode->i_ino;
 		disp.fileinfo.parent_info = dentry->d_parent;
 	}else
-		CEF_log_event(SR_CEF_CID_SYSTEM, "Error", SEVERITY_HIGH,
-						"[%s] parent inode in null\n", hook_event_names[HOOK_UNLINK].name);
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+						"%s=[%s] parent inode in null", REASON, hook_event_names[HOOK_UNLINK].name);
 
 	update_process_info(&disp.fileinfo.id, NULL);
 	disp.fileinfo.fileop = SR_FILEOPS_WRITE;
@@ -330,7 +334,7 @@ SR_32 vsentry_inode_unlink(struct inode *dir, struct dentry *dentry)
 	get_path(dentry, fullpath, sizeof(fullpath));
 
 	CEF_log_event(SR_CEF_CID_SYSTEM, "info" , SEVERITY_LOW, 
-					"[HOOK %s] inode=%u, parent_inode=%u, file=%s, path=%s, pid=%d, uid=%d\n", 
+					"[HOOK %s] inode=%u, parent_inode=%u, file=%s, path=%s, pid=%d, uid=%d",
 					hook_event_names[HOOK_UNLINK].name,
 					disp.fileinfo.current_inode,
 					disp.fileinfo.parent_inode,
@@ -379,7 +383,7 @@ int vsentry_inode_rename(struct inode *old_dir, struct dentry *old_dentry, struc
 
 #ifdef DEBUG_EVENT_MEDIATOR
         CEF_log_event(SR_CEF_CID_SYSTEM, "info" , SEVERITY_LOW,
-						"[HOOK %s] old inode=%d, new inode=%d, pid=%d, uid=%d\n",
+						"[HOOK %s] old inode=%d, new inode=%d, pid=%d, uid=%d",
                         hook_event_names[HOOK_INODE_RENAME].name,
                         old_dentry->d_inode ? old_dentry->d_inode->i_ino : -1,
                         new_dentry->d_inode ? new_dentry->d_inode->i_ino : -1,
@@ -396,7 +400,7 @@ int vsentry_inode_rename(struct inode *old_dir, struct dentry *old_dentry, struc
 	rc = disp_inode_rename(&disp);
 	if (rc == 0) {
 		if (get_path(new_dentry, disp.fileinfo.fullpath, sizeof(disp.fileinfo.fullpath)) != SR_SUCCESS) {
-			CEF_log_event(SR_CEF_CID_SYSTEM, "Error" , SEVERITY_HIGH, "File operation denied, file path it to long");
+			CEF_log_event(SR_CEF_CID_SYSTEM, "error" , SEVERITY_HIGH, "%s=file operation denied - file path it to long", REASON);
 			return -EACCES;
 		}
 		if (disp.fileinfo.current_inode)
@@ -404,8 +408,8 @@ int vsentry_inode_rename(struct inode *old_dir, struct dentry *old_dentry, struc
 		if (disp.fileinfo.old_inode)
 			disp_inode_remove(disp.fileinfo.old_inode);
 		if(!sr_cls_filter_path_is_match(disp.fileinfo.fullpath) && disp_file_created(&disp) != SR_SUCCESS) {
-			CEF_log_event(SR_CEF_CID_SYSTEM, "Error", SEVERITY_HIGH,
-							"[%s] failed disp_file_created\n", hook_event_names[HOOK_INODE_RENAME].name);
+			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+							"%s=[%s] failed disp_file_created", REASON, hook_event_names[HOOK_INODE_RENAME].name);
  		}
 	}
 
@@ -429,8 +433,8 @@ SR_32 vsentry_inode_symlink(struct inode *dir, struct dentry *dentry, const SR_8
 		disp.fileinfo.parent_inode = dentry->d_parent->d_inode->i_ino;
 		disp.fileinfo.parent_info = dentry->d_parent;
 	}else
-		CEF_log_event(SR_CEF_CID_SYSTEM, "Error", SEVERITY_HIGH,
-						"[%s] parent inode in null\n", hook_event_names[HOOK_SYMLINK].name);
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+						"%s=[%s] parent inode in null", REASON, hook_event_names[HOOK_SYMLINK].name);
 
 	update_process_info(&disp.fileinfo.id, NULL);
 	disp.fileinfo.fileop = SR_FILEOPS_WRITE;
@@ -445,7 +449,7 @@ SR_32 vsentry_inode_symlink(struct inode *dir, struct dentry *dentry, const SR_8
 		MIN(sizeof(filename), 1+strlen(name)));
 	get_path(dentry, fullpath, sizeof(fullpath));
 		CEF_log_event(SR_CEF_CID_SYSTEM, "info" , SEVERITY_LOW,
-				"[HOOK %s] parent_inode=%u, file=%s, path=%s, pid=%d, uid=%d\n", 
+				"[HOOK %s] parent_inode=%u, file=%s, path=%s, pid=%d, uid=%d",
 				hook_event_names[HOOK_SYMLINK].name,
 				disp.fileinfo.parent_inode,
 				filename, 
@@ -475,14 +479,14 @@ SR_32 vsentry_inode_rmdir(struct inode *dir, struct dentry *dentry)
 	if (dentry->d_inode)
 		disp.fileinfo.current_inode = dentry->d_inode->i_ino;
 	else
-		CEF_log_event(SR_CEF_CID_SYSTEM, "Error", SEVERITY_HIGH,
-						"[%s] inode in null\n", hook_event_names[HOOK_RMDIR].name);
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+						"%s=[%s] inode in null", REASON, hook_event_names[HOOK_RMDIR].name);
 	if ((dentry->d_parent) && (dentry->d_parent->d_inode)){
 		disp.fileinfo.parent_inode = dentry->d_parent->d_inode->i_ino;
 		disp.fileinfo.parent_info = dentry->d_parent;
 	}else
-		CEF_log_event(SR_CEF_CID_SYSTEM, "Error", SEVERITY_HIGH,
-						"[%s] parent inode in null\n", hook_event_names[HOOK_RMDIR].name);
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+						"%s=[%s] parent inode in null", REASON, hook_event_names[HOOK_RMDIR].name);
 		
 	update_process_info(&disp.fileinfo.id, NULL);
 	disp.fileinfo.fileop = SR_FILEOPS_WRITE;
@@ -496,7 +500,7 @@ SR_32 vsentry_inode_rmdir(struct inode *dir, struct dentry *dentry)
 		MIN(sizeof(filename), 1+strlen(dentry->d_iname)));
 	get_path(dentry->d_parent, fullpath, sizeof(fullpath));
 	CEF_log_event(SR_CEF_CID_SYSTEM, "info" , SEVERITY_LOW,
-					"[HOOK %s] inode=%u, parent_inode=%u, file=%s, path=%s, pid=%d, uid=%d\n", 
+					"[HOOK %s] inode=%u, parent_inode=%u, file=%s, path=%s, pid=%d, uid=%d",
 					hook_event_names[HOOK_RMDIR].name,
 					disp.fileinfo.current_inode,
 					disp.fileinfo.parent_inode,
@@ -539,11 +543,11 @@ SR_32 vsentry_socket_connect(struct socket *sock, struct sockaddr *address, SR_3
 	disp.tuple_info.daddr.v4addr.s_addr = ntohl(((struct sockaddr_in *)address)->sin_addr.s_addr);
 	disp.tuple_info.dport = ntohs(((struct sockaddr_in *)address)->sin_port);
 	disp.tuple_info.ip_proto = sock->sk->sk_protocol;
-	update_process_info(&disp.tuple_info.id, sock->sk);
+	update_process_info(&disp.tuple_info.id, NULL);
 
 #ifdef DEBUG_EVENT_MEDIATOR
 	CEF_log_event(SR_CEF_CID_SYSTEM, "info" , SEVERITY_LOW,
-					"vsentry_socket_connect=%lx[%d] -> %lx[%d]\n",
+					"vsentry_socket_connect=%lx[%d] -> %lx[%d]",
 					(unsigned long)disp.tuple_info.saddr.v4addr.s_addr,
 					disp.tuple_info.sport,
 					(unsigned long)disp.tuple_info.daddr.v4addr.s_addr,
@@ -563,9 +567,12 @@ SR_32 vsentry_incoming_connection(struct sk_buff *skb)
 	disp_info_t disp = {};
 
 	memset(&disp, 0, sizeof(disp_info_t));
-	
+
 	/* check vsentry state */
 	CHECK_STATE
+
+	/* check hook filter */
+	HOOK_FILTER
 
 	/* gather metadata */
 	disp.tuple_info.id.uid = UID_ANY;
@@ -578,7 +585,7 @@ SR_32 vsentry_incoming_connection(struct sk_buff *skb)
 
 //#ifdef DEBUG_EVENT_MEDIATOR
 	CEF_log_event(SR_CEF_CID_SYSTEM, "info" , SEVERITY_LOW,
-					"vsentry_incoming_connection=%lx[%d] -> %lx[%d]\n",
+					"vsentry_incoming_connection=%lx[%d] -> %lx[%d]",
 					(unsigned long)disp.tuple_info.saddr.v4addr.s_addr,
 					disp.tuple_info.sport,
 					(unsigned long)disp.tuple_info.daddr.v4addr.s_addr,
@@ -606,8 +613,8 @@ SR_32 vsentry_path_chmod(struct path *path, umode_t mode)
 	if (path->dentry->d_inode)
 		disp.fileinfo.current_inode = path->dentry->d_inode->i_ino;
 	else
-		CEF_log_event(SR_CEF_CID_SYSTEM, "Error", SEVERITY_HIGH,
-						"[%s] inode in null\n", hook_event_names[HOOK_CHMOD].name);
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+						"%s=[%s] inode is null", REASON, hook_event_names[HOOK_CHMOD].name);
 						
 	if ((path->dentry->d_parent) && (path->dentry->d_parent->d_inode)){
 		disp.fileinfo.parent_inode = path->dentry->d_parent->d_inode->i_ino;
@@ -624,7 +631,7 @@ SR_32 vsentry_path_chmod(struct path *path, umode_t mode)
 #pragma GCC diagnostic pop	
 	get_path(path->dentry, fullpath, sizeof(fullpath));
 	CEF_log_event(SR_CEF_CID_SYSTEM, "info" , SEVERITY_LOW,
-					"[HOOK %s] inode=%u, parent_inode=%u, path=%s, pid=%d, uid=%d\n", 
+					"[HOOK %s] inode=%u, parent_inode=%u, path=%s, pid=%d, uid=%d",
 					hook_event_names[HOOK_CHMOD].name,
 					disp.fileinfo.current_inode,
 					disp.fileinfo.parent_inode,
@@ -655,8 +662,8 @@ SR_32 vsentry_inode_create(struct inode *dir, struct dentry *dentry, umode_t mod
 		disp.fileinfo.parent_inode = dentry->d_parent->d_inode->i_ino;
 		disp.fileinfo.parent_info = dentry->d_parent;
 	}else
-		CEF_log_event(SR_CEF_CID_SYSTEM, "Error", SEVERITY_HIGH,
-						"[%s] parent inode in null\n", hook_event_names[HOOK_INODE_CREATE].name);
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+						"%s=[%s] parent inode is null", REASON, hook_event_names[HOOK_INODE_CREATE].name);
 		
 	update_process_info(&disp.fileinfo.id, NULL);
 	disp.fileinfo.fileop = SR_FILEOPS_WRITE;
@@ -670,7 +677,7 @@ SR_32 vsentry_inode_create(struct inode *dir, struct dentry *dentry, umode_t mod
 		MIN(sizeof(filename), 1+strlen(dentry->d_iname)));
 	get_path(dentry->d_parent, fullpath, sizeof(fullpath));
 	CEF_log_event(SR_CEF_CID_SYSTEM, "info" , SEVERITY_LOW,
-					"[HOOK %s] parent_inode=%u, path=%s, pid=%d, uid=%d\n", 
+					"[HOOK %s] parent_inode=%u, path=%s, pid=%d, uid=%d",
 					hook_event_names[HOOK_INODE_CREATE].name,
 					disp.fileinfo.parent_inode,
 					fullpath, 
@@ -682,12 +689,12 @@ SR_32 vsentry_inode_create(struct inode *dir, struct dentry *dentry, umode_t mod
 	rc = disp_inode_create(&disp);
 	if (rc == 0) {
 		if (get_path(dentry, disp.fileinfo.fullpath, sizeof(disp.fileinfo.fullpath)) != SR_SUCCESS) {
-			CEF_log_event(SR_CEF_CID_SYSTEM, "Error" , SEVERITY_HIGH, "get path failed, file path it to long");
+			CEF_log_event(SR_CEF_CID_SYSTEM, "error" , SEVERITY_HIGH, "%s=get path failed - file path it to long", REASON);
 			return 0;
 		}
 		if (!sr_cls_filter_path_is_match(disp.fileinfo.fullpath) && disp_file_created(&disp) != SR_SUCCESS) {
-			CEF_log_event(SR_CEF_CID_SYSTEM, "Error" , SEVERITY_HIGH, 
-							"[%s] failed disp_file_created\n", hook_event_names[HOOK_INODE_CREATE].name);
+			CEF_log_event(SR_CEF_CID_SYSTEM, "error" , SEVERITY_HIGH, 
+							"%s=[%s] failed disp_file_created", REASON, hook_event_names[HOOK_INODE_CREATE].name);
 		}
 	}
 	return rc;
@@ -711,8 +718,8 @@ SR_32 vsentry_file_open(struct file *file, const struct cred *cred)
 	if (file->f_path.dentry->d_inode)
 		disp.fileinfo.current_inode = file->f_path.dentry->d_inode->i_ino;
 	else
-		CEF_log_event(SR_CEF_CID_SYSTEM, "Error", SEVERITY_HIGH,
-						"[%s] inode in null\n", hook_event_names[HOOK_FILE_OPEN].name);
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+						"%s=[%s] inode in null", REASON, hook_event_names[HOOK_FILE_OPEN].name);
 	if ((file->f_path.dentry->d_parent) && (file->f_path.dentry->d_parent->d_inode)){
 		disp.fileinfo.parent_inode = file->f_path.dentry->d_parent->d_inode->i_ino;
 		disp.fileinfo.parent_info = file->f_path.dentry->d_parent;
@@ -732,7 +739,7 @@ SR_32 vsentry_file_open(struct file *file, const struct cred *cred)
 #pragma GCC diagnostic pop
 	get_path(file->f_path.dentry, filename, sizeof(filename));
 	CEF_log_event(SR_CEF_CID_SYSTEM, "info" , SEVERITY_LOW,
-					"[HOOK %s] inode=%u, parent_inode=%u, file=%s, pid=%d, uid=%d\n", 
+					"[HOOK %s] inode=%u, parent_inode=%u, file=%s, pid=%d, uid=%d",
 					hook_event_names[HOOK_FILE_OPEN].name,
 					disp.fileinfo.current_inode,
 					disp.fileinfo.parent_inode,
@@ -761,7 +768,7 @@ SR_32 vsentry_file_open(struct file *file, const struct cred *cred)
 			if (sr_get_full_path(file, disp.fileinfo.fullpath, SR_MAX_PATH_SIZE) != SR_SUCCESS)
 				return rc;
 			if ((rc = get_process_name(disp.fileinfo.id.pid, disp.fileinfo.id.exec, SR_MAX_PATH_SIZE)) != SR_SUCCESS) {
-				CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, "Failed get process name for file open pid:%d ", disp.can_info.id.pid);
+				CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, "%s=failed get process name for file open pid %d ", REASON, disp.can_info.id.pid);
 				return rc;
 			}
 			disp_file_open_report(&disp);
@@ -787,15 +794,15 @@ SR_32 vsentry_inode_link(struct dentry *old_dentry, struct inode *dir, struct de
 	if ((new_dentry->d_parent) && (new_dentry->d_parent->d_inode))
 		disp.fileinfo.parent_inode = new_dentry->d_parent->d_inode->i_ino;
 	else
-		CEF_log_event(SR_CEF_CID_SYSTEM, "Error", SEVERITY_HIGH,
-						"[%s] parent inode in null\n", hook_event_names[HOOK_INODE_LINK].name);
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+						"%s=[%s] parent inode in null", REASON, hook_event_names[HOOK_INODE_LINK].name);
 						
 	if ((old_dentry->d_parent) && (old_dentry->d_parent->d_inode)){
 		disp.fileinfo.old_parent_inode = old_dentry->d_parent->d_inode->i_ino;
 		disp.fileinfo.parent_info = old_dentry->d_parent;		
 	}else
-		CEF_log_event(SR_CEF_CID_SYSTEM, "Error", SEVERITY_HIGH,
-						"[%s] old parent inode in null\n", hook_event_names[HOOK_INODE_LINK].name);
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+						"%s=[%s] old parent inode in null", REASON, hook_event_names[HOOK_INODE_LINK].name);
 	if (old_dentry->d_inode)
 		disp.fileinfo.old_inode = old_dentry->d_inode->i_ino;
 
@@ -813,7 +820,7 @@ SR_32 vsentry_inode_link(struct dentry *old_dentry, struct inode *dir, struct de
 	get_path(new_dentry, fullpath, sizeof(fullpath));
 	get_path(old_dentry, old_path, sizeof(old_path));
 	CEF_log_event(SR_CEF_CID_SYSTEM, "Event Mediator" , SEVERITY_LOW,
-					"[HOOK %s] parent_inode=%u, old_parent_inode=%u, file=%s, path=%s, old_path=%s pid=%d, uid=%d\n", 
+					"[HOOK %s] parent_inode=%u, old_parent_inode=%u, file=%s, path=%s, old_path=%s pid=%d, uid=%d",
 					hook_event_names[HOOK_INODE_LINK].name,
 					disp.fileinfo.parent_inode,
 					disp.fileinfo.old_inode,
@@ -887,8 +894,8 @@ void vsentry_inet_conn_established(struct sock *sk, struct sk_buff *skb)
     con.con_id.dport = ntohs(sk->sk_dport);
 
 	if ((rc = sr_stat_connection_insert(&con, SR_CONNECTION_NONBLOCKING | SR_CONNECTION_ATOMIC)) != SR_SUCCESS) {
-                CEF_log_event(SR_CEF_CID_SYSTEM, "Error", SEVERITY_HIGH,
-								"ERROR failed sr_stat_connection_insert\n");
+                CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+								"%s=failed sr_stat_connection_insert", REASON);
                 return;
 	}
 }
@@ -907,8 +914,8 @@ int vsentry_inet_conn_request(struct sock *sk, struct sk_buff *skb, struct reque
         con.con_id.sport = ntohs(tcphdr->dest);
         con.con_id.dport = ntohs(tcphdr->source);
 		if ((rc = sr_stat_connection_insert(&con, SR_CONNECTION_NONBLOCKING | SR_CONNECTION_ATOMIC)) != SR_SUCCESS) {
-               		CEF_log_event(SR_CEF_CID_SYSTEM, "Error", SEVERITY_HIGH,
-									"ERROR failed sr_stat_connection_insert\n");
+			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+				"%s=failed sr_stat_connection_insert", REASON);
 			return 0;
         }
 	}
@@ -970,15 +977,15 @@ SR_32 vsentry_socket_sendmsg(struct socket *sock,struct msghdr *msg,SR_32 size)
 						  copy_msg.msg_flags & MSG_DONTWAIT, &err);
 			if (!skb) {
 				CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-									"fail to allocate skb for can message");
+									"%s=fail to allocate skb for can message", REASON);
 				/* we cannot handle this message */
 				return 0;
 			}
 
 			err = memcpy_from_msg(skb_put(skb, size), &copy_msg, size);
 			if (err < 0) {
-				CEF_log_event(SR_CEF_CID_SYSTEM, "Error", SEVERITY_HIGH,
-								"fail to copy can msg from user");
+				CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+								"%s=fail to copy can msg from user", REASON);
 				/* we cannot handle this message */
 				kfree_skb(skb);
 				return 0;
@@ -990,8 +997,8 @@ SR_32 vsentry_socket_sendmsg(struct socket *sock,struct msghdr *msg,SR_32 size)
 			for (i = 0; i < cfd->len; i++) {
 				disp.can_info.payload[i] = cfd->data[i];
 			}
-			CEF_log_debug(SR_CEF_CID_SYSTEM, "Event Mediator" , SEVERITY_LOW,
-							"[HOOK %s] family=af_can msd_id=%x payload_len=%d payload= %02x %02x %02x %02x %02x %02x %02x %02x pid=%d, uid=%d\n", 
+			CEF_log_debug(SR_CEF_CID_SYSTEM, "info" , SEVERITY_LOW,
+							"%s=[HOOK %s] family=af_can msd_id=%x payload_len=%d payload= %02x %02x %02x %02x %02x %02x %02x %02x pid=%d, uid=%d", MESSAGE,
 							hook_event_names[HOOK_SOCK_MSG_SEND].name,
 							disp.can_info.msg_id,
 							disp.can_info.payload_len,
@@ -1030,17 +1037,17 @@ SR_32 vsentry_socket_sendmsg(struct socket *sock,struct msghdr *msg,SR_32 size)
 
 			if ((conp = sr_stat_connection_lookup(&con.con_id))) {
 				if ((rc = sr_stat_connection_update_counters(conp, current->tgid, 0, 0, size, 1)) != SR_SUCCESS) {
-                			CEF_log_event(SR_CEF_CID_SYSTEM, "Error", SEVERITY_HIGH,
-											"ERROR failed sr_stat_connection_update_counters\n");
-                			return 0;
+					CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+						"%s=failed sr_stat_connection_update_counters", REASON);
+					return 0;
 				}
 			} else {
 				con.tx_bytes = size;
 				con.tx_msgs = 1;
         			if ((rc = sr_stat_connection_insert(&con, 0)) != SR_SUCCESS) {
-                			CEF_log_event(SR_CEF_CID_SYSTEM, "Error", SEVERITY_HIGH,
-											"ERROR failed sr_stat_connection_insert\n");
-                			return 0;
+						CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+							"%s=failed sr_stat_connection_insert", REASON);
+						return 0;
         			}
 			}
 #endif
@@ -1082,6 +1089,9 @@ int vsentry_socket_sock_rcv_skb(struct sock *sk, struct sk_buff *skb)
 	disp_info_t disp;
 	/* check vsentry state */
 	CHECK_STATE
+
+	/* check hook filter */
+	HOOK_FILTER
 
 	memset(&disp, 0, sizeof(disp_info_t));	
 	
@@ -1162,7 +1172,7 @@ int vsentry_socket_recvmsg(struct socket *sock,struct msghdr *msg,int size,int f
 				
 #ifdef DEBUG_EVENT_MEDIATOR
         		CEF_log_event(SR_CEF_CID_SYSTEM, "info" , SEVERITY_LOW,
-								"vsentry_socket_connect=%lx[%d] -> %lx[%d]\n",
+								"vsentry_socket_connect=%lx[%d] -> %lx[%d]",
                         		(unsigned long)disp.tuple_info.saddr.v4addr.s_addr,
                         		disp.tuple_info.sport,
                         		(unsigned long)disp.tuple_info.daddr.v4addr.s_addr,
@@ -1204,7 +1214,7 @@ SR_32 vsentry_bprm_check_security(struct linux_binprm *bprm)
 #pragma GCC diagnostic ignored "-Wdeclaration-after-statement"
 #pragma GCC diagnostic pop
 	CEF_log_event(SR_CEF_CID_SYSTEM, "info" , SEVERITY_LOW,
-			"[HOOK %s] inode=%u, file=%s, pid=%d, uid=%d\n", 
+			"[HOOK %s] inode=%u, file=%s, pid=%d, uid=%d",
 			hook_event_names[HOOK_BINPERM].name,
 			disp.fileinfo.current_inode,
 			bprm->filename, 
@@ -1216,7 +1226,7 @@ SR_32 vsentry_bprm_check_security(struct linux_binprm *bprm)
     	if (sr_get_full_path(bprm->file, disp.fileinfo.fullpath, SR_MAX_PATH_SIZE) != SR_SUCCESS)
     		return rc;
 		if ((rc = get_process_name(disp.fileinfo.id.pid, disp.fileinfo.id.exec, SR_MAX_PATH_SIZE)) != SR_SUCCESS) {
-			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, "Failed get process name for file open pid:%d ", disp.can_info.id.pid);
+			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, "%s=failed get process name for file open pid %d ", REASON, disp.can_info.id.pid);
 			return rc;
 		}
     	disp_file_exe_report(&disp);
@@ -1238,8 +1248,26 @@ void vsentry_task_free(struct task_struct *task)
 
 void vsentry_sk_free_security(struct sock *sk)
 {
-	if (sk)
+	sk_process_item_t *process_info_p;
+
+	if (!sk) {
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_MEDIUM,"%s=trying to free null security sk", REASON);
+		return;
+	}
+
+	if ((sk->sk_family != AF_CAN) && (sk->sk_family != AF_INET)) {
+		/* we are looking only for ip and can events */
+		return;
+	}
+
+	if ((process_info_p = sr_cls_sk_process_hash_get(sk))) {
+		//CEF_log_event(SR_FORENSIC_NETWORK, "info", SEVERITY_LOW,
+		//	"%s=socket deleted sk %p pid %d uid %d exec %s", MESSAGE, sk, process_info_p->process_info.pid, process_info_p->process_info.uid, process_info_p->process_info.exec);
 		sr_cls_sk_process_hash_delete(sk);
+	} else {
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_MEDIUM,
+			"%s=failed to delete security sk %p", REASON, sk);
+	}
 }
 
 int vsentry_sk_alloc_security(struct sock *sk, int family, gfp_t priority)
@@ -1248,18 +1276,29 @@ int vsentry_sk_alloc_security(struct sock *sk, int family, gfp_t priority)
 	struct task_struct *ts = current;
 	const struct cred *rcred= ts->real_cred;
 
-	if (!sk)
+	if (!sk) {
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_MEDIUM,"%s=trying to allocate null security sk", REASON);
 		return 0;
+	}
+
+	if ((family != AF_CAN) && (family != AF_INET)) {
+		/* we are looking only for ip and can events */
+		return 0;
+	}
 
 	process_info.pid = current->tgid;
 	process_info.uid = (int)rcred->uid.val;
 	if ((get_process_name(process_info.pid, process_info.exec, SR_MAX_PATH_SIZE)) != SR_SUCCESS) {
-		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_MEDIUM, "%s=failed get process name at sk allocation for pid:%d ", REASON, process_info.pid);
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_MEDIUM, 
+			"%s=failed get process name at sk allocation for pid %d", REASON, process_info.pid);
 	}
 
 	if (sr_cls_sk_process_hash_update(sk, &process_info) != SR_SUCCESS) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_MEDIUM,
-			"failed to update process info for pid %d uid %d", process_info.pid, process_info.uid);
+			"%s=failed to update process info for pid %d uid %d exec %s", REASON, process_info.pid, process_info.uid, process_info.exec);
+	} else {
+		//CEF_log_event(SR_FORENSIC_NETWORK, "info", SEVERITY_LOW,
+		//	"%s=new security sk created sk %p pid %d uid %d exec %s", MESSAGE, sk, process_info.pid, process_info.uid, process_info.exec);
 	}
 	return 0;
 }
