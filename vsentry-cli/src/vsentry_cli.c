@@ -589,9 +589,9 @@ static void print_show_usage(void)
 	printf("control	- control vsentry \n");
 	printf("engine	- control engine state\n");
 	printf ("\n");
-	printf("show [action | rule | wl] [can | ip | file] [rule=x] [tuple=y] \n");
-	printf("update [action | rule | wl] [action_obj | can | ip | file] [rule=x] [tuple=y] \n");
-	printf("del [action | rule | wl] [action_obj | can | ip | file] [rule=x] [tuple=y] \n");
+	printf("show    [action | rule | wl] [can | ip | file] [rule=x] [tuple=y] \n");
+	printf("update  [action | rule | wl] [action_obj | can | ip | file] [rule=x] [tuple=y] \n");
+	printf("delete  [action | rule | wl] [action_obj | can | ip | file] [rule=x] [tuple=y] \n");
 	printf("	[action | rule | wl] - action table, user defied table or white list table \n");
 	printf("	[can | ip | file] - specifies the desired table\n");
 	printf("	[rule=x] - if exists, shows all tuples on the specific rule\n");

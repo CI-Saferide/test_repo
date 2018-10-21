@@ -46,7 +46,7 @@ void sr_engine_cli_print(SR_32 fd)
 	char buf[256];
 	SR_32 n;
 
-	sprintf(buf, "\nLearning: \n%c", SR_CLI_END_OF_ENTITY);
+	snprintf(buf, 256, "\nLearning: \n%c:", SR_CLI_END_OF_ENTITY);
 	n = strlen(buf);
 	if (write(fd, buf, n) < n) {
 		printf("Write in cli print failed \n");

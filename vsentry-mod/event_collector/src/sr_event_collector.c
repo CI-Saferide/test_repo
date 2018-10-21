@@ -179,12 +179,15 @@ out:
 	return;
 }
 
+extern void vsentry_init_process_db(void);
+
 SR_32 sr_collector_handle_message(struct sr_ec_msg *msg)
 {
 	collect = SR_FALSE;
 	
 	if (msg->ec_mode  == SR_EC_MODE_ON) {
 		collect = SR_TRUE;
+		vsentry_init_process_db();
 	} else if (msg->ec_mode == SR_EC_MODE_OFF) {
 		collect = SR_FALSE;
 	}

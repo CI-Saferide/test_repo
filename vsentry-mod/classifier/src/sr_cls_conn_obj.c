@@ -36,7 +36,8 @@ static void conn_obj_print(void *data_in_hash)
 {
 	sr_conn_obj_item_t *conn_obj_item = (sr_conn_obj_item_t *)data_in_hash;
 
-	printk("saddr:%x daddr:%x ip proto:%d sport:%d dport:%d  \n", 
+	CEF_log_event(SR_CEF_CID_SYSTEM, "info", SEVERITY_LOW,
+                "%s=ip learned saddr:%x daddr:%x ip proto:%d sport:%d dport:%d",MESSAGE,
 		conn_obj_item->con_id.saddr.v4addr,
 		conn_obj_item->con_id.daddr.v4addr,
 		conn_obj_item->con_id.ip_proto,
