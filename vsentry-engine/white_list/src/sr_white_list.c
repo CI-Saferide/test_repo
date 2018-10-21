@@ -41,14 +41,7 @@ static void white_list_print(void *data_in_hash)
 	sprintf(buf, "\nExec:%s: \n%c", white_list_item->exec, SR_CLI_END_OF_ENTITY);
 	printf("%s", buf);
 	print_cb(buf);
-	sprintf(buf, "File learnt:\n%c", SR_CLI_END_OF_ENTITY);
-	printf("%s", buf);
-	print_cb(buf);
 	sr_white_list_file_print(white_list_item->white_list_file, print_cb);
-
-	sprintf(buf, "\nCAN learnt:\n%c", SR_CLI_END_OF_ENTITY);
-	printf("%s", buf);
-	print_cb(buf);
 	sr_white_list_canbus_print(white_list_item->white_list_can, print_cb);
 }
 
