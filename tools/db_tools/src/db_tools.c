@@ -212,7 +212,7 @@ char *perm_cli_to_db(char *perm_str)
 
 SR_BOOL is_valid_ip(char *ip_addr)
 {
-	char buf[100] = {}, num_of_dots = 0;
+	char buf[64] = {}, num_of_dots = 0;
 	SR_U32 ind = 0;
 
 	for (; *ip_addr; ip_addr++) { 
@@ -223,7 +223,7 @@ SR_BOOL is_valid_ip(char *ip_addr)
 					return SR_FALSE;
 				if (atoi(buf) > 255)
 					return SR_FALSE;
-				buf[0] = 0;
+				memset(buf, 0, sizeof(buf));
 				ind = 0;
 			} else if (isdigit(*ip_addr)) {
 				if (ind > 2)
