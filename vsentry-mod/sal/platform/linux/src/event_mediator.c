@@ -95,28 +95,35 @@ static SR_8 get_path(struct dentry *dentry, SR_8 *buffer, SR_32 len)
 
 static SR_32 sr_get_full_path(struct file * file, char *file_full_path, SR_U32 max_len)
 {
-	SR_32 mount_point_length;
+	SR_32 mount_point_length = 0;
 	struct path path;
 
 	if (!file)
 		return SR_ERROR;
 
+	memset(file_full_path, 0, max_len);
+
 	path = file->f_path;
 	/* inc reference counter */
 	if (unlikely(!dget(file->f_path.dentry)))
 		return SR_ERROR;
+
 	if (follow_up(&path)) {
-	    /* if foolow_up succeed, it dec the reference counter */
-	    get_path(path.dentry, file_full_path, max_len);
+		/* if foolow_up succeed, it dec the reference counter */
+		get_path(path.dentry, file_full_path, max_len);
+		if (memcmp(file_full_path, "/usr", 4) == 0) {
+			memset(file_full_path, 0, 4);
+		} else {
+			mount_point_length = strlen(file_full_path);
+			if (mount_point_length == 1) {
+				// The mount point is only slash, remove it.
+				file_full_path[0] = 0;
+				mount_point_length = 0;
+			}
+		}
 	} else {
-	    /* dec the reference counter */
-	    dput(file->f_path.dentry);
-	}
-	mount_point_length = strlen(file_full_path);
-	if (mount_point_length == 1) {
-		// The mount point is only slash, remove it.
-	    file_full_path[0] = 0;
-	    mount_point_length = 0;
+		/* dec the reference counter */
+		dput(file->f_path.dentry);
 	}
 
 	if (get_path(file->f_path.dentry, file_full_path + mount_point_length, max_len - mount_point_length) != SR_SUCCESS) {
@@ -139,9 +146,11 @@ SR_32 get_process_name(SR_U32 pid, char *exec, SR_U32 max_len)
 	task = pid_task(pid_struct, PIDTYPE_PID);
 	if (!task)
 		return SR_ERROR;
+
 	mm = get_task_mm(task);
 	if (!mm)
 		return SR_ERROR;
+
 	down_read(&mm->mmap_sem);
 	rc = sr_get_full_path(mm->exe_file, exec, max_len);
 	up_read(&mm->mmap_sem);
@@ -179,6 +188,7 @@ static SR_32 hook_filter(void)
 	// if kernel thread invoked this hook
 	if ((current->flags & PF_KTHREAD) || !current->mm || !current->mm->exe_file)
 		return SR_TRUE;
+
 	return SR_FALSE;
 }
 
@@ -194,9 +204,10 @@ static void parse_sinaddr(const struct in_addr saddr, SR_8* buffer, SR_32 length
 }
 #endif // DEBUG
 
-static void update_process_info (identifier *id, struct sock *sk)
+static void update_process_info (identifier *id, struct sock *sk, struct task_struct *ts)
 {
 	sk_process_item_t *process_info_p;
+	struct task_struct *task = current;
 
 	if (sk) {
 		/* we have sk info, i.e. socket based hook called us */
@@ -217,10 +228,14 @@ static void update_process_info (identifier *id, struct sock *sk)
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_MEDIUM, "%s=failed to get process info within interrupt context", REASON);
 	} else {
 		/* not socket based hook called us */
-		struct task_struct *ts = current;
-		const struct cred *rcred= ts->real_cred;
+		const struct cred *rcred;
 
-		id->pid = current->tgid;
+		if (ts)
+			task = ts;
+
+		rcred = task->real_cred;
+
+		id->pid = task->tgid;
 		id->uid = (int)rcred->uid.val;
 		if (get_collector_state() == SR_TRUE) {
 			/* we are in learn mode, resolve exec fullpath */
@@ -251,7 +266,7 @@ SR_32 vsentry_inode_mkdir(struct inode *dir, struct dentry *dentry, umode_t mask
 	}else
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error" , SEVERITY_HIGH,
 						"%s=[%s] parent inode is null", REASON, hook_event_names[HOOK_MKDIR].name);
-	update_process_info(&disp.fileinfo.id, NULL);
+	update_process_info(&disp.fileinfo.id, NULL, NULL);
 	disp.fileinfo.fileop = SR_FILEOPS_WRITE;
 
 #ifdef DEBUG_EVENT_MEDIATOR
@@ -319,7 +334,7 @@ SR_32 vsentry_inode_unlink(struct inode *dir, struct dentry *dentry)
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 						"%s=[%s] parent inode in null", REASON, hook_event_names[HOOK_UNLINK].name);
 
-	update_process_info(&disp.fileinfo.id, NULL);
+	update_process_info(&disp.fileinfo.id, NULL, NULL);
 	disp.fileinfo.fileop = SR_FILEOPS_WRITE;
 	
 #ifdef DEBUG_EVENT_MEDIATOR
@@ -378,7 +393,7 @@ int vsentry_inode_rename(struct inode *old_dir, struct dentry *old_dentry, struc
 	if (new_dir)
            disp.fileinfo.parent_inode = new_dir->i_ino;
 
-	update_process_info(&disp.fileinfo.id, NULL);
+	update_process_info(&disp.fileinfo.id, NULL, NULL);
 	disp.fileinfo.fileop = SR_FILEOPS_WRITE | SR_FILEOPS_READ;
 
 #ifdef DEBUG_EVENT_MEDIATOR
@@ -436,7 +451,7 @@ SR_32 vsentry_inode_symlink(struct inode *dir, struct dentry *dentry, const SR_8
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 						"%s=[%s] parent inode in null", REASON, hook_event_names[HOOK_SYMLINK].name);
 
-	update_process_info(&disp.fileinfo.id, NULL);
+	update_process_info(&disp.fileinfo.id, NULL, NULL);
 	disp.fileinfo.fileop = SR_FILEOPS_WRITE;
 	
 #ifdef DEBUG_EVENT_MEDIATOR
@@ -488,7 +503,7 @@ SR_32 vsentry_inode_rmdir(struct inode *dir, struct dentry *dentry)
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 						"%s=[%s] parent inode in null", REASON, hook_event_names[HOOK_RMDIR].name);
 		
-	update_process_info(&disp.fileinfo.id, NULL);
+	update_process_info(&disp.fileinfo.id, NULL, NULL);
 	disp.fileinfo.fileop = SR_FILEOPS_WRITE;
 
 #ifdef DEBUG_EVENT_MEDIATOR
@@ -543,7 +558,7 @@ SR_32 vsentry_socket_connect(struct socket *sock, struct sockaddr *address, SR_3
 	disp.tuple_info.daddr.v4addr.s_addr = ntohl(((struct sockaddr_in *)address)->sin_addr.s_addr);
 	disp.tuple_info.dport = ntohs(((struct sockaddr_in *)address)->sin_port);
 	disp.tuple_info.ip_proto = sock->sk->sk_protocol;
-	update_process_info(&disp.tuple_info.id, NULL);
+	update_process_info(&disp.tuple_info.id, sock->sk, NULL);
 
 #ifdef DEBUG_EVENT_MEDIATOR
 	CEF_log_event(SR_CEF_CID_SYSTEM, "info" , SEVERITY_LOW,
@@ -581,7 +596,7 @@ SR_32 vsentry_incoming_connection(struct sk_buff *skb)
 	disp.tuple_info.sport = sal_packet_src_port(skb);
 	disp.tuple_info.dport = sal_packet_dest_port(skb);
 	disp.tuple_info.ip_proto = sal_packet_ip_proto(skb);
-	update_process_info(&disp.tuple_info.id, skb->sk);
+	update_process_info(&disp.tuple_info.id, skb->sk, NULL);
 
 //#ifdef DEBUG_EVENT_MEDIATOR
 	CEF_log_event(SR_CEF_CID_SYSTEM, "info" , SEVERITY_LOW,
@@ -622,7 +637,7 @@ SR_32 vsentry_path_chmod(struct path *path, umode_t mode)
 	}else						
 		disp.fileinfo.parent_inode = 0;
 		
-	update_process_info(&disp.fileinfo.id, NULL);
+	update_process_info(&disp.fileinfo.id, NULL, NULL);
 	disp.fileinfo.fileop = SR_FILEOPS_WRITE;
 
 #ifdef DEBUG_EVENT_MEDIATOR
@@ -665,7 +680,7 @@ SR_32 vsentry_inode_create(struct inode *dir, struct dentry *dentry, umode_t mod
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 						"%s=[%s] parent inode is null", REASON, hook_event_names[HOOK_INODE_CREATE].name);
 		
-	update_process_info(&disp.fileinfo.id, NULL);
+	update_process_info(&disp.fileinfo.id, NULL, NULL);
 	disp.fileinfo.fileop = SR_FILEOPS_WRITE;
 	
 #ifdef DEBUG_EVENT_MEDIATOR
@@ -701,19 +716,13 @@ SR_32 vsentry_inode_create(struct inode *dir, struct dentry *dentry, umode_t mod
 }
 
 //__attribute__ ((unused))
-SR_32 vsentry_file_open(struct file *file, const struct cred *cred)
+static SR_32 vsentry_file_open_task(struct file *file, const struct cred *credv, struct task_struct *ts)
 {
 	disp_info_t disp;
 	SR_32 rc;
 	
 	memset(&disp, 0, sizeof(disp_info_t));
 	
-	/* check vsentry state */
-	CHECK_STATE
-
-	/* check hook filter */
-	HOOK_FILTER
-
 	/* gather metadata */
 	if (file->f_path.dentry->d_inode)
 		disp.fileinfo.current_inode = file->f_path.dentry->d_inode->i_ino;
@@ -726,7 +735,7 @@ SR_32 vsentry_file_open(struct file *file, const struct cred *cred)
 	}else
 		disp.fileinfo.parent_inode = 0;
 
-	update_process_info(&disp.fileinfo.id, NULL);
+	update_process_info(&disp.fileinfo.id, NULL, ts);
 	/* A File is opned to read or write, not to exec */
 	if (file->f_mode & FMODE_WRITE)
 		disp.fileinfo.fileop |= SR_FILEOPS_WRITE;
@@ -778,6 +787,17 @@ SR_32 vsentry_file_open(struct file *file, const struct cred *cred)
 	return rc;
 }
 
+SR_32 vsentry_file_open(struct file *file, const struct cred *credv)
+{
+	/* check vsentry state */
+	CHECK_STATE
+
+	/* check hook filter */
+	HOOK_FILTER
+
+	return vsentry_file_open_task(file, credv, current);
+}
+
 SR_32 vsentry_inode_link(struct dentry *old_dentry, struct inode *dir, struct dentry *new_dentry)
 {
 	disp_info_t disp;
@@ -806,7 +826,7 @@ SR_32 vsentry_inode_link(struct dentry *old_dentry, struct inode *dir, struct de
 	if (old_dentry->d_inode)
 		disp.fileinfo.old_inode = old_dentry->d_inode->i_ino;
 
-	update_process_info(&disp.fileinfo.id, NULL);
+	update_process_info(&disp.fileinfo.id, NULL, NULL);
 	disp.fileinfo.fileop = SR_FILEOPS_WRITE | SR_FILEOPS_READ;
 	
 #ifdef DEBUG_EVENT_MEDIATOR
@@ -867,7 +887,7 @@ SR_32 vsentry_socket_create(SR_32 family, SR_32 type, SR_32 protocol, SR_32 kern
 	disp.socket_info.kern = kern;
 	
 	/* here we cannot use sk based update as it is not created yet */
-	update_process_info(&disp.socket_info.id, NULL);
+	update_process_info(&disp.socket_info.id, NULL, NULL);
 
 #ifdef DEBUG_EVENT_MEDIATOR
 	/*TODO: handle debug print */
@@ -972,7 +992,7 @@ SR_32 vsentry_socket_sendmsg(struct socket *sock,struct msghdr *msg,SR_32 size)
 				struct raw_sock *ro = (struct raw_sock *)sock->sk;
 				disp.can_info.if_id = ro->ifindex;
 			}
-			update_process_info(&disp.can_info.id, sock->sk);
+			update_process_info(&disp.can_info.id, sock->sk, NULL);
 			skb = sock_alloc_send_skb(copy_sock.sk, size + sizeof(struct can_skb_priv),
 						  copy_msg.msg_flags & MSG_DONTWAIT, &err);
 			if (!skb) {
@@ -1103,7 +1123,7 @@ int vsentry_socket_sock_rcv_skb(struct sock *sk, struct sk_buff *skb)
 			disp.can_info.payload_len = cfd->len;
 			disp.can_info.dir = SR_CAN_IN;
 			disp.can_info.if_id = skb->dev->ifindex;
-			update_process_info(&disp.can_info.id, sk);
+			update_process_info(&disp.can_info.id, sk, NULL);
 
 			for (i = 0; i < cfd->len; i++) {
 				disp.can_info.payload[i] = cfd->data[i];
@@ -1221,16 +1241,19 @@ SR_32 vsentry_bprm_check_security(struct linux_binprm *bprm)
 			disp.fileinfo.id.pid,
 			disp.fileinfo.id.uid);
 #endif     
-    rc =  disp_file_exec(&disp);
-    if (rc == 0 && get_collector_state() == SR_TRUE) {
-    	if (sr_get_full_path(bprm->file, disp.fileinfo.fullpath, SR_MAX_PATH_SIZE) != SR_SUCCESS)
-    		return rc;
+    
+	rc =  disp_file_exec(&disp);
+	if (rc == 0 && get_collector_state() == SR_TRUE) {
+		if (sr_get_full_path(bprm->file, disp.fileinfo.fullpath, SR_MAX_PATH_SIZE) != SR_SUCCESS)
+			return rc;
+
 		if ((rc = get_process_name(disp.fileinfo.id.pid, disp.fileinfo.id.exec, SR_MAX_PATH_SIZE)) != SR_SUCCESS) {
 			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, "%s=failed get process name for file open pid %d ", REASON, disp.can_info.id.pid);
 			return rc;
 		}
-    	disp_file_exe_report(&disp);
-    }
+
+		disp_file_exe_report(&disp);
+	}
 
 	return rc;
 }
@@ -1296,9 +1319,91 @@ int vsentry_sk_alloc_security(struct sock *sk, int family, gfp_t priority)
 	if (sr_cls_sk_process_hash_update(sk, &process_info) != SR_SUCCESS) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_MEDIUM,
 			"%s=failed to update process info for pid %d uid %d exec %s", REASON, process_info.pid, process_info.uid, process_info.exec);
-	} else {
+	} /*else {
 		//CEF_log_event(SR_FORENSIC_NETWORK, "info", SEVERITY_LOW,
 		//	"%s=new security sk created sk %p pid %d uid %d exec %s", MESSAGE, sk, process_info.pid, process_info.uid, process_info.exec);
-	}
+	}*/
 	return 0;
+}
+
+static void vsentry_extract_process_resources(struct task_struct *task)
+{
+	struct files_struct *files = task->files;
+	struct fdtable *fdt = rcu_dereference_raw(files->fdt);
+	unsigned int i, j = 0;
+
+	for (;;) {
+		unsigned long set;
+		i = j * BITS_PER_LONG;
+
+		if (i >= fdt->max_fds)
+			break;
+
+		set = fdt->open_fds[j++];
+		while (set) {
+			if (set & 1) {
+				struct file *file = fdt->fd[i];
+
+				if (file) {
+					if ( !(file->f_inode->i_mode & S_IFMT) || S_ISFIFO(file->f_inode->i_mode))
+						goto to_next_file;
+
+					if (S_ISSOCK(file->f_inode->i_mode)) {
+						/* check if this file is net socket */
+						SR_32 err = 0;
+						struct socket *sock = sock_from_file(file, &err);
+
+						if (!err && sock) {
+							if (sock->sk->sk_family == AF_CAN || sock->sk->sk_family == AF_INET) {
+								sk_process_info_t process_info;
+        							const struct cred *rcred= task->real_cred;
+
+								process_info.pid = task->tgid;
+								process_info.uid = (int)rcred->uid.val;
+        
+								if ((get_process_name(process_info.pid, process_info.exec, SR_MAX_PATH_SIZE)) != SR_SUCCESS) {
+									CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_MEDIUM,
+										"%s=failed get process name at sk allocation for pid:%d ",
+										REASON, process_info.pid);
+								}
+
+								if (sr_cls_sk_process_hash_update(sock->sk, &process_info) != SR_SUCCESS) {
+									CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_MEDIUM,
+										"failed to update process info for pid %d uid %d", process_info.pid, process_info.uid);
+								}
+							}
+						}
+					} else {
+						vsentry_file_open_task(file, NULL, task);
+					}
+				}
+			}
+to_next_file:
+			i++;
+			set >>= 1;
+		}
+	}
+}
+
+void vsentry_init_process_db(void)
+{
+	struct task_struct *leader, *child;
+	disp_info_t disp;
+
+	memset(&disp, 0, sizeof(disp_info_t));
+
+	rcu_read_lock();
+
+	for_each_process(leader) {
+		for_each_thread(leader, child) {
+			if ((child->flags & PF_KTHREAD) || !child->mm || !child->mm->exe_file)
+				continue;
+
+			/* map used files/socket to prog */
+			vsentry_extract_process_resources(child);
+		}
+	}
+
+	rcu_read_unlock();
+
 }

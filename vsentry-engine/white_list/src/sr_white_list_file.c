@@ -15,7 +15,7 @@
 #include "sr_engine_utils.h"
 
 static SR_32 rule_id; 
-static sysrepo_mng_handler_t sysrepo_handler;
+//static sysrepo_mng_handler_t sysrepo_handler;
 static char *home_dir;
 
 typedef struct wl_learn_file_item {
@@ -317,7 +317,7 @@ static void write_file_rule(char *file_name, char *exec, SR_U8 file_op, SR_32 *r
 	fprintf(f_app, "rule:%d tuple:%d exec:%s file:%s perm:%d \n", *op_rule, *op_tuple, exec, file_name, file_op);
 #endif
 	//printf("rule:%d tuple:%d exec:%s file:%s perm:%d \n", *op_rule, *op_tuple, exec, file_name, file_op);
-	if (sys_repo_mng_create_file_rule(&sysrepo_handler, *op_rule, *op_tuple, file_name, exec, "*", WHITE_LIST_ACTION, file_op) != SR_SUCCESS) {
+	if (sys_repo_mng_create_file_rule(sr_white_list_get_hadler(), *op_rule, *op_tuple, file_name, exec, "*", WHITE_LIST_ACTION, file_op) != SR_SUCCESS) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 			"%s=fail to create file rule in persistent db rule id: %d",
 				REASON, *rule_id);
@@ -393,11 +393,11 @@ SR_32 sr_white_list_file_apply(void)
 	f_app = fopen("/tmp/app.txt", "w");
 #endif
 
-	if (sysrepo_mng_session_start(&sysrepo_handler)) {
+/*	if (sysrepo_mng_session_start(&sysrepo_handler)) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 			"%s=wl file: fail to init persistent db",REASON);
 		return SR_ERROR;
-	}
+	}*/
 
 	rule_id = SR_FILE_WL_START_RULE_NO;
 	
@@ -407,12 +407,12 @@ SR_32 sr_white_list_file_apply(void)
 		return SR_ERROR;
 	}
 
-	if (sys_repo_mng_commit(&sysrepo_handler) != SR_SUCCESS) { 
+/*	if (sys_repo_mng_commit(&sysrepo_handler) != SR_SUCCESS) { 
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 				"%s=failed to commit wl file rules from persistent db", REASON);
 	}
 
-	sysrepo_mng_session_end(&sysrepo_handler);
+	sysrepo_mng_session_end(&sysrepo_handler);*/
 
 #ifdef DEBUG
 	fclose(f_app);

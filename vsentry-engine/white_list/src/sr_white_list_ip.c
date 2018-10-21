@@ -225,15 +225,15 @@ SR_32 sr_white_list_ip_apply(SR_32 is_apply)
 {
 	wl_exec_item_t *exec_iter, *exec_help;
 	wl_ip_item_t *ip_iter, *ip_help;
-	static sysrepo_mng_handler_t sysrepo_handler;
+//	static sysrepo_mng_handler_t sysrepo_handler;
 	SR_U32 tuple_id = 0;
 
 	// Create one rule, 
-        if (sysrepo_mng_session_start(&sysrepo_handler)) {
+/*        if (sysrepo_mng_session_start(&sysrepo_handler)) {
                 CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
                         "%s=failed to start persistent storage session",REASON);
                 return SR_ERROR;
-        }
+        }*/
 
 	// load all ips to list
 	rn_walktree(sr_wl_conngraph_table, ip_add_to_list_cb, NULL);
@@ -245,7 +245,7 @@ SR_32 sr_white_list_ip_apply(SR_32 is_apply)
 
 	for (exec_iter = exec_item_list, ip_iter = ip_item_list; exec_iter && ip_iter;
 			exec_iter = exec_iter->next, ip_iter = ip_iter->next) {
-		if (sys_repo_mng_create_net_rule(&sysrepo_handler, WL_IP_RULE_ID, tuple_id, "0.0.0.0", "0.0.0.0", sal_get_str_ip_address(ip_iter->ip), "255.255.255.255",
+		if (sys_repo_mng_create_net_rule(sr_white_list_get_hadler(), WL_IP_RULE_ID, tuple_id, "0.0.0.0", "0.0.0.0", sal_get_str_ip_address(ip_iter->ip), "255.255.255.255",
 			0, 0, 0, exec_iter->exec, "*", WHITE_LIST_ACTION) != SR_SUCCESS) {
 			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 				"%s=failed to create ip rule (id %d ip and exec)",
@@ -255,7 +255,7 @@ SR_32 sr_white_list_ip_apply(SR_32 is_apply)
 	}
 	// In case exec iter was left (out of ips, but list on exec still available)
 	for (; exec_iter; exec_iter = exec_iter->next) {
-		if (sys_repo_mng_create_net_rule(&sysrepo_handler, WL_IP_RULE_ID, tuple_id, "0.0.0.0", "0.0.0.0", sal_get_str_ip_address(ip_item_list->ip), "255.255.255.255",
+		if (sys_repo_mng_create_net_rule(sr_white_list_get_hadler(), WL_IP_RULE_ID, tuple_id, "0.0.0.0", "0.0.0.0", sal_get_str_ip_address(ip_item_list->ip), "255.255.255.255",
 			0, 0, 0, exec_iter->exec, "*", WHITE_LIST_ACTION) != SR_SUCCESS) {
 			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 				"%s=failed to create ip rule (id %d exec only)",
@@ -265,7 +265,7 @@ SR_32 sr_white_list_ip_apply(SR_32 is_apply)
 	}
 	// In case ip iter was left (out of execs, but list of ips still available)
 	for (; ip_iter; ip_iter = ip_iter->next) {
-		if (sys_repo_mng_create_net_rule(&sysrepo_handler, WL_IP_RULE_ID, tuple_id, "0.0.0.0", "0.0.0.0", sal_get_str_ip_address(ip_iter->ip), "255.255.255.255",
+		if (sys_repo_mng_create_net_rule(sr_white_list_get_hadler(), WL_IP_RULE_ID, tuple_id, "0.0.0.0", "0.0.0.0", sal_get_str_ip_address(ip_iter->ip), "255.255.255.255",
 			0, 0, 0, exec_item_list->exec, "*", WHITE_LIST_ACTION) != SR_SUCCESS) {
 			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 				"%s=failed to create ip rule (id %d ip only)",
@@ -288,11 +288,11 @@ SR_32 sr_white_list_ip_apply(SR_32 is_apply)
 	}
 	ip_item_list = NULL;
 
-        if (sys_repo_mng_commit(&sysrepo_handler) != SR_SUCCESS) {
+/*        if (sys_repo_mng_commit(&sysrepo_handler) != SR_SUCCESS) {
                 CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
                                 "%s=ip wl: failed to commit changes to persistent storage", REASON);
         }
-        sysrepo_mng_session_end(&sysrepo_handler);
+        sysrepo_mng_session_end(&sysrepo_handler);*/
 
 	return SR_SUCCESS;
 }
