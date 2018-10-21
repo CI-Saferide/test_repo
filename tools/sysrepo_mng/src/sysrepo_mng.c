@@ -13,6 +13,7 @@
 #include <ctype.h>
 #include "sr_cls_wl_common.h"
 #include "db_tools.h"
+#include "sr_config.h"
 
 #ifdef NO_CEF
 #define REASON 		"reason" // shut up GCC

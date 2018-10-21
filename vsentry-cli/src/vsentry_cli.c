@@ -82,6 +82,7 @@ static SR_32 cli_handle_reply(SR_32 fd, SR_32 (*handle_data_cb)(char *buf));
 static void term_reset(int count);
 static void cleanup_rule_table(rule_info_t *table[]);
 static void cleanup_rule(rule_info_t *table[], SR_32 rule_id);
+static void db_cleanup(void);
 
 SR_BOOL engine_state;
 
@@ -1597,7 +1598,7 @@ static void cleanup_rule_table(rule_info_t *table[])
 	}
 }
 
-void db_cleanup(void)
+static void db_cleanup(void)
 {
 	cleanup_rule_table(file_rules);
 	cleanup_rule_table(can_rules);
@@ -1649,11 +1650,12 @@ static SR_32 handle_print_cb(char *buf)
 	return SR_SUCCESS;
 }
 
-static void handle_control(void)
+static void handle_control(SR_BOOL *should_load)
 {
 	SR_32 fd, rc;
 	char *ptr, cmd[128], buf[512], cval;
 
+	*should_load = SR_FALSE;
 	ptr = strtok(NULL, " "); 
 	if (!ptr) {
 		printf("\n");
@@ -1701,11 +1703,39 @@ static void handle_control(void)
         }
 
 	if (!strcmp(cmd, "wl_apply")) {
-		printf("\napplying ...\n");
-		sleep(1);
+		int ret = 0;
+		int counter = 0;
+		char line[4] = {'|', '/', '-', '\\'};
+		fd_set fds;
+		struct timeval tv;
+
+		printf("\napplying  ");
+
+		while (1) {
+			tv.tv_sec = 0;
+			tv.tv_usec = 250000;
+
+			FD_ZERO(&fds);
+			FD_SET(fd, &fds);
+
+			printf("\033[1D");
+			printf("%c", line[counter%4]);
+			fflush(stdout);
+
+			counter++;
+
+			ret =  select((fd+1), &fds, NULL, NULL, &tv);
+			if (!ret || ret <0)
+				continue;
+			
+			break;
+		}
+
 		if (read(fd, &cval, 1) < 1)
 			printf("failed reading from socket");
+
 		notify_info("apply finished.");
+		*should_load = SR_TRUE;
 	}
 	printf("\n");
 
@@ -1716,6 +1746,7 @@ static void parse_command(char *cmd)
 {
 	char *ptr;
 	char buf[128];
+	SR_BOOL should_load;
 
 	ptr = strtok(cmd, " ");
 	if (!ptr)
@@ -1759,7 +1790,15 @@ static void parse_command(char *cmd)
 		return;
 	}
 	if (!strcmp(ptr, "control")) {
-		return handle_control();
+		handle_control(&should_load);
+		if (should_load) {
+			printf("\nloading....\n");
+			if (handle_load() != SR_SUCCESS) {
+				printf("error handling load\n");
+			}
+			notify_info("load finished.");
+		}
+		return;
 	}
 
 	if (!strcmp(ptr, "engine")) {

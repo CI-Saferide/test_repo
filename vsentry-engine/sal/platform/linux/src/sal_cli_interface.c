@@ -11,6 +11,7 @@
 #include "sr_control.h"
 #include "sr_engine_cli.h"
 #include "sr_ver.h"
+#include "sr_config.h"
 
 static SR_BOOL is_run;
 static pthread_t t;
@@ -29,6 +30,8 @@ static void notify_apply(void)
 {
 	char syncbuf[2];
 
+	while (sr_config_get_mod_state())
+		usleep(10000);
 	// Snc 
 	syncbuf[0] = SR_CLI_END_OF_TRANSACTION;
         if (write(g_fd, syncbuf, 1) < 1)
