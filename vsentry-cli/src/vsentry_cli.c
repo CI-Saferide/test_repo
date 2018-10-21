@@ -56,9 +56,6 @@
 	if (!ptr) \
 		return SR_ERROR;
 
-static action_t *get_action(char *action_name);
-static void term_reset(int count);
-
 SR_BOOL is_run = SR_TRUE;
 
 typedef struct rule_info {
@@ -79,6 +76,13 @@ rule_info_t *file_wl[NUM_OF_RULES] = {};
 rule_info_t *ip_wl[NUM_OF_RULES] = {};
 rule_info_t *can_wl[NUM_OF_RULES] = {};
 action_t actions[DB_MAX_NUM_OF_ACTIONS] = {};
+
+static action_t *get_action(char *action_name);
+static SR_32 cli_handle_reply(SR_32 fd, SR_32 (*handle_data_cb)(char *buf));
+static void term_reset(int count);
+static void cleanup_rule_table(rule_info_t *table[]);
+static void cleanup_rule(rule_info_t *table[], SR_32 rule_id);
+
 SR_BOOL engine_state;
 
 static char *cmds[NUM_OF_CMD_ENTRIES] = {};
@@ -370,7 +374,7 @@ static SR_32 delete_rule(rule_info_t **table, SR_U32 tuple_id)
 
 	for (iter = table; *iter && (*iter)->tuple_id < tuple_id; iter = &((*iter)->next));
 	if (!*iter || (*iter)->tuple_id > tuple_id) {
-		printf("rule for deletion was not found.\n");	
+		printf("\nrule for deletion was not found.\n");	
 		return SR_NOT_FOUND;
 	}
 	help = *iter;
@@ -502,10 +506,48 @@ out:
 	return rc;
 }
 
+static SR_32 cli_handle_reply(SR_32 fd, SR_32 (*handle_data_cb)(char *buf))
+{
+	SR_32 ind, len;
+	char buf[2000], cval;
+
+	if (!handle_data_cb) {
+		printf("Handle reply failed, no handle data cb\n");
+		return SR_ERROR;
+	}
+
+	buf[0] = 0;
+	ind = 0;
+	for (;;) { 
+		len = read(fd, &cval, 1);
+		if (!len) {
+			printf("failed to read from socket");
+			return SR_ERROR;
+		}
+		switch (cval) {
+			case SR_CLI_END_OF_TRANSACTION: /* Finish reply */
+				goto out;
+			case SR_CLI_END_OF_ENTITY: /* Finish entity */
+				buf[ind] = 0;
+				if (handle_data_cb(buf) != SR_SUCCESS) {
+					printf(" Handle buf:%s: failed \n", buf);
+				}
+				buf[0] = 0;
+				ind = 0;
+				break;
+			default:
+				buf[ind++] = cval;
+				break;
+		}
+	}
+out:
+	return SR_SUCCESS;
+}
+
 static SR_32 handle_load(void)
 {
-	SR_32 fd, rc, ind, len, st = SR_SUCCESS;
-	char cmd[100], buf[2000], cval;
+	SR_32 fd, rc, st = SR_SUCCESS;
+	char cmd[100];
 
 	if ((fd = engine_connect()) < 0) {
 		printf("connection to engine failed\n");
@@ -522,31 +564,11 @@ static SR_32 handle_load(void)
                 fprintf(stderr,"partial write");
                 return SR_ERROR;
 	}
-	buf[0] = 0;
-	ind = 0;
-	for (;;) { 
-		len = read(fd, &cval, 1);
-		if (!len) {
-			printf("failed to read from socket");
-			st = SR_ERROR;
-			goto out;
-		}
-		switch (cval) {
-			case SR_CLI_END_OF_TRANSACTION: /* Finish load */
-				goto out;
-			case SR_CLI_END_OF_ENTITY: /* Finish entity */
-				buf[ind] = 0;
-				handle_load_data(buf);
-				buf[0] = 0;
-				ind = 0;
-				break;
-			default:
-				buf[ind++] = cval;
-				break;
-		}
+	if (cli_handle_reply(fd, handle_load_data) != SR_SUCCESS) {
+                fprintf(stderr,"cli handle reply failed");
+                return SR_ERROR;
 	}
 
-out:
 	sleep(1);
         close(fd);
 
@@ -562,7 +584,7 @@ static void print_show_usage(void)
 	printf("load 	- load information from database \n");
 	printf("show 	- show current information \n");
 	printf("update 	- update current information \n");
-	printf("del 	- delete current information \n");
+	printf("delete  - delete current information \n");
 	printf("commit 	- commit current information to database and running configuration \n");
 	printf("control	- control vsentry \n");
 	printf("engine	- control engine state\n");
@@ -1145,15 +1167,28 @@ static SR_32 handle_update_file(SR_BOOL is_wl, SR_U32 rule_id, SR_U32 tuple_id)
 
 static SR_32 handle_delete(rule_type_t rule_type, rule_info_t **rule_info, SR_U32 rule_id, SR_U32 tuple_id)
 {
-	char rule_type_str[MAX_RULE_TYPE], msg[256]; 
+	char rule_type_str[MAX_RULE_TYPE], msg[256], rules_msg[256]; 
 
 	strcpy(rule_type_str, get_rule_string(rule_type));
-	if (delete_rule(rule_info, tuple_id) != SR_SUCCESS) {
+	if (rule_id == -1) {
+		cleanup_rule_table(rule_info);
+		strcpy(rules_msg, "rules were deleted");
+		goto out;
+	} 
+	if (tuple_id == -1) {
+		cleanup_rule(rule_info, rule_id);
+		sprintf(rules_msg, "rule id:%d was deleted", rule_id);
+		goto out;
+	}
+	sprintf(rules_msg, "rule id:%d tuple id:%d was deleted", rule_id, tuple_id);
+	if (delete_rule(&rule_info[rule_id], tuple_id) != SR_SUCCESS) {
 		sprintf(msg, "%s delete failed", rule_type_str);
 		error(msg, SR_TRUE);
 		return SR_ERROR;
 	}
-	sprintf(msg, "%s rule id:%d tuple id:%d was deleted", rule_type_str, rule_id, tuple_id);
+
+out:
+	sprintf(msg, "%s %s", rule_type_str, rules_msg);
 	notify_info(msg);
 
 	return SR_SUCCESS;
@@ -1161,17 +1196,17 @@ static SR_32 handle_delete(rule_type_t rule_type, rule_info_t **rule_info, SR_U3
 
 static SR_32 handle_delete_can(SR_BOOL is_wl, SR_U32 rule_id, SR_U32 tuple_id)
 {
-	return handle_delete(RULE_TYPE_CAN, is_wl ? &can_wl[rule_id] : &can_rules[rule_id], rule_id, tuple_id);
+	return handle_delete(RULE_TYPE_CAN, is_wl ? can_wl : can_rules, rule_id, tuple_id);
 }
 
 static SR_32 handle_delete_ip(SR_BOOL is_wl, SR_U32 rule_id, SR_U32 tuple_id)
 {
-	return handle_delete(RULE_TYPE_IP, is_wl ? &ip_wl[rule_id] : &ip_rules[rule_id], rule_id, tuple_id);
+	return handle_delete(RULE_TYPE_IP, is_wl ? ip_wl : ip_rules, rule_id, tuple_id);
 }
 
 static SR_32 handle_delete_file(SR_BOOL is_wl, SR_U32 rule_id, SR_U32 tuple_id)
 {
-	return handle_delete(RULE_TYPE_FILE, is_wl ? &file_wl[rule_id] : &file_rules[rule_id], rule_id, tuple_id);
+	return handle_delete(RULE_TYPE_FILE, is_wl ? file_wl : file_rules, rule_id, tuple_id);
 }
 
 static action_t *get_action(char *action_name)
@@ -1503,7 +1538,7 @@ static void handle_update(SR_BOOL is_delete)
 		}
 		get_num_param(&rule_id, &tuple_id);
 		get_num_param(&rule_id, &tuple_id);
-		if (rule_id == -1 || tuple_id == -1) {
+		if ((rule_id == -1 || tuple_id == -1) && !is_delete) {
 			error("rule id or tuple id are missing", SR_TRUE);
 			print_update_rule_usage(SR_FALSE);
 			return;
@@ -1542,17 +1577,23 @@ static void print_control_usage(void)
 	printf("\ncontrol [wl | sp | sr_ver]  [learn | apply | print | reset] \n");
 }
 
+static void cleanup_rule(rule_info_t *table[], SR_32 rule_id)
+{
+	rule_info_t **iter, *help;
+
+	for (iter = &table[rule_id]; *iter;) {
+		help = *iter;
+		*iter = (*iter)->next;
+		free(help);
+	}
+}
+
 static void cleanup_rule_table(rule_info_t *table[])
 {
 	SR_U32 i;
-	rule_info_t **iter, *help;
 
 	for (i = 0; i < NUM_OF_RULES; i++) {
-		for (iter = &table[i]; *iter;) {
-			help = *iter;
-			*iter = (*iter)->next;
-			free(help);
-		}
+		cleanup_rule(table, i);
 	}
 }
 
@@ -1602,6 +1643,12 @@ static void handle_engine(void)
 	notify_info("Engine state changed.");
 }
 
+static SR_32 handle_print_cb(char *buf)
+{
+	printf("%s", buf);
+	return SR_SUCCESS;
+}
+
 static void handle_control(void)
 {
 	SR_32 fd, rc;
@@ -1647,7 +1694,11 @@ static void handle_control(void)
 			return;
 		}
 		printf("\n%s\n", buf);
-       }
+	}
+	if (!strcmp(cmd, "wl_print")) {
+		if (cli_handle_reply(fd, handle_print_cb) != SR_SUCCESS)
+			printf("print Failed\n");
+        }
 	printf("\n");
 
 	close(fd);

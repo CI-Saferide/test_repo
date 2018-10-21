@@ -10,7 +10,7 @@ typedef struct white_list_file {
 } sr_white_list_file_t;
 
 SR_32 sr_white_list_file_wl(struct sr_ec_file_wl_t *file_wl_info);
-void sr_white_list_file_print(sr_white_list_file_t *while_list_file);
+void sr_white_list_file_print(sr_white_list_file_t *while_list_file, void (*print_cb)(char *buf));
 void sr_white_list_file_cleanup(sr_white_list_file_t *white_list_file);
 SR_32 sr_white_list_file_apply(void);
 SR_32 sr_white_list_file_init(void);

@@ -8,6 +8,10 @@
 #include "sal_linux.h"
 #include "sysrepo_mng.h"
 #include "db_tools.h"
+#include "sr_white_list.h"
+#include "sr_control.h"
+
+static int g_fd;
 
 static void engine_status_dump(int fd)
 {
@@ -21,6 +25,56 @@ static void engine_status_dump(int fd)
                 CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
                         "%s=write to cli for file failed.",REASON);
         }       
+}
+
+static void cli_print_cb(char *buf) {
+	char print_buf[512];
+	SR_32 n, rc;
+	
+	sprintf(print_buf, "%s%c", buf, SR_CLI_END_OF_ENTITY);
+	n = strlen(print_buf);
+	rc = write(g_fd, print_buf, n);
+	if (rc < n) {
+                printf("Write in cli print cb failed \n");
+                CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+                        "%s=Write in cli print cb failed.",REASON);
+	}
+}
+
+void sr_engine_cli_print(SR_32 fd)
+{
+	char buf[256];
+	SR_32 n;
+
+	sprintf(buf, "\nLearning: \n%c", SR_CLI_END_OF_ENTITY);
+	n = strlen(buf);
+	if (write(fd, buf, n) < n) {
+		printf("Write in cli print failed \n");
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+			"%s=Write in cli print failed.",REASON);
+	}
+
+	white_list_print_cb_register(cli_print_cb);
+	white_list_ip_print_cb_register(cli_print_cb);
+
+	g_fd = fd;
+  	sr_white_list_hash_print();
+	sprintf(buf, "\n IP Learning:\n%c", SR_CLI_END_OF_ENTITY);
+	n = strlen(buf);
+	if (write(fd, buf, n) < n) {
+		printf("Write in cli print failed \n");
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+			"%s=Write in cli print failed.",REASON);
+	}
+	sr_white_list_ip_print();
+	sprintf(buf, "%c", SR_CLI_END_OF_TRANSACTION);
+	if (write(fd, buf, 1) < 1) {
+		printf("Write in cli print failed, end transaction \n");
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+			"%s=Write in cli print failed.",REASON);
+	}
+	printf("print connection object:\n");
+	sr_control_util(SR_CONTROL_PRINT);
 }
 
 void sr_engine_cli_load(SR_32 fd)

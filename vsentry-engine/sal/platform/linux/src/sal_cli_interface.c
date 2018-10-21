@@ -35,10 +35,7 @@ static SR_32 handle_data(char *buf, SR_32 fd)
 	if (!memcmp(buf, "wl_apply", strlen("wl_apply")))
 		sr_white_list_set_mode(SR_WL_MODE_APPLY);
 	if (!memcmp(buf, "wl_print", strlen("wl_ptint"))) {
-		sr_white_list_hash_print();
-		sr_white_list_ip_print();
-		printf("print connection object:\n");
-		sr_control_util(SR_CONTROL_PRINT);
+		sr_engine_cli_print(fd);
 	}
 	if (!memcmp(buf, "wl_reset", strlen("wl_reset")))
 		sr_white_list_reset();
