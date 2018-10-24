@@ -1320,5 +1320,7 @@ int vsentry_can_driver_security(SR_U32 msg_id, SR_BOOL is_dir_in, int can_dev_id
 	if (get_process_name(disp.can_info.id.pid, disp.can_info.id.exec, SR_MAX_PATH_SIZE) != SR_SUCCESS) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, "%s=failed get process pid:%d ", REASON, current->tgid);
 	}
-	return (disp_can_recvmsg(&disp));
+	if (is_dir_in)
+		return disp_can_recvmsg(&disp);
+	return disp_socket_sendmsg(&disp);
 }

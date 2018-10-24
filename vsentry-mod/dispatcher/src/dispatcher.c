@@ -218,6 +218,7 @@ SR_32 disp_socket_sendmsg(disp_info_t* info)
 		can_data.msg_id = info->can_info.msg_id;
 		can_data.dir = SR_CAN_OUT;
 		can_data.if_id = info->can_info.if_id;
+		can_data.dev_id = info->can_info.dev_id;
 		strncpy(can_data.exec, info->tuple_info.id.exec, SR_MAX_PATH_SIZE);
 		sr_ec_send_event(MOD2STAT_BUF, SR_EVENT_STATS_CANBUS, &can_data);
 	}
