@@ -12,14 +12,14 @@ bit_array sr_cls_out_canid_any_rules[CAN_INTERFACES_MAX];
 bit_array sr_cls_in_canid_any_rules[CAN_INTERFACES_MAX];
 static can_translator_t can_translator;
 
-SR_32 sr_cls_canid_get_if_id(SR_U8 dev_id, SR_U8 *can_id)
+SR_32 sr_cls_canid_get_if_id(SR_32 if_id, SR_32 dev_id, SR_32 *can_id)
 {
-	return sr_can_tran_get_if_id(&can_translator, dev_id, can_id);
+	return sr_can_tran_get_if_id(&can_translator, if_id, dev_id, can_id);
 }
 
-char *sr_cls_canid_get_interface_name(SR_32 if_id)
+char *sr_cls_canid_get_interface_name(SR_U8 can_id)
 {
-	return sr_can_tran_get_interface_name(&can_translator, if_id);
+	return sr_can_tran_get_interface_name(&can_translator, can_id);
 }
 
 int sr_cls_canid_init(void)
@@ -100,12 +100,12 @@ void sr_cls_canid_remove(SR_32 canid, SR_8 dir, SR_32 can_if_id)
 	sr_hash_delete((dir==SR_CAN_OUT)?sr_cls_out_canid_table[can_if_id]:sr_cls_in_canid_table[can_if_id], canid);
 }
 
-int sr_cls_canid_add_rule(SR_32 canid, SR_U32 rulenum, SR_8 dir, SR_32 if_id)
+int sr_cls_canid_add_rule(SR_32 canid, SR_U32 rulenum, SR_8 dir, SR_32 if_id, SR_32 dev_id)
 {
 	struct sr_hash_ent_t *ent;
-	SR_U8 can_if_id;
+	SR_32 can_if_id;
 
-	if (sr_can_tran_get_if_id(&can_translator, if_id, &can_if_id) != SR_SUCCESS) {
+	if (sr_can_tran_get_if_id(&can_translator, if_id, dev_id, &can_if_id) != SR_SUCCESS) {
 		printk("ERROR invalid if_id:%d \n", if_id);
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 					"%s=cls-can:failed to get can if id",REASON);
@@ -147,11 +147,11 @@ int sr_cls_canid_add_rule(SR_32 canid, SR_U32 rulenum, SR_8 dir, SR_32 if_id)
 	return SR_SUCCESS;
 }
 
-int sr_cls_canid_del_rule(SR_32 canid, SR_U32 rulenum, SR_8 dir, SR_32 if_id)
+int sr_cls_canid_del_rule(SR_32 canid, SR_U32 rulenum, SR_8 dir, SR_32 if_id, SR_32 dev_id)
 {
-	SR_U8 can_if_id;
+	SR_32 can_if_id;
 
-	if (sr_can_tran_get_if_id(&can_translator, if_id, &can_if_id) != SR_SUCCESS) {
+	if (sr_can_tran_get_if_id(&can_translator, if_id, dev_id, &can_if_id) != SR_SUCCESS) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 					"%s=cls-can:failed to get can if id %d",REASON, if_id);
 		return SR_ERROR;
@@ -212,26 +212,6 @@ void print_table_canid(struct sr_hash_table_t *table)
 }
 #endif
 
-struct sr_hash_ent_t *sr_cls_canid_find(SR_32 canid, SR_8 dir, SR_32 if_id)
-{
-	SR_U8 can_if_id;
-	struct sr_hash_ent_t *ent;
-
-	if (sr_can_tran_get_if_id(&can_translator, if_id, &can_if_id) != SR_SUCCESS) {
-		printk("ERROR invalid if_id:%d \n", if_id);
-		return NULL;
-        }
-
-	ent = sr_hash_lookup((dir==SR_CAN_OUT)?sr_cls_out_canid_table[can_if_id] : sr_cls_in_canid_table[can_if_id], canid);
-	if (!ent) {
-		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-			"%s=%x can mid not found",REASON,
-			canid);
-		return NULL;
-	}
-	return ent;
-}
-
 bit_array *sr_cls_match_canid(SR_32 canid, SR_8 dir, SR_32 can_if_id)
 {
 	struct sr_hash_ent_t *ent;
@@ -246,7 +226,7 @@ bit_array *sr_cls_match_canid(SR_32 canid, SR_8 dir, SR_32 can_if_id)
 SR_8 sr_cls_canid_msg_dispatch(struct sr_cls_canbus_msg *msg)
 {
 	int st;
-	SR_U8 can_if_id;
+	SR_32 can_if_id;
 
 	switch (msg->msg_type) {
 		case SR_CLS_CANID_DEL_RULE:
@@ -258,20 +238,20 @@ SR_8 sr_cls_canid_msg_dispatch(struct sr_cls_canbus_msg *msg)
 				IF_ID, msg->if_id);
 			if (msg->dir==SR_CAN_BOTH) {
 				// del IN
-				if ((st =  sr_cls_canid_del_rule(msg->canid, msg->rulenum, SR_CAN_IN, msg->if_id)) != SR_SUCCESS)
+				if ((st =  sr_cls_canid_del_rule(msg->canid, msg->rulenum, SR_CAN_IN, msg->if_id, msg->dev_id)) != SR_SUCCESS)
 					return st;
 				// del OUT
-				if ((st =  sr_cls_canid_del_rule(msg->canid, msg->rulenum, SR_CAN_OUT, msg->if_id)) != SR_SUCCESS)
+				if ((st =  sr_cls_canid_del_rule(msg->canid, msg->rulenum, SR_CAN_OUT, msg->if_id, msg->dev_id)) != SR_SUCCESS)
 					return st;
 			} else { // IN/OUT
-				if ((st =  sr_cls_canid_del_rule(msg->canid, msg->rulenum, msg->dir, msg->if_id)) != SR_SUCCESS)
+				if ((st =  sr_cls_canid_del_rule(msg->canid, msg->rulenum, msg->dir, msg->if_id, msg->dev_id)) != SR_SUCCESS)
 					return st;
 			}
 			if ((st = sr_cls_exec_inode_del_rule(SR_CAN_RULES, msg->exec_inode, msg->rulenum)) != SR_SUCCESS)
 			   return st;
 			return sr_cls_uid_del_rule(SR_CAN_RULES, msg->uid, msg->rulenum);
 		case SR_CLS_CANID_ADD_RULE:
-			if (sr_cls_canid_get_if_id(msg->if_id, &can_if_id) != SR_SUCCESS) {
+			if (sr_cls_canid_get_if_id(msg->if_id, msg->dev_id, &can_if_id) != SR_SUCCESS) {
                 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 				"%s=cls-can: invalid if id %d", msg->if_id, REASON);
 				return SR_ERROR;
@@ -286,13 +266,13 @@ SR_8 sr_cls_canid_msg_dispatch(struct sr_cls_canbus_msg *msg)
 				IF_ID, sr_cls_canid_get_interface_name(can_if_id) ?: "", msg->if_id);
 			if (msg->dir==SR_CAN_BOTH) {
 				// add IN
-				if ((st = sr_cls_canid_add_rule(msg->canid, msg->rulenum, SR_CAN_IN, msg->if_id)) != SR_SUCCESS)
+				if ((st = sr_cls_canid_add_rule(msg->canid, msg->rulenum, SR_CAN_IN, msg->if_id, msg->dev_id)) != SR_SUCCESS)
 					return st;
 				// add OUT
-				if ((st = sr_cls_canid_add_rule(msg->canid, msg->rulenum,SR_CAN_OUT, msg->if_id)) != SR_SUCCESS)
+				if ((st = sr_cls_canid_add_rule(msg->canid, msg->rulenum,SR_CAN_OUT, msg->if_id, msg->dev_id)) != SR_SUCCESS)
 					return st;
 			} else { // IN/OUT
-				if ((st = sr_cls_canid_add_rule(msg->canid, msg->rulenum, msg->dir, msg->if_id)) != SR_SUCCESS)
+				if ((st = sr_cls_canid_add_rule(msg->canid, msg->rulenum, msg->dir, msg->if_id, msg->dev_id)) != SR_SUCCESS)
 					return st;
 			}
 			if ((st =  sr_cls_exec_inode_add_rule(SR_CAN_RULES, msg->exec_inode, msg->rulenum)) != SR_SUCCESS)

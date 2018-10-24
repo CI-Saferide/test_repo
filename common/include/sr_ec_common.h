@@ -120,6 +120,7 @@ struct sr_ec_can_t{
 	SR_U32 	msg_id;
 	SR_U8 	dir; //inbound/outbound msg
 	SR_32  if_id;
+	SR_32  dev_id;
 };
 #pragma pack(pop)
 

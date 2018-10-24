@@ -1307,7 +1307,7 @@ int vsentry_sk_alloc_security(struct sock *sk, int family, gfp_t priority)
 	return 0;
 }
 
-int vsentry_can_driver_security(SR_U32 msg_id, SR_BOOL is_dir_in, int can_dev_id)
+int vsentry_can_driver_security(SR_U32 msg_id, SR_BOOL is_dir_in, int can_dev_id, int minor)
 {
 	disp_info_t disp = {};
 
@@ -1315,6 +1315,7 @@ int vsentry_can_driver_security(SR_U32 msg_id, SR_BOOL is_dir_in, int can_dev_id
 	disp.can_info.payload_len = 0;
 	disp.can_info.dir = is_dir_in ? SR_CAN_IN : SR_CAN_OUT;
 	disp.can_info.if_id = can_dev_id;
+	disp.can_info.dev_id = minor;
 	disp.can_info.id.pid = current->tgid;
 	if (get_process_name(disp.can_info.id.pid, disp.can_info.id.exec, SR_MAX_PATH_SIZE) != SR_SUCCESS) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, "%s=failed get process pid:%d ", REASON, current->tgid);

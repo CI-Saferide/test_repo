@@ -23,9 +23,8 @@ void sr_cls_canid_ut(void);
 void sr_cls_canid_uninit(void);
 void sr_cls_canid_empty_table(SR_BOOL is_lock);
 
-int sr_cls_canid_add_rule(SR_32 canid, SR_U32 rulenum, SR_8 dir, SR_32 if_id);
-int sr_cls_canid_del_rule(SR_32 canid, SR_U32 rulenum, SR_8 dir, SR_32 if_id);
-struct sr_hash_ent_t *sr_cls_canid_find(SR_32 canid, SR_8 dir, SR_32 if_id);
+int sr_cls_canid_add_rule(SR_32 canid, SR_U32 rulenum, SR_8 dir, SR_32 if_id, SR_32 dev_id);
+int sr_cls_canid_del_rule(SR_32 canid, SR_U32 rulenum, SR_8 dir, SR_32 if_id, SR_32 dev_id);
 
 bit_array *sr_cls_match_canid(SR_32 canid,SR_8 dir, SR_32 if_id);
 bit_array *src_cls_out_canid_any(SR_32 id_if);
@@ -38,7 +37,7 @@ struct sr_hash_table_t * get_cls_in_can_table(void);
 struct sr_hash_table_t * get_cls_out_can_table(void);
 #endif
 
-SR_32 sr_cls_canid_get_if_id(SR_U8 dev_id, SR_U8 *can_id);
-char *sr_cls_canid_get_interface_name(SR_32 if_id);
+SR_32 sr_cls_canid_get_if_id(SR_32 if_id, SR_32 dev_id, SR_32 *can_id);
+char *sr_cls_canid_get_interface_name(SR_U8 can_id);
 
 #endif

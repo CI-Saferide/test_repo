@@ -96,7 +96,7 @@ SR_BOOL sal_is_valid_file_name(char *file_name);
 void sal_vsentry_unlock(void);
 void sal_set_interrupt_cb(void (*cb)(int));
 
-SR_32 sal_get_interface_id(char *interface, SR_U32 *if_id);
-SR_32 sal_get_interface_name(SR_32 if_id, char *interface);
+SR_32 sal_get_interface_id(char *interface, SR_32 *if_id);
+SR_32 sal_get_interface_name(SR_32 if_id, char *interface, SR_U32 n);
 
 #endif /* SAL_LINUX_ENGINE_H*/

@@ -439,13 +439,13 @@ SR_32 sr_classifier_canbus(disp_info_t* info)
 	SR_U16 def_action = SR_CLS_ACTION_ALLOW; /* if we don't have default rule from user, then we just allow the packet */
 	int st;
 	struct config_params_t *config_params;
-	SR_U8 can_if_id;
+	SR_32 can_if_id;
 	
 #ifdef ROOT_CLS_IGNORE
 	if (!info->tuple_info.id.uid) return SR_CLS_ACTION_ALLOW; /* no classification for root user (debug only) */
 #endif
 
-	if (sr_cls_canid_get_if_id(info->can_info.if_id, &can_if_id) != SR_SUCCESS) {
+	if (sr_cls_canid_get_if_id(info->can_info.if_id, info->can_info.dev_id, &can_if_id) != SR_SUCCESS) {
 		printk("ERROR invalid if_id:%d \n", info->can_info.if_id);
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 			"%s=cls-can: invalid if id %d", info->can_info.if_id, REASON);

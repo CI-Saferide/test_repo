@@ -214,8 +214,8 @@ static int dummy_tx_thread_loop(void *arg)
 }
 #endif
 
-static int pcan_security_cb(SR_U32 msg_id, int is_dir_in, int can_dev_id) {
-	return vsentry_can_driver_security(msg_id, is_dir_in, can_dev_id);
+static int pcan_security_cb(SR_U32 msg_id, int is_dir_in, int can_dev_id, int minor) {
+	return vsentry_can_driver_security(msg_id, is_dir_in, can_dev_id, minor);
 }
 
 static int __init vsentry_init(void)
@@ -315,6 +315,8 @@ static void __exit vsentry_cleanup(void)
 
 	for (i=0; i<SR_MAX_TASK; i++)
 		sr_stop_task(i);
+
+	security_cb_unregister();
 
 	unregister_lsm_hooks();
 	sr_netfilter_uninit();

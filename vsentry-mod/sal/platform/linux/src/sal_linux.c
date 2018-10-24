@@ -292,13 +292,13 @@ SR_32 sal_get_process_name(SR_U32 pid, char *exec, SR_U32 max_len)
 	return get_process_name(pid, exec, max_len);
 }
 
-SR_32 sal_get_interface_name(SR_32 if_id, char *interface_name)
+SR_32 sal_get_interface_name(SR_32 if_id, char *interface_name, SR_U32 n)
 {
 	struct net_device *dev;
 
 	if (!(dev = dev_get_by_index(&init_net, if_id)))
 		return SR_ERROR;
-	strcpy(interface_name, dev->name);
+	strncpy(interface_name, dev->name, n);
 
 	return SR_SUCCESS;
 }
