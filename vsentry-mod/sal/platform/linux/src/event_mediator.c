@@ -183,11 +183,14 @@ const event_name *event_mediator_hooks_event_names(void)
 static SR_32 hook_filter(void)
 {
 	//TODO: get sr_engine pid from chdrv open fops
-	if ((!in_interrupt()) && ((vsentry_get_pid()) == (current->tgid)))
+	if ((!in_interrupt()) && ((vsentry_get_pid()) == (current->tgid))) {
 		return SR_TRUE;
+	}
 	// if kernel thread invoked this hook
-	if ((current->flags & PF_KTHREAD) || !current->mm || !current->mm->exe_file)
+	/*if ((current->flags & PF_KTHREAD) || !current->mm || !current->mm->exe_file) {
+		printk("kthread\n");
 		return SR_TRUE;
+	}*/
 
 	return SR_FALSE;
 }
@@ -596,7 +599,7 @@ SR_32 vsentry_incoming_connection(struct sk_buff *skb)
 	disp.tuple_info.sport = sal_packet_src_port(skb);
 	disp.tuple_info.dport = sal_packet_dest_port(skb);
 	disp.tuple_info.ip_proto = sal_packet_ip_proto(skb);
-	update_process_info(&disp.tuple_info.id, skb->sk, NULL);
+	//update_process_info(&disp.tuple_info.id, skb->sk, NULL);
 
 //#ifdef DEBUG_EVENT_MEDIATOR
 	CEF_log_event(SR_CEF_CID_SYSTEM, "info" , SEVERITY_LOW,
@@ -722,7 +725,7 @@ static SR_32 vsentry_file_open_task(struct file *file, const struct cred *credv,
 	SR_32 rc;
 	
 	memset(&disp, 0, sizeof(disp_info_t));
-	
+
 	/* gather metadata */
 	if (file->f_path.dentry->d_inode)
 		disp.fileinfo.current_inode = file->f_path.dentry->d_inode->i_ino;
@@ -1299,6 +1302,9 @@ int vsentry_sk_alloc_security(struct sock *sk, int family, gfp_t priority)
 	struct task_struct *ts = current;
 	const struct cred *rcred= ts->real_cred;
 
+	if (in_interrupt())
+		return 0;
+
 	if (!sk) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_MEDIUM,"%s=trying to allocate null security sk", REASON);
 		return 0;
@@ -1314,6 +1320,7 @@ int vsentry_sk_alloc_security(struct sock *sk, int family, gfp_t priority)
 	if ((get_process_name(process_info.pid, process_info.exec, SR_MAX_PATH_SIZE)) != SR_SUCCESS) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_MEDIUM, 
 			"%s=failed get process name at sk allocation for pid %d", REASON, process_info.pid);
+		return 0;
 	}
 
 	if (sr_cls_sk_process_hash_update(sk, &process_info) != SR_SUCCESS) {
