@@ -13,11 +13,9 @@ KERNEL_SRC  ?= /lib/modules/$(shell uname -r)/build
 #		make ARCH=arm64 KERNEL_SRC=~/git/raspberrypi/linux CROSS_COMPILE=aarch64-linux-gnu- 
 #  SR_STAT_ANALYSIS_DEBUG=y - set stat analysis debug flag
 
-CONF_FLAGS += $(if $(PCAN),SR_CONFIG_PCAN=1)
-
 all:
 	@echo "***** enter vsentry-mod *****"
-	@$(MAKE) -C vsentry-mod KERNEL_SRC=${KERNEL_SRC} $(CONF_FLAGS)
+	@$(MAKE) -C vsentry-mod KERNEL_SRC=${KERNEL_SRC}
 	@echo "***** enter vsentry-engine *****"
 	@$(MAKE) -s -C vsentry-engine
 	@echo "***** enter vsentry-control *****"

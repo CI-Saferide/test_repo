@@ -214,15 +214,15 @@ static int dummy_tx_thread_loop(void *arg)
 }
 #endif
 
-#ifdef SR_CONFIG_PCAN
 static int pcan_security_cb(SR_U32 msg_id, int is_dir_in, int can_dev_id, int minor) {
 	return vsentry_can_driver_security(msg_id, is_dir_in, can_dev_id, minor);
 }
-#endif
 
 static int __init vsentry_init(void)
 {
 	int rc = 0;
+	const struct kernel_symbol *sym;
+	int (*reg_fn)(security_cb_t i_scurity_cb);
 	
 	pr_info("[%s]: module started. kernel version is %s, module version is %d.%d (%s)\n",
 			MODULE_NAME, utsname()->release, 
@@ -302,15 +302,19 @@ static int __init vsentry_init(void)
 	tx_thread = kthread_run(dummy_tx_thread_loop, NULL, "vsentry dummy tx thread");
 #endif
 
-#ifdef SR_CONFIG_PCAN
-	security_cb_register(pcan_security_cb);
-#endif
+	sym = find_symbol("pcan_security_cb_register", NULL, NULL, 0, 0);
+	if (sym != NULL) {
+		reg_fn = (void *)sym->value;
+		reg_fn(pcan_security_cb);
+	}
 
 	return rc;
 }
 
 static void __exit vsentry_cleanup(void)
 {
+	const struct kernel_symbol *sym;
+	int (*unreg_fn)(void);
 	int i;
 
 #if 0
@@ -320,9 +324,11 @@ static void __exit vsentry_cleanup(void)
 	for (i=0; i<SR_MAX_TASK; i++)
 		sr_stop_task(i);
 
-#ifdef SR_CONFIG_PCAN
-	security_cb_unregister();
-#endif
+	sym = find_symbol("pcan_security_cb_unregister", NULL, NULL, 0, 0);
+	if (sym != NULL) {
+		unreg_fn = (void *)sym->value;
+		unreg_fn();
+	}
 
 	unregister_lsm_hooks();
 	sr_netfilter_uninit();
