@@ -74,12 +74,12 @@ static SR_U32 sr_connection_increase_LRU_arr(LRU_container_t *LRU_container, SR_
 	}
 
 	tmp = LRU_container->objects;
+	LRU_container->size += size;
 	if (!(LRU_container->objects = SR_ZALLOC(sizeof(sr_connection_data_t *) * LRU_container->size))) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 						"%s=failed to resize memory",REASON);
 		return SR_ERROR;
 	}
-	LRU_container->size += size;
 	SR_FREE(tmp);
 
 	return SR_SUCCESS;
