@@ -63,6 +63,7 @@ SRCS 		:=  main.c \
 				sr_db_can.c \
 				sr_ml_can.c \
 				log_uploader.c \
+				sr_canbus_common.c \
 				sr_stat_system_policer.c
 
 SRCS 		+= $(if $(SR_CLI),sal_cli_interface.c sr_engine_cli.c)

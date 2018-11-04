@@ -99,7 +99,7 @@ void sal_vsentry_unlock(void);
 void sal_set_interrupt_cb(void (*cb)(int));
 
 SR_32 sal_get_interface_id(char *interface, SR_32 *if_id);
-SR_32 sal_get_interface_name(SR_32 if_id, char *interface);
+SR_32 sal_get_interface_name(SR_32 if_id, char *interface, SR_U32 n);
 
 SR_32 sal_linux_local_interface(char *file_name, SR_32 (*handle_data_cb)(char *buf, SR_32 fd), SR_BOOL (*is_run_cb)(void));
 

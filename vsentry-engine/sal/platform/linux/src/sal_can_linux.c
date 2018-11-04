@@ -25,7 +25,7 @@ SR_32 manage_can_inf_table(SR_32 infidx) {
 			break;
 			
 	index_translate[i] = infidx;
-	if(sal_get_interface_name(infidx, can_infname[i]) < 0)
+	if(sal_get_interface_name(infidx, can_infname[i], CAN_INTERFACES_NAME_SIZE) < 0)
 		CEF_log_event(SR_CEF_CID_CAN, "info", SEVERITY_HIGH,
 			"%s=failed to get can interface name", REASON);
 	

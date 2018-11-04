@@ -107,6 +107,7 @@ static SR_32 sr_white_list_create_action(void)
 SR_32 sr_white_list_init(void)
 {
 	hash_ops_t hash_ops = {};
+	SR_32 rc;
 
 	if (sysrepo_mng_session_start(&sysrepo_handler) != SR_SUCCESS) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
@@ -131,6 +132,12 @@ SR_32 sr_white_list_init(void)
 	}
 
 	is_wl_init = SR_TRUE;
+
+	if ((rc = sr_white_list_canbus_init()) != SR_SUCCESS) { 
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+			"%s=white list init , init white list can failed",REASON);
+		return SR_ERROR;
+	}
 
 	return SR_SUCCESS;
 }
@@ -184,6 +191,8 @@ SR_32 sr_white_list_reset(void)
 	sr_white_list_delete_rules();
  	CEF_log_event(SR_CEF_CID_SYSTEM, "info", SEVERITY_LOW,
 			"%s=white list rules successfuly deleted", MESSAGE);
+	sr_white_list_canbus_init();
+
 	return SR_SUCCESS;
 }
 

@@ -412,7 +412,7 @@ SR_32 sal_get_interface_id(char *interface, SR_32 *if_id)
 	return SR_SUCCESS;
 }
 
-SR_32 sal_get_interface_name(SR_32 if_id, char *interface)
+SR_32 sal_get_interface_name(SR_32 if_id, char *interface, SR_U32 n)
 {
 	interface = if_indextoname(if_id, interface);
 	if (!interface) {

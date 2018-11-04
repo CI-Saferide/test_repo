@@ -8,6 +8,7 @@ typedef struct wl_can_item {
 	SR_U32		msg_id;				/* can message id */
 	SR_U8 	dir; //inbound/outbound msg
 	SR_32 if_id;
+	SR_32 dev_id;
 	struct wl_can_item *next;		/* ptr for linked list of can MSGID */
 }sr_wl_can_item_t;
 
@@ -22,5 +23,6 @@ SR_32 sr_white_list_canbus(struct sr_ec_can_t *can_info);
 void sr_white_list_canbus_print(sr_wl_can_item_t *wl_canbus, void (*print_cb)(char *buf));
 void sr_white_list_canbus_cleanup(sr_wl_can_item_t *wl_canbus);
 SR_32 sr_white_list_canbus_apply(void);
+SR_32 sr_white_list_canbus_init(void);
 
 #endif

@@ -77,6 +77,7 @@ int vsentry_inet_conn_request(struct sock *sk, struct sk_buff *skb, struct reque
 void vsentry_sk_free_security(struct sock *sk);
 int vsentry_sk_alloc_security(struct sock *sk, int family, gfp_t priority);
 SR_32 get_process_name(SR_U32 pid, char *exec, SR_U32 max_len);
+int vsentry_can_driver_security(SR_U32 msg_id, SR_BOOL is_in, int can_dev_id, int minor);
 
 const event_name *event_mediator_hooks_event_names(void);
 
