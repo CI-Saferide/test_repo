@@ -270,7 +270,7 @@ SR_32 disp_can_recvmsg(disp_info_t* info)
 	struct sr_ec_can_t can_data; // event collector data for white list
 	
 	if(get_collector_state() == SR_TRUE){
-		can_data.pid = info->tuple_info.id.pid;
+		can_data.pid = info->can_info.id.pid;
 		can_data.msg_id = info->can_info.msg_id;
 		can_data.dir = SR_CAN_IN;
 		can_data.if_id = info->can_info.if_id;

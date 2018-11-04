@@ -1,0 +1,95 @@
+#!/bin/sh
+#
+# start/stop vsentry daemon.
+
+### BEGIN INIT INFO
+# Provides:
+# Required-Start:    $local_fs
+# Required-Stop:     $local_fs
+# Default-Start:     S 2 3 4 5
+# Default-Stop:      0 1 6
+# Short-Description: vsentry daemon
+# Description:       SafeRide vSentry security agent
+### END INIT INFO
+
+DESC="SafeRide vSentry security agent"
+
+wait_sysrepo() {
+    counter=0
+    while [ true ]; do
+        if [ ! -e /var/run/sysrepod.pid ]; then
+            sleep 1
+            counter=$(( $counter + 1 ))
+            if [ $counter -ge 10 ]; then
+                echo "sysrepo is not running ... exiting"
+                exit 1
+            fi
+        else
+            echo "sysrepod $pid is running"
+            break
+        fi
+    done
+}
+
+do_start() {
+    if [ ! -e /etc/sysrepo/yang/ietf-netconf-acm@2012-02-22.yang ]; then
+        /usr/bin/sysrepoctl --install --yang=/etc/vsentry/yang/ietf-netconf-acm@2012-02-22.yang
+    fi
+    if [ ! -e /etc/sysrepo/yang/ietf-netconf-notifications@2012-02-06.yang ]; then
+        /usr/bin/sysrepoctl --install --yang=/etc/vsentry/yang/ietf-netconf-notifications@2012-02-06.yang
+    fi
+    if [ ! -e /etc/sysrepo/yang/ietf-netconf@2011-06-01.yang ]; then
+        /usr/bin/sysrepoctl --install --yang=/etc/vsentry/yang/ietf-netconf@2011-06-01.yang
+    fi
+    if [ ! -e /etc/sysrepo/yang/notifications@2008-07-14.yang ]; then
+        /usr/bin/sysrepoctl --install --yang=/etc/vsentry/yang/notifications@2008-07-14.yang
+    fi
+    if [ ! -e /etc/sysrepo/yang/saferide.yang ]; then
+        /usr/bin/sysrepoctl --install --yang=/etc/vsentry/yang/saferide.yang
+    fi
+    insmod /lib/modules/$(uname -r)/extra/vsentry.ko
+    if [ ! -e /dev/vsentry ]; then
+        mknod /dev/vsentry c `cat /proc/devices | grep vsentry | awk '{print $1}'` 0
+    fi
+    mkdir -p /var/log/candata/
+    wait_sysrepo
+    start-stop-daemon --quiet --exec /usr/bin/sr_engine --start -- -c /etc/vsentry/sr_config -b
+}
+
+do_stop() {
+    start-stop-daemon --stop --name sr_engine --quiet
+    sleep 2 #wait for engine to shut down
+    rmmod vsentry 2> /dev/null || true
+}
+
+case "$1" in
+  start)
+    echo "Starting $DESC"
+    do_start
+    ;;
+  stop)
+    echo "Stopping $DESC"
+    do_stop
+    ;;
+  status)
+    is_run=`ps -ef | grep sr_engine | wc -l`
+    if [ "$is_run" -gt 1 ]; then
+      pid=`ps -ef |grep sr_engine |grep -v grep | awk '{print $2}'`
+      echo ""$DESC" is running (pid $pid)"
+    else
+      echo ""$DESC" is not running"
+    fi
+    ;;
+  restart|force-reload)
+    echo "Restarting $DESC"
+    do_stop
+    sleep 1
+    do_start
+    ;;
+  *)
+    echo "Usage: $0 {start|stop|status|restart|force-reload}" >&2
+    exit 1
+    ;;
+esac
+
+exit 0

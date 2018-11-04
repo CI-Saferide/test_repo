@@ -11,7 +11,6 @@
 static SR_BOOL is_run_db_mng = SR_TRUE;
 static SR_U32 static_policy_version;
 
-#define STATIC_POLICY_URL "http://saferide-policies.eu-west-1.elasticbeanstalk.com/policy/static/sync"
 #define STATIC_POLICY_VERSION_FILE "/etc/sentry/version"
 #define STATIC_POLICY_CPU_FILE "/etc/sentry/cpu_info.txt"
 #define STATIC_POLICY_IP_VERSION "X-IP-VERSION"
@@ -71,7 +70,7 @@ static SR_32 get_server_db(sysrepo_mng_handler_t *handler)
 
 	config_params = sr_config_get_param();
 
-	SR_CURL_INIT(STATIC_POLICY_URL);
+	SR_CURL_INIT(config_params->static_policy_url);
 	
 	fetch->payload = NULL;
 	fetch->size = 0;
@@ -139,7 +138,7 @@ out:
 	return SR_SUCCESS;
 }
 
-SR_32 database_management(void *p)
+static SR_32 database_management(void *p)
 {
 	sysrepo_mng_handler_t handler;
 
@@ -164,6 +163,15 @@ cleanup:
 
 SR_32 sr_static_policy_db_mng_start(void)
 {
+	struct config_params_t *config_params;
+
+	config_params = sr_config_get_param();
+	if (!*(config_params->static_policy_url)) {
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+		"%s=No static policy URL",REASON);
+		return SR_SUCCESS;
+	}
+
 	if (get_vesrion_from_file(&static_policy_version) != SR_SUCCESS) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 		"%s=failed to get version",REASON);
@@ -182,6 +190,11 @@ SR_32 sr_static_policy_db_mng_start(void)
 
 void sr_static_policy_db_mng_stop(void)
 {
+	struct config_params_t *config_params;
+
+	config_params = sr_config_get_param();
+	if (!*(config_params->static_policy_url))
+		return;
 	is_run_db_mng = SR_FALSE;
 
 	sr_stop_task(SR_STATIC_POLICY);

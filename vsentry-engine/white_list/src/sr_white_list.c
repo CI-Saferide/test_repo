@@ -4,12 +4,21 @@
 #include "sysrepo_mng.h"
 #include "sr_cls_wl_common.h"
 #include "sr_config_parse.h"
+#include "sr_engine_cli.h"
 
 #define HASH_SIZE 500
 
-static sr_wl_mode_t wl_mode;
-
+static sr_wl_mode_t wl_mode = SR_WL_MODE_OFF;
+static SR_BOOL is_wl_init;
+static sysrepo_mng_handler_t sysrepo_handler;
 static struct sr_gen_hash *white_list_hash;
+
+void (*print_cb)(char *buf);
+
+void white_list_print_cb_register(void (*i_print_cb)(char *buf))
+{
+	print_cb = i_print_cb;
+}
 
 static SR_32 white_list_comp(void *data_in_hash, void *comp_val)
 {
@@ -25,13 +34,22 @@ static SR_32 white_list_comp(void *data_in_hash, void *comp_val)
 static void white_list_print(void *data_in_hash)
 {
 	sr_white_list_item_t *white_list_item = (sr_white_list_item_t *)data_in_hash;
+	char buf[512];
 
 	CEF_log_event(SR_CEF_CID_SYSTEM, "info", SEVERITY_LOW,
-		"%s=white list learnt program:%s ", MESSAGE, white_list_item->exec);
-	printf("exec:%s: \n", white_list_item->exec);
+		"%s=white list learned program %s ", MESSAGE, white_list_item->exec);
+	sprintf(buf, "\nexec:%s: \n%c", white_list_item->exec, SR_CLI_END_OF_ENTITY);
+	printf("%s", buf);
+	print_cb(buf);
+	sprintf(buf, "file learned:\n%c", SR_CLI_END_OF_ENTITY);
+	printf("%s", buf);
+	print_cb(buf);
+	sr_white_list_file_print(white_list_item->white_list_file, print_cb);
 
-	sr_white_list_file_print(white_list_item->white_list_file);
-	sr_white_list_canbus_print(white_list_item->white_list_can);
+	sprintf(buf, "\ncan learned:\n%c", SR_CLI_END_OF_ENTITY);
+	printf("%s", buf);
+	print_cb(buf);
+	sr_white_list_canbus_print(white_list_item->white_list_can, print_cb);
 }
 
 static SR_U32 white_list_create_key(void *data)
@@ -62,13 +80,13 @@ static void white_list_free(void *data_in_hash)
 
 static SR_32 sr_white_list_create_action(void)
 {
-	sysrepo_mng_handler_t sysrepo_handler;
+/*	sysrepo_mng_handler_t sysrepo_handler;
  
         if (sysrepo_mng_session_start(&sysrepo_handler) != SR_SUCCESS) {
                 CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
                         "%s=sysrepo_mng_session_start failed",REASON);
                 return SR_ERROR;
-        }
+        }*/
                         
 	if (sys_repo_mng_create_action(&sysrepo_handler, WHITE_LIST_ACTION, SR_TRUE, SR_FALSE) != SR_ERR_OK) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
@@ -76,12 +94,12 @@ static SR_32 sr_white_list_create_action(void)
 		return SR_ERROR;
 	}
 
-	if (sys_repo_mng_commit(&sysrepo_handler) != SR_SUCCESS) { 
+/*	if (sys_repo_mng_commit(&sysrepo_handler) != SR_SUCCESS) { 
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 		"%s=sys_repo_mng_commit failed ", REASON);
 	}
 
-	sysrepo_mng_session_end(&sysrepo_handler);
+	sysrepo_mng_session_end(&sysrepo_handler);*/
 
 	return SR_SUCCESS;
 }
@@ -90,6 +108,12 @@ SR_32 sr_white_list_init(void)
 {
 	hash_ops_t hash_ops = {};
 	SR_32 rc;
+
+	if (sysrepo_mng_session_start(&sysrepo_handler) != SR_SUCCESS) {
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+			"%s=sysrepo_mng_session_start failed",REASON);
+		return SR_ERROR;
+	}
 
 	if (sr_white_list_file_init() != SR_SUCCESS) {
                 CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
@@ -106,7 +130,8 @@ SR_32 sr_white_list_init(void)
 			"%s=file_hash_init: sr_gen_hash_new failed",REASON);
 		return SR_ERROR;
 	}
-	wl_mode = SR_WL_MODE_OFF;
+
+	is_wl_init = SR_TRUE;
 
 	if ((rc = sr_white_list_canbus_init()) != SR_SUCCESS) { 
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
@@ -117,15 +142,20 @@ SR_32 sr_white_list_init(void)
 	return SR_SUCCESS;
 }
 
+sysrepo_mng_handler_t *sr_white_list_get_hadler(void)
+{
+	return &sysrepo_handler;
+}
+
 static SR_32 sr_white_list_delete_rules(void)
 {
-	sysrepo_mng_handler_t sysrepo_handler;
+/*	sysrepo_mng_handler_t sysrepo_handler;
 
 	if (sysrepo_mng_session_start(&sysrepo_handler)) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
                         "%s=wl file:fail to init persistent db",REASON);
 		return SR_ERROR;
-	}
+	}*/
 
 	if (sys_repo_mng_delete_ip_rules(&sysrepo_handler, SR_IP_WL_START_RULE_NO, SR_IP_WL_END_RULE_NO + 1) != SR_SUCCESS) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, "%s=wl file:fail to delete ip rules",REASON);
@@ -145,13 +175,15 @@ static SR_32 sr_white_list_delete_rules(void)
 		"%s=failed to commit wl file rules from persistent db", REASON);
 	}
 
-	sysrepo_mng_session_end(&sysrepo_handler);
+//	sysrepo_mng_session_end(&sysrepo_handler);
 
 	return SR_SUCCESS;
 }
 
 SR_32 sr_white_list_reset(void)
 {
+	if (!is_wl_init)
+		return SR_SUCCESS;
 	CEF_log_event(SR_CEF_CID_SYSTEM, "info", SEVERITY_LOW,
 			"%s=delete white list rules", MESSAGE);
 	sr_white_list_delete_all();
@@ -164,7 +196,7 @@ SR_32 sr_white_list_reset(void)
 	return SR_SUCCESS;
 }
 
-SR_32 sr_white_list_set_mode(sr_wl_mode_t new_wl_mode)
+SR_32 sr_white_list_set_mode(sr_wl_mode_t new_wl_mode, void (*notify_cb)(void))
 {
 	SR_32 rc;
 	sr_ec_msg_t *msg;
@@ -175,29 +207,20 @@ SR_32 sr_white_list_set_mode(sr_wl_mode_t new_wl_mode)
 
 	if (wl_mode == new_wl_mode)
 		return SR_SUCCESS;
-	switch (wl_mode) {
-		case SR_WL_MODE_LEARN:
-			break;
-		case SR_WL_MODE_APPLY:
-			// Remove the rules
-			if ((rc = sr_white_list_file_apply(SR_FALSE)) != SR_SUCCESS) {
-               			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-					"%s=sr_white_list_file_apply failed",REASON);
-                		return SR_ERROR;
-			}
-			if ((rc = sr_white_list_canbus_apply(SR_FALSE)) != SR_SUCCESS) {
-               			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-					"%s=sr_white_list_canbus_apply failed",REASON);
-                		return SR_ERROR;
-			}
-			break;
-		case SR_WL_MODE_OFF:
-			break;
-		default:
-			return SR_ERROR;
-	}
+
 	switch (new_wl_mode) { 
 		case SR_WL_MODE_LEARN:
+			if (sr_white_list_init() != SR_SUCCESS) {
+				CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+					"%s=white list init failed",REASON);
+				return SR_ERROR;
+			}
+			if (sr_white_list_ip_init() != SR_SUCCESS) {
+				CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+					"%s=white list ip init failed",REASON);
+				sr_white_list_uninit();
+				return SR_ERROR;
+			}	
 			/* Set default rule to be allow */
  			CEF_log_event(SR_CEF_CID_SYSTEM, "info", SEVERITY_LOW,
 					"%s=move to mode wl_learn", MESSAGE);
@@ -215,6 +238,11 @@ SR_32 sr_white_list_set_mode(sr_wl_mode_t new_wl_mode)
 			sr_white_list_reset();
 			break;
 		case SR_WL_MODE_APPLY:
+			if (!is_wl_init) {
+				CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+					"%s=white list is not init", REASON);
+				return SR_ERROR;
+			}
  			CEF_log_event(SR_CEF_CID_SYSTEM, "info", SEVERITY_LOW,
 					"%s=move to mode wl_apply", MESSAGE);
 			sr_white_list_create_action();
@@ -222,7 +250,7 @@ SR_32 sr_white_list_set_mode(sr_wl_mode_t new_wl_mode)
 			printf("Applying file rules\n");
  			CEF_log_event(SR_CEF_CID_SYSTEM, "info", SEVERITY_LOW,
 					"%s=applying file rules", MESSAGE);
-			if ((rc = sr_white_list_file_apply(SR_TRUE)) != SR_SUCCESS) {
+			if ((rc = sr_white_list_file_apply()) != SR_SUCCESS) {
                			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 					"%s=sr_white_list_file_apply failed",REASON);
                 		return SR_ERROR;
@@ -230,7 +258,7 @@ SR_32 sr_white_list_set_mode(sr_wl_mode_t new_wl_mode)
 			printf("Applying file CAN rules\n");
  			CEF_log_event(SR_CEF_CID_SYSTEM, "info", SEVERITY_LOW,
 					"%s=applying CAN rules", MESSAGE);
-			if ((rc = sr_white_list_canbus_apply(SR_TRUE)) != SR_SUCCESS) {
+			if ((rc = sr_white_list_canbus_apply()) != SR_SUCCESS) {
                			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 					"%s=sr_white_list_canbus_apply failed",REASON);
                 		return SR_ERROR;
@@ -243,7 +271,12 @@ SR_32 sr_white_list_set_mode(sr_wl_mode_t new_wl_mode)
 					"%s=sr_white_list_ip_apply failed",REASON);
 				return SR_ERROR;
 			}
-			printf("Finish applying rules\n");
+
+			if (sys_repo_mng_commit(&sysrepo_handler) != SR_SUCCESS) {
+				CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+					"%s=ip wl: failed to commit changes to persistent storage", REASON);
+			} else
+				printf("Finish applying rules\n");
  			CEF_log_event(SR_CEF_CID_SYSTEM, "info", SEVERITY_LOW,
 					"%s=white list rules applied successfuly", MESSAGE);
 			/* Set default rule to be as defined in sr_config */
@@ -258,6 +291,10 @@ SR_32 sr_white_list_set_mode(sr_wl_mode_t new_wl_mode)
 			} else
  				CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 					"%s=failed to transfer config info to kernel",REASON);
+			sr_white_list_uninit();
+			sr_white_list_ip_uninit();
+			if (notify_cb)
+				notify_cb();
 			break;
 		case SR_WL_MODE_OFF:
 			break;
@@ -325,27 +362,13 @@ sr_white_list_item_t *sr_white_list_hash_get(char *exec)
 
 void sr_white_list_uninit(void)
 {
-	switch (wl_mode) {
-		case SR_WL_MODE_LEARN:
-			break;
-		case SR_WL_MODE_APPLY:
-			// Remove the rules
-			if (sr_white_list_file_apply(SR_FALSE) != SR_SUCCESS) {
-				CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-				"%s=sr_white_list_file_apply failed",REASON);
-			}
-			if (sr_white_list_canbus_apply(SR_FALSE) != SR_SUCCESS) {
-				CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-				"%s=sr_white_list_canbus_apply failed",REASON);
-			}
-			break;
-		case SR_WL_MODE_OFF:
-			break;
-		default:
-			break;
-	}
-        sr_gen_hash_destroy(white_list_hash);
+	if (!is_wl_init)
+		return;
+
+	sr_gen_hash_destroy(white_list_hash);
 	sr_white_list_file_uninit();
+
+	is_wl_init = SR_FALSE;
 }
 
 SR_32 sr_white_list_hash_exec_for_all(SR_32 (*cb)(void *hash_data, void *data))
@@ -371,5 +394,7 @@ SR_32 sr_white_list_delete_all(void)
 
 void sr_white_list_hash_print(void)
 {
+	if (!is_wl_init)
+		return;
 	sr_gen_hash_print(white_list_hash);
 }

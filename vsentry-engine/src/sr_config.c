@@ -351,7 +351,7 @@ static SR_32 delete_file_rule(file_rule_t *rule)
 
 	if (!(old_rule = sr_db_file_rule_get(rule))) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-			"%s=delete file rule: failed gettig old %s=%d",REASON,
+			"%s=delete file rule: failed gettig old rule=%d",REASON,
 			rule->rulenum);
 		return SR_SUCCESS;
 	}
@@ -474,11 +474,30 @@ static SR_32 delete_can_rule(can_rule_t *rule)
 	return SR_SUCCESS;
 }
 
+static SR_U32 during_modification = SR_FALSE;
+
+SR_U32 sr_config_get_mod_state(void)
+{
+	return during_modification;
+}
+
 void sr_config_vsentry_db_cb(int type, int op, void *entry)
 {
+	if (!entry) {
+		if (during_modification) {
+			during_modification = SR_FALSE;
+			printf("during_modification %d\n", during_modification);
+		}
+		return;
+	}
+	else if (!during_modification) {
+		during_modification = SR_TRUE;
+		printf("during_modification %d\n", during_modification);
+	}
+
 	switch (type) {
 		case SENTRY_ENTRY_ACTION:
-			action_display((action_t *)entry);
+//			action_display((action_t *)entry);
 			switch (op) {
 				case SENTRY_OP_CREATE:
 				case SENTRY_OP_MODIFY:
@@ -490,7 +509,7 @@ void sr_config_vsentry_db_cb(int type, int op, void *entry)
 			}
 			break;
 		case SENTRY_ENTRY_IP:
-			ip_rule_display((ip_rule_t *)entry);
+//			ip_rule_display((ip_rule_t *)entry);
 			switch (op) {
 				case SENTRY_OP_CREATE:
 					add_ip_rule((ip_rule_t *)entry);
@@ -506,7 +525,7 @@ void sr_config_vsentry_db_cb(int type, int op, void *entry)
 			}
         		break;
 		case SENTRY_ENTRY_CAN:
-			can_rule_display((can_rule_t *)entry);
+//			can_rule_display((can_rule_t *)entry);
 			switch (op) {
 				case SENTRY_OP_CREATE:
 					add_can_rule((can_rule_t *)entry);
@@ -522,7 +541,7 @@ void sr_config_vsentry_db_cb(int type, int op, void *entry)
 			}
 			break;
 		case SENTRY_ENTRY_FILE:
-			file_rule_display((file_rule_t *)entry);
+//			file_rule_display((file_rule_t *)entry);
 			switch (op) {
 				case SENTRY_OP_CREATE:
 					add_file_rule((file_rule_t *)entry);

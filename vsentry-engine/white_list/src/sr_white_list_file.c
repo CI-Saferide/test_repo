@@ -13,9 +13,10 @@
 #include "sr_control.h"
 #include "sr_cls_wl_common.h"
 #include "sr_engine_utils.h"
+#include "sr_engine_cli.h"
 
 static SR_32 rule_id; 
-static sysrepo_mng_handler_t sysrepo_handler;
+//static sysrepo_mng_handler_t sysrepo_handler;
 static char *home_dir;
 
 typedef struct wl_learn_file_item {
@@ -114,13 +115,13 @@ SR_32 sr_white_list_file_wl(struct sr_ec_file_wl_t *file_wl_info)
 
 	if (!sal_is_valid_file_name(file_wl_info->file)) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-				"%s=invalid file :%s ",REASON, file_wl_info->file);
+				"%s=invalid file: %s ",REASON, file_wl_info->file);
 		printf("=====Invalid file name :%s \n", file_wl_info->file);
 		return SR_ERROR;
 	}
 	if (!*file_wl_info->exec) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-				"%s=invalid exec for file :%s ",REASON, file_wl_info->file);
+				"%s=invalid exec for file: %s ",REASON, file_wl_info->file);
 		return SR_ERROR;
 	}
 
@@ -134,14 +135,14 @@ SR_32 sr_white_list_file_wl(struct sr_ec_file_wl_t *file_wl_info)
 		break;
 	default:
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-							"%s=Invalid wl type :%d file :%s",REASON, file_wl_info->wl_type, file_wl_info->file);
+							"%s=invalid wl type: %d file :%s",REASON, file_wl_info->wl_type, file_wl_info->file);
 		return SR_ERROR;
 	}
 
 	if (!(white_list_item = sr_white_list_hash_get(file_wl_info->exec))) {
 		if (sr_white_list_hash_insert(file_wl_info->exec, &white_list_item) != SR_SUCCESS) {
 			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-				"%s=file white list insert failed, pid:%d file :%s",REASON, file_wl_info->pid, file_wl_info->file);
+				"%s=file white list insert failed pid: %d file: %s",REASON, file_wl_info->pid, file_wl_info->file);
 			return SR_ERROR;
 		}
 	}
@@ -153,7 +154,7 @@ SR_32 sr_white_list_file_wl(struct sr_ec_file_wl_t *file_wl_info)
 		SR_Zalloc(*iter, sr_white_list_file_t *, sizeof(sr_white_list_file_t));
 		if (!*iter) {
 			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-				"%s=failed to allocate memory for white list file, pid:%d file :%s",REASON, file_wl_info->pid, file_wl_info->file);
+				"%s=failed to allocate memory for white list file pid: %d file:%s",REASON, file_wl_info->pid, file_wl_info->file);
 			return SR_ERROR;
 		}
 		strncpy((*iter)->file, file_to_learn, SR_MAX_PATH_SIZE);
@@ -163,16 +164,26 @@ SR_32 sr_white_list_file_wl(struct sr_ec_file_wl_t *file_wl_info)
 	return SR_SUCCESS;
 }
 
-void sr_white_list_file_print(sr_white_list_file_t *white_list_file)
+void sr_white_list_file_print(sr_white_list_file_t *white_list_file, void (*print_cb)(char *buf))
 {
 	sr_white_list_file_t *iter;
-	char permissions[4];
+	char permissions[4], print_buf[512];
+
+	if (white_list_file) {
+		sprintf(print_buf, "File learnt:\n%c", SR_CLI_END_OF_ENTITY);
+		printf("%s", print_buf);
+		if (print_cb)
+			print_cb(print_buf);
+	}
 
 	for (iter = white_list_file; iter; iter = iter->next) {
 		sr_get_file_perm_from_bits(iter->fileop, permissions);
+		sprintf(print_buf, "file:%s: permissions:%s\n", iter->file, permissions);
 		CEF_log_event(SR_CEF_CID_SYSTEM, "info", SEVERITY_LOW,
-                	        "%s=file learned: file:%s permissions:%s ", MESSAGE,  iter->file, permissions);
-		printf("  file:%s: permissions:%s file_op:%u\n", iter->file, permissions, iter->fileop);
+			"%s=file learned: file %s permissions %s ", MESSAGE,  iter->file, permissions);
+		printf("%s", print_buf);
+		if (print_cb)
+			print_cb(print_buf);
 	}
 }
 
@@ -286,7 +297,7 @@ static SR_32 sr_white_list_calculate_mem_optimization(cls_file_mem_optimization_
 	config_params = sr_config_get_param();
 	if (sal_get_memory(NULL, &free_memory) != SR_SUCCESS) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-				"%s=failed to get free memory, memory optimization cannot continue", REASON);
+				"%s=failed to get free memory - memory optimization cannot continue", REASON);
 		return SR_ERROR;
 	}
 	if (sr_white_list_count_files(&files_counter) != SR_SUCCESS) {
@@ -314,9 +325,9 @@ static void write_file_rule(char *file_name, char *exec, SR_U8 file_op, SR_32 *r
 	fprintf(f_app, "rule:%d tuple:%d exec:%s file:%s perm:%d \n", *op_rule, *op_tuple, exec, file_name, file_op);
 #endif
 	//printf("rule:%d tuple:%d exec:%s file:%s perm:%d \n", *op_rule, *op_tuple, exec, file_name, file_op);
-	if (sys_repo_mng_create_file_rule(&sysrepo_handler, *op_rule, *op_tuple, file_name, exec, "*", WHITE_LIST_ACTION, file_op) != SR_SUCCESS) {
+	if (sys_repo_mng_create_file_rule(sr_white_list_get_hadler(), *op_rule, *op_tuple, file_name, exec, "*", WHITE_LIST_ACTION, file_op) != SR_SUCCESS) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-			"%s=fail to create file rule in persistent db. rule id:%d",
+			"%s=fail to create file rule in persistent db rule id: %d",
 				REASON, *rule_id);
 	}
 	(*op_tuple)++;
@@ -339,7 +350,7 @@ static SR_32 file_apply_cb(void *hash_data, void *data)
 	for (iter = wl_item->white_list_file; iter; iter = iter->next) {
 		if (rule_id > SR_FILE_WL_END_RULE_NO) {
 			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-				"%s=white list file learn rule exeeds list boundary. file:%s exec:%s",
+				"%s=white list file learn rule exeeds list boundary file: %s exec: %s",
 					REASON, iter->file, wl_item->exec);
 			continue; /* we do not break since we want to have log per any rule that we cannot accomodate in the persistent storage */
 		}
@@ -358,14 +369,7 @@ static SR_32 file_apply_cb(void *hash_data, void *data)
 	return SR_SUCCESS;
 }
 
-static SR_32 wl_file_delete_cb(void *hash_data, void *data)
-{
-	// TODO : delete rulues.
-
-	return SR_SUCCESS;
-}
-
-SR_32 sr_white_list_file_apply(SR_BOOL is_apply)
+SR_32 sr_white_list_file_apply(void)
 {
 	SR_32 rc;
 	cls_file_mem_optimization_t mem_opt;
@@ -397,26 +401,26 @@ SR_32 sr_white_list_file_apply(SR_BOOL is_apply)
 	f_app = fopen("/tmp/app.txt", "w");
 #endif
 
-	if (sysrepo_mng_session_start(&sysrepo_handler)) {
+/*	if (sysrepo_mng_session_start(&sysrepo_handler)) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-			"%s=wl file:fail to init persistent db",REASON);
+			"%s=wl file: fail to init persistent db",REASON);
 		return SR_ERROR;
-	}
+	}*/
 
 	rule_id = SR_FILE_WL_START_RULE_NO;
 	
-	if ((rc = sr_white_list_hash_exec_for_all(is_apply ? file_apply_cb : wl_file_delete_cb)) != SR_SUCCESS) {
+	if ((rc = sr_white_list_hash_exec_for_all(file_apply_cb)) != SR_SUCCESS) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 			"%s=file wl hash exec failed",REASON);
 		return SR_ERROR;
 	}
 
-	if (sys_repo_mng_commit(&sysrepo_handler) != SR_SUCCESS) { 
+/*	if (sys_repo_mng_commit(&sysrepo_handler) != SR_SUCCESS) { 
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 				"%s=failed to commit wl file rules from persistent db", REASON);
 	}
 
-	sysrepo_mng_session_end(&sysrepo_handler);
+	sysrepo_mng_session_end(&sysrepo_handler);*/
 
 #ifdef DEBUG
 	fclose(f_app);

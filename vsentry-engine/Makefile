@@ -11,6 +11,8 @@ BINDIR 		:= $(BUILD_DIR)/bin
 
 TARGET 		:= sr_engine
 
+SR_CLI		:= 1
+
 # where to search for sources
 VPATH 		:=  $(TOP_DIR)/sal/platform/linux/src \
 				$(TOP_DIR)/src \
@@ -25,7 +27,6 @@ SRCS 		:=  main.c \
 				sal_shmem_linux.c \
 				sal_linux.c \
 				sal_can_linux.c \
-				sal_third_party_interface.c \
 				sr_cls_file_control.c \
 				sr_cls_network_control.c \
 				sr_cls_canbus_control.c \
@@ -65,6 +66,8 @@ SRCS 		:=  main.c \
 				sr_canbus_common.c \
 				sr_stat_system_policer.c
 
+SRCS 		+= $(if $(SR_CLI),sal_cli_interface.c sr_engine_cli.c)
+
 # include folders
 INCLUDES 	:=  -I../common/include \
 				-Iinclude \
@@ -75,6 +78,7 @@ INCLUDES 	:=  -I../common/include \
 				-I../tools/sr-hash/include \
 				-I../tools/json \
 				-I../tools/sysrepo_mng/include \
+				-I../tools/db_tools/include \
 				-I../vsentry-lib/include \
 				-I../common/stat_analysis/include \
 				-Istat_analysis/include \
@@ -85,7 +89,7 @@ OBJS		:=  $(addprefix $(OBJDIR)/,$(SRCS:.c=.o))
 DEPS		:=  $(OBJS:.o=.d)
 
 # libs to link with
-LIBS		:= -Wl,--start-group -l$(TARGET) -lsr_hash -lsr_log -lsysrepo_mng -Wl,--end-group -lpthread -ljsmn -lsentry -lsysrepo -lcurl -larchive -lcrypto
+LIBS		:= -Wl,--start-group -l$(TARGET) -lsr_hash -lsr_log -lsysrepo_mng -ldb_tools -Wl,--end-group -lpthread -ljsmn -lsentry -lsysrepo -lcurl -larchive -lcrypto
 # and where to search them 
 LIB_PATH 	:= -L$(LIBDIR) -L../vsentry-lib/lib
 
@@ -99,6 +103,7 @@ CFLAGS 		+= -DSR_CAN_DEBUG_PRINT
 #CFLAGS 		+= -DSR_RB_DEBUG -DSR_MSG_DEBUG
 CFLAGS 		+= -D__linux
 #CFLAGS 		+= -DUNIT_TEST
+CFLAGS		+= $(if $(SR_CLI),-DSR_CLI)
 
 ifdef DEBUG
 CFLAGS		+= -g -O0
@@ -111,8 +116,9 @@ all: $(TARGET)
 build_ver:
 	@echo "/*@unused@*/ static const char SR_GIT_BUILD[] = \"`git log --pretty=format:'%h' -n 1`\"; " > $(TOP_DIR)/../common/include/sr_build_ver.h
 
-$(TARGET): libsr_log libsr_hash libjsmn libsysrepo_mng lib$(TARGET)
+$(TARGET): libsr_log libsr_hash libjsmn libsysrepo_mng libdb_tools lib$(TARGET)
 	@echo "linking $(notdir $@)"
+	echo $(LIB_PATH)
 	$(CC) $(LDFLAGS) -o $(BINDIR)/$(TARGET) $(LIB_PATH) $(LIBS)
 
 lib$(TARGET): build_ver OBJSDIR $(OBJS)
@@ -137,9 +143,15 @@ libjsmn:
 libsysrepo_mng:
 	@$(MAKE) -s -C ../tools/sysrepo_mng TOP_DIR=$(TOP_DIR)
 
+libdb_tools:
+	@$(MAKE) -s -C ../tools/db_tools TOP_DIR=$(TOP_DIR)
+
 $(OBJDIR)/%.o: %.c
 	@echo "compiling $(notdir $<)"
 	@$(CC) $(CFLAGS) $(INCLUDES) -c $< -o $@
+
+install:
+	install -m 755 build/bin/* /usr/bin/
 
 clean:
 	@rm -fr $(BUILD_DIR)

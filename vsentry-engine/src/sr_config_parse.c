@@ -185,6 +185,24 @@ SR_32 read_vsentry_config(char* config_filename)
 			config_params.system_policer_threshold_percent = atoi(value);
 		}
 #endif
+	if (!strcmp(param, "LOG_UPLOADER_URL")) {
+		strncpy(config_params.log_uploader_url, value, URL_MAX_SIZE);
+	}
+	if (!strcmp(param, "CAN_COLLECTOR_URL")) {
+		strncpy(config_params.can_collector_url, value, URL_MAX_SIZE);
+	}
+	if (!strcmp(param, "ML_CAN_URL")) {
+		strncpy(config_params.ml_can_url, value, URL_MAX_SIZE);
+	}
+	if (!strcmp(param, "SR_COMMANDS_URL")) {
+		strncpy(config_params.sr_commands_url, value, URL_MAX_SIZE);
+	}
+	if (!strcmp(param, "DYNAMIC_POLICY_URL")) {
+		strncpy(config_params.dynamic_policy_url, value, URL_MAX_SIZE);
+	}
+	if (!strcmp(param, "STATIC_POLICY_URL")) {
+		strncpy(config_params.static_policy_url, value, URL_MAX_SIZE);
+	}
     }
     fclose(fp);
     CEF_log_event(SR_CEF_CID_SYSTEM, "info", SEVERITY_LOW,

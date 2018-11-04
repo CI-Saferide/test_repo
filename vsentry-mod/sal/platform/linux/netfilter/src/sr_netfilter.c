@@ -187,6 +187,7 @@ unsigned int sr_netfilter_out_hook_fn(void *priv,
 		if ((process_info_p = sr_cls_sk_process_hash_get(skb->sk))) {
 			disp.tuple_info.id.pid = process_info_p->process_info.pid;
 			disp.tuple_info.id.uid = process_info_p->process_info.uid;
+			strncpy(disp.tuple_info.id.exec, process_info_p->process_info.exec, SR_MAX_PATH_SIZE);
 		}
 		con.con_id.daddr.v4addr = ntohl(ip_header->daddr); 
 		con.con_id.saddr.v4addr = ntohl(ip_header->saddr);

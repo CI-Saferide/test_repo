@@ -14,10 +14,13 @@
 #define SR_DB_ACTION_ALLOW_NAME "allow"
 #define SR_DB_ACTION_LOG_NAME "log"
 
+#define MAX_BUF_SIZE 100000
+
 SR_32 sr_db_init(void);
 void sr_db_deinit(void);
 SR_32 sr_db_action_update_action(action_t *action);
 action_t *sr_db_action_get_action(char *action_name);
 SR_32 sr_db_action_delete_action(action_t *action);
+SR_32 action_dump(int fd);
 
 #endif

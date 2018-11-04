@@ -109,6 +109,9 @@ clean:
 	@rm -fr ../tools/radix/src/*.o
 	@rm -fr ../tools/radix/src/.*.o.cmd
 
+install:
+	install -m 644 vsentry.ko /lib/modules/$(shell uname -r)/extra/vsentry.ko
+
 modules_install:
 	@$(MAKE) -C $(KERNEL_SRC) M=$(PWD) modules_install
 

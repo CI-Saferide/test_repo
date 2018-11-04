@@ -12,7 +12,6 @@
 
 static SR_BOOL is_run_cmd  = SR_TRUE;
 
-#define GET_CMD_URL "http://saferide-policies.eu-west-1.elasticbeanstalk.com/commands/sync"
 #define CMD_LEARN "StateLearn"
 #define CMD_OFF "StateOff"
 #define CMD_PROTECT "StateProtect"
@@ -83,8 +82,8 @@ static SR_32 handle_command(void)
 
 	config_params = sr_config_get_param();
 
-	SR_CURL_INIT(GET_CMD_URL);
-	curl_easy_setopt(curl, CURLOPT_URL, GET_CMD_URL);
+	SR_CURL_INIT(config_params->sr_commands_url);
+	curl_easy_setopt(curl, CURLOPT_URL, config_params->sr_commands_url);
 	curl_easy_setopt(curl, CURLOPT_NOSIGNAL, 1);
 
 	fetch->payload = (char *) calloc(1, sizeof(fetch->payload));
@@ -164,6 +163,14 @@ static SR_32 command_management(void *p)
 
 SR_32 sr_get_command_start(void)
 {
+	struct config_params_t *config_params;
+
+	config_params = sr_config_get_param();
+	if (!*(config_params->sr_commands_url)) {
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+			"%s=No get commands URL ",REASON);
+		return SR_SUCCESS;
+	}
 	is_run_cmd = SR_TRUE;
 	if (sr_start_task(SR_GET_COMMAND, command_management) != SR_SUCCESS) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
@@ -176,6 +183,11 @@ SR_32 sr_get_command_start(void)
 
 void sr_get_command_stop(void)
 {
+	struct config_params_t *config_params;
+
+	config_params = sr_config_get_param();
+	if (!*(config_params->sr_commands_url))
+		return;
 	is_run_cmd = SR_FALSE;
 
 	sr_stop_task(SR_GET_COMMAND);

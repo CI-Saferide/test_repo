@@ -38,8 +38,22 @@
 #include "sr_config_common.h"
 #include "sr_can_collector.h"
 #include "sr_config_parse.h"
-#include "sal_third_party_interface.h"
+#ifdef SR_CLI
+#include "sal_cli_interface.h"
+#endif
 #include "sr_stat_system_policer.h"
+
+static SR_BOOL is_engine_on;
+
+SR_BOOL get_engine_state(void)
+{
+	return is_engine_on;
+}
+
+void set_engine_state(SR_BOOL is_on)
+{
+	is_engine_on = is_on;
+}
 
 static SR_32 engine_main_loop(void *data)
 {
@@ -179,7 +193,9 @@ static void engine_shutdown(void)
 	struct config_params_t *config_params;
 
 	config_params = sr_config_get_param();
-	sal_third_party_interface_uninit();
+#ifdef SR_CLI
+	sal_cli_interface_uninit();
+#endif
 	if (config_params->remote_server_support_enable) {
 		sr_get_command_stop();
 	}
@@ -287,13 +303,6 @@ SR_32 sr_engine_start(int argc, char *argv[])
 		}
 	}
 
-	ret = sr_white_list_init();
-	if (ret != SR_SUCCESS){
-		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-						"%s=failed to init white list",REASON);
-		return SR_ERROR;
-	}
-
 	ret = sal_vsentry_fd_open();
 	if (ret != SR_SUCCESS){
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
@@ -341,13 +350,6 @@ SR_32 sr_engine_start(int argc, char *argv[])
 		return SR_ERROR;
 	}
 
-	ret = sr_white_list_ip_init();
-	if (ret != SR_SUCCESS){
-		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-						"%s=failed to init sr_white_list_ip_init",REASON);
-		return SR_ERROR;
-	}
-
 	ret = sr_task_set_pre_stop_cb(SR_ENGINE_TASK, sr_engine_pre_stop_cb);
 	if (ret != SR_SUCCESS){
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
@@ -377,12 +379,14 @@ SR_32 sr_engine_start(int argc, char *argv[])
 		return SR_ERROR;
 	}
 
-	ret = sal_third_party_interface_init();
+#ifdef SR_CLI
+	ret = sal_cli_interface_init();
 	if (ret != SR_SUCCESS){
 	CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-		"%s=failed to init trird partry interface",REASON);
+		"%s=failed to init cli interface",REASON);
 		return SR_ERROR;
 	}
+#endif
 
 	sr_db_init();
 	sentry_init(sr_config_vsentry_db_cb);
@@ -468,16 +472,16 @@ SR_32 sr_engine_start(int argc, char *argv[])
 #endif /* CONFIG_CAN_ML */
 			case 'e':
 					printf ("Move to WL learn mode \n");
-					sr_white_list_set_mode(SR_WL_MODE_LEARN);
+					sr_white_list_set_mode(SR_WL_MODE_LEARN, NULL);
 				break;
 			case 'f':
 				printf ("Move to WL prootect mode \n");
 				sr_stat_analysis_learn_mode_set(SR_STAT_MODE_PROTECT);
-				//sr_white_list_set_mode(SR_WL_MODE_APPLY);
+				//sr_white_list_set_mode(SR_WL_MODE_APPLY, NULL);
 				break;
 			case 'g':
 				printf ("Move to WL OFF mode \n");
-				sr_white_list_set_mode(SR_WL_MODE_OFF);
+				sr_white_list_set_mode(SR_WL_MODE_OFF, NULL);
 				break;
 			case 'z':
 				printf("print the white list !!!\n");

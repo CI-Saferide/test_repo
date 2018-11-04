@@ -21,6 +21,9 @@ SR_32 sys_repo_mng_create_action(sysrepo_mng_handler_t *handler, char *action_na
 SR_32 sys_repo_mng_delete_ip_rules(sysrepo_mng_handler_t *handler, SR_32 start, SR_32 end);
 SR_32 sys_repo_mng_delete_file_rules(sysrepo_mng_handler_t *handler, SR_32 start, SR_32 end);
 SR_32 sys_repo_mng_delete_can_rules(sysrepo_mng_handler_t *handler, SR_32 start, SR_32 end);
-SR_32 sysrepo_mng_delete_all(sysrepo_mng_handler_t *handler);
+SR_32 sysrepo_mng_delete_all(sysrepo_mng_handler_t *handler, SR_BOOL is_commit);
+SR_32 sys_repo_mng_update_engine_state(sysrepo_mng_handler_t *handler, SR_BOOL is_on);
+
+SR_U8 sys_repo_mng_perm_get_code(char *perms);
 
 #endif

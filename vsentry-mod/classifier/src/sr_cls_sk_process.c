@@ -4,7 +4,7 @@
 #include "sal_linux.h"
 
 #define SK_PROCESS_HASH_SIZE 500
-#define SR_SK_PROCESS_AGED_TIME 120
+
 static struct sr_gen_hash *sk_process_hash;
 
 SR_32 sk_process_comp(void *data_in_hash, void *comp_val)
@@ -26,34 +26,9 @@ void sk_process_print(void *data_in_hash)
 {
 	sk_process_item_t* ptr = (sk_process_item_t*)data_in_hash;
 
-	CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-		"%s=sk proces sk %p pid %d uid %d",REASON,
-		ptr->sk, ptr->process_info.pid, ptr->process_info.uid);
-}
-
-static SR_BOOL check_aged_cb(void *hash_data)
-{
-	sk_process_item_t *sk_process_item = (sk_process_item_t *)hash_data;
-
- 	if (!hash_data)
-		return SR_FALSE;
-#ifdef SR_DEBUG
-	if (sk_process_item->process_info.pid == 67333) { 
-	CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, 
-		"%s=in sk aged cb sk:%p pid:%d uid:%d elpsed rime:%d", REASON,
-		sk_process_item->sk, 
-		sk_process_item->process_info.pid, 
-		sk_process_item->process_info.uid, 
-		sal_elapsed_time_secs(sk_process_item->process_info.time_stamp));
-	}
-#endif
-
-	return (sal_elapsed_time_secs(sk_process_item->process_info.time_stamp) > SR_SK_PROCESS_AGED_TIME);
-}
-
-SR_32 sr_sk_process_cleanup(void)
-{
-	return sr_gen_hash_cond_delete_all(sk_process_hash, check_aged_cb);                
+	CEF_log_event(SR_CEF_CID_SYSTEM, "info", SEVERITY_HIGH,
+		"%s=process table sk %p pid %d uid %d exec %s",MESSAGE,
+		ptr->sk, ptr->process_info.pid, ptr->process_info.uid, ptr->process_info.exec);
 }
 
 SR_32 sr_cls_sk_process_hash_init(void)
@@ -96,10 +71,11 @@ SR_32 sr_cls_sk_process_hash_update(void *sk, sk_process_info_t *process_info)
 		sk_process_item->sk = sk;
 		sk_process_item->process_info.pid = process_info->pid;
 		sk_process_item->process_info.uid = process_info->uid;
+		strncpy(sk_process_item->process_info.exec, process_info->exec, SR_MAX_PATH_SIZE);
 		sal_update_time_counter(&(sk_process_item->process_info.time_stamp));
 		if ((sr_gen_hash_insert(sk_process_hash, sk , sk_process_item, 0)) != SR_SUCCESS) {
 			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-				"%s=failed to insert mid to sk_process enforce table",REASON);
+				"%s=failed to insert item to sk_process enforce table",REASON);
 				return SR_ERROR;
 		}
 	} else {
@@ -109,6 +85,11 @@ SR_32 sr_cls_sk_process_hash_update(void *sk, sk_process_info_t *process_info)
 	}
 
 	return SR_SUCCESS;
+}
+
+SR_32 sr_cls_sk_process_hash_delete(void *sk)
+{
+	return sr_gen_hash_delete(sk_process_hash, sk, 0);
 }
 
 sk_process_item_t *sr_cls_sk_process_hash_get(void *sk)

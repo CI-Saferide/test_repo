@@ -8,6 +8,7 @@
 #include "sr_white_list_file.h"
 #include "sr_white_list_can.h"
 #include "sr_white_list_ip.h"
+#include "sysrepo_mng.h"
 
 typedef enum {
         SR_WL_MODE_LEARN,
@@ -22,6 +23,7 @@ typedef struct white_list_item  {
 } sr_white_list_item_t;
 
 SR_32 sr_white_list_init(void);
+sysrepo_mng_handler_t *sr_white_list_get_hadler(void);
 void sr_white_list_uninit(void);
 SR_32 sr_white_list_hash_insert(char *exec, sr_white_list_item_t **new_item);
 sr_white_list_item_t *sr_white_list_hash_get(char *exec);
@@ -29,8 +31,9 @@ SR_32 sr_white_list_hash_exec_for_all(SR_32 (*cb)(void *hash_data, void *data));
 SR_32 sr_white_list_hash_delete(char *exec);
 SR_32 sr_white_list_delete_all(void);
 void sr_white_list_hash_print(void);
-SR_32 sr_white_list_set_mode(sr_wl_mode_t new_wl_mode);
+SR_32 sr_white_list_set_mode(sr_wl_mode_t new_wl_mode, void (*notify_cb)(void));
 sr_wl_mode_t sr_white_list_get_mode(void);
 SR_32 sr_white_list_reset(void);
+void white_list_print_cb_register(void (*print_cb)(char *buf));
 
 #endif

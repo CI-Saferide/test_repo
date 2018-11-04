@@ -20,9 +20,9 @@ typedef struct wl_can_head {
 */
 
 SR_32 sr_white_list_canbus(struct sr_ec_can_t *can_info);
-void sr_white_list_canbus_print(sr_wl_can_item_t *wl_canbus);
+void sr_white_list_canbus_print(sr_wl_can_item_t *wl_canbus, void (*print_cb)(char *buf));
 void sr_white_list_canbus_cleanup(sr_wl_can_item_t *wl_canbus);
-SR_32 sr_white_list_canbus_apply(SR_BOOL is_protect);
+SR_32 sr_white_list_canbus_apply(void);
 SR_32 sr_white_list_canbus_init(void);
 
 #endif

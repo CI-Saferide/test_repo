@@ -13,6 +13,8 @@ INCLUDES	:= -I$(shell pwd)/include \
 			   -I$(TOP_DIR)/../common/include \
 			   -I$(TOP_DIR)/../tools/sr-log/include \
 			   -I$(TOP_DIR)/../tools/json \
+			   -I$(TOP_DIR)/../vsentry-engine/include \
+			   -I$(TOP_DIR)/../tools/db_tools/include \
 			   -I$(TOP_DIR)/sal/platform/linux/include \
 			   -I$(TOP_DIR)/../vsentry-lib/include \
 
