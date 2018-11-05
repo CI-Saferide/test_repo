@@ -151,7 +151,7 @@ static SR_32 create_can_rule_for_exec(SR_U8 dir, SR_32 *rule_id, char *exec)
 #ifdef DEBUG
 			printf(">>>>>>> IN Rule:%d tuple:%d exec:%s: if:%s: msgid:%x \n", *rule_id, tuple_id, exec, if_name, rule_iter->msg_id);
 #endif
-			if (sys_repo_mng_create_canbus_rule(sr_white_list_get_hadler(), *rule_id, tuple_id, rule_iter->msg_id, if_name, exec, "*", WHITE_LIST_ACTION, dir) != SR_SUCCESS) {
+			if (sys_repo_mng_create_canbus_rule(sr_white_list_get_hadler(), *rule_id, tuple_id, rule_iter->msg_id, if_name, exec, "*", WHITE_LIST_ACTION, can_dir_convert(dir)) != SR_SUCCESS) {
 				CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 					"%s=fail to create can rule in persistent db rule id: %d mid: %x dir: %s exec: %s",
 						REASON, *rule_id, rule_iter->msg_id, dir==SR_CAN_OUT? "out":"in" ,exec);

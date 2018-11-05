@@ -39,7 +39,9 @@ SR_32 sr_can_get_special_dev_id(char *name, SR_32 *if_id ,SR_32 *dev_id)
 #ifndef _KERNEL
 	if (!memcmp(name, PCAN_DEV_NAME, strlen(PCAN_DEV_NAME))) {
 		*if_id = PCAN_DEV;
-		*dev_id  = atoi(name + strlen(PCAN_DEV_NAME));
+		*dev_id = atoi(name + strlen(PCAN_DEV_NAME));
+		if (*dev_id <= 0)
+			return SR_ERROR;
 		return SR_SUCCESS;
         }
 #endif
@@ -93,6 +95,8 @@ SR_32 sr_can_tran_get_if_id(can_translator_t *can_traslator, SR_32 if_id, SR_32 
 			strcpy(can_traslator->interfaces_name[*can_id], "invalid");
 		}
 	}
+	CEF_log_event(SR_CEF_CID_SYSTEM, "info", SEVERITY_LOW,
+				"%s=new CAN interface detected: %s",MESSAGE, can_traslator->interfaces_name[*can_id]);
 
         return SR_SUCCESS;
 }
