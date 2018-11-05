@@ -96,7 +96,7 @@ SR_32 sr_can_tran_get_if_id(can_translator_t *can_traslator, SR_32 if_id, SR_32 
 		}
 	}
 	CEF_log_event(SR_CEF_CID_SYSTEM, "info", SEVERITY_LOW,
-				"%s=CAN interface detected :%s ",REASON, can_traslator->interfaces_name[*can_id]);
+				"%s=new CAN interface detected: %s",MESSAGE, can_traslator->interfaces_name[*can_id]);
 
         return SR_SUCCESS;
 }
