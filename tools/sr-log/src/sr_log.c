@@ -89,7 +89,7 @@ void log_print_cef_msg(CEF_payload *cef)
 			cef->class,
 			cef->name,
 			cef->sev,
-			DEVIC_RECEIPT_TIME,buffer,tv.tv_usec/1000,buffer_tz,
+			DEVIC_RECEIPT_TIME,buffer,tv.tv_usec/1000,buffer_tz, 
 			DEVICE_EXTERNAL_ID,config_params->vin, // the vin would be in the beginning of the extension filed.
 			DEVICE_FACILITY,LOG_FROM_ENGINE,
 			cef->extension);
