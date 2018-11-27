@@ -69,6 +69,7 @@ void log_print_cef_msg(CEF_payload *cef)
 	SR_8 cef_buffer[MAX_PAYLOAD];
 	time_t timer;
     SR_8 buffer[26]; //for time
+    SR_8 buffer_tz[8]; //for timezone
     struct tm* tm_info;
     struct timeval tv;
     struct config_params_t *config_params;
@@ -79,15 +80,16 @@ void log_print_cef_msg(CEF_payload *cef)
     time(&timer);
     tm_info = localtime(&timer);
     strftime(buffer, 26, "%Y-%m-%d %H:%M:%S", tm_info);
+    strftime(buffer_tz,sizeof(buffer_tz), "%z", tm_info);
 
-	sprintf(cef_buffer,"CEF:%d|%s|%s|%d.%d|%d|%s|%d|%s=%s.%.6ld %s=%s %s=%s %s\n",
-			CEF_VER_MAJOR,
+	sprintf(cef_buffer,"CEF:%d|%s|%s|%d.%d|%d|%s|%d|%s=%s.%.3ld%s %s=%s %s=%s %s\n",
+			CEF_VER,
 			VENDOR_NAME,PRODUCT_NAME,
 			VSENTRY_VER_MAJOR,VSENTRY_VER_MINOR,
 			cef->class,
 			cef->name,
 			cef->sev,
-			DEVIC_RECEIPT_TIME,buffer,tv.tv_usec,
+			DEVIC_RECEIPT_TIME,buffer,tv.tv_usec/1000,buffer_tz,
 			DEVICE_EXTERNAL_ID,config_params->vin, // the vin would be in the beginning of the extension filed.
 			DEVICE_FACILITY,LOG_FROM_ENGINE,
 			cef->extension);

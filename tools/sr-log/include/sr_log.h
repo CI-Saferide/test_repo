@@ -2,8 +2,8 @@
 #define SR_LOG_H
 #include "sr_sal_common.h"
 
-#define CEF_VER_MAJOR	0 
-#define CEF_VER_MINOR	0
+#define CEF_VER			2 
+
 #define VENDOR_NAME		"SafeRide"
 #define PRODUCT_NAME	"vSentry"
 
