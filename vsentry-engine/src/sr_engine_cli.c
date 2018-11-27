@@ -304,7 +304,7 @@ static SR_32 handle_ip_commit(sysrepo_mng_handler_t *handler, SR_U32 rule_id, SR
 static SR_32 handle_can_commit(sysrepo_mng_handler_t *handler, SR_U32 rule_id, SR_U32 tuple_id)
 {
 	char *ptr, action_name[ACTION_STR_SIZE], user[USER_NAME_SIZE], program[PROG_NAME_SIZE], interface[INTERFACE_SIZE];
-	SR_16 msg_id;
+	SR_32 msg_id;
 	SR_U8 dir;
 
 	if (!(ptr = strtok(NULL, ","))) {
