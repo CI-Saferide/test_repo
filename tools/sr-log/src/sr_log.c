@@ -64,6 +64,23 @@ void log_cef_msg(cef_str str)
     }
 }
 
+void handle_log_options(SR_8* cef_log, enum SR_CEF_SEVERITY severity)
+{
+	struct config_params_t *config_params;
+	config_params = sr_config_get_param();
+
+	if (SR_FALSE == g_log_init)
+		printf ("%s", cef_log);
+	if (config_params->log_type & LOG_TYPE_CURL) {
+		SR_MUTEX_LOCK(&cef_lock);
+		log_cef_msg(cef_log);
+		SR_MUTEX_UNLOCK(&cef_lock);
+	}
+
+	if (config_params->log_type & LOG_TYPE_SYSLOG)
+		sal_log (cef_log, severity);
+}
+
 void log_print_cef_msg(CEF_payload *cef)
 {	
 	SR_8 cef_buffer[MAX_PAYLOAD];
@@ -75,7 +92,6 @@ void log_print_cef_msg(CEF_payload *cef)
     struct config_params_t *config_params;
 
     config_params = sr_config_get_param();
-
     gettimeofday(&tv, NULL); 
     time(&timer);
     tm_info = localtime(&timer);
@@ -94,18 +110,8 @@ void log_print_cef_msg(CEF_payload *cef)
 			DEVICE_FACILITY,LOG_FROM_ENGINE,
 			cef->extension);
 	
-	if (SR_FALSE == g_log_init)
-		printf ("%s", cef_buffer);
-	if (config_params->log_type & LOG_TYPE_CURL) {
-		SR_MUTEX_LOCK(&cef_lock);
-		log_cef_msg(cef_buffer);
-		SR_MUTEX_UNLOCK(&cef_lock);
-	}
-
-	if (config_params->log_type & LOG_TYPE_SYSLOG)
-		sal_log (cef_buffer, cef->sev);
+	handle_log_options(cef_buffer, cef->sev);
 }
-
 
 void CEF_log_event(const SR_U32 class, const char *event_name, enum SR_CEF_SEVERITY severity, const char *fmt, ...)
 {
@@ -113,14 +119,14 @@ void CEF_log_event(const SR_U32 class, const char *event_name, enum SR_CEF_SEVER
 	va_list args;
 	SR_8 msg[SR_MAX_LOG];
 	struct CEF_payload *payload;
-	
+
 	SR_Malloc(payload,struct CEF_payload *,sizeof (struct CEF_payload));
-	
+
 	va_start(args, fmt);
 	i = vsnprintf(msg, SR_MAX_LOG-1, fmt, args);
 	va_end(args);
 	msg[SR_MAX_LOG - 1] = 0;
-	
+
 	if (payload) {	
 		payload->class = class;		
 		sal_strcpy(payload->name,(char*)event_name);
@@ -128,10 +134,10 @@ void CEF_log_event(const SR_U32 class, const char *event_name, enum SR_CEF_SEVER
 		sal_strcpy(payload->extension,msg);
 		
 		log_print_cef_msg(payload);
-	}else{
+	} else {
 		printf("Failed to CEF log: %s|%s|%s %x\n",(char*)event_name,severity_strings[severity],msg,i);
 	}
-		
+	
 	SR_Free(payload);	
 }
 
@@ -143,7 +149,7 @@ SR_32 sr_log_init (const SR_8* app_name, SR_32 flags)
 	config_params = sr_config_get_param();
 
 	MB = 1024*1024*config_params->cef_file_size;
-	
+
 	if (config_params->log_type & LOG_TYPE_SYSLOG)
 		sal_openlog();
 

@@ -33,10 +33,10 @@ enum SR_CEF_CLASS_ID {
 };
 
 
-#define NETLINK_USER		 31
-#define NETLINK_LOG_USER 	 18
+#define NETLINK_USER		31
+#define NETLINK_LOG_USER 	18
 
-#define MAX_PAYLOAD 2024 /* maximum payload size*/
+#define MAX_PAYLOAD 		2048 			/* maximum payload size*/
 
 #define LOG_CEF_PREFIX "vsentry"
 #define LOG_CEF_SUFFIX ".log"
@@ -192,6 +192,7 @@ int __sr_print (enum SR_CEF_SEVERITY severity, int line, const char *file, const
 
 void CEF_log_event(const SR_U32 class, const char *event_name, enum SR_CEF_SEVERITY severity, const char *fmt, ...);
 void log_print_cef_msg(CEF_payload *cef);
+void handle_log_options(SR_8* cef_log, enum SR_CEF_SEVERITY severity);
 
 #ifdef DEBUG
 #define pr_fmt(fmt) fmt

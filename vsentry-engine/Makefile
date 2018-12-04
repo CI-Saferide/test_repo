@@ -20,6 +20,7 @@ VPATH 		:=  $(TOP_DIR)/sal/platform/linux/src \
 				$(TOP_DIR)/../tools/radix/src \
 				$(TOP_DIR)/stat_analysis/src \
 				$(TOP_DIR)/white_list/src \
+				$(TOP_DIR)/third-party/src \
 				$(TOP_DIR)/db/src
 
 # sources to compile
@@ -64,7 +65,8 @@ SRCS 		:=  main.c \
 				sr_ml_can.c \
 				log_uploader.c \
 				sr_canbus_common.c \
-				sr_stat_system_policer.c
+				sr_stat_system_policer.c \
+				irdeto_unix_interface.c
 
 SRCS 		+= $(if $(SR_CLI),sal_cli_interface.c sr_engine_cli.c)
 
@@ -83,6 +85,7 @@ INCLUDES 	:=  -I../common/include \
 				-I../common/stat_analysis/include \
 				-Istat_analysis/include \
 				-Iwhite_list/include \
+				-Ithird-party/include \
 				-Idb/include \
 
 OBJS		:=  $(addprefix $(OBJDIR)/,$(SRCS:.c=.o))
@@ -97,6 +100,7 @@ CFLAGS 		+= -MMD -Wall
 CFLAGS 		+= -DCONFIG_STAT_ANALYSIS
 CFLAGS 		+= -DCONFIG_SYSTEM_POLICER
 CFLAGS 		+= -DCONFIG_CAN_ML
+CFLAGS 		+= -DCONFIG_IRDETO_INTERFACE
 CFLAGS 		+= $(if $(SR_STAT_ANALYSIS_DEBUG),-DSR_STAT_ANALYSIS_DEBUG)
 CFLAGS 		+= $(if $(SR_CAN_DEBUG_PRINT),-DSR_CAN_DEBUG_PRINT)
 CFLAGS 		+= -DSR_CAN_DEBUG_PRINT

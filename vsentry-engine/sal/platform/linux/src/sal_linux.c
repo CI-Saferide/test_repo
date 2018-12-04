@@ -67,7 +67,7 @@ SR_32 sal_task_start(void **data, SR_32 (*task_func)(void *data))
 	pthread_t *thread = (pthread_t*)malloc(sizeof(pthread_t));
 
 	if (pthread_create(thread, NULL, sal_wrapper_func, task_func) != 0) {
-		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_LOW,
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 			"%s=sal_task_start: failed to create new thread", REASON);
 		free(thread);
 		return SR_ERROR;
@@ -452,19 +452,19 @@ SR_32 sal_linux_local_interface(char *file_name, SR_32 (*handle_data_cb)(char *b
 		if (msgsock == -1)
 			printf("accept %s\n", strerror(errno));
 		else do {
-				bzero(buf, sizeof(buf));
-				rval = read(msgsock, buf, 1024);
-				if (rval < 0)
-					printf("reading stream message %s\n", strerror(errno));
-				else if (rval == 0)
-					printf("ending connection\n");
-				else {
-					rc = handle_data_cb(buf, msgsock);
-					if (rc != SR_SUCCESS) {
-						printf("handle data failed \n");
-					}
+			bzero(buf, sizeof(buf));
+			rval = read(msgsock, buf, 1024);
+			if (rval < 0)
+				printf("reading stream message %s\n", strerror(errno));
+			else if (rval == 0)
+				printf("ending connection\n");
+			else {
+				rc = handle_data_cb(buf, msgsock);
+				if (rc != SR_SUCCESS) {
+					printf("handle data failed \n");
 				}
-			} while (rval > 0);
+			}
+		} while (rval > 0);
 		
 		close(msgsock);
 	}

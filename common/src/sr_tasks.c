@@ -88,7 +88,7 @@ SR_32 sr_start_task(sr_task_type task_id,SR_32 (*task_func)(void *data))
 	sr_tasks_array[task_id].run = SR_TRUE;
 
 	if (sal_task_start(&sr_tasks_array[task_id].data, task_func) != SR_SUCCESS) {
-		CEF_log_event(SR_CEF_CID_SYSTEM, "Error", SEVERITY_HIGH,
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 			"%s=sal_start_task: failed to create thread for %s",REASON,
 			task_names[task_id]);
 		sr_tasks_array[task_id].run = SR_FALSE;
