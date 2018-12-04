@@ -178,9 +178,11 @@ static int upload_log_file(char* filename, int offset)
     ret = size;
 
 out:
-   if (formpost)
-	curl_formfree(formpost);
-
+/*
+	//causing a segfault error at 7f2f00000048 ip 00007f2f42aa44fb sp 00007f2f39aa4e30 error 4 in libcurl.so.4.3.0 
+	if (formpost)
+		curl_formfree(formpost); 
+*/
     if (logfile)
         fclose(logfile);
 
@@ -356,8 +358,7 @@ static int can_log_upload(void)
         /* upload to this place */
         curl_easy_setopt(curl, CURLOPT_URL, config_params->can_collector_url);
         //curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
-        curl_formadd(&post, &last, CURLFORM_COPYNAME, "can",
-              CURLFORM_FILE, candump_file_name_tgz, CURLFORM_END);
+        curl_formadd(&post, &last, CURLFORM_COPYNAME, "can",CURLFORM_FILE, candump_file_name_tgz, CURLFORM_END);
         curl_easy_setopt(curl, CURLOPT_HTTPPOST, post);
         
         snprintf(post_vin, 64, "X-VIN: %s", config_params->vin);
