@@ -1960,7 +1960,7 @@ SR_32 main(int argc, char **argv)
 			cmd_insert(cmds, cmd);
 		parse_command(cmd);
 	}
-	printf("\033[%dD", (int)strlen(CLI_PROMPT));
+	printf("\n\033[%dD", (int)strlen(CLI_PROMPT));
 
 	return SR_SUCCESS;
 }
