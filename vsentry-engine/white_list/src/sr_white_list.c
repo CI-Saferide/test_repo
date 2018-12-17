@@ -205,8 +205,13 @@ SR_32 sr_white_list_set_mode(sr_wl_mode_t new_wl_mode, void (*notify_cb)(void))
 
 	config_params = sr_config_get_param();
 
-	if (wl_mode == new_wl_mode)
+	if (wl_mode == new_wl_mode) {
+		if (wl_mode == SR_WL_MODE_APPLY) {
+			if (notify_cb)
+				notify_cb();
+		}
 		return SR_SUCCESS;
+	}
 
 	switch (new_wl_mode) { 
 		case SR_WL_MODE_LEARN:
