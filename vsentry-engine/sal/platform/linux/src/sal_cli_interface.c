@@ -30,6 +30,7 @@ static void notify_apply(void)
 {
 	char syncbuf[2];
 
+	sleep(1);
 	while (sr_config_get_mod_state())
 		usleep(10000);
 	// Snc 

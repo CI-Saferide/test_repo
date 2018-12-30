@@ -1793,6 +1793,7 @@ static void parse_command(char *cmd)
 		handle_control(&should_load);
 		if (should_load) {
 			printf("\nloading....\n");
+			db_cleanup();
 			if (handle_load() != SR_SUCCESS) {
 				printf("error handling load\n");
 			}
