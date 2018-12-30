@@ -129,8 +129,8 @@ int sr_cls_file_del_rule(char *filename, char *exec, char *user, SR_U32 rulenum,
 {
 	struct stat buf;
 	sr_file_msg_cls_t *msg;
-	SR_U32 exec_inode = 0;
-	SR_32  uid = -2;
+	SR_U32 exec_inode = INODE_NONE;
+	SR_32  uid = UID_NONE;
 	int st;
 
 	if(lstat(filename, &buf)) { // Error

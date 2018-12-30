@@ -218,11 +218,11 @@ SR_8 sr_cls_file_msg_dispatch(struct sr_cls_file_msg *msg)
 				msg->rulenum, msg->inode1);
 			if ((st = sr_cls_inode_del_rule(msg->inode1, msg->rulenum)) != SR_SUCCESS)
 			    return st;
-			if (msg->exec_inode) {
+			if (msg->exec_inode != INODE_NONE) {
 				if ((st = sr_cls_exec_inode_del_rule(SR_FILE_RULES, msg->exec_inode, msg->rulenum)) != SR_SUCCESS)
 			    		return st;
 			}
-			if (msg->uid != -2) {
+			if (msg->uid != UID_NONE) {
 				return sr_cls_uid_del_rule(SR_FILE_RULES, msg->uid, msg->rulenum);
 			}
 			break;

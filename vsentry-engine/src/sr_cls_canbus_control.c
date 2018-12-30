@@ -55,8 +55,8 @@ int sr_cls_canid_add_rule(SR_U32 canid, char *exec, char *user, SR_U32 rulenum,S
 int sr_cls_canid_del_rule(SR_U32 canid, char *exec, char *user, SR_U32 rulenum, SR_U8 dir, char *interface)
 {
 	sr_canbus_msg_cls_t *msg;
- 	SR_U32 inode = 0;
- 	SR_32 uid = -2, if_id, dev_id;
+ 	SR_U32 inode = INODE_NONE;
+ 	SR_32 uid = UID_NONE, if_id, dev_id;
 
 	int st;
 

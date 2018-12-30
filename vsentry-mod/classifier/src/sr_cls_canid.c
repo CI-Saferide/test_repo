@@ -247,11 +247,11 @@ SR_8 sr_cls_canid_msg_dispatch(struct sr_cls_canbus_msg *msg)
 				if ((st =  sr_cls_canid_del_rule(msg->canid, msg->rulenum, msg->dir, msg->if_id, msg->dev_id)) != SR_SUCCESS)
 					return st;
 			}
-			if (msg->exec_inode) {
+			if (msg->exec_inode != INODE_NONE) {
 				if ((st = sr_cls_exec_inode_del_rule(SR_CAN_RULES, msg->exec_inode, msg->rulenum)) != SR_SUCCESS)
 			   		return st;
 			}
-			if (msg->uid != -2) {
+			if (msg->uid != UID_NONE) {
 				return sr_cls_uid_del_rule(SR_CAN_RULES, msg->uid, msg->rulenum);
 			}
 			return st;
