@@ -9,12 +9,6 @@
 
 static list_t can_rules_list;
 
-typedef struct look_for_s {
-	SR_U16 rulenum;
-	SR_32  tupleid;
-	char   name[1024];
-} look_for_t;
-
 static void dump_can_rule(void *data, void *param)
 {
         int fd = (int)(long)param, n, len;

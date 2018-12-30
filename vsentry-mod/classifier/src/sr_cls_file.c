@@ -218,9 +218,13 @@ SR_8 sr_cls_file_msg_dispatch(struct sr_cls_file_msg *msg)
 				msg->rulenum, msg->inode1);
 			if ((st = sr_cls_inode_del_rule(msg->inode1, msg->rulenum)) != SR_SUCCESS)
 			    return st;
-			if ((st = sr_cls_exec_inode_del_rule(SR_FILE_RULES, msg->exec_inode, msg->rulenum)) != SR_SUCCESS)
-			    return st;
-			return sr_cls_uid_del_rule(SR_FILE_RULES, msg->uid, msg->rulenum);
+			if (msg->exec_inode) {
+				if ((st = sr_cls_exec_inode_del_rule(SR_FILE_RULES, msg->exec_inode, msg->rulenum)) != SR_SUCCESS)
+			    		return st;
+			}
+			if (msg->uid != -2) {
+				return sr_cls_uid_del_rule(SR_FILE_RULES, msg->uid, msg->rulenum);
+			}
 			break;
 		case SR_CLS_INODE_ADD_RULE:
 			CEF_log_debug(SR_CEF_CID_FILE, "info", SEVERITY_LOW,

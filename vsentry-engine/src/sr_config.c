@@ -348,6 +348,7 @@ static SR_32 update_file_rule(file_rule_t *rule)
 static SR_32 delete_file_rule(file_rule_t *rule)
 {
 	file_rule_t *old_rule;
+	char *program = NULL, *user = NULL;
 
 	if (!(old_rule = sr_db_file_rule_get(rule))) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
@@ -356,8 +357,13 @@ static SR_32 delete_file_rule(file_rule_t *rule)
 		return SR_SUCCESS;
 	}
 
-	sr_cls_file_del_rule(old_rule->tuple.filename, *(old_rule->tuple.program) ? old_rule->tuple.program : "*",
-		*(old_rule->tuple.user) ? old_rule->tuple.user : "*", old_rule->rulenum, (SR_U8)1);
+	// Check if there other tuples in the rules.
+	if (!file_rule_tuple_exist_for_field(rule->rulenum, rule->tuple.id, SR_TRUE, *(old_rule->tuple.program) ? old_rule->tuple.program : "*"))
+		program = *(old_rule->tuple.program) ? old_rule->tuple.program : "*";
+	if (!file_rule_tuple_exist_for_field(rule->rulenum, rule->tuple.id, SR_FALSE, *(old_rule->tuple.user) ? old_rule->tuple.user : "*"))
+		user = *(old_rule->tuple.user) ? old_rule->tuple.user : "*";
+
+	sr_cls_file_del_rule(old_rule->tuple.filename, program, user, old_rule->rulenum, (SR_U8)1);
 	sr_db_file_rule_delete(rule);
 
 	return SR_SUCCESS;
