@@ -10,5 +10,6 @@ SR_32 sr_db_file_rule_add(file_rule_t *file_rule);
 SR_32 sr_db_file_rule_delete(file_rule_t *file_rule);
 file_rule_t * sr_db_file_rule_get(file_rule_t *file_rule);
 SR_32 file_rule_dump_rules(int fd);
+SR_BOOL file_rule_tuple_exist_for_field(SR_U16 rulenum, SR_U32 tupleid, SR_BOOL is_program, char *value);
 
 #endif

@@ -55,17 +55,18 @@ int sr_cls_canid_add_rule(SR_U32 canid, char *exec, char *user, SR_U32 rulenum,S
 int sr_cls_canid_del_rule(SR_U32 canid, char *exec, char *user, SR_U32 rulenum, SR_U8 dir, char *interface)
 {
 	sr_canbus_msg_cls_t *msg;
- 	SR_U32 inode;
- 	SR_32 uid, if_id, dev_id;
+ 	SR_U32 inode = INODE_NONE;
+ 	SR_32 uid = UID_NONE, if_id, dev_id;
 
 	int st;
 
-        if ((st = sr_get_inode(exec, &inode)) != SR_SUCCESS)  {
-            CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-				"%s=can del:failed to get exec inode for can rule, exec %s, rule %d",REASON, exec, rulenum);
-            return st;
-        }
-	uid = sr_get_uid(user);
+	if (exec && (st = sr_get_inode(exec, &inode)) != SR_SUCCESS)  {
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+			"%s=can del:failed to get exec inode for can rule, exec %s, rule %d",REASON, exec, rulenum);
+		return st;
+	}
+	if (user)
+		uid = sr_get_uid(user);
 	if (get_can_interface_id(interface, &if_id, &dev_id) != SR_SUCCESS) {
 		 CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 					"%s=can add:failed to get id for interface %s, rule %d",REASON, interface, rulenum);

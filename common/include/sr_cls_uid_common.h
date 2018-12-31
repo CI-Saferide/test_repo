@@ -4,6 +4,7 @@
 #include "sr_actions_common.h" 
 
 #define UID_ANY -1
+#define UID_NONE -2
 
 typedef enum {
 	SR_CLS_UID_DEL_RULE = 0,

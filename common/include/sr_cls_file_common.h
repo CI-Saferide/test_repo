@@ -3,6 +3,7 @@
 #include "sr_types.h"
 
 #define INODE_ANY 0
+#define INODE_NONE 0xFFFFFFFF
 
 typedef enum {
         CLS_FILE_MEM_OPT_ALL_FILES,

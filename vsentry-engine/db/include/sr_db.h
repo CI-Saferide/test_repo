@@ -16,6 +16,12 @@
 
 #define MAX_BUF_SIZE 100000
 
+typedef struct look_for_s {
+        SR_U16 rulenum;
+        SR_32  tupleid;
+        char   name[1024];
+} look_for_t;
+
 SR_32 sr_db_init(void);
 void sr_db_deinit(void);
 SR_32 sr_db_action_update_action(action_t *action);

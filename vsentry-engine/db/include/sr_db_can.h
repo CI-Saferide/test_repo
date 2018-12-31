@@ -10,6 +10,6 @@ SR_32 sr_db_can_rule_add(can_rule_t *can_rule);
 SR_32 sr_db_can_rule_delete(can_rule_t *can_rule);
 can_rule_t * sr_db_can_rule_get(can_rule_t *can_rule);
 SR_32 can_rule_dump_rules(int fd);
-void arik_print(char *msg);
+SR_BOOL can_rule_tuple_exist_for_field(SR_U16 rulenum, SR_U32 tupleid, SR_BOOL is_program, char *name);
 
 #endif

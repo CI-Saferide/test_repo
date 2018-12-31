@@ -37,6 +37,55 @@ SR_32 can_rule_dump_rules(int fd)
         return SR_SUCCESS;
 }
 
+static SR_BOOL is_found;
+
+static void looks_for_exec(void *data, void *param)
+{
+	can_rule_t *can_rule = (can_rule_t *)data;
+
+	look_for_t *look_for = (look_for_t *)param;
+
+	if (!strcmp(can_rule->tuple.program, look_for->name) && can_rule->rulenum == look_for->rulenum && can_rule->tuple.id != look_for->tupleid)
+		is_found = SR_TRUE;
+
+#ifdef DEBUG
+	printf(">>>>>>>>>>>> in looks_for_Exec ruile:%d t:%d exec:%s: lookfor : rule:%d t:%d exec:%s: \n", 
+		can_rule->rulenum, can_rule->tuple.id, can_rule->tuple.program,
+		look_for->rulenum, look_for->tupleid, look_for->name);
+#endif
+}
+
+static void looks_for_user(void *data, void *param)
+{
+	can_rule_t *can_rule = (can_rule_t *)data;
+
+	look_for_t *look_for = (look_for_t *)param;
+
+	if (!strcmp(can_rule->tuple.user, look_for->name) && can_rule->rulenum == look_for->rulenum && can_rule->tuple.id != look_for->tupleid)
+		is_found = SR_TRUE;
+
+#ifdef DEBUG
+	printf(">>>>>>>>>>>> in looks_for_Exec ruile:%d t:%d exec:%s: lookfor: rule:%d t:%d user:%s: \n", 
+		can_rule->rulenum, can_rule->tuple.id, can_rule->tuple.user,
+		look_for->rulenum, look_for->tupleid, look_for->name);
+#endif
+}
+
+SR_BOOL can_rule_tuple_exist_for_field(SR_U16 rulenum, SR_U32 tupleid, SR_BOOL is_program, char *value)
+{
+	look_for_t data;
+
+	data.rulenum = rulenum;
+	data.tupleid = tupleid;
+	strncpy(data.name, value, 1024);
+
+	is_found = SR_FALSE;
+	
+	list_exec_for_each(&can_rules_list, is_program ? looks_for_exec : looks_for_user, (void *)&data);
+
+	return is_found;
+}
+
 static bool can_rule_search_cb(void *candidate, void *data)
 {
 	can_rule_t *search_ptr = (can_rule_t *)data;

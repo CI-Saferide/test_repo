@@ -125,7 +125,7 @@ SR_32 can_collector_task(void *data)
 					
 			strcpy(buffer,buffer_TS);
 			can_idx = manage_can_inf_table(addr.can_ifindex);
-            sal_sprintf(buffer_MsgID,"%9x %s [%d]",frame.can_id,can_infname[can_idx],frame.len); //buffer for MsgID and size
+            sal_sprintf(buffer_MsgID,"%9x %s [%d]",frame.can_id & 0x1fffffff,can_infname[can_idx],frame.len); //buffer for MsgID and size
 
 			strcat(buffer,buffer_MsgID);
 
@@ -136,7 +136,7 @@ SR_32 can_collector_task(void *data)
             strcat(buffer,"\n");
 #ifdef CONFIG_CAN_ML
             /* send raw can to ml */
-			ml_can_get_raw_data((SR_U64)((tv.tv_sec * 1000000) + tv.tv_usec), (SR_U32)frame.can_id);
+			ml_can_get_raw_data((SR_U64)((tv.tv_sec * 1000000) + tv.tv_usec), (SR_U32)frame.can_id & 0x1fffffff);
 #endif /* CONFIG_CAN_ML */
 
             log_it(buffer);

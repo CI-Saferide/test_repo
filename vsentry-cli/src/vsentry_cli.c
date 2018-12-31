@@ -828,9 +828,24 @@ static SR_BOOL is_valid_msg_ig(char *str)
 	return SR_TRUE;
 }
 
+static SR_BOOL is_special_interface(char *interface)
+{
+	struct stat buf;
+	char dev_name[128];
+
+	if (strstr(interface, PCAN_DEV_NAME)) {
+		sprintf(dev_name, "/dev/%s", interface);
+		if (stat(dev_name, &buf) == 0)
+			return SR_TRUE;
+	}
+	return SR_FALSE;
+}
+
 static SR_BOOL is_valid_interface(char *interface)
 {
 	if (if_nametoindex(interface))
+		return SR_TRUE;
+	if (is_special_interface(interface))
 		return SR_TRUE;
 	return SR_FALSE;
 }
@@ -1793,6 +1808,7 @@ static void parse_command(char *cmd)
 		handle_control(&should_load);
 		if (should_load) {
 			printf("\nloading....\n");
+			db_cleanup();
 			if (handle_load() != SR_SUCCESS) {
 				printf("error handling load\n");
 			}
