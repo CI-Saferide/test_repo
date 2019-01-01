@@ -33,6 +33,11 @@ static char *home, test_area[MAX_STR_SIZE];
 static int is_verbose;
 FILE *flog;
 
+SR_32 sr_config_get_mod_state(void)
+{
+	return 0;
+}
+
 int get_ip_address(char ip[])
 {
 	FILE *f;
