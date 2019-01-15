@@ -1315,6 +1315,11 @@ static SR_32 handle_update_action(SR_BOOL is_delete)
 		printf("usage: update action action_name action_type (none | allow | drop) [log=syslog | file | none]\n");
 		return SR_ERROR;
 	}
+	if (strlen(action_name) >= ACTION_STR_SIZE) {
+		sprintf(msg, "Action name exeeds max len %d/%d ", (int)strlen(action_name), ACTION_STR_SIZE - 1);
+		error(msg ,SR_TRUE);
+		return SR_ERROR;
+	}
 	if (is_delete)
 		return delete_action(action_name);
 	action = get_action(action_name);
