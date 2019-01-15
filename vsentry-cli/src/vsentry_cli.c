@@ -119,7 +119,7 @@ static void notify_updated_can_rule(SR_U32 rule_id, rule_info_t *update_rule)
 		update_rule->can_rule.tuple.msg_id,
 		update_rule->can_rule.tuple.interface,
 		get_dir_desc(update_rule->can_rule.tuple.direction),
-		update_rule->can_rule.tuple.program, update_rule->can_rule.tuple.user,
+		update_rule->can_rule.tuple.user, update_rule->can_rule.tuple.program,
 		update_rule->can_rule.action_name);
 	printf(COLOR_RESET);
 }
