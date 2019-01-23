@@ -31,6 +31,13 @@ void sk_process_print(void *data_in_hash)
 		ptr->sk, ptr->process_info.pid, ptr->process_info.uid, ptr->process_info.exec);
 }
 
+static void sk_process_free(void *data)
+{
+	if (data) {
+		SR_Free(data);
+	}
+}
+
 SR_32 sr_cls_sk_process_hash_init(void)
 {
 	hash_ops_t sk_process_hash_ops = {};
@@ -38,6 +45,7 @@ SR_32 sr_cls_sk_process_hash_init(void)
 	sk_process_hash_ops.create_key = sk_process_create_key;
 	sk_process_hash_ops.comp = sk_process_comp;
 	sk_process_hash_ops.print = sk_process_print;
+	sk_process_hash_ops.free = sk_process_free;
 	if (!(sk_process_hash = sr_gen_hash_new(SK_PROCESS_HASH_SIZE, sk_process_hash_ops, SR_GEN_HASH_WRITE_LOCK | SR_GEN_HASH_SLOW_DELETE))) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 		"%s=failed to gen new hash table for sk process",REASON);
