@@ -55,6 +55,7 @@ static char *get_file_to_learn(char *file, char *new_file)
 	CHECK_DIR("/var/cache")
 	CHECK_DIR("/var/log")
 	CHECK_DIR("/usr/share/dbus-1")
+	CHECK_DIR("/run/log/journal")
 
 	if (memcmp(file, HOME_PREFIX, strlen(HOME_PREFIX)) == 0) {
 		// if the file is in a home directory learn only home directory
