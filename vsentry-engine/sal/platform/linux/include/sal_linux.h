@@ -103,4 +103,6 @@ SR_32 sal_get_interface_name(SR_32 if_id, char *interface, SR_U32 n);
 
 SR_32 sal_linux_local_interface(char *file_name, SR_32 (*handle_data_cb)(char *buf, SR_32 fd), SR_BOOL (*is_run_cb)(void));
 
+SR_BOOL sal_is_iterate_dir(char *filename);
+
 #endif /* SAL_LINUX_ENGINE_H*/

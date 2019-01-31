@@ -73,6 +73,9 @@ int sr_cls_file_add_rule(char *filename, char *exec, char *user, SR_U32 rulenum,
 				sr_send_msg(ENG2MOD_BUF, (SR_32)sizeof(msg));
 			}
 		}
+		if (!sal_is_iterate_dir(filename))
+			goto out;
+
 		// Now iterate subtree
 		DIR * dir = NULL;
 		long name_max;
@@ -119,6 +122,7 @@ int sr_cls_file_add_rule(char *filename, char *exec, char *user, SR_U32 rulenum,
 		}
 	}
 
+out:
 	return SR_SUCCESS;
 }
 
@@ -179,6 +183,8 @@ int sr_cls_file_del_rule(char *filename, char *exec, char *user, SR_U32 rulenum,
 				sr_send_msg(ENG2MOD_BUF, (SR_32)sizeof(msg));
 			}
 		}
+		if (!sal_is_iterate_dir(filename))
+			goto out;
 		// Now iterate subtree
 		DIR * dir = NULL;
 		long name_max;
@@ -220,6 +226,8 @@ int sr_cls_file_del_rule(char *filename, char *exec, char *user, SR_U32 rulenum,
 		//I believe we should not modify the target file in this case.
 		}
 	}
+
+out:
 	return SR_SUCCESS;
 }
 
