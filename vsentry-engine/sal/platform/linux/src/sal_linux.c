@@ -473,3 +473,11 @@ SR_32 sal_linux_local_interface(char *file_name, SR_32 (*handle_data_cb)(char *b
 
 	return SR_SUCCESS;
 }
+
+SR_BOOL sal_is_iterate_dir(char *filename)
+{
+	if (!memcmp(filename, "/proc", strlen("/proc")))
+		return SR_FALSE;
+	return SR_TRUE;
+}
+

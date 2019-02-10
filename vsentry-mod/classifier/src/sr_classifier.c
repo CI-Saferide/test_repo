@@ -17,6 +17,13 @@
 static cls_file_mem_optimization_t dparent_flag = CLS_FILE_MEM_OPT_ALL_FILES;
 static SR_BOOL is_def; /* global variable for all default rules */
 
+static SR_U32 run_ino;
+
+void cls_set_run_ino(SR_U32 i_run_ino)
+{
+	run_ino = i_run_ino;
+}
+
 SR_32 sr_classifier_init(void)
 {
 	sr_cls_network_init();
@@ -301,6 +308,13 @@ check_parent:
 						case DEV_TYPE_SYS:
 							if ((ptr = sr_cls_file_find(SR_SYS_INODE)))
 								sal_or_self_op_arrays(&ba_res, ptr);
+							break;
+						case DEV_TYPE_TMP:
+							if (run_ino) {
+								/* FIXME: run_ino currently points to /run. should be more general */
+								if ((ptr = sr_cls_file_find(run_ino)))
+									sal_or_self_op_arrays(&ba_res, ptr);
+							}
 							break;
 						default:
 							break;

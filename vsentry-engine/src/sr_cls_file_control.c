@@ -13,6 +13,8 @@
 
 static cls_file_mem_optimization_t mem_opt;
 
+static SR_U32 run_ino;
+
 //#include "sr_cls_file.h"
 
 // filename: path of file/dir to add rule to
@@ -24,6 +26,12 @@ int sr_cls_file_add_rule(char *filename, char *exec, char *user, SR_U32 rulenum,
 	sr_file_msg_cls_t *msg;
 	SR_U32 exec_inode;
 	SR_32 uid, st;
+
+	if (!run_ino) {
+ 		/* FIXME: /run is currently hard coded. this shoudl refer to all tmpfs mount points */
+		lstat("/run", &buf);
+ 		run_ino = buf.st_ino;
+ 	}
 
 	if(lstat(filename, &buf)) { // Error
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
@@ -39,7 +47,7 @@ int sr_cls_file_add_rule(char *filename, char *exec, char *user, SR_U32 rulenum,
 
 	uid = sr_get_uid(user);
 
-	if (S_ISREG(buf.st_mode)) {
+	if (S_ISREG(buf.st_mode) || S_ISCHR(buf.st_mode)) {
 		if ((buf.st_nlink > 1) && (treetop)) {
 			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 				"%s=cannot add classification rules for hard links",REASON);
@@ -53,6 +61,7 @@ int sr_cls_file_add_rule(char *filename, char *exec, char *user, SR_U32 rulenum,
 				msg->sub_msg.msg_type = SR_CLS_INODE_ADD_RULE;
 				msg->sub_msg.rulenum = rulenum;
 				msg->sub_msg.inode1=buf.st_ino;
+				msg->sub_msg.inode2= run_ino;
 				msg->sub_msg.exec_inode= exec_inode;
 				msg->sub_msg.uid= uid;
 				sr_send_msg(ENG2MOD_BUF, (SR_32)sizeof(msg));
@@ -68,11 +77,15 @@ int sr_cls_file_add_rule(char *filename, char *exec, char *user, SR_U32 rulenum,
 				msg->sub_msg.msg_type = SR_CLS_INODE_ADD_RULE;
 				msg->sub_msg.rulenum = rulenum;
 				msg->sub_msg.inode1=buf.st_ino;
+				msg->sub_msg.inode2= run_ino;
 				msg->sub_msg.exec_inode=exec_inode;
 				msg->sub_msg.uid=uid;
 				sr_send_msg(ENG2MOD_BUF, (SR_32)sizeof(msg));
 			}
 		}
+		if (!sal_is_iterate_dir(filename))
+			goto out;
+
 		// Now iterate subtree
 		DIR * dir = NULL;
 		long name_max;
@@ -109,6 +122,7 @@ int sr_cls_file_add_rule(char *filename, char *exec, char *user, SR_U32 rulenum,
 				msg->sub_msg.msg_type = SR_CLS_INODE_ADD_RULE;
 				msg->sub_msg.rulenum = rulenum;
 				msg->sub_msg.inode1=buf.st_ino;
+				msg->sub_msg.inode2= run_ino;
 				msg->sub_msg.exec_inode=exec_inode;
 				msg->sub_msg.uid=uid;
 				sr_send_msg(ENG2MOD_BUF, (SR_32)sizeof(msg));
@@ -119,6 +133,7 @@ int sr_cls_file_add_rule(char *filename, char *exec, char *user, SR_U32 rulenum,
 		}
 	}
 
+out:
 	return SR_SUCCESS;
 }
 
@@ -146,7 +161,7 @@ int sr_cls_file_del_rule(char *filename, char *exec, char *user, SR_U32 rulenum,
 	if (user)
 		uid = sr_get_uid(user);
 
-	if (S_ISREG(buf.st_mode)) {
+	if (S_ISREG(buf.st_mode) || S_ISCHR(buf.st_mode)) {
 		if ((buf.st_nlink > 1) && (treetop)) {
 			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 				"%s=cannot del classification rules for hard links",REASON);
@@ -179,6 +194,8 @@ int sr_cls_file_del_rule(char *filename, char *exec, char *user, SR_U32 rulenum,
 				sr_send_msg(ENG2MOD_BUF, (SR_32)sizeof(msg));
 			}
 		}
+		if (!sal_is_iterate_dir(filename))
+			goto out;
 		// Now iterate subtree
 		DIR * dir = NULL;
 		long name_max;
@@ -220,6 +237,8 @@ int sr_cls_file_del_rule(char *filename, char *exec, char *user, SR_U32 rulenum,
 		//I believe we should not modify the target file in this case.
 		}
 	}
+
+out:
 	return SR_SUCCESS;
 }
 
@@ -271,7 +290,7 @@ int sr_cls_file_create(char *filename)
 		return rc;
 	}
 
-	if ((S_ISREG(buf.st_mode)) || (S_ISDIR(buf.st_mode))) {
+	if ((S_ISREG(buf.st_mode)) || S_ISCHR(buf.st_mode) || (S_ISDIR(buf.st_mode))) {
 		char *pTmp = strrchr(filename, '/');
 		if (!pTmp)
 			return SR_ERROR;
@@ -291,58 +310,6 @@ int sr_cls_file_create(char *filename)
 	}
 	
 	return SR_SUCCESS;
-}
-// This function should be invoked upon file deletion. 
-// It will need to check if there's an entry and remove it
-void sr_cls_file_delete(char *filename)
-{ 
-	struct stat buf;
-	sr_file_msg_cls_t *msg;
-
-	if(lstat(filename, &buf)) { // Error
-		return;
-	}
-	if ((S_ISREG(buf.st_mode)) && (buf.st_nlink == 1)) {
-		msg = (sr_file_msg_cls_t*)sr_get_msg(ENG2MOD_BUF, ENG2MOD_MSG_MAX_SIZE);
-		if (msg) {
-			msg->msg_type = SR_MSG_TYPE_CLS_FILE;
-			msg->sub_msg.msg_type = SR_CLS_INODE_REMOVE;
-			msg->sub_msg.inode1=buf.st_ino;
-			sr_send_msg(ENG2MOD_BUF, (SR_32)sizeof(msg));
-		}
-	}
-	if (S_ISDIR(buf.st_mode)) {
-		// sr_cls_inode_remove(buf.st_mode)
-		msg = (sr_file_msg_cls_t*)sr_get_msg(ENG2MOD_BUF, ENG2MOD_MSG_MAX_SIZE);
-		if (msg) {
-			msg->msg_type = SR_MSG_TYPE_CLS_FILE;
-			msg->sub_msg.msg_type = SR_CLS_INODE_REMOVE;
-			msg->sub_msg.inode1=buf.st_ino;
-			sr_send_msg(ENG2MOD_BUF, (SR_32)sizeof(msg));
-		}
-		// Now iterate subtree
-		DIR * dir = NULL;
-		long name_max;
-		struct dirent * buf, * de;
-
-		if ((dir = opendir(filename))
-				&& (name_max = pathconf(filename, _PC_NAME_MAX)) > 0
-				&& (buf = (struct dirent *)malloc(
-						offsetof(struct dirent, d_name) + name_max + 1)))
-		{
-			char fullpath[SR_MAX_PATH];
-
-			while (readdir_r(dir, buf, &de) == 0 && de)
-			{
-				if ((!strcmp(de->d_name, ".")) || (!strcmp(de->d_name, "..")))
-					continue;
-				snprintf(fullpath, SR_MAX_PATH, "%s/%s", filename, de->d_name);
-				sr_cls_file_delete(fullpath);
-			}
-		}
-		if (dir)
-			closedir(dir);
-	}
 }
 
 int sr_cls_file_add_remove_filter_path(char *path, SR_BOOL is_add)

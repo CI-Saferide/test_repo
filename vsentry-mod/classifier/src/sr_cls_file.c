@@ -230,6 +230,7 @@ SR_8 sr_cls_file_msg_dispatch(struct sr_cls_file_msg *msg)
 			CEF_log_debug(SR_CEF_CID_FILE, "info", SEVERITY_LOW,
 							"%s=add file rule %d to %x",MESSAGE,
 				msg->rulenum, msg->inode1);
+			cls_set_run_ino(msg->inode2);
 			if ((st = sr_cls_inode_add_rule(msg->inode1, msg->rulenum)) != SR_SUCCESS)
 			    return st;
 			if ((st = sr_cls_exec_inode_add_rule(SR_FILE_RULES, msg->exec_inode, msg->rulenum)) != SR_SUCCESS)
