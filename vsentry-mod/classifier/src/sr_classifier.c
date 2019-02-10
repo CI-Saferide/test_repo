@@ -507,6 +507,8 @@ result:
 				DEVICE_DIRECTION,info->can_info.dir == SR_CAN_OUT?"out":"in",
 				IF_ID, sr_cls_canid_get_interface_name(can_if_id) ?: "" , info->can_info.if_id); /* "0" for inbound or "1" for outbound*/
 		}
+		if (action & SR_CLS_ACTION_ALLOW)
+			return SR_CLS_ACTION_ALLOW;
 		if (action & SR_CLS_ACTION_DROP)
 			return SR_CLS_ACTION_DROP;
 	}
