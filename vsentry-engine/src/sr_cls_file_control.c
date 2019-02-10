@@ -13,6 +13,8 @@
 
 static cls_file_mem_optimization_t mem_opt;
 
+static SR_U32 run_ino;
+
 //#include "sr_cls_file.h"
 
 // filename: path of file/dir to add rule to
@@ -24,6 +26,11 @@ int sr_cls_file_add_rule(char *filename, char *exec, char *user, SR_U32 rulenum,
 	sr_file_msg_cls_t *msg;
 	SR_U32 exec_inode;
 	SR_32 uid, st;
+
+	if (!run_ino) {
+ 		lstat("/run", &buf);
+ 		run_ino = buf.st_ino;
+ 	}
 
 	if(lstat(filename, &buf)) { // Error
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
@@ -53,6 +60,7 @@ int sr_cls_file_add_rule(char *filename, char *exec, char *user, SR_U32 rulenum,
 				msg->sub_msg.msg_type = SR_CLS_INODE_ADD_RULE;
 				msg->sub_msg.rulenum = rulenum;
 				msg->sub_msg.inode1=buf.st_ino;
+				msg->sub_msg.inode2= run_ino;
 				msg->sub_msg.exec_inode= exec_inode;
 				msg->sub_msg.uid= uid;
 				sr_send_msg(ENG2MOD_BUF, (SR_32)sizeof(msg));
@@ -68,6 +76,7 @@ int sr_cls_file_add_rule(char *filename, char *exec, char *user, SR_U32 rulenum,
 				msg->sub_msg.msg_type = SR_CLS_INODE_ADD_RULE;
 				msg->sub_msg.rulenum = rulenum;
 				msg->sub_msg.inode1=buf.st_ino;
+				msg->sub_msg.inode2= run_ino;
 				msg->sub_msg.exec_inode=exec_inode;
 				msg->sub_msg.uid=uid;
 				sr_send_msg(ENG2MOD_BUF, (SR_32)sizeof(msg));
@@ -112,6 +121,7 @@ int sr_cls_file_add_rule(char *filename, char *exec, char *user, SR_U32 rulenum,
 				msg->sub_msg.msg_type = SR_CLS_INODE_ADD_RULE;
 				msg->sub_msg.rulenum = rulenum;
 				msg->sub_msg.inode1=buf.st_ino;
+				msg->sub_msg.inode2= run_ino;
 				msg->sub_msg.exec_inode=exec_inode;
 				msg->sub_msg.uid=uid;
 				sr_send_msg(ENG2MOD_BUF, (SR_32)sizeof(msg));

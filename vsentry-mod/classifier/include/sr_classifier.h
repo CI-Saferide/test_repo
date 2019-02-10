@@ -61,5 +61,6 @@ enum cls_actions sr_cls_can_rule_match(SR_U16 rulenum);
 SR_8 sr_cls_rules_msg_dispatch(struct sr_cls_rules_msg *msg);
 void sr_classifier_empty_tables(SR_BOOL is_lock);
 struct rule_database* get_sr_rules_db(void); // Fetching the rule database
+void cls_set_run_ino(SR_U32 i_run_ino);
 
 #endif
