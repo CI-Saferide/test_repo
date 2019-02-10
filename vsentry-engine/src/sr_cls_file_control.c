@@ -28,7 +28,8 @@ int sr_cls_file_add_rule(char *filename, char *exec, char *user, SR_U32 rulenum,
 	SR_32 uid, st;
 
 	if (!run_ino) {
- 		lstat("/run", &buf);
+ 		/* FIXME: /run is currently hard coded. this shoudl refer to all tmpfs mount points */
+		lstat("/run", &buf);
  		run_ino = buf.st_ino;
  	}
 
