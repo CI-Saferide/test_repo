@@ -311,6 +311,7 @@ check_parent:
 							break;
 						case DEV_TYPE_TMP:
 							if (run_ino) {
+								/* FIXME: run_ino currently points to /run. should be more general */
 								if ((ptr = sr_cls_file_find(run_ino)))
 									sal_or_self_op_arrays(&ba_res, ptr);
 							}
