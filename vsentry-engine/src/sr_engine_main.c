@@ -435,7 +435,10 @@ SR_32 sr_engine_start(int argc, char *argv[])
 	fprintf(f, "on");
 	fclose(f);
 
-	/* sending config params to kernel */
+	/* sending config params to kernel - only after all rules were sent to Kernel*/
+	while (sr_config_get_mod_state())
+		usleep(10000);
+	sleep(3);
 	msg = (sr_config_msg_t*)sr_get_msg(ENG2MOD_BUF, ENG2MOD_MSG_MAX_SIZE);
 	if (msg) {
 		msg->msg_type = SR_MSG_TYPE_CONFIG;
