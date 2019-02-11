@@ -33,12 +33,6 @@ int sr_cls_file_add_rule(char *filename, char *exec, char *user, SR_U32 rulenum,
  		run_ino = buf.st_ino;
  	}
 
-	if(lstat(filename, &buf)) { // Error
-		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-			"%s=failed to perform lstat on file %s",REASON, filename);
-		return SR_ERROR;
-	}
-
 	if ((st = sr_get_inode(exec, &exec_inode)) != SR_SUCCESS) {
 	    CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 			"%s=file add:failed to get exec inode for file rule, exec %s, rule %d",REASON, exec, rulenum);
@@ -46,6 +40,27 @@ int sr_cls_file_add_rule(char *filename, char *exec, char *user, SR_U32 rulenum,
 	}
 
 	uid = sr_get_uid(user);
+
+	if (!strcmp(filename, "*") || !strcmp(filename, "/")) {
+		msg = (sr_file_msg_cls_t*)sr_get_msg(ENG2MOD_BUF, ENG2MOD_MSG_MAX_SIZE);
+		if (msg) {
+			msg->msg_type = SR_MSG_TYPE_CLS_FILE;
+			msg->sub_msg.msg_type = SR_CLS_INODE_ADD_RULE;
+			msg->sub_msg.rulenum = rulenum;
+			msg->sub_msg.inode1= INODE_ANY;
+			msg->sub_msg.inode2= run_ino;
+			msg->sub_msg.exec_inode= exec_inode;
+			msg->sub_msg.uid= uid;
+			sr_send_msg(ENG2MOD_BUF, (SR_32)sizeof(msg));
+		}
+		return SR_SUCCESS;
+	}
+
+	if(lstat(filename, &buf)) { // Error
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+			"%s=failed to perform lstat on file %s",REASON, filename);
+		return SR_ERROR;
+	}
 
 	if (S_ISREG(buf.st_mode) || S_ISCHR(buf.st_mode)) {
 		if ((buf.st_nlink > 1) && (treetop)) {
@@ -148,10 +163,6 @@ int sr_cls_file_del_rule(char *filename, char *exec, char *user, SR_U32 rulenum,
 	SR_32  uid = UID_NONE;
 	int st;
 
-	if(lstat(filename, &buf)) { // Error
-		return SR_ERROR;
-	}
-
 	if (exec && (st = sr_get_inode(exec, &exec_inode)) != SR_SUCCESS) {
 	    CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_LOW,
 			"%s=file del:failed to get exec inode for file rule, exec %s, rule %d",REASON, exec, rulenum);
@@ -160,6 +171,25 @@ int sr_cls_file_del_rule(char *filename, char *exec, char *user, SR_U32 rulenum,
 
 	if (user)
 		uid = sr_get_uid(user);
+
+	if (!strcmp(filename, "*") || !strcmp(filename, "/")) {
+		msg = (sr_file_msg_cls_t*)sr_get_msg(ENG2MOD_BUF, ENG2MOD_MSG_MAX_SIZE);
+		if (msg) {
+			msg->msg_type = SR_MSG_TYPE_CLS_FILE;
+			msg->sub_msg.msg_type = SR_CLS_INODE_DEL_RULE;
+			msg->sub_msg.rulenum = rulenum;
+			msg->sub_msg.inode1= INODE_ANY;
+			msg->sub_msg.inode2= run_ino;
+			msg->sub_msg.exec_inode= exec_inode;
+			msg->sub_msg.uid= uid;
+			sr_send_msg(ENG2MOD_BUF, (SR_32)sizeof(msg));
+		}
+		return SR_SUCCESS;
+	}
+
+	if(lstat(filename, &buf)) { // Error
+		return SR_ERROR;
+	}
 
 	if (S_ISREG(buf.st_mode) || S_ISCHR(buf.st_mode)) {
 		if ((buf.st_nlink > 1) && (treetop)) {
