@@ -158,6 +158,19 @@ SR_BOOL sal_test_bit_array(SR_U16 bit, bit_array *arr)
 	return (SR_BOOL)(sal_test_bit((bit%64), &arr->level2[pos_in_summary]));
 }
 
+void sal_and_self_op_three_arrays (bit_array *base, bit_array *A, bit_array *B, bit_array *C)
+{
+        SR_16   index;
+        SR_U64 summary = base->summary & (A->summary | B->summary | C->summary);
+        base->summary = summary;
+        while ((index = sal_ffs_and_clear_bitmask(&summary)) != -1) {
+                base->level2[index] &= (A->level2[index]|B->level2[index]|C->level2[index]);
+                if (!base->level2[index]) { // need to clean summary bit !!!
+                        base->summary &= (~(1ULL<<index));
+                }
+        }
+}
+
 void sal_print_bit_array(bit_array *arr)
 {
 	bit_array tmp;

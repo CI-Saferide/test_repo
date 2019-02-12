@@ -114,13 +114,11 @@ SR_32 sr_classifier_network(disp_info_t* info)
 	// Src IP	
 	if (cr_cls_is_ip_address_local(info->tuple_info.saddr.v4addr))
 		sal_or_op_arrays(src_cls_network_local_src(), src_cls_network_any_src(), &ba_res);
-	else {
-		ptr = sr_cls_match_ip(htonl(info->tuple_info.saddr.v4addr.s_addr), SR_DIR_SRC);
-		if (ptr) {
-			sal_or_op_arrays(ptr, src_cls_network_any_src(), &ba_res);
-		} else { // take only src/any
-			sal_or_self_op_arrays(&ba_res, src_cls_network_any_src());
-		}
+	ptr = sr_cls_match_ip(htonl(info->tuple_info.saddr.v4addr.s_addr), SR_DIR_SRC);
+	if (ptr) {
+		sal_or_op_arrays(ptr, src_cls_network_any_src(), &ba_res);
+	} else { // take only src/any
+		sal_or_self_op_arrays(&ba_res, src_cls_network_any_src());
 	}
 	
 	if (array_is_clear(ba_res)) {	
@@ -161,9 +159,13 @@ SR_32 sr_classifier_network(disp_info_t* info)
 			}
 		}
 		// Dst IP 
-		if (cr_cls_is_ip_address_local(info->tuple_info.daddr.v4addr)) 
-			sal_and_self_op_two_arrays(&ba_res, src_cls_network_local_dst(), src_cls_network_any_dst());
-		else {
+		if (cr_cls_is_ip_address_local(info->tuple_info.daddr.v4addr)) {
+			ptr = sr_cls_match_ip(htonl(info->tuple_info.daddr.v4addr.s_addr), SR_DIR_DST);
+			if (ptr)
+				sal_and_self_op_three_arrays(&ba_res, ptr, src_cls_network_local_dst(), src_cls_network_any_dst());
+			else
+				sal_or_op_arrays(src_cls_network_local_dst(), src_cls_network_any_dst(), &ba_res);
+		} else {
 			ptr = sr_cls_match_ip(htonl(info->tuple_info.daddr.v4addr.s_addr), SR_DIR_DST);
 			if (ptr) {
 				sal_and_self_op_two_arrays(&ba_res, ptr, src_cls_network_any_dst());

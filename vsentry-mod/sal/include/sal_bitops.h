@@ -43,6 +43,7 @@ void sal_and_self_op_two_arrays (bit_array *base, bit_array *A, bit_array *B);
 void sal_not_op_array (bit_array *arr);
 void sal_print_bit_array(bit_array *arr);
 SR_BOOL sal_bit_array_is_set (SR_U16 bit, bit_array *arr);
+void sal_and_self_op_three_arrays (bit_array *base, bit_array *A, bit_array *B, bit_array *C);
 
 /* debug capabilities */
 void sal_print_register (SR_U8 bits, SR_U64 num);
