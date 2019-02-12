@@ -11,6 +11,9 @@ typedef enum {
 } rule_type_t;
 
 #define MAX_RULE_TYPE 20
+#define LOCAL_CODE "local"
+#define LOCAL_IP_ADDRESS "0.0.0.0"
+#define LOCAL_NET_MASK "255.255.255.255"
 
 char *get_rule_string(rule_type_t rule_type);
 char *get_action_string(action_e action);

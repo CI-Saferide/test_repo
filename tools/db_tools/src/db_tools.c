@@ -215,6 +215,10 @@ SR_BOOL is_valid_ip(char *ip_addr)
 	char buf[64] = {}, num_of_dots = 0;
 	SR_U32 ind = 0;
 
+	if (!strcmp(ip_addr, LOCAL_CODE)) {
+		return SR_TRUE;
+	}
+
 	for (; *ip_addr; ip_addr++) { 
 		if (*ip_addr) {
 			if (*ip_addr == '.') {

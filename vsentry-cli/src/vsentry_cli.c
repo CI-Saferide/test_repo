@@ -127,16 +127,30 @@ static void notify_updated_can_rule(SR_U32 rule_id, rule_info_t *update_rule)
 static void notify_updated_ip_rule(SR_U32 rule_id, rule_info_t *update_rule)
 {
 	char src_addr[IPV4_STR_MAX_LEN], src_netmask[IPV4_STR_MAX_LEN], dst_addr[IPV4_STR_MAX_LEN], dst_netmask[IPV4_STR_MAX_LEN];
+	char *src_slash, *dst_slash;
+	
 
 	printf(COLOR_GREEN);
 	inet_ntop(AF_INET, &update_rule->ip_rule.tuple.srcaddr, src_addr, IPV4_STR_MAX_LEN);
 	inet_ntop(AF_INET, &update_rule->ip_rule.tuple.srcnetmask, src_netmask, IPV4_STR_MAX_LEN);
+	if (!strcmp(src_addr, LOCAL_IP_ADDRESS) && !strcmp(src_netmask, LOCAL_NET_MASK)) {
+		strncpy(src_addr, LOCAL_CODE, IPV4_STR_MAX_LEN);
+		src_netmask[0] = 0;
+		src_slash = "";
+	} else
+		src_slash = "/";
 	inet_ntop(AF_INET, &update_rule->ip_rule.tuple.dstaddr, dst_addr, IPV4_STR_MAX_LEN);
 	inet_ntop(AF_INET, &update_rule->ip_rule.tuple.dstnetmask, dst_netmask, IPV4_STR_MAX_LEN);
+	if (!strcmp(dst_addr, LOCAL_IP_ADDRESS) && !strcmp(dst_netmask, LOCAL_NET_MASK)) {
+		strncpy(dst_addr, LOCAL_CODE, IPV4_STR_MAX_LEN);
+		dst_netmask[0] = 0;
+		dst_slash = "";
+	} else
+		dst_slash = "/";
 	printf("ip rule updated: \n");
 	printf("  rule:%d tuple:%d \n", rule_id, update_rule->tuple_id);
-        printf("  src_addr:%s/%s dst_addr:%s/%s proto:%d src_port:%d dst_port:%d user:%s program:%s action:%s\n", 
-		src_addr, src_netmask, dst_addr, dst_netmask, update_rule->ip_rule.tuple.proto,
+        printf("  src_addr:%s%s%s dst_addr:%s%s%s proto:%d src_port:%d dst_port:%d user:%s program:%s action:%s\n", 
+		src_addr, src_slash, src_netmask, dst_addr, dst_slash, dst_netmask, update_rule->ip_rule.tuple.proto,
 		update_rule->ip_rule.tuple.srcport, update_rule->ip_rule.tuple.dstport,
 		update_rule->ip_rule.tuple.user, update_rule->ip_rule.tuple.program, update_rule->ip_rule.action_name);
 	printf(COLOR_RESET);
@@ -681,8 +695,16 @@ static void print_ip_rules(SR_BOOL is_wl, rule_info_t *table[], SR_32 rule_id, S
 			if ((rule_id == -1 || rule_id == i) && (tuple_id == -1 || tuple_id == iter->ip_rule.tuple.id)) {
 				inet_ntop(AF_INET, &(iter->ip_rule.tuple.srcaddr.s_addr), src_addr, IPV4_STR_MAX_LEN);
 				inet_ntop(AF_INET, &(iter->ip_rule.tuple.srcnetmask.s_addr), src_netmask, IPV4_STR_MAX_LEN);
+				if (!strcmp(src_addr, LOCAL_IP_ADDRESS) && !strcmp(src_netmask, LOCAL_NET_MASK)) {
+					strncpy(src_addr, LOCAL_CODE, IPV4_STR_MAX_LEN);
+					src_netmask[0] = 0;
+				}
 				inet_ntop(AF_INET, &(iter->ip_rule.tuple.dstaddr.s_addr), dst_addr, IPV4_STR_MAX_LEN);
 				inet_ntop(AF_INET, &(iter->ip_rule.tuple.dstnetmask.s_addr), dst_netmask, IPV4_STR_MAX_LEN);
+				if (!strcmp(dst_addr, LOCAL_IP_ADDRESS) && !strcmp(dst_netmask, LOCAL_NET_MASK)) {
+					strncpy(dst_addr, LOCAL_CODE, IPV4_STR_MAX_LEN);
+					dst_netmask[0] = 0;
+				}
 				printf("%-6d %-6d %-16s %-16s %-16s %-16s %-5d %-8d %-8d %-24.24s %-10.10s %-10.10s\n",
 					i, iter->ip_rule.tuple.id, src_addr, src_netmask, dst_addr, dst_netmask,
 					iter->ip_rule.tuple.proto, iter->ip_rule.tuple.srcport, iter->ip_rule.tuple.dstport,
@@ -1102,13 +1124,23 @@ static SR_32 handle_update_ip(SR_BOOL is_wl, SR_U32 rule_id, SR_U32 tuple_id)
 	}
 
 	param = get_string_user_input(rule_info != NULL, src_ip_address_def , "src addr", is_valid_ip, NULL);
-	inet_aton(param, &update_rule.ip_rule.tuple.srcaddr);
-	param = get_string_user_input(rule_info != NULL, src_netmask_def , "src netmask", is_valid_ip, NULL);
-	inet_aton(param, &update_rule.ip_rule.tuple.srcnetmask);
+	if (!strcmp(param, LOCAL_CODE)) {
+		inet_aton(LOCAL_IP_ADDRESS, &update_rule.ip_rule.tuple.srcaddr);
+		inet_aton(LOCAL_NET_MASK, &update_rule.ip_rule.tuple.srcnetmask);
+	} else {
+		inet_aton(param, &update_rule.ip_rule.tuple.srcaddr);
+		param = get_string_user_input(rule_info != NULL, src_netmask_def , "src netmask", is_valid_ip, NULL);
+		inet_aton(param, &update_rule.ip_rule.tuple.srcnetmask);
+	}
 	param = get_string_user_input(rule_info != NULL, dst_ip_address_def , "dst addr", is_valid_ip, NULL);
-	inet_aton(param, &update_rule.ip_rule.tuple.dstaddr);
-	param = get_string_user_input(rule_info != NULL, dst_netmask_def , "dst netmask", is_valid_ip, NULL);
-	inet_aton(param, &update_rule.ip_rule.tuple.dstnetmask);
+	if (!strcmp(param, LOCAL_CODE)) {
+		inet_aton(LOCAL_IP_ADDRESS, &update_rule.ip_rule.tuple.dstaddr);
+		inet_aton(LOCAL_NET_MASK, &update_rule.ip_rule.tuple.dstnetmask);
+	} else {
+		inet_aton(param, &update_rule.ip_rule.tuple.dstaddr);
+		param = get_string_user_input(rule_info != NULL, dst_netmask_def , "dst netmask", is_valid_ip, NULL);
+		inet_aton(param, &update_rule.ip_rule.tuple.dstnetmask);
+	}
 	param = get_string_user_input(rule_info != NULL, ip_proto_def , "ip proto", is_valid_ip_proto, ip_proto_help);
 	update_rule.ip_rule.tuple.proto = get_ip_proto_code(param);
 	param = get_string_user_input(rule_info != NULL, src_port_def , "src port", is_valid_port, NULL);
