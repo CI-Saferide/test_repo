@@ -137,12 +137,20 @@ static void notify_updated_ip_rule(SR_U32 rule_id, rule_info_t *update_rule)
 		strncpy(src_addr, LOCAL_CODE, IPV4_STR_MAX_LEN);
 		src_netmask[0] = 0;
 		src_slash = "";
+	} else if (!strcmp(src_addr, ANY_IP_ADDRESS) && !strcmp(src_netmask, ANY_NET_MASK)) {
+		strncpy(src_addr, ANY_CODE, IPV4_STR_MAX_LEN);
+		src_netmask[0] = 0;
+		src_slash = "";
 	} else
 		src_slash = "/";
 	inet_ntop(AF_INET, &update_rule->ip_rule.tuple.dstaddr, dst_addr, IPV4_STR_MAX_LEN);
 	inet_ntop(AF_INET, &update_rule->ip_rule.tuple.dstnetmask, dst_netmask, IPV4_STR_MAX_LEN);
 	if (!strcmp(dst_addr, LOCAL_IP_ADDRESS) && !strcmp(dst_netmask, LOCAL_NET_MASK)) {
 		strncpy(dst_addr, LOCAL_CODE, IPV4_STR_MAX_LEN);
+		dst_netmask[0] = 0;
+		dst_slash = "";
+	} else if (!strcmp(dst_addr, ANY_IP_ADDRESS) && !strcmp(dst_netmask, ANY_NET_MASK)) { 
+		strncpy(dst_addr, ANY_CODE, IPV4_STR_MAX_LEN);
 		dst_netmask[0] = 0;
 		dst_slash = "";
 	} else
@@ -699,10 +707,18 @@ static void print_ip_rules(SR_BOOL is_wl, rule_info_t *table[], SR_32 rule_id, S
 					strncpy(src_addr, LOCAL_CODE, IPV4_STR_MAX_LEN);
 					src_netmask[0] = 0;
 				}
+				if (!strcmp(src_addr, ANY_IP_ADDRESS) && !strcmp(src_netmask, ANY_NET_MASK)) {
+					strncpy(src_addr, ANY_CODE, IPV4_STR_MAX_LEN);
+					src_netmask[0] = 0;
+				}
 				inet_ntop(AF_INET, &(iter->ip_rule.tuple.dstaddr.s_addr), dst_addr, IPV4_STR_MAX_LEN);
 				inet_ntop(AF_INET, &(iter->ip_rule.tuple.dstnetmask.s_addr), dst_netmask, IPV4_STR_MAX_LEN);
 				if (!strcmp(dst_addr, LOCAL_IP_ADDRESS) && !strcmp(dst_netmask, LOCAL_NET_MASK)) {
 					strncpy(dst_addr, LOCAL_CODE, IPV4_STR_MAX_LEN);
+					dst_netmask[0] = 0;
+				}
+				if (!strcmp(dst_addr, ANY_IP_ADDRESS) && !strcmp(dst_netmask, ANY_NET_MASK)) {
+					strncpy(dst_addr, ANY_CODE, IPV4_STR_MAX_LEN);
 					dst_netmask[0] = 0;
 				}
 				printf("%-6d %-6d %-16s %-16s %-16s %-16s %-5d %-8d %-8d %-24.24s %-10.10s %-10.10s\n",
@@ -1127,6 +1143,9 @@ static SR_32 handle_update_ip(SR_BOOL is_wl, SR_U32 rule_id, SR_U32 tuple_id)
 	if (!strcmp(param, LOCAL_CODE)) {
 		inet_aton(LOCAL_IP_ADDRESS, &update_rule.ip_rule.tuple.srcaddr);
 		inet_aton(LOCAL_NET_MASK, &update_rule.ip_rule.tuple.srcnetmask);
+	} else if (!strcmp(param, ANY_CODE)) {
+		inet_aton(ANY_IP_ADDRESS, &update_rule.ip_rule.tuple.srcaddr);
+		inet_aton(ANY_NET_MASK, &update_rule.ip_rule.tuple.srcnetmask);
 	} else {
 		inet_aton(param, &update_rule.ip_rule.tuple.srcaddr);
 		param = get_string_user_input(rule_info != NULL, src_netmask_def , "src netmask", is_valid_ip, NULL);
@@ -1136,6 +1155,9 @@ static SR_32 handle_update_ip(SR_BOOL is_wl, SR_U32 rule_id, SR_U32 tuple_id)
 	if (!strcmp(param, LOCAL_CODE)) {
 		inet_aton(LOCAL_IP_ADDRESS, &update_rule.ip_rule.tuple.dstaddr);
 		inet_aton(LOCAL_NET_MASK, &update_rule.ip_rule.tuple.dstnetmask);
+	} else if (!strcmp(param, ANY_CODE)) {
+		inet_aton(ANY_IP_ADDRESS, &update_rule.ip_rule.tuple.dstaddr);
+		inet_aton(ANY_NET_MASK, &update_rule.ip_rule.tuple.dstnetmask);
 	} else {
 		inet_aton(param, &update_rule.ip_rule.tuple.dstaddr);
 		param = get_string_user_input(rule_info != NULL, dst_netmask_def , "dst netmask", is_valid_ip, NULL);
