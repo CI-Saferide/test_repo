@@ -5,7 +5,7 @@
 
 #define IRDETO_UNIX_INTERFACE_FILE "/tmp/irdeto_interface.socket"
 
-SR_32 irdeto_interface_init(void);
-void irdeto_interface_uninit(void);
+SR_32 irdeto_unix_interface_init(void);
+void irdeto_unix_interface_uninit(void);
 
 #endif /* __IRDETO_UNIX_INTERFACE_H__ */
