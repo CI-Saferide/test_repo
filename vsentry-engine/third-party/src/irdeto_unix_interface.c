@@ -61,7 +61,7 @@ static SR_32 irdeto_interface_server(void *data)
 	return SR_SUCCESS;
 }
 
-SR_32 irdeto_interface_init(void)
+SR_32 irdeto_unix_interface_init(void)
 {
 	SR_32 ret;
 	memset(g_buffer_tail, 0, MAX_PAYLOAD);
@@ -76,7 +76,7 @@ SR_32 irdeto_interface_init(void)
 	return SR_SUCCESS;
 }
 
-void irdeto_interface_uninit(void)
+void irdeto_unix_interface_uninit(void)
 {
 	is_run = SR_FALSE;
 	sr_stop_task(SR_IRDETO_SOCKET);
