@@ -15,6 +15,7 @@
 #include <signal.h>
 
 #include "vproxy_client.h"
+#include "message.h"
 
 #define POLL_TIMEOUT 	500
 #define TIME_INTERVAL 	10
@@ -23,6 +24,17 @@
 static SR_BOOL run_client = SR_FALSE;
 static SR_BOOL connected = SR_FALSE;
 static SR_32 fd = -1;
+
+static void handle_msg(struct raw_message *raw_msg)
+{
+	switch (raw_msg->type) {
+		case TELEMETRY_MSG:
+		        CEF_log_event(SR_CEF_CID_SYSTEM, "IRDETO", SEVERITY_MEDIUM, "%s", raw_msg->data);
+			break;
+		default:
+			break;
+	}
+}
 
 /*************************************************************************
  * function: 	start_server
@@ -85,6 +97,7 @@ static SR_32 start_client(void)
 			/* handle request */
 			if (vproxy_client_handle_recv_msg(fd, &raw_msg) != MSG_SUCCESS)
 				break;
+			handle_msg(&raw_msg);
 		}
 	}
 

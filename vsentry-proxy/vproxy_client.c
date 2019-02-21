@@ -11,7 +11,6 @@
 #include <string.h>
 
 #include "vproxy_client.h"
-#include "sr_log.h"
 
 static int recv_telemetry_msgs = 0;
 
@@ -50,8 +49,6 @@ static int vproxy_client_handle_telemetry_request(int fd, char *tlm)
 
 	/* TODO: send recv msg (tlm) to vsentry logger */
 	msg_dbg("got new log message (total %d): %s\n", recv_telemetry_msgs, tlm);
-
-	CEF_log_event(SR_CEF_CID_SYSTEM, "irdeto", SEVERITY_MEDIUM, "%s", tlm);
 
 	/* prepare the response */
 	msg.type = TELEMETRY_MSG_ACK;
