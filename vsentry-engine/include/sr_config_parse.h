@@ -51,6 +51,7 @@ struct config_params_t {
 	SR_8	ml_can_url[URL_MAX_SIZE];
 	SR_8	sr_commands_url[URL_MAX_SIZE];
 	SR_8	static_policy_url[URL_MAX_SIZE];
+	SR_8	policy_dir[PATH_BUFF];
 };
 
 SR_32 read_vsentry_config(char* config_filename);

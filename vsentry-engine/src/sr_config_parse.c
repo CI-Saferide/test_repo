@@ -38,6 +38,7 @@ void config_defaults(void)
 	config_params.system_policer_threshold_percent = 5;
 	strncpy(config_params.system_prolicer_learn_file, "/etc/vsentry/system_learn.txt", PATH_BUFF);
 #endif
+	strcpy(config_params.policy_dir, "/policy");
 }
 
 SR_32 read_vsentry_config(char* config_filename)
@@ -202,6 +203,9 @@ SR_32 read_vsentry_config(char* config_filename)
 	}
 	if (!strcmp(param, "STATIC_POLICY_URL")) {
 		strncpy(config_params.static_policy_url, value, URL_MAX_SIZE);
+	}
+	if (!strcmp(param, "POLICY_DIR")) {
+		strncpy(config_params.policy_dir, value, PATH_BUFF);
 	}
     }
     fclose(fp);
