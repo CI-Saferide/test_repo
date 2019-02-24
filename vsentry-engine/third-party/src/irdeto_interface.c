@@ -13,6 +13,8 @@
 #include <pthread.h>
 #include <string.h>
 #include <signal.h>
+#include <sys/select.h>
+#include <sys/inotify.h>
 
 #include "vproxy_client.h"
 #include "message.h"
@@ -21,12 +23,14 @@
 #include "sr_actions_common.h"
 #include "sr_cls_file_control.h"
 #include "sr_cls_rules_control.h"
+#include "sr_config_parse.h"
 
 #define POLL_TIMEOUT 	500
 #define TIME_INTERVAL 	10
 #define TIME_INTERVAL2 	1
+#define BUF_LEN 512
 
-static SR_BOOL run_client = SR_FALSE;
+static SR_BOOL run_irdeto = SR_FALSE;
 static SR_BOOL connected = SR_FALSE;
 static SR_32 fd = -1;
 
@@ -41,16 +45,6 @@ static void handle_msg(struct raw_message *raw_msg)
 	}
 }
 
-/*************************************************************************
- * function: 	start_server
- * description:	the function will:
- * 			connect to server
- * 			start exmaple thread to generate new policy  messages
- * 			handle any incomming request from server
- * in params: 	void
- * out params: 	n/a
- * return: 	MSG_ERROR on error, MSG_SUCCESS on success
- *************************************************************************/
 static SR_32 start_client(void)
 {
 	socklen_t len;
@@ -118,12 +112,60 @@ exit_err:
 
 static SR_32 irdeto_interface_server(void *data)
 {
-	while (run_client) {
+	while (run_irdeto) {
 		start_client();
 		sleep(TIME_INTERVAL2);
 	}
 
         return SR_SUCCESS;
+}
+
+static SR_32 irdeto_policy_server(void *data)
+{
+	int policy_fd, ret, n;
+	fd_set rfds;
+	char buf[BUF_LEN], *p;
+	struct timeval tv = {};
+	struct inotify_event *event;
+	unsigned int notify_mask = IN_CLOSE_WRITE;
+	struct config_params_t *config_params;
+
+	config_params = sr_config_get_param();
+
+	policy_fd = inotify_init1(IN_NONBLOCK);
+	ret = inotify_add_watch(policy_fd, config_params->policy_dir, notify_mask);
+	if (ret < 0) {
+		perror("inotify_add_watch");
+		return SR_ERROR;
+	}
+
+	while (run_irdeto) {
+		FD_ZERO(&rfds);
+		FD_SET(policy_fd, &rfds);
+		tv.tv_sec = 2 * TIME_INTERVAL2;
+
+		ret = select(policy_fd + 1, &rfds, NULL, NULL, &tv);
+		if (ret < 0) {
+			perror("select");
+			continue;
+		}
+		if (!ret)
+			continue;
+
+		n = read(policy_fd, buf, BUF_LEN);
+		for (p = buf; p < buf + n; ) {
+			event = (struct inotify_event *) p;
+			if (event->mask & IN_CLOSE_WRITE) {
+				printf("IN_CLOSE_WRITE !!!!\n");
+				if (fd > -1)
+					vproxy_client_send_new_policy_msg(fd);
+				break;
+			}
+			p += sizeof(struct inotify_event) + event->len;
+		}
+	}
+
+	return SR_SUCCESS;
 }
 
 typedef struct {
@@ -169,18 +211,23 @@ SR_32 irdeto_interface_init(void)
 {
 	SR_32 ret;
 
-	run_client = SR_TRUE;
+	run_irdeto = SR_TRUE;
 	ret = sr_start_task(SR_IRDETO_INTERFACE, irdeto_interface_server);
 	if (ret != SR_SUCCESS) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 					"%s=failed to start irdeto unix socket",REASON);
 		return SR_ERROR;
 	}
-
 	if (create_irdeto_static_white_list()) {
                 CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
                                                 "%s=failed to create Irdeto static white list ",REASON);
                 return SR_ERROR;
+	}
+	ret = sr_start_task(SR_IRDETO_POLICY, irdeto_policy_server);
+	if (ret != SR_SUCCESS) {
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+					"%s=failed to start irdeto unix socket",REASON);
+		return SR_ERROR;
 	}
 
 	return SR_SUCCESS;
@@ -188,7 +235,8 @@ SR_32 irdeto_interface_init(void)
 
 void irdeto_interface_uninit(void)
 {
-	run_client = SR_FALSE;
+	run_irdeto = SR_FALSE;
 	sr_stop_task(SR_IRDETO_INTERFACE);
+	sr_stop_task(SR_IRDETO_POLICY);
 }
 
