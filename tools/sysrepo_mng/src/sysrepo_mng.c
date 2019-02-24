@@ -676,7 +676,7 @@ static void handle_system_policies(sr_session_ctx_t *sess, char *buf, jsmntok_t 
 			/* Expect priority to be the ifrst item in JSON object !!!*/
                         if (jsoneq(buf, &t[*i], JSON_PRIORITY) == 0) {
                                 (*i)++;
-				create_rule(sess, buf, &t[*i], FILE_PREFIX, &id, SR_FILE_WL_START_RULE_NO - 1);
+				create_rule(sess, buf, &t[*i], FILE_PREFIX, &id, SR_FILE_WL_START_STATIC_RULE_NO - 1);
                                 continue;
                         }
 			if (id == -1) {
@@ -686,7 +686,7 @@ static void handle_system_policies(sr_session_ctx_t *sess, char *buf, jsmntok_t 
                                 (*i)++;
                                 continue;
 			}
-			if (id >= SR_FILE_WL_START_RULE_NO) {
+			if (id >= SR_FILE_WL_START_STATIC_RULE_NO) {
 				/* Rule id exceed max value */
 				CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, 
 					"%s= FILE rule id :%d exceeds max value (%d)",REASON, id, SR_CAN_WL_START_RULE_NO - 1);
@@ -877,7 +877,7 @@ SR_32 sysrepo_mng_delete_db(sysrepo_mng_handler_t *handler)
         }
 
 	printf("Delete rules 0%% ...");
-	sysrepo_mng_delete_rules(handler, FILE_PREFIX, 0, SR_FILE_WL_START_RULE_NO);
+	sysrepo_mng_delete_rules(handler, FILE_PREFIX, 0, SR_FILE_WL_START_STATIC_RULE_NO);
 	printf("\rDelete rules 33%% ...");
 	sysrepo_mng_delete_rules(handler, IP_PREFIX, 0, SR_IP_WL_START_RULE_NO);
 	printf("\rDelete rules 66%% ...");
