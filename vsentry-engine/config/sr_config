@@ -43,3 +43,5 @@ ML_CAN_URL http://saferide-policies.eu-west-1.elasticbeanstalk.com/policy/can/dy
 DYNAMIC_POLICY_URL http://saferide-policies.eu-west-1.elasticbeanstalk.com/policy/ip/dynamic
 STATIC_POLICY_URL http://saferide-policies.eu-west-1.elasticbeanstalk.com/policy/static/sync
 
+POLICY_DIR /policy
+
