@@ -16,6 +16,11 @@
 
 #include "vproxy_client.h"
 #include "message.h"
+#include "file_rule.h"
+#include "sr_cls_wl_common.h"
+#include "sr_actions_common.h"
+#include "sr_cls_file_control.h"
+#include "sr_cls_rules_control.h"
 
 #define POLL_TIMEOUT 	500
 #define TIME_INTERVAL 	10
@@ -121,24 +126,69 @@ static SR_32 irdeto_interface_server(void *data)
         return SR_SUCCESS;
 }
 
+typedef struct {
+	char	filename[FILE_NAME_SIZE];
+	char	permission[4];
+	char	user[USER_NAME_SIZE];
+	char	program[PROG_NAME_SIZE]; 
+} static_file_rule_t;
+
+SR_32 create_irdeto_static_white_list(void)
+{
+	static static_file_rule_t irdeto_static_wl [] = {
+		/* {"/work/file1.txt", "rwx", "*", "/bin/cat"}, Example */
+		{""},  // Must be the last entry.
+	};
+	SR_U32 rule_no, i;
+	SR_U8 perm;
+	SR_U16 actions_bitmap = SR_CLS_ACTION_ALLOW | SR_CLS_ACTION_LOG;
+
+	for (i = 0; *irdeto_static_wl[i].filename; i++) {
+		perm = 0;
+		rule_no = i + SR_FILE_WL_START_STATIC_RULE_NO;
+		if (rule_no >= SR_FILE_WL_START_RULE_NO) {
+                	CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+                       	                         "%s=Maximum number of statis wl rules have reached.", REASON);
+			return SR_ERROR;
+		}
+		if (strstr(irdeto_static_wl[i].permission, "r"))
+			perm |= SR_FILEOPS_READ;
+		if (strstr(irdeto_static_wl[i].permission, "w"))
+			perm |= SR_FILEOPS_WRITE;
+		if (strstr(irdeto_static_wl[i].permission, "x"))
+			perm |= SR_FILEOPS_EXEC;
+
+		sr_cls_file_add_rule(irdeto_static_wl[i].filename, irdeto_static_wl[i].program, irdeto_static_wl[i].user, rule_no, (SR_U8)1);
+		sr_cls_rule_add(SR_FILE_RULES, rule_no, actions_bitmap, perm, SR_RATE_TYPE_BYTES, 0, 0 ,0, 0, 0, 0);
+	}                   
+
+	return SR_SUCCESS;
+}
+
 SR_32 irdeto_interface_init(void)
 {
-        SR_32 ret;
+	SR_32 ret;
 
 	run_client = SR_TRUE;
-        ret = sr_start_task(SR_IRDETO_INTERFACE, irdeto_interface_server);
-        if (ret != SR_SUCCESS) {
-                CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-                                                "%s=failed to start irdeto unix socket",REASON);
-                return SR_ERROR;
-        }
+	ret = sr_start_task(SR_IRDETO_INTERFACE, irdeto_interface_server);
+	if (ret != SR_SUCCESS) {
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+					"%s=failed to start irdeto unix socket",REASON);
+		return SR_ERROR;
+	}
 
-        return SR_SUCCESS;
+	if (create_irdeto_static_white_list()) {
+                CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+                                                "%s=failed to create Irdeto static white list ",REASON);
+                return SR_ERROR;
+	}
+
+	return SR_SUCCESS;
 }
 
 void irdeto_interface_uninit(void)
 {
 	run_client = SR_FALSE;
-        sr_stop_task(SR_IRDETO_INTERFACE);
+	sr_stop_task(SR_IRDETO_INTERFACE);
 }
 

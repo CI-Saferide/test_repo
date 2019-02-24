@@ -18,6 +18,7 @@
 #include "db_tools.h"
 #include <termios.h>
 #include <sys/stat.h>
+#include <sr_cls_wl_common.h>
 #include <pwd.h>
 
 #define NUM_OF_RULES 4096
@@ -1532,6 +1533,13 @@ out:
 	return st;
 }
 
+SR_BOOL is_valid_file_rule_id(rule_id)
+{
+	if (rule_id < SR_FILE_WL_START_STATIC_RULE_NO)
+		return SR_TRUE;
+	return SR_FALSE;
+}
+
 static void handle_update(SR_BOOL is_delete)
 {
 	SR_BOOL is_wl = SR_FALSE, is_can = SR_FALSE, is_file = SR_FALSE, is_ip = SR_FALSE, is_help = SR_FALSE;
@@ -1586,6 +1594,10 @@ static void handle_update(SR_BOOL is_delete)
 				handle_delete_ip(is_wl, rule_id, tuple_id);
 		}
 		if (is_file) {
+			if (!is_valid_file_rule_id(rule_id)) {
+				error("rule id is not valid", SR_TRUE);
+				return;
+			}
 			if (!is_delete)
 				handle_update_file(is_wl, rule_id, tuple_id);
 			else
