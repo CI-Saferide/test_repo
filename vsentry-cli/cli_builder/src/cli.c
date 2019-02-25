@@ -35,7 +35,6 @@ THE SOFTWARE.
 #include <cli.h>
 #include <cli_node.h>
 
-#define NUM_OF_RULES 4096
 #define MAX_BUF_SIZE 10000
 #define NUM_OF_CMD_ENTRIES 100
 
@@ -160,17 +159,17 @@ static char *get_string_user_input(int is_current, char *def_val, char *prompt, 
 	return NULL;
 }
 
+void cli_set_run(int i_is_run)
+{
+	is_run = i_is_run;
+}
+
 static void parse_command(char *cmd)
 {
 	char *tmp = NULL, *word;
 	char *words[100];
 	node_t *help_node;
 	int count = 0;
-
-	if (!strcmp(cmd, "quit")) {
-		is_run = 0;
-		return;
-	}
 
 	tmp = strdup(cmd);
 	for (word = strtok(tmp, " "); word; word = strtok(NULL, " ")) {
@@ -322,15 +321,16 @@ void handle_enter(char *buf)
 	int count = 0, i;
 
 	if (!memcmp(buf, "..", 2)) {
-                nodep = node_get_parent(cur_node);
-                if (!nodep)
-                        return;
-                cur_node = nodep;
-                for (i = strlen(cli_prompt) - 1; cli_prompt[i] != '/'; i--)
-                        cli_prompt[i] = 0;
-                cli_prompt[i] = 0;
-                strcat(cli_prompt, ">");
-        }
+		nodep = node_get_parent(cur_node);
+		if (!nodep)
+			return;
+		cur_node = nodep;
+		for (i = strlen(cli_prompt) - 1; cli_prompt[i] != '/'; i--)
+			cli_prompt[i] = 0;
+		cli_prompt[i] = 0;
+		strcat(cli_prompt, ">");
+		goto out;
+	}
 
 	tmp = strdup(buf);
 	nodep = cur_node;
@@ -456,6 +456,7 @@ static void get_cmd(char *buf, unsigned int size, char *prompt)
 					printf("\n");
 					printf("\033[%dD", (int)strlen(prompt));
 				}
+				term_reset(count);
 				handle_enter(buf);
 				goto out;
 			case 0x3: // Cntrl C
@@ -517,12 +518,13 @@ void cli_run(void)
 	strcpy(cli_prompt, node_get_value(cur_node));
 	strcat(cli_prompt, ">");
 	while (is_run) {
-		printf("%s", cli_prompt);
+		printf("\r%s", cli_prompt);
+		printf(CLEAR_RIGHT);
 		get_cmd(cmd, MAX_BUF_SIZE, cli_prompt);
 		if (strlen(cmd))
 			cmd_insert(cmds, cmd);
 		parse_command(cmd);
-		if (strlen(cmd) && strcmp(cmd, "quit"))
+		if (strlen(cmd) && !is_run)
 			printf("\n");
 	}
 	printf("\n\033[%dD", (int)strlen(cli_prompt));

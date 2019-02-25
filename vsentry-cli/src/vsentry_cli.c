@@ -85,18 +85,13 @@ action_t actions[DB_MAX_NUM_OF_ACTIONS] = {};
 
 static action_t *get_action(char *action_name);
 static SR_32 cli_handle_reply(SR_32 fd, SR_32 (*handle_data_cb)(char *buf));
-static void term_reset(int count);
 static void cleanup_rule_table(rule_container_t table[]);
 static void cleanup_rule(rule_container_t table[], SR_32 rule_id);
 static void db_cleanup(void);
 
 SR_BOOL engine_state;
 
-static char *cmds[NUM_OF_CMD_ENTRIES] = {};
-
 static SR_U8 num_of_actions;
-
-static SR_U32 cmd_curr;
 
 static SR_BOOL is_dirty = SR_FALSE;
 
@@ -210,41 +205,6 @@ static SR_32 get_control_cmd(char *ptr, char *cmd)
 	}
 
         return SR_ERROR;
-}
-
-static void cmd_insert(char *arr[], char *str)
-{
-	SR_U32 i;
-
-	/// Always insert at first
-	if (arr[NUM_OF_CMD_ENTRIES - 1])
-		free(arr[NUM_OF_CMD_ENTRIES - 1]);
-	for (i = NUM_OF_CMD_ENTRIES - 1; i > 0; i--) {
-		arr[i] = arr[i - 1];
-	}
-	arr[0] = strdup(str);
-}
-
-static char *cmd_get_first(char *arr[])
-{
-	cmd_curr = 0;
-	return arr[0];
-}
-
-static char *cmd_get_next(char *arr[])
-{
-	if (cmd_curr == NUM_OF_CMD_ENTRIES || !arr[cmd_curr + 1])
-		return NULL;
-	cmd_curr++;
-	return arr[cmd_curr];
-}
-
-static char *cmd_get_prev(char *arr[])
-{
-	if (cmd_curr == 0 || !arr[cmd_curr - 1])
-		return NULL;
-	cmd_curr--;
-	return arr[cmd_curr];
 }
 
 static void chop_nl(char *str)
@@ -647,6 +607,11 @@ static void print_usage(void)
 	print_engine_usage();
 }
 
+static void print_usage_cb(char *buf)
+{
+	print_usage();
+}
+
 static void print_actions(void)
 {
 	SR_U32 i;
@@ -1032,7 +997,7 @@ static SR_32 handle_update_can(SR_BOOL is_wl, SR_U32 rule_id, SR_U32 tuple_id)
 	rule_info = get_rule_sorted(is_wl ? can_wl[rule_id].rule_info : can_rules[rule_id].rule_info, tuple_id);
 	if (rule_info) {
 		update_rule = *rule_info;
-		printf("> updating an existing rule...\n");
+		printf("\r\n> updating an existing rule...\n\r");
 		if (rule_info->can_rule.tuple.msg_id == MSGID_ANY)
 			strcpy(msg_id_def, "any");
 		else
@@ -1040,7 +1005,7 @@ static SR_32 handle_update_can(SR_BOOL is_wl, SR_U32 rule_id, SR_U32 tuple_id)
 		strcpy(dir_def, get_dir_desc(rule_info->can_rule.tuple.direction));
 		action_name = is_wl ? can_wl[rule_id].action_name : can_rules[rule_id].action_name;
 	} else {
-		printf("\n> adding a new rule...\n");
+		printf("\r\n> adding a new rule...\n\r");
 		strcpy(msg_id_def, "any");
 		strcpy(dir_def, "both");
 	}
@@ -1486,7 +1451,7 @@ static void rules_commit(SR_32 fd)
 	rule_type_commit(SR_FALSE, ip_rules, fd, commit_ip_buf_cb);
 }
 
-static SR_32 handle_commit(void)
+static SR_32 __handle_commit(void)
 {
 	SR_32 fd, rc, len, st = SR_SUCCESS;
 	char cmd[100], cval, buf[2] = {};
@@ -1817,7 +1782,7 @@ static void parse_command(char *cmd)
 	}
 	if (!strcmp(ptr, "commit")) {
 		printf("\ncommitting...\n");
-		if (handle_commit() != SR_SUCCESS) {
+		if (__handle_commit() != SR_SUCCESS) {
 			printf("commit failed !!!\n");
 		}
 		return;
@@ -1841,139 +1806,6 @@ static void parse_command(char *cmd)
 	error("invalid argument", SR_TRUE);
 
 	print_usage();
-}
-
-static void term_reset(int count)
-{
-	struct termios t;
-
-	tcgetattr(STDIN_FILENO, &t);
-	t.c_lflag |= ECHO;
-	tcsetattr(STDIN_FILENO, TCSANOW, &t);
-
-	printf("\033[%dD", count);
-	if (system ("/bin/stty cooked")) { 
-		printf("error reseting term\n");
-		return;
-	}
-}
-
-static void get_cmd(char *buf, SR_U32 size, char *prompt)
-{
-	char c;
-	char *last_cmd;
-	SR_32 ind = 0, count = 0, pos, min_pos;
-	struct termios t;
-	SR_BOOL is_up = SR_FALSE;
-
-	if (system("/bin/stty raw")) {
-		printf("error seting the term\n");
-		return;
-	}
-	tcgetattr(STDIN_FILENO, &t);
-	t.c_lflag &= ~ECHO;
-	tcsetattr(STDIN_FILENO, TCSANOW, &t);
-
-	memset(buf, 0, size);
-	pos = min_pos = strlen(prompt);
-
-	while (1) {
-		c = getchar();
-		switch (c) {
-			// Backspace as Control-H
-			case 0x8:  //  backword
-				if (pos == min_pos)
-					break;
-				pos--;
-				printf("\033[1D");
-				printf(CLEAR_RIGHT);
-				buf[--ind] = 0;
-				break;
-			case '\033': // Escape
-				c = getchar();
-				switch (c) { 
-					case '[':
-						c = getchar();
-						switch (c) { 
-							case 'A': // up
-								last_cmd = is_up ? cmd_get_next(cmds) : cmd_get_first(cmds);
-								if (!last_cmd)
-									break;
-								if (strlen(buf))
-									printf("\033[%dD", (int)strlen(buf));
-								printf(CLEAR_RIGHT);
-								strcpy(buf, last_cmd);
-								ind = strlen(buf);
-								is_up = SR_TRUE;
-								printf("%s", buf);
-								pos = strlen(buf) + strlen(prompt);
-								break;
-							case 'B': // down
-								if (!is_up)
-									break;
-								last_cmd = cmd_get_prev(cmds);
-								if (!last_cmd)
-									break;
-								if (strlen(buf))
-									printf("\033[%dD", (int)strlen(buf));
-								printf(CLEAR_RIGHT);
-								strcpy(buf, last_cmd);
-								ind = strlen(buf);
-								is_up = SR_TRUE;
-								printf("%s", buf);
-								pos = strlen(buf) + strlen(prompt);
-								break;
-							case 'D': // left
-								if (pos <= min_pos)
-									break;
-								pos--;
-								printf("\033[1D"); // cursor left
-								break;
-							case 'C': //right
-								printf("\033[1C"); // cursor right
-								pos++;
-								break;
-							default:
-								printf("XXXXX char:%c \n", c);
-								break;
-						}
-						break;
-					default:
-						break;
-				}
-				break;
-			case 0xd: // Enter
-				if (!strlen(buf)) {
-					printf("\n");
-					printf("\033[%dD", (int)strlen(prompt));
-				}
-				goto out;
-			case 0x3: // Cntrl C
-				term_reset(count);
-				exit(0);
-			case 0x7f:  //  backword
-				if (pos == min_pos)
-					break;
-				pos--;
-				printf("\033[1D");
-				printf(CLEAR_RIGHT);
-				buf[--ind] = 0;
-				break;
-			default:
-				if (isprint(c)) {
-					count++;
-					printf("%c", c);
-					pos++;
-					buf[ind++] = c;
-				} else {
-					printf("%x", c);
-				}
-				break;
-		}
-	}
-
-out:
-	term_reset(count);
 }
 
 static void can_help(void)
@@ -2001,7 +1833,6 @@ static void show_rule_can(char *buf)
 
 	print_can_rules(SR_FALSE, can_rules, rule_id, tuple_id);
 
-out:
 	if (tmp)
 		free(tmp);
 }
@@ -2031,11 +1862,26 @@ static void update_rule_can(char *buf)
 	handle_update_can(SR_FALSE, rule_id, tuple_id);
 }
 
+static void handle_commit(char *buf)
+{
+	printf("\ncommitting...\n");
+	if (__handle_commit() != SR_SUCCESS) {
+		printf("commit failed !!!\n");
+	}
+}
+
+static void handle_exit(char *buf)
+{
+	cli_set_run(0);
+}
+
 SR_32 main(int argc, char **argv)
 {
 	node_operations_t show_can_operations;
 	node_operations_t update_can_operations;
 	node_operations_t help_operations;
+	node_operations_t commit_operations;
+	node_operations_t exit_operations;
 
 	if (!(argc > 1 && !strcmp(argv[1], "nl"))) {
 		if (handle_load() != 0) {
@@ -2044,10 +1890,10 @@ SR_32 main(int argc, char **argv)
 		}
 	}
 
-        cli_init("(cli(help)(show (rule (can)(ip)(file)) (wl (can)(ip)(file))) (update (rule (can)(ip)(file)) (wl (can)(ip)(file))))");
+        cli_init("(cli(help)(show (rule (can)(ip)(file)) (wl (can)(ip)(file))) (update (rule (can)(ip)(file)) (wl (can)(ip)(file)))(commit)(exit))");
 
         help_operations.help_cb = NULL;
-        help_operations.run_cb = print_usage;
+        help_operations.run_cb = print_usage_cb;
         cli_register_operatios("help", &help_operations);
 
         show_can_operations.help_cb = can_help;
@@ -2057,6 +1903,14 @@ SR_32 main(int argc, char **argv)
         update_can_operations.help_cb = can_help;
         update_can_operations.run_cb = update_rule_can;
         cli_register_operatios("update/rule/can", &update_can_operations);
+
+        commit_operations.help_cb = NULL;
+        commit_operations.run_cb = handle_commit;
+        cli_register_operatios("commit", &commit_operations);
+
+        exit_operations.help_cb = NULL;
+        exit_operations.run_cb = handle_exit;
+        cli_register_operatios("exit", &exit_operations);
 
         cli_run();
 
