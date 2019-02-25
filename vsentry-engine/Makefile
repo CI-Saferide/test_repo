@@ -96,7 +96,7 @@ DEPS		:=  $(OBJS:.o=.d)
 # libs to link with
 LIBS		:= -Wl,--start-group -l$(TARGET) -lsr_hash -lsr_log -lsysrepo_mng -ldb_tools -Wl,--end-group -lpthread -ljsmn -lsentry -lsysrepo -lcurl -larchive -lcrypto -lclient
 # and where to search them 
-LIB_PATH 	:= -L$(LIBDIR) -L../vsentry-lib/lib -L../vsentry-proxy/build/lib
+LIB_PATH 	:= -L$(LIBDIR) -L../vsentry-lib/lib -L../vsentry-proxy/lib
 
 CFLAGS 		+= -MMD -Wall
 CFLAGS 		+= -DCONFIG_STAT_ANALYSIS
