@@ -342,7 +342,9 @@ void handle_enter(char *buf)
 		words[count++] = p;
 	}
 	
-	if (nodep1 && node_get_son(nodep1) &&  count == 1) {
+	rule_operation = (node_operations_t *)node_get_data(nodep);
+
+	if (nodep1 && node_get_son(nodep1) &&  count == 1 && (!rule_operation || !rule_operation->run_cb)) {
                 // move to next level
                 cur_node = nodep;
                 cli_prompt[strlen(cli_prompt) - 1] = '/';

@@ -1813,6 +1813,27 @@ static void can_help(void)
         printf("[rule=X] [tuple=X]");
 }
 
+static void show_rule(char *buf)
+{
+	print_file_rules(SR_FALSE, file_rules, -1, -1);
+	print_can_rules(SR_FALSE, can_rules, -1, -1);
+	print_ip_rules(SR_FALSE, ip_rules, -1, -1);
+}
+
+static void show_wl(char *buf)
+{
+	print_file_rules(SR_TRUE, file_rules, -1, -1);
+	print_can_rules(SR_TRUE, can_rules, -1, -1);
+	print_ip_rules(SR_TRUE, ip_rules, -1, -1);
+}
+
+static void show(char *buf)
+{
+	print_actions();
+	show_rule(buf);
+	show_wl(buf);
+}
+
 static void show_rule_can(char *buf)
 {
 	int rule_id = -1, tuple_id = -1;
@@ -1877,6 +1898,9 @@ static void handle_exit(char *buf)
 
 SR_32 main(int argc, char **argv)
 {
+	node_operations_t show_operations;
+	node_operations_t show_rule_operations;
+	node_operations_t show_wl_operations;
 	node_operations_t show_can_operations;
 	node_operations_t update_can_operations;
 	node_operations_t help_operations;
@@ -1895,6 +1919,18 @@ SR_32 main(int argc, char **argv)
         help_operations.help_cb = NULL;
         help_operations.run_cb = print_usage_cb;
         cli_register_operatios("help", &help_operations);
+
+        show_operations.help_cb = NULL;
+        show_operations.run_cb = show;
+        cli_register_operatios("show", &show_operations);
+
+        show_rule_operations.help_cb = NULL;
+        show_rule_operations.run_cb = show_rule;
+        cli_register_operatios("show/rule", &show_rule_operations);
+
+        show_wl_operations.help_cb = NULL;
+        show_wl_operations.run_cb = show_wl;
+        cli_register_operatios("show/wl", &show_wl_operations);
 
         show_can_operations.help_cb = can_help;
         show_can_operations.run_cb = show_rule_can;
