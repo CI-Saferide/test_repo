@@ -224,7 +224,7 @@ void show_options(char *buf, int *ind, int *pos)
 	int count = 0, i, is_finish_blank, ri;
 	char *words[100], *results[100];
 	char *tmp = NULL, *word;
-	char arikb[1000], outbuf[1000];
+	char outbuf[1000];
 
 #ifdef DEBUG
 	printf("\rXXXXX b4 buf:%s: \n", buf);
@@ -240,13 +240,10 @@ void show_options(char *buf, int *ind, int *pos)
 	
 	is_finish_blank = buf[strlen(buf) - 1] == ' ';
 
-	sprintf(arikb, " is finishb%d\n", is_finish_blank);
-
 	tmp = strdup(buf);
 	for (word = strtok(tmp, " "); word; word = strtok(NULL, " ")) {
 		words[count++] = word;
 	}
-	sprintf(arikb, " count%d\n", count);
 
 	node_p = cur_node;
 	for (i = 0 ; i < count -1; i++) {
@@ -290,6 +287,7 @@ void show_options(char *buf, int *ind, int *pos)
 			printf("%s", results[0]);
 			*pos += strlen(results[0]);
 			*ind += strlen(results[0]);
+			strcat(buf, results[0]);
 		} else {
 			printf("%s", results[0] + strlen(words[count - 1]));
 			*pos += strlen(results[0]) -strlen(words[count - 1]);
@@ -354,7 +352,6 @@ void handle_enter(char *buf)
 		goto out;
         }
 
-	rule_operation = (node_operations_t *)node_get_data(nodep);
 	if (!rule_operation)
 		goto out;
 	if (!rule_operation->run_cb)

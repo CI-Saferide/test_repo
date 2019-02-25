@@ -1963,7 +1963,7 @@ SR_32 main(int argc, char **argv)
 		}
 	}
 
-        cli_init("(cli(help)(show (rule (can)(ip)(file)) (wl (can)(ip)(file))) (update (rule (can)(ip)(file)) (wl (can)(ip)(file)))(commit)(exit))");
+        cli_init("(cli(help)(show (rule (can)(ip)(file)) (wl (can)(ip)(file))) (update (rule (can)(ip)(file)) (wl (can)(ip)(file)))(commit)(control (wl (learn)(apply)(print)))(exit))");
 
         help_operations.help_cb = NULL;
         help_operations.run_cb = print_usage_cb;
