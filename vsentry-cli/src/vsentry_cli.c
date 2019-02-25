@@ -1766,9 +1766,6 @@ static void parse_command(char *cmd)
 	if (!strcmp(ptr, "show")) {
 		return handle_show();
 	}
-	if (!strcmp(ptr, "update")) {
-		return handle_update(SR_FALSE);
-	}
 	if (!strcmp(ptr, "delete")) {
 		return handle_update(SR_TRUE);
 	}
@@ -1891,6 +1888,7 @@ static void update_rule_can(char *buf)
 		return;
 	}
 	handle_update_can(SR_FALSE, rule_id, tuple_id);
+	is_dirty = SR_TRUE;
 }
 
 static void update_rule_file(char *buf)
@@ -1904,6 +1902,7 @@ static void update_rule_file(char *buf)
 		return;
 	}
 	handle_update_file(SR_FALSE, rule_id, tuple_id);
+	is_dirty = SR_TRUE;
 }
 
 static void update_rule_ip(char *buf)
@@ -1917,6 +1916,7 @@ static void update_rule_ip(char *buf)
 		return;
 	}
 	handle_update_ip(SR_FALSE, rule_id, tuple_id);
+	is_dirty = SR_TRUE;
 }
 
 static void handle_commit(char *buf)
@@ -1929,6 +1929,15 @@ static void handle_commit(char *buf)
 
 static void handle_exit(char *buf)
 {
+	char *ptr;
+	char help[128];
+
+	if (is_dirty) {
+		printf("\n>there are uncommited changes. are you sure? [Y|n]\n");
+		ptr = fgets(help, 128, stdin);
+		if (ptr && *help == 'n')
+			return;
+	}
 	cli_set_run(0);
 }
 
