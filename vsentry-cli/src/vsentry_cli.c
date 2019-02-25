@@ -1808,7 +1808,7 @@ static void parse_command(char *cmd)
 	print_usage();
 }
 
-static void can_help(void)
+static void rule_help(void)
 {
         printf("[rule=X] [tuple=X]");
 }
@@ -1834,53 +1834,89 @@ static void show(char *buf)
 	show_wl(buf);
 }
 
-static void show_rule_can(char *buf)
+static void get_rule_ids(char *buf, int *rule_id, int *tuple_id)
 {
-	int rule_id = -1, tuple_id = -1;
 	char *tmp = NULL, *ptr;
 
 	tmp = strdup(buf);
-	
+
+	*rule_id = *tuple_id = -1;
+
 	for (ptr = strtok(tmp, " "); ptr && memcmp(ptr, "rule=", strlen("rule=")); ptr = strtok(NULL, " "));
 	if (ptr) {
-		rule_id = atoi(ptr+strlen("rule="));
+		*rule_id = atoi(ptr+strlen("rule="));
 		ptr = strtok(NULL, " ");
 		if (ptr) {
 			if (!memcmp(ptr, "tuple=", strlen("tuple="))) {
-				tuple_id = atoi(ptr+strlen("tuple="));
+				*tuple_id = atoi(ptr+strlen("tuple="));
 			}
 		}
 	}
-
-	print_can_rules(SR_FALSE, can_rules, rule_id, tuple_id);
 
 	if (tmp)
 		free(tmp);
 }
 
+static void show_rule_can(char *buf)
+{
+	int rule_id, tuple_id;
+
+	get_rule_ids(buf, &rule_id, &tuple_id);
+	print_can_rules(SR_FALSE, can_rules, rule_id, tuple_id);
+}
+
+static void show_rule_file(char *buf)
+{
+	int rule_id, tuple_id;
+
+	get_rule_ids(buf, &rule_id, &tuple_id);
+	print_file_rules(SR_FALSE, file_rules, rule_id, tuple_id);
+}
+
+static void show_rule_ip(char *buf)
+{
+	int rule_id, tuple_id;
+
+	get_rule_ids(buf, &rule_id, &tuple_id);
+	print_ip_rules(SR_FALSE, ip_rules, rule_id, tuple_id);
+}
+
 static void update_rule_can(char *buf)
 {
-	char *tmp = NULL, *ptr;
-	int rule_id = -1, tuple_id = -1;
+	int rule_id, tuple_id;
 
-	tmp = strdup(buf);
-	
-	for (ptr = strtok(tmp, " "); ptr && memcmp(ptr, "rule=", strlen("rule=")); ptr = strtok(NULL, " "));
-	if (ptr) {
-		rule_id = atoi(ptr+strlen("rule="));
-		ptr = strtok(NULL, " ");
-		if (ptr) {
-			if (!memcmp(ptr, "tuple=", strlen("tuple="))) {
-				tuple_id = atoi(ptr+strlen("tuple="));
-			}
-		}
-	}
-
+	get_rule_ids(buf, &rule_id, &tuple_id);
 	if (rule_id == -1 || tuple_id == -1) {
 		error("\rRule id or Tuple is missing", SR_FALSE);
 		return;
 	}
 	handle_update_can(SR_FALSE, rule_id, tuple_id);
+}
+
+static void update_rule_file(char *buf)
+{
+	int rule_id, tuple_id;
+
+	get_rule_ids(buf, &rule_id, &tuple_id);
+	
+	if (rule_id == -1 || tuple_id == -1) {
+		error("\rRule id or Tuple is missing", SR_FALSE);
+		return;
+	}
+	handle_update_file(SR_FALSE, rule_id, tuple_id);
+}
+
+static void update_rule_ip(char *buf)
+{
+	int rule_id, tuple_id;
+
+	get_rule_ids(buf, &rule_id, &tuple_id);
+	
+	if (rule_id == -1 || tuple_id == -1) {
+		error("\rRule id or Tuple is missing", SR_FALSE);
+		return;
+	}
+	handle_update_ip(SR_FALSE, rule_id, tuple_id);
 }
 
 static void handle_commit(char *buf)
@@ -1901,8 +1937,12 @@ SR_32 main(int argc, char **argv)
 	node_operations_t show_operations;
 	node_operations_t show_rule_operations;
 	node_operations_t show_wl_operations;
-	node_operations_t show_can_operations;
-	node_operations_t update_can_operations;
+	node_operations_t show_rule_can_operations;
+	node_operations_t show_rule_file_operations;
+	node_operations_t show_rule_ip_operations;
+	node_operations_t update_rule_can_operations;
+	node_operations_t update_rule_file_operations;
+	node_operations_t update_rule_ip_operations;
 	node_operations_t help_operations;
 	node_operations_t commit_operations;
 	node_operations_t exit_operations;
@@ -1932,13 +1972,29 @@ SR_32 main(int argc, char **argv)
         show_wl_operations.run_cb = show_wl;
         cli_register_operatios("show/wl", &show_wl_operations);
 
-        show_can_operations.help_cb = can_help;
-        show_can_operations.run_cb = show_rule_can;
-        cli_register_operatios("show/rule/can", &show_can_operations);
+        show_rule_can_operations.help_cb = rule_help;
+        show_rule_can_operations.run_cb = show_rule_can;
+        cli_register_operatios("show/rule/can", &show_rule_can_operations);
 
-        update_can_operations.help_cb = can_help;
-        update_can_operations.run_cb = update_rule_can;
-        cli_register_operatios("update/rule/can", &update_can_operations);
+        show_rule_file_operations.help_cb = rule_help;
+        show_rule_file_operations.run_cb = show_rule_file;
+        cli_register_operatios("show/rule/file", &show_rule_file_operations);
+
+        show_rule_ip_operations.help_cb = rule_help;
+        show_rule_ip_operations.run_cb = show_rule_ip;
+        cli_register_operatios("show/rule/ip", &show_rule_ip_operations);
+
+        update_rule_can_operations.help_cb = rule_help;
+        update_rule_can_operations.run_cb = update_rule_can;
+        cli_register_operatios("update/rule/can", &update_rule_can_operations);
+
+        update_rule_file_operations.help_cb = rule_help;
+        update_rule_file_operations.run_cb = update_rule_file;
+        cli_register_operatios("update/rule/file", &update_rule_file_operations);
+
+        update_rule_ip_operations.help_cb = rule_help;
+        update_rule_ip_operations.run_cb = update_rule_ip;
+        cli_register_operatios("update/rule/ip", &update_rule_ip_operations);
 
         commit_operations.help_cb = NULL;
         commit_operations.run_cb = handle_commit;
