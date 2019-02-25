@@ -2,8 +2,7 @@ ifdef CROSS_COMPILE
 export CC=$(CROSS_COMPILE)gcc
 endif
 
-CPPFLAGS += -I../common/include -I../vsentry-lib/include -I../vsentry-engine/sal/platform/linux/include -I../vsentry-engine/include -I../tools/sr-log/include -I../tools/db_tools/include
-
+CPPFLAGS += -I../common/include -I../vsentry-lib/include -I../vsentry-engine/sal/platform/linux/include -I../vsentry-engine/include -I../tools/sr-log/include -I../tools/db_tools/include -Icli_builder/include
 
 TOP_DIR		:= $(shell pwd)
 BUILD_DIR 	:= $(TOP_DIR)/build
@@ -26,9 +25,9 @@ OBJS		:=  $(addprefix $(OBJDIR)/,$(SRCS:.c=.o))
 DEPS		:=  $(OBJS:.o=.d)
 
 # libs to link with
-LIBS		:= -l$(TARGET) -lsentry -ldb_tools
+LIBS		:= -l$(TARGET) -lsentry -ldb_tools -lcli
 # and where to search them 
-LIB_PATH 	:= -L$(LIBDIR)
+LIB_PATH 	:= -L$(LIBDIR) -L$(TOP_DIR)/cli_builder/build
 
 CFLAGS 		+= -MMD -Wall
 

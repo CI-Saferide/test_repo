@@ -19,6 +19,7 @@
 #include <termios.h>
 #include <sys/stat.h>
 #include <pwd.h>
+#include "cli.h"
 
 #define NUM_OF_RULES 4096
 #define MAX_BUF_SIZE 10000
@@ -589,51 +590,53 @@ static SR_32 handle_load(void)
 }
 
 static void print_engine_usage(void) {
-	printf("\nengine [state|update [on|off]]\n");
+	printf("\n\rengine [state|update [on|off]]\n");
 }
 
 static void print_show_usage(void) 
 {
-	printf("load 	- load information from database \n");
-	printf("show 	- show current information \n");
-	printf("update 	- update current information \n");
-	printf("delete  - delete current information \n");
-	printf("commit 	- commit current information to database and running configuration \n");
-	printf("control	- control vsentry \n");
-	printf("engine	- control engine state\n");
+	printf("\n\r");
+	printf("\rload 	- load information from database \n");
+	printf("\rshow 	- show current information \n");
+	printf("\rupdate 	- update current information \n");
+	printf("\rdelete  - delete current information \n");
+	printf("\rcommit 	- commit current information to database and running configuration \n");
+	printf("\rcontrol	- control vsentry \n");
+	printf("\rengine	- control engine state\n");
 	printf ("\n");
-	printf("show    [action | rule | wl] [can | ip | file] [rule=x] [tuple=y] \n");
-	printf("update  [action | rule | wl] [action_obj | can | ip | file] [rule=x] [tuple=y] \n");
-	printf("delete  [action | rule | wl] [action_obj | can | ip | file] [rule=x] [tuple=y] \n");
-	printf("	[action | rule | wl] - action table, user defied table or white list table \n");
-	printf("	[can | ip | file] - specifies the desired table\n");
-	printf("	[rule=x] - if exists, shows all tuples on the specific rule\n");
-	printf("	[tuple=y] - if exists, shows specific tuple\n");
+	printf("\rshow    [action | rule | wl] [can | ip | file] [rule=x] [tuple=y] \n");
+	printf("\rupdate  [action | rule | wl] [action_obj | can | ip | file] [rule=x] [tuple=y] \n");
+	printf("\rdelete  [action | rule | wl] [action_obj | can | ip | file] [rule=x] [tuple=y] \n");
+	printf("\r	[action | rule | wl] - action table, user defied table or white list table \n");
+	printf("\r	[can | ip | file] - specifies the desired table\n");
+	printf("\r	[rule=x] - if exists, shows all tuples on the specific rule\n");
+	printf("\r	[tuple=y] - if exists, shows specific tuple\n");
 	printf ("\n");
-	printf("control [wl | sp | sr_ver]  [learn | apply | print | reset] \n");
-	printf("	[wl | sp] - specifies specific module (white-list or system-policer)\n");
-	printf("	[sr_ver] - show running vsentry engine version \n");
-	printf("	[learn | apply | print | reset] - specifies specific action to preform\n");
+	printf("\rcontrol [wl | sp | sr_ver]  [learn | apply | print | reset] \n");
+	printf("\r	[wl | sp] - specifies specific module (white-list or system-policer)\n");
+	printf("\r	[sr_ver] - show running vsentry engine version \n");
+	printf("\r	[learn | apply | print | reset] - specifies specific action to preform\n");
 	printf ("\n");
-	printf("engine [state | update] [on | off] \n");
-	printf("	[state | update] - state to show, update to change \n");
-	printf("	[on | off] - applicable when using update \n");
-	printf("\n");
-	printf("\n");
+	printf("\rengine [state | update] [on | off] \n");
+	printf("\r	[state | update] - state to show, update to change \n");
+	printf("\r	[on | off] - applicable when using update \n");
+	printf("\r\n");
+	printf("\r\n");
 }
 
 static void print_update_rule_usage(SR_BOOL is_type)
 {
 	if (is_type)
-		printf("[can | ip | file] - specifies the desired table\n");
-	printf("rule=x, tuple=y\n");
+		printf("\r[can | ip | file] - specifies the desired table\n");
+	printf("\rrule=x, tuple=y\n");
 }
 
 static void print_update_usage(void)
 {
-	printf("update | delete action | rule | wl action_obj | can | ip | file rule=x tuple=y\n");
-	printf("  update tables\n");
-	printf("action | rule | wl - action table, user defined table or white list table \n");
+	printf("\n\r");
+	printf("\rupdate | delete action | rule | wl action_obj | can | ip | file rule=x tuple=y\n");
+	printf("\r  update tables\n");
+	printf("\raction | rule | wl - action table, user defined table or white list table \n");
 	print_update_rule_usage(SR_TRUE);
 }
 
@@ -710,10 +713,10 @@ static void print_can_rules(SR_BOOL is_wl, rule_container_t table[], SR_32 rule_
 	rule_info_t *iter;
 	char msg_id[32];
 
-	printf("\n%scan rules:\n", is_wl ? "wl " : "");
-	printf("%-6s %-6s %-8s %-10s %-10s %-24.24s %-10.10s %-10.10s\n",
+	printf("\r\n%scan rules:\n", is_wl ? "wl " : "");
+	printf("\r%-6s %-6s %-8s %-10s %-10s %-24.24s %-10.10s %-10.10s\n",
 		RULE, TUPLE, CAN_MSG, DIRECTION, INTERFACE, PROGRAM, USER, ACTION); 
-	printf("--------------------------------------------------------------------------------------------------------------------------------\n");
+	printf("\r--------------------------------------------------------------------------------------------------------------------------------\n");
 	for (i = 0; i < NUM_OF_RULES; i++) {
 		for (iter = table[i].rule_info; iter; iter = iter->next) {
 			if ((rule_id == -1 || rule_id == i) && (tuple_id == -1 || tuple_id == iter->can_rule.tuple.id)) {
@@ -721,15 +724,16 @@ static void print_can_rules(SR_BOOL is_wl, rule_container_t table[], SR_32 rule_
 					strcpy(msg_id, "any");
 				else
 					sprintf(msg_id, "%x", iter->can_rule.tuple.msg_id);
-				printf("%-6d %-6d %-8s %-10.10s %-10.10s %-24.24s %-10.10s %-10.10s\n", 
+				printf("\r%-6d %-6d %-8s %-10.10s %-10.10s %-24.24s %-10.10s %-10.10s\n", 
 					i, iter->can_rule.tuple.id, msg_id, get_dir_desc(iter->can_rule.tuple.direction),
 					iter->can_rule.tuple.interface, iter->can_rule.tuple.program, iter->can_rule.tuple.user, table[i].action_name);
 			}
 		}
 	}
+	printf("\r");
 }
 
-static void get_num_param(SR_32 *rule_id, SR_32 *tuple_id)
+static void get_num_param(char *buf, SR_32 *rule_id, SR_32 *tuple_id)
 {
 	char *ptr, *iter;
 
@@ -796,8 +800,8 @@ static void handle_show(void)
 			printf("error getting rule type\n");
 			return;
 		}
-		get_num_param(&rule_id, &tuple_id);
-		get_num_param(&rule_id, &tuple_id);
+		get_num_param(NULL, &rule_id, &tuple_id);
+		get_num_param(NULL, &rule_id, &tuple_id);
 		goto print;
 	} else if (!strcmp(ptr, "action")) {
 		is_action = SR_TRUE;
@@ -1566,8 +1570,8 @@ static void handle_update(SR_BOOL is_delete)
 			print_update_rule_usage(SR_TRUE);
 			return;
 		}
-		get_num_param(&rule_id, &tuple_id);
-		get_num_param(&rule_id, &tuple_id);
+		get_num_param(NULL, &rule_id, &tuple_id);
+		get_num_param(NULL, &rule_id, &tuple_id);
 		if ((rule_id == -1 || tuple_id == -1) && !is_delete) {
 			error("rule id or tuple id are missing", SR_TRUE);
 			print_update_rule_usage(SR_FALSE);
@@ -1972,9 +1976,66 @@ out:
 	term_reset(count);
 }
 
+static void can_help(void)
+{
+        printf("[rule=X] [tuple=X]");
+}
+
+static void show_rule_can(char *buf)
+{
+	int rule_id = -1, tuple_id = -1;
+	char *tmp = NULL, *ptr;
+
+	tmp = strdup(buf);
+	
+	for (ptr = strtok(tmp, " "); ptr && memcmp(ptr, "rule=", strlen("rule=")); ptr = strtok(NULL, " "));
+	if (ptr) {
+		rule_id = atoi(ptr+strlen("rule="));
+		ptr = strtok(NULL, " ");
+		if (ptr) {
+			if (!memcmp(ptr, "tuple=", strlen("tuple="))) {
+				tuple_id = atoi(ptr+strlen("tuple="));
+			}
+		}
+	}
+
+	print_can_rules(SR_FALSE, can_rules, rule_id, tuple_id);
+
+out:
+	if (tmp)
+		free(tmp);
+}
+
+static void update_rule_can(char *buf)
+{
+	char *tmp = NULL, *ptr;
+	int rule_id = -1, tuple_id = -1;
+
+	tmp = strdup(buf);
+	
+	for (ptr = strtok(tmp, " "); ptr && memcmp(ptr, "rule=", strlen("rule=")); ptr = strtok(NULL, " "));
+	if (ptr) {
+		rule_id = atoi(ptr+strlen("rule="));
+		ptr = strtok(NULL, " ");
+		if (ptr) {
+			if (!memcmp(ptr, "tuple=", strlen("tuple="))) {
+				tuple_id = atoi(ptr+strlen("tuple="));
+			}
+		}
+	}
+
+	if (rule_id == -1 || tuple_id == -1) {
+		error("\rRule id or Tuple is missing", SR_FALSE);
+		return;
+	}
+	handle_update_can(SR_FALSE, rule_id, tuple_id);
+}
+
 SR_32 main(int argc, char **argv)
 {
-	char cmd[MAX_BUF_SIZE];
+	node_operations_t show_can_operations;
+	node_operations_t update_can_operations;
+	node_operations_t help_operations;
 
 	if (!(argc > 1 && !strcmp(argv[1], "nl"))) {
 		if (handle_load() != 0) {
@@ -1983,14 +2044,21 @@ SR_32 main(int argc, char **argv)
 		}
 	}
 
-	while (is_run) {
-		printf(CLI_PROMPT);
-		get_cmd(cmd, MAX_BUF_SIZE, CLI_PROMPT);
-		if (strlen(cmd))
-			cmd_insert(cmds, cmd);
-		parse_command(cmd);
-	}
-	printf("\n\033[%dD", (int)strlen(CLI_PROMPT));
+        cli_init("(cli(help)(show (rule (can)(ip)(file)) (wl (can)(ip)(file))) (update (rule (can)(ip)(file)) (wl (can)(ip)(file))))");
+
+        help_operations.help_cb = NULL;
+        help_operations.run_cb = print_usage;
+        cli_register_operatios("help", &help_operations);
+
+        show_can_operations.help_cb = can_help;
+        show_can_operations.run_cb = show_rule_can;
+        cli_register_operatios("show/rule/can", &show_can_operations);
+
+        update_can_operations.help_cb = can_help;
+        update_can_operations.run_cb = update_rule_can;
+        cli_register_operatios("update/rule/can", &update_can_operations);
+
+        cli_run();
 
 	return SR_SUCCESS;
 }
