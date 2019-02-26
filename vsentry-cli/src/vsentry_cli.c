@@ -1648,94 +1648,137 @@ static SR_32 handle_print_cb(char *buf)
 	return SR_SUCCESS;
 }
 
-static void handle_control(SR_BOOL *should_load)
+static void handle_learn(char *buf)
 {
-	SR_32 fd, rc;
-	char *ptr, cmd[128], buf[512], cval;
+	SR_32 fd;
+	int rc;
 
-	*should_load = SR_FALSE;
-	ptr = strtok(NULL, " "); 
-	if (!ptr) {
-		printf("\n");
-		print_control_usage();
-		return; 
-	}
-	if (*ptr == '?') {
-		print_control_usage();
-		return;
-	}
-	
-	if (get_control_cmd(ptr, cmd) != SR_SUCCESS) {
-		error("invalid control command", SR_TRUE);
-		print_control_usage();
-		return;
-	}
-	
 	if ((fd = engine_connect()) < 0) {
 		error("failed engine connect", SR_TRUE);
 		return;
 	}
-
-	rc = write(fd, cmd , strlen(cmd));
+	rc = write(fd, "wl_learn", strlen("wl_learn"));
 	if (rc < 0) {
 		error("write error", SR_TRUE);
 		return;
 	}
-	if (rc < strlen(cmd)) {
+	if (rc < strlen("wl_learn")) {
 		error("partial write", SR_TRUE);
 		return;
 	}
-	
-	if (!strcmp(cmd, "sr_ver")) {
-		usleep(30000);
-		rc = read(fd, buf, 512);
-		if (rc < 0) {
-			perror("read error");
-			return;
-		}
-		printf("\n%s\n", buf);
+
+	close(fd);
+
+	notify_info("learning...");
+}
+
+static void handle_wl_print(char *buf)
+{
+	SR_32 fd;
+	int rc;
+
+	if ((fd = engine_connect()) < 0) {
+		error("failed engine connect", SR_TRUE);
+		return;
 	}
-	if (!strcmp(cmd, "wl_print")) {
-		if (cli_handle_reply(fd, handle_print_cb) != SR_SUCCESS)
-			printf("print Failed\n");
-        }
-
-	if (!strcmp(cmd, "wl_apply")) {
-		int ret = 0;
-		int counter = 0;
-		char line[4] = {'|', '/', '-', '\\'};
-		fd_set fds;
-		struct timeval tv;
-
-		printf("\napplying  ");
-
-		while (1) {
-			tv.tv_sec = 0;
-			tv.tv_usec = 250000;
-
-			FD_ZERO(&fds);
-			FD_SET(fd, &fds);
-
-			printf("\033[1D");
-			printf("%c", line[counter%4]);
-			fflush(stdout);
-
-			counter++;
-
-			ret =  select((fd+1), &fds, NULL, NULL, &tv);
-			if (!ret || ret <0)
-				continue;
-			
-			break;
-		}
-
-		if (read(fd, &cval, 1) < 1)
-			printf("failed reading from socket");
-
-		notify_info("apply finished.");
-		*should_load = SR_TRUE;
+	rc = write(fd, "wl_print", strlen("wl_print"));
+	if (rc < 0) {
+		error("write error", SR_TRUE);
+		return;
 	}
-	printf("\n");
+	if (rc < strlen("wl_print")) {
+		error("partial write", SR_TRUE);
+		return;
+	}
+	if (cli_handle_reply(fd, handle_print_cb) != SR_SUCCESS)
+		printf("print Failed\n");
+
+	close(fd);
+}
+
+static void handle_apply(char *buf)
+{
+	SR_32 fd;
+	int ret = 0, rc, counter = 0;
+	char line[4] = {'|', '/', '-', '\\'}, cval;
+	fd_set fds;
+	struct timeval tv;
+
+	if ((fd = engine_connect()) < 0) {
+		error("failed engine connect", SR_TRUE);
+		return;
+	}
+	rc = write(fd, "wl_apply", strlen("wl_apply"));
+	if (rc < 0) {
+		error("write error", SR_TRUE);
+		return;
+	}
+	if (rc < strlen("wl_apply")) {
+		error("partial write", SR_TRUE);
+		return;
+	}
+
+	printf("\napplying  ");
+
+	while (1) {
+		tv.tv_sec = 0;
+		tv.tv_usec = 250000;
+
+		FD_ZERO(&fds);
+		FD_SET(fd, &fds);
+
+		printf("\033[1D");
+		printf("%c", line[counter%4]);
+		fflush(stdout);
+
+		counter++;
+
+		ret =  select((fd+1), &fds, NULL, NULL, &tv);
+		if (!ret || ret <0)
+			continue;
+		break;
+	}
+
+	if (read(fd, &cval, 1) < 1)
+		printf("failed reading from socket");
+
+	notify_info("apply finished.");
+	close(fd);
+	printf("\nloading....\n");
+	db_cleanup();
+	if (handle_load() != SR_SUCCESS) {
+		printf("error handling load\n");
+	}
+	notify_info("load finished.");
+
+}
+
+static void handle_sr_ver(char *buf)
+{
+	int fd, rc;
+	char buf2[256];
+
+	if ((fd = engine_connect()) < 0) {
+		error("failed engine connect", SR_TRUE);
+		return;
+	}
+	rc = write(fd, "sr_ver", strlen("sr_ver"));
+	if (rc < 0) {
+		error("write error", SR_TRUE);
+		return;
+	}
+	if (rc < strlen("sr_ver")) {
+		error("partial write", SR_TRUE);
+		return;
+	}
+
+	usleep(30000);
+	rc = read(fd, buf2, 256);
+	if (rc < 0) {
+		perror("read error");
+		return;
+	}
+	printf("\n%s\n", buf2);
 
 	close(fd);
 }
@@ -1743,28 +1786,10 @@ static void handle_control(SR_BOOL *should_load)
 static void parse_command(char *cmd)
 {
 	char *ptr;
-	char buf[128];
-	SR_BOOL should_load;
 
-	ptr = strtok(cmd, " ");
-	if (!ptr)
-		return;
 	if (!strcmp(ptr, "help")) {
 		print_usage();
 		return;
-	}
-	if (!strcmp(ptr, "quit")) {
-		if (is_dirty) {
-			printf("\n>there are uncommited changes. are you sure? [Y|n]\n");
-			ptr = fgets(buf, 128, stdin);
-			if (ptr && *buf == 'n')
-				return;
-		}
-		is_run = SR_FALSE;
-		return;
-	}
-	if (!strcmp(ptr, "show")) {
-		return handle_show();
 	}
 	if (!strcmp(ptr, "delete")) {
 		return handle_update(SR_TRUE);
@@ -1775,25 +1800,6 @@ static void parse_command(char *cmd)
 			printf("error handling load\n");
 		}
 		notify_info("load finished.");
-		return;
-	}
-	if (!strcmp(ptr, "commit")) {
-		printf("\ncommitting...\n");
-		if (__handle_commit() != SR_SUCCESS) {
-			printf("commit failed !!!\n");
-		}
-		return;
-	}
-	if (!strcmp(ptr, "control")) {
-		handle_control(&should_load);
-		if (should_load) {
-			printf("\nloading....\n");
-			db_cleanup();
-			if (handle_load() != SR_SUCCESS) {
-				printf("error handling load\n");
-			}
-			notify_info("load finished.");
-		}
 		return;
 	}
 
@@ -1819,9 +1825,9 @@ static void show_rule(char *buf)
 
 static void show_wl(char *buf)
 {
-	print_file_rules(SR_TRUE, file_rules, -1, -1);
-	print_can_rules(SR_TRUE, can_rules, -1, -1);
-	print_ip_rules(SR_TRUE, ip_rules, -1, -1);
+	print_file_rules(SR_TRUE, file_wl, -1, -1);
+	print_can_rules(SR_TRUE, can_wl, -1, -1);
+	print_ip_rules(SR_TRUE, ip_wl, -1, -1);
 }
 
 static void show(char *buf)
@@ -1862,6 +1868,14 @@ static void show_rule_can(char *buf)
 	print_can_rules(SR_FALSE, can_rules, rule_id, tuple_id);
 }
 
+static void show_wl_can(char *buf)
+{
+	int rule_id, tuple_id;
+
+	get_rule_ids(buf, &rule_id, &tuple_id);
+	print_can_rules(SR_TRUE, can_wl, rule_id, tuple_id);
+}
+
 static void show_rule_file(char *buf)
 {
 	int rule_id, tuple_id;
@@ -1870,12 +1884,28 @@ static void show_rule_file(char *buf)
 	print_file_rules(SR_FALSE, file_rules, rule_id, tuple_id);
 }
 
+static void show_wl_file(char *buf)
+{
+	int rule_id, tuple_id;
+
+	get_rule_ids(buf, &rule_id, &tuple_id);
+	print_file_rules(SR_TRUE, file_wl, rule_id, tuple_id);
+}
+
 static void show_rule_ip(char *buf)
 {
 	int rule_id, tuple_id;
 
 	get_rule_ids(buf, &rule_id, &tuple_id);
 	print_ip_rules(SR_FALSE, ip_rules, rule_id, tuple_id);
+}
+
+static void show_wl_ip(char *buf)
+{
+	int rule_id, tuple_id;
+
+	get_rule_ids(buf, &rule_id, &tuple_id);
+	print_ip_rules(SR_TRUE, ip_wl, rule_id, tuple_id);
 }
 
 static void update_rule_can(char *buf)
@@ -1888,6 +1918,19 @@ static void update_rule_can(char *buf)
 		return;
 	}
 	handle_update_can(SR_FALSE, rule_id, tuple_id);
+	is_dirty = SR_TRUE;
+}
+
+static void update_wl_can(char *buf)
+{
+	int rule_id, tuple_id;
+
+	get_rule_ids(buf, &rule_id, &tuple_id);
+	if (rule_id == -1 || tuple_id == -1) {
+		error("\rRule id or Tuple is missing", SR_FALSE);
+		return;
+	}
+	handle_update_can(SR_TRUE, rule_id, tuple_id);
 	is_dirty = SR_TRUE;
 }
 
@@ -1905,6 +1948,20 @@ static void update_rule_file(char *buf)
 	is_dirty = SR_TRUE;
 }
 
+static void update_wl_file(char *buf)
+{
+	int rule_id, tuple_id;
+
+	get_rule_ids(buf, &rule_id, &tuple_id);
+	
+	if (rule_id == -1 || tuple_id == -1) {
+		error("\rRule id or Tuple is missing", SR_FALSE);
+		return;
+	}
+	handle_update_file(SR_TRUE, rule_id, tuple_id);
+	is_dirty = SR_TRUE;
+}
+
 static void update_rule_ip(char *buf)
 {
 	int rule_id, tuple_id;
@@ -1916,6 +1973,20 @@ static void update_rule_ip(char *buf)
 		return;
 	}
 	handle_update_ip(SR_FALSE, rule_id, tuple_id);
+	is_dirty = SR_TRUE;
+}
+
+static void update_wl_ip(char *buf)
+{
+	int rule_id, tuple_id;
+
+	get_rule_ids(buf, &rule_id, &tuple_id);
+	
+	if (rule_id == -1 || tuple_id == -1) {
+		error("\rRule id or Tuple is missing", SR_FALSE);
+		return;
+	}
+	handle_update_ip(SR_TRUE, rule_id, tuple_id);
 	is_dirty = SR_TRUE;
 }
 
@@ -1949,12 +2020,22 @@ SR_32 main(int argc, char **argv)
 	node_operations_t show_rule_can_operations;
 	node_operations_t show_rule_file_operations;
 	node_operations_t show_rule_ip_operations;
+	node_operations_t show_wl_can_operations;
+	node_operations_t show_wl_file_operations;
+	node_operations_t show_wl_ip_operations;
 	node_operations_t update_rule_can_operations;
 	node_operations_t update_rule_file_operations;
 	node_operations_t update_rule_ip_operations;
+	node_operations_t update_wl_can_operations;
+	node_operations_t update_wl_file_operations;
+	node_operations_t update_wl_ip_operations;
 	node_operations_t help_operations;
 	node_operations_t commit_operations;
 	node_operations_t exit_operations;
+	node_operations_t control_wl_learn_operations;
+	node_operations_t control_wl_apply_operations;
+	node_operations_t control_wl_print_operations;
+	node_operations_t control_sr_ver_operations;
 
 	if (!(argc > 1 && !strcmp(argv[1], "nl"))) {
 		if (handle_load() != 0) {
@@ -1963,7 +2044,7 @@ SR_32 main(int argc, char **argv)
 		}
 	}
 
-        cli_init("(cli(help)(show (rule (can)(ip)(file)) (wl (can)(ip)(file))) (update (rule (can)(ip)(file)) (wl (can)(ip)(file)))(commit)(control (wl (learn)(apply)(print)))(exit))");
+        cli_init("(cli(help)(show (rule (can)(ip)(file)) (wl (can)(ip)(file))) (update (rule (can)(ip)(file)) (wl (can)(ip)(file)))(commit)(control (wl (learn)(apply)(print))(sr_ver))(exit))");
 
         help_operations.help_cb = NULL;
         help_operations.run_cb = print_usage_cb;
@@ -1993,6 +2074,18 @@ SR_32 main(int argc, char **argv)
         show_rule_ip_operations.run_cb = show_rule_ip;
         cli_register_operatios("show/rule/ip", &show_rule_ip_operations);
 
+        show_wl_can_operations.help_cb = rule_help;
+        show_wl_can_operations.run_cb = show_wl_can;
+        cli_register_operatios("show/wl/can", &show_wl_can_operations);
+
+        show_wl_file_operations.help_cb = rule_help;
+        show_wl_file_operations.run_cb = show_wl_file;
+        cli_register_operatios("show/wl/file", &show_wl_file_operations);
+
+        show_wl_ip_operations.help_cb = rule_help;
+        show_wl_ip_operations.run_cb = show_wl_ip;
+        cli_register_operatios("show/wl/ip", &show_wl_ip_operations);
+
         update_rule_can_operations.help_cb = rule_help;
         update_rule_can_operations.run_cb = update_rule_can;
         cli_register_operatios("update/rule/can", &update_rule_can_operations);
@@ -2005,6 +2098,18 @@ SR_32 main(int argc, char **argv)
         update_rule_ip_operations.run_cb = update_rule_ip;
         cli_register_operatios("update/rule/ip", &update_rule_ip_operations);
 
+        update_wl_can_operations.help_cb = rule_help;
+        update_wl_can_operations.run_cb = update_wl_can;
+        cli_register_operatios("update/wl/can", &update_wl_can_operations);
+
+        update_wl_file_operations.help_cb = rule_help;
+        update_wl_file_operations.run_cb = update_wl_file;
+        cli_register_operatios("update/wl/file", &update_wl_file_operations);
+
+        update_wl_ip_operations.help_cb = rule_help;
+        update_wl_ip_operations.run_cb = update_wl_ip;
+        cli_register_operatios("update/wl/ip", &update_wl_ip_operations);
+
         commit_operations.help_cb = NULL;
         commit_operations.run_cb = handle_commit;
         cli_register_operatios("commit", &commit_operations);
@@ -2012,6 +2117,22 @@ SR_32 main(int argc, char **argv)
         exit_operations.help_cb = NULL;
         exit_operations.run_cb = handle_exit;
         cli_register_operatios("exit", &exit_operations);
+
+        control_wl_learn_operations.help_cb = NULL;
+        control_wl_learn_operations.run_cb = handle_learn;
+        cli_register_operatios("control/wl/learn", &control_wl_learn_operations);
+
+        control_wl_apply_operations.help_cb = NULL;
+        control_wl_apply_operations.run_cb = handle_apply;
+        cli_register_operatios("control/wl/apply", &control_wl_apply_operations);
+
+        control_wl_print_operations.help_cb = NULL;
+        control_wl_print_operations.run_cb = handle_wl_print;
+        cli_register_operatios("control/wl/print", &control_wl_print_operations);
+
+        control_sr_ver_operations.help_cb = NULL;
+        control_sr_ver_operations.run_cb = handle_sr_ver;
+        cli_register_operatios("control/sr_ver", &control_sr_ver_operations);
 
         cli_run();
 
