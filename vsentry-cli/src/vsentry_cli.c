@@ -154,29 +154,6 @@ static void notify_updated_file_rule(SR_U32 rule_id, rule_info_t *update_rule, c
 	printf(COLOR_RESET);
 }
 
-static SR_32 get_control_cmd(char *ptr, char *cmd)
-{
-	if (!strcmp(ptr, "sp")) {
-		ptr = strtok(NULL, " ");
-		if (!ptr)
-			return SR_ERROR;
-		if (!strcmp(ptr, "learn")) {
-			strcpy(cmd, "sp_learn");
-			return SR_SUCCESS;
-		}
-		if (!strcmp(ptr, "apply")) {
-			strcpy(cmd, "sp_apply");
-			return SR_SUCCESS;
-		}
-		if (!strcmp(ptr, "off")) {
-			strcpy(cmd, "sp_off");
-			return SR_SUCCESS;
-		}
-	}
-
-        return SR_ERROR;
-}
-
 static void chop_nl(char *str)
 {
 	SR_32 len = strlen(str);
@@ -666,106 +643,6 @@ static void print_can_rules(SR_BOOL is_wl, rule_container_t table[], SR_32 rule_
 		}
 	}
 	printf("\r");
-}
-
-static void get_num_param(char *buf, SR_32 *rule_id, SR_32 *tuple_id)
-{
-	char *ptr, *iter;
-
-	ptr = strtok(NULL, " "); 
-	if (!ptr)
-		return;
-
-	for (iter = ptr; *iter && *iter != '='; iter++);
-	if (!iter) 
-		return;
-	iter++;
-	
-	if (!memcmp(ptr, "rule", strlen("rule")))
-		*rule_id = atoi(iter);
-	else if (!memcmp(ptr, "tuple", strlen("tuple")))
-		*tuple_id = atoi(iter);
-}
-
-static SR_32 get_rule_type(SR_BOOL *is_can, SR_BOOL *is_file, SR_BOOL *is_ip, SR_BOOL *is_help, SR_BOOL def_val)
-{
-	char *ptr; 
-
-	ptr = strtok(NULL, " "); 
-	if (!ptr) {
-		*is_can = *is_file = *is_ip = def_val;
-		return SR_SUCCESS;
-	}
-	if (!strcmp(ptr, "file"))
-		*is_file = SR_TRUE;
-	else if (!strcmp(ptr, "can"))
-		*is_can = SR_TRUE;
-	else if (!strcmp(ptr, "ip"))
-		*is_ip = SR_TRUE;
-	else if (*ptr == '?') 
-		*is_help = SR_TRUE;
-	else {
-		return SR_ERROR;
-	}
-
-	return SR_SUCCESS;
-} 
-
-static void handle_show(void)
-{
-	SR_BOOL is_wl = SR_FALSE, is_rule = SR_FALSE, is_action = SR_FALSE, is_can = SR_FALSE, is_file = SR_FALSE, is_ip = SR_FALSE, is_help = SR_FALSE;
-	char *ptr;
-	SR_32 rule_id = -1, tuple_id = -1;
-
-	ptr = strtok(NULL, " "); 
-	if (!ptr) {
-		is_wl = is_rule = is_action = is_can = is_file = is_ip = SR_TRUE;
-		goto print;
-	}
-	if (*ptr == '?') {
-		print_show_usage();
-		return;
-	}
-	if (!strcmp(ptr, "rule") || !strcmp(ptr, "wl")) {
-		if (!strcmp(ptr, "rule"))
-			is_rule = SR_TRUE;
-		else
-			is_wl = SR_TRUE;
-		if (get_rule_type(&is_can, &is_file, &is_ip, &is_help, SR_TRUE) != SR_SUCCESS) {
-			printf("error getting rule type\n");
-			return;
-		}
-		get_num_param(NULL, &rule_id, &tuple_id);
-		get_num_param(NULL, &rule_id, &tuple_id);
-		goto print;
-	} else if (!strcmp(ptr, "action")) {
-		is_action = SR_TRUE;
-		goto print;
-	} else {
-		printf("show rule | wl | action\n");
-	}
-
-print:
-	if (is_action)
-		print_actions();
-	if (is_file) {
-		if (is_rule)
-			print_file_rules(SR_FALSE, file_rules, rule_id, tuple_id);
-		if (is_wl)
-			print_file_rules(SR_TRUE, file_wl, rule_id, tuple_id);
-	}
-	if (is_ip) {
-		if (is_rule)
-			print_ip_rules(SR_FALSE, ip_rules, rule_id, tuple_id);
-		if (is_wl)
-			print_ip_rules(SR_TRUE, ip_wl, rule_id, tuple_id);
-	}
-	if (is_can) {
-		if (is_rule)
-			print_can_rules(SR_FALSE, can_rules, rule_id, tuple_id);
-		if (is_wl)
-			print_can_rules(SR_TRUE, can_wl, rule_id, tuple_id);
-	}
 }
 
 static SR_BOOL is_valid_msg_ig(char *str)
@@ -1470,81 +1347,6 @@ out:
 	return st;
 }
 
-static void handle_update(SR_BOOL is_delete)
-{
-	SR_BOOL is_wl = SR_FALSE, is_can = SR_FALSE, is_file = SR_FALSE, is_ip = SR_FALSE, is_help = SR_FALSE;
-	SR_32 rule_id = -1, tuple_id = -1;
-	char *ptr;
-
-	ptr = strtok(NULL, " "); 
-	if (!ptr) {
-		printf("\n");
-		print_update_usage();
-		return;
-	}
-	if (*ptr == '?') {
-		print_update_usage();
-		return;
-	}
-
-	if (!strcmp(ptr, "rule") || !strcmp(ptr, "wl")) {
-		if (!strcmp(ptr, "wl"))
-			is_wl = SR_TRUE;
-		if (get_rule_type(&is_can, &is_file, &is_ip, &is_help, SR_FALSE) != SR_SUCCESS) {
-			error("error getting rule type", SR_TRUE);
-			return;
-		}
-		if (is_help) {
-			printf("\n");
-			print_update_rule_usage(SR_TRUE);
-			return;
-		}
-		if (!is_can && !is_ip && !is_file) {
-			printf("rule type is missing\n");
-			print_update_rule_usage(SR_TRUE);
-			return;
-		}
-		get_num_param(NULL, &rule_id, &tuple_id);
-		get_num_param(NULL, &rule_id, &tuple_id);
-		if ((rule_id == -1 || tuple_id == -1) && !is_delete) {
-			error("rule id or tuple id are missing", SR_TRUE);
-			print_update_rule_usage(SR_FALSE);
-			return;
-		}
-		if (is_can) {
-			if (!is_delete)
-				handle_update_can(is_wl, rule_id, tuple_id);
-			else
-				handle_delete_can(is_wl, rule_id, tuple_id);
-		}
-		if (is_ip) {
-			if (!is_delete)
-				handle_update_ip(is_wl, rule_id, tuple_id);
-			else
-				handle_delete_ip(is_wl, rule_id, tuple_id);
-		}
-		if (is_file) {
-			if (!is_delete)
-				handle_update_file(is_wl, rule_id, tuple_id);
-			else
-				handle_delete_file(is_wl, rule_id, tuple_id);
-		}
-		is_dirty = SR_TRUE;
-
-	} else if (!strcmp(ptr, "action")) {
-		handle_update_action(is_delete);
-		is_dirty = SR_TRUE;
-	} else {
-		printf("invalid agruments\n");
-		print_update_usage();
-	}
-}
-
-static void print_control_usage(void)
-{
-	printf("\ncontrol [wl | sp | sr_ver]  [learn | apply | print | reset] \n");
-}
-
 static void cleanup_rule(rule_container_t table[], SR_32 rule_id)
 {
 	rule_info_t **iter, *help;
@@ -1576,48 +1378,13 @@ static void db_cleanup(void)
 	num_of_actions = 0;
 }
 
-static void handle_engine(void)
-{
-	char *ptr;
-
-	ptr = strtok(NULL, " "); 
-	if (!ptr) { 
-		print_engine_usage();
-		return;
-	}
-
-	if (!strcmp(ptr, "state")) {
-		printf("\n state:%s\n", engine_state ? "ON" : "OFF");
-		return;
-	}
-	if (strcmp(ptr, "update") != 0) {
-		print_engine_usage();
-		return;
-	}
-
-	ptr = strtok(NULL, " "); 
-	if (!ptr) { 
-		print_engine_usage();
-		return;
-	}
-	if (!strcmp(ptr, "on"))
-		engine_state = SR_TRUE;
-	else if (!strcmp(ptr, "off"))
-		engine_state = SR_FALSE;
-	else {
-		print_engine_usage();
-		return;
-	}
-	notify_info("Engine state changed.");
-}
-
 static SR_32 handle_print_cb(char *buf)
 {
 	printf("%s", buf);
 	return SR_SUCCESS;
 }
 
-static void handle_wl_gen(char *cmd, char *msg, SR_BOOL is_print)
+static void handle_cmd_gen(char *cmd, char *msg, SR_BOOL is_print)
 {
 	SR_32 fd;
 	int rc;
@@ -1649,17 +1416,17 @@ static void handle_wl_gen(char *cmd, char *msg, SR_BOOL is_print)
 
 static void handle_learn(char *buf)
 {
-	return  handle_wl_gen("wl_learn", "learning...", SR_FALSE);
+	return  handle_cmd_gen("wl_learn", "learning...", SR_FALSE);
 }
 
 static void handle_reset(char *buf)
 {
-	return  handle_wl_gen("wl_reset", "reseting...", SR_FALSE);
+	return  handle_cmd_gen("wl_reset", "reseting...", SR_FALSE);
 }
 
 static void handle_wl_print(char *buf)
 {
-	return  handle_wl_gen("wl_print", NULL, SR_TRUE);
+	return  handle_cmd_gen("wl_print", NULL, SR_TRUE);
 }
 
 static void handle_apply(char *buf)
@@ -1996,7 +1763,7 @@ static void handle_load_cb(char *buf)
 
 static void engine_state_cb(char *buf)
 {
-	printf("\n state:%s\n", engine_state ? "ON" : "OFF");
+	printf("\n%s\n", engine_state ? "ON" : "OFF");
 }
 
 static void engine_update_cb(char *buf)
@@ -2030,6 +1797,21 @@ static void engine_update_cb(char *buf)
 		free(tmp);
 }
 
+static void handle_sp_learn(char *buf)
+{
+	return  handle_cmd_gen("sp_learn", "system policer learning...", SR_FALSE);
+}
+
+static void handle_sp_apply(char *buf)
+{
+	return  handle_cmd_gen("sp_apply", "system policer applying...", SR_FALSE);
+}
+
+static void handle_sp_off(char *buf)
+{
+	return  handle_cmd_gen("sp_off", "system policer off...", SR_FALSE);
+}
+
 SR_32 main(int argc, char **argv)
 {
 	node_operations_t show_operations;
@@ -2059,6 +1841,9 @@ SR_32 main(int argc, char **argv)
 	node_operations_t control_wl_print_operations;
 	node_operations_t control_wl_reset_operations;
 	node_operations_t control_sr_ver_operations;
+	node_operations_t control_sp_learn_operations;
+	node_operations_t control_sp_apply_operations;
+	node_operations_t control_sp_off_operations;
 	node_operations_t engine_state_operations;
 	node_operations_t engine_update_operations;
 
@@ -2069,7 +1854,7 @@ SR_32 main(int argc, char **argv)
 		}
 	}
 
-        cli_init("(cli(help)(show (rule (can)(ip)(file)) (wl (can)(ip)(file))) (update (rule (can)(ip)(file)) (wl (can)(ip)(file)))(delete (rule (can)(ip)(file)) (wl (can)(ip)(file)))(commit)(control (wl (learn)(apply)(print)(reset))(sr_ver))(load)(engine (state)(update))(exit))");
+        cli_init("(cli(help)(show (rule (can)(ip)(file)) (wl (can)(ip)(file))) (update (rule (can)(ip)(file)) (wl (can)(ip)(file)))(delete (rule (can)(ip)(file)) (wl (can)(ip)(file)))(commit)(control (wl (learn)(apply)(print)(reset))(sr_ver)(sp (learn)(apply)(off)))(load)(engine (state)(update))(exit))");
 
         help_operations.help_cb = NULL;
         help_operations.run_cb = print_usage_cb;
@@ -2186,6 +1971,18 @@ SR_32 main(int argc, char **argv)
         engine_update_operations.help_cb = engine_update_help,
         engine_update_operations.run_cb = engine_update_cb;
         cli_register_operatios("engine/update", &engine_update_operations);
+
+        control_sp_learn_operations.help_cb = NULL;
+        control_sp_learn_operations.run_cb = handle_sp_learn;
+        cli_register_operatios("control/sp/learn", &control_sp_learn_operations);
+
+        control_sp_apply_operations.help_cb = NULL;
+        control_sp_apply_operations.run_cb = handle_sp_apply;
+        cli_register_operatios("control/sp/apply", &control_sp_apply_operations);
+
+        control_sp_off_operations.help_cb = NULL;
+        control_sp_off_operations.run_cb = handle_sp_off;
+        cli_register_operatios("control/sp/off", &control_sp_off_operations);
 
         cli_run();
 
