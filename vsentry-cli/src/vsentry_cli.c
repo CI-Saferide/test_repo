@@ -1096,7 +1096,8 @@ static SR_32 delete_action(char *action_name)
 
 	for (i = 0; i < num_of_actions && strcmp(action_name, actions[i].action_name) != 0; i++);
 	if (i == num_of_actions) {
-		printf("action %s does not exist\n", action_name);
+		snprintf(msg, sizeof(msg), "action %s does not exist\n", action_name);
+		error(msg, SR_TRUE);
 		return SR_NOT_FOUND;
 	}
 
@@ -1120,72 +1121,6 @@ static SR_32 delete_action(char *action_name)
 	for (; i < num_of_actions - 1; i++) 
 		actions[i] = actions[i + 1];
 	num_of_actions--;
-
-	return SR_SUCCESS;
-}
-
-static SR_32 handle_update_action(SR_BOOL is_delete)
-{
-	char *action_name, *action_type, *log, *log_facility, msg[256];
-	action_t *action;
-	log_facility_e log_facility_code = LOG_NONE;
-	action_e action_code;
-
-	action_name = strtok(NULL, " ");
-	if (!action_name) {
-		error("action name is missing!!", SR_TRUE);
-		printf("usage: update action action_name action_type (none | allow | drop) [log=syslog | file | none]\n");
-		return SR_ERROR;
-	}
-	if (strlen(action_name) >= ACTION_STR_SIZE) {
-		sprintf(msg, "Action name exeeds max len %d/%d ", (int)strlen(action_name), ACTION_STR_SIZE - 1);
-		error(msg ,SR_TRUE);
-		return SR_ERROR;
-	}
-	if (is_delete)
-		return delete_action(action_name);
-	action = get_action(action_name);
-	if (!action) {
-		// Check if a new action can be created
-		if (num_of_actions == DB_MAX_NUM_OF_ACTIONS) {
-                	printf("max number of action reached (%d)\n", num_of_actions);
-                	return SR_ERROR;
-		}
-		action = &actions[num_of_actions++];
-		memset(action, 0, sizeof(action_t));
-		strncpy(action->action_name, action_name, ACTION_STR_SIZE);
-	}
-
-	action_type = strtok(NULL, " ");
-	if (!action_type || (action_code = get_action_code(action_type)) == ACTION_INVALID) {
-		error("invalid action type" ,SR_TRUE);
-		printf("usage: update action action_name action_type (none | allow | drop) log\n");
-		return SR_ERROR;
-	}
-
-	log = strtok(NULL, " ");
-	if (log) {
-		if (memcmp(log, "log=", strlen("log="))) {
-			error("invalid action log", SR_TRUE);
-			printf("usage: update action action_name action_type (none | allow | drop) [log=syslog | file | none]\n");
-			return SR_ERROR;
-		}
-		log_facility = log + strlen("log=");
-		if ((log_facility_code = get_action_log_facility_code(log_facility)) == LOG_INVALID) {
-			error("invalid log facility", SR_TRUE);
-			printf("usage: update action action_name action_type (none | allow | drop) [log=syslog | file | none]\n");
-			return SR_ERROR;
-		}
-	}
-
-#ifdef CLI_DEBUG
-	printf("update action:%s: action type:%s: action code:%d  log:%s log facility code:%d \n",
-		action_name, action_type, action_code, log_facility, log_facility_code);
-#endif
-	sprintf(msg, "action %s was updated", action_name);
-	notify_info(msg);
-	action->action = action_code;
-	action->log_facility = log_facility_code;
 
 	return SR_SUCCESS;
 }
@@ -1521,6 +1456,16 @@ static void rule_help(void)
         printf("[rule=X] [tuple=X]");
 }
 
+static void action_help(void)
+{
+	printf("action_name action_type (none | allow | drop) [log=syslog | file | none]\n");
+}
+
+static void delete_action_help(void)
+{
+	printf("action_name\n");
+}
+
 static void engine_update_help(void)
 {
         printf("on | off\b");
@@ -1538,6 +1483,11 @@ static void show_wl(char *buf)
 	print_file_rules(SR_TRUE, file_wl, -1, -1);
 	print_can_rules(SR_TRUE, can_wl, -1, -1);
 	print_ip_rules(SR_TRUE, ip_wl, -1, -1);
+}
+
+static void show_action(char *buf)
+{
+	print_actions();
 }
 
 static void show(char *buf)
@@ -1629,6 +1579,100 @@ static void update_rule_can(char *buf)
 	}
 	handle_update_can(SR_FALSE, rule_id, tuple_id);
 	is_dirty = SR_TRUE;
+}
+
+static void __update_action(char *buf, SR_BOOL is_delete)
+{
+	char *tmp = NULL, *ptr, *action_name, *action_type, *log, *log_facility;
+	action_t *action;
+	action_e action_code;
+	char msg[256];
+	log_facility_e log_facility_code = LOG_NONE;
+
+	if (!(tmp = strdup(buf)))
+		return;
+	if (!(ptr = strtok(tmp, " ")))
+		return;
+	if (!strcmp(ptr, is_delete ? "delete" : "update")) {
+		if (!(ptr = strtok(NULL, " ")))
+			return;
+		if (!strcmp(ptr, "action")) {
+			if (!(ptr = strtok(NULL, " ")))
+				return;
+		}
+		
+	}
+	action_name = ptr;
+
+	if (strlen(action_name) >= ACTION_STR_SIZE) {
+		snprintf(msg, sizeof(msg), "Action name exeeds max len %d/%d ", (int)strlen(action_name), ACTION_STR_SIZE - 1);
+		error(msg ,SR_TRUE);
+		return;
+	}
+	if (is_delete) {
+		if (delete_action(action_name) == SR_SUCCESS) {
+			sprintf(msg, "action %s was deleted", action_name);
+			notify_info(msg);
+		}
+		return;
+	}
+	action = get_action(action_name);
+	if (!action) {
+		// Check if a new action can be created
+		if (num_of_actions == DB_MAX_NUM_OF_ACTIONS) {
+                	printf("max number of action reached (%d)\n", num_of_actions);
+                	return;
+		}
+		action = &actions[num_of_actions++];
+		memset(action, 0, sizeof(action_t));
+		strncpy(action->action_name, action_name, ACTION_STR_SIZE);
+	}
+
+	action_type = strtok(NULL, " ");
+	if (!action_type || (action_code = get_action_code(action_type)) == ACTION_INVALID) {
+		error("invalid action type" ,SR_TRUE);
+		printf("usage: update action action_name action_type (none | allow | drop) log\n");
+		return;
+	}
+
+	log = strtok(NULL, " ");
+	if (log) {
+		if (memcmp(log, "log=", strlen("log="))) {
+			error("invalid action log", SR_TRUE);
+			printf("usage: update action action_name action_type (none | allow | drop) [log=syslog | file | none]\n");
+			return;
+		}
+		log_facility = log + strlen("log=");
+		if ((log_facility_code = get_action_log_facility_code(log_facility)) == LOG_INVALID) {
+			error("invalid log facility", SR_TRUE);
+			printf("usage: update action action_name action_type (none | allow | drop) [log=syslog | file | none]\n");
+			return;
+		}
+	}
+
+#ifdef CLI_DEBUG
+	printf("update action:%s: action type:%s: action code:%d  log:%s log facility code:%d \n",
+		action_name, action_type, action_code, log_facility, log_facility_code);
+#endif
+	sprintf(msg, "action %s was updated", action_name);
+	notify_info(msg);
+	action->action = action_code;
+	action->log_facility = log_facility_code;
+
+	if (tmp)
+		free(tmp);
+}
+
+static void update_action_cb(char *buf)
+{
+	is_dirty = SR_TRUE;
+	return __update_action(buf, SR_FALSE);
+}
+
+static void delete_action_cb(char *buf)
+{
+	is_dirty = SR_TRUE;
+	return __update_action(buf, SR_TRUE);
 }
 
 static void update_wl_can(char *buf)
@@ -1817,18 +1861,21 @@ SR_32 main(int argc, char **argv)
 	node_operations_t show_operations;
 	node_operations_t show_rule_operations;
 	node_operations_t show_wl_operations;
+	node_operations_t show_action_operations;
 	node_operations_t show_rule_can_operations;
 	node_operations_t show_rule_file_operations;
 	node_operations_t show_rule_ip_operations;
 	node_operations_t show_wl_can_operations;
 	node_operations_t show_wl_file_operations;
 	node_operations_t show_wl_ip_operations;
+	node_operations_t update_action_operations;
 	node_operations_t update_rule_can_operations;
 	node_operations_t update_rule_file_operations;
 	node_operations_t update_rule_ip_operations;
 	node_operations_t update_wl_can_operations;
 	node_operations_t update_wl_file_operations;
 	node_operations_t update_wl_ip_operations;
+	node_operations_t delete_action_operations;
 	node_operations_t delete_rule_file_operations;
 	node_operations_t delete_rule_can_operations;
 	node_operations_t delete_rule_ip_operations;
@@ -1854,7 +1901,7 @@ SR_32 main(int argc, char **argv)
 		}
 	}
 
-        cli_init("(cli(help)(show (rule (can)(ip)(file)) (wl (can)(ip)(file))) (update (rule (can)(ip)(file)) (wl (can)(ip)(file)))(delete (rule (can)(ip)(file)) (wl (can)(ip)(file)))(commit)(control (wl (learn)(apply)(print)(reset))(sr_ver)(sp (learn)(apply)(off)))(load)(engine (state)(update))(exit))");
+        cli_init("(cli(help)(show (rule (can)(ip)(file)) (wl (can)(ip)(file))(action)) (update (rule (can)(ip)(file)) (wl (can)(ip)(file))(action))(delete (rule (can)(ip)(file)) (wl (can)(ip)(file))(action))(commit)(control (wl (learn)(apply)(print)(reset))(sr_ver)(sp (learn)(apply)(off)))(load)(engine (state)(update))(exit))");
 
         help_operations.help_cb = NULL;
         help_operations.run_cb = print_usage_cb;
@@ -1871,6 +1918,10 @@ SR_32 main(int argc, char **argv)
         show_wl_operations.help_cb = NULL;
         show_wl_operations.run_cb = show_wl;
         cli_register_operatios("show/wl", &show_wl_operations);
+
+        show_action_operations.help_cb = NULL;
+        show_action_operations.run_cb = show_action;
+        cli_register_operatios("show/action", &show_action_operations);
 
         show_rule_can_operations.help_cb = rule_help;
         show_rule_can_operations.run_cb = show_rule_can;
@@ -1895,6 +1946,14 @@ SR_32 main(int argc, char **argv)
         show_wl_ip_operations.help_cb = rule_help;
         show_wl_ip_operations.run_cb = show_wl_ip;
         cli_register_operatios("show/wl/ip", &show_wl_ip_operations);
+
+        update_action_operations.help_cb = action_help;
+        update_action_operations.run_cb = update_action_cb;
+        cli_register_operatios("update/action", &update_action_operations);
+
+        delete_action_operations.help_cb = delete_action_help;
+        delete_action_operations.run_cb = delete_action_cb;
+        cli_register_operatios("delete/action", &delete_action_operations);
 
         update_rule_can_operations.help_cb = rule_help;
         update_rule_can_operations.run_cb = update_rule_can;
