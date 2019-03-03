@@ -25,11 +25,6 @@
 #define MAX_BUF_SIZE 10000
 #define NUM_OF_CMD_ENTRIES 100
 
-#define COLOR_RED "\033[31m"
-#define COLOR_GREEN "\033[32m"
-#define CLEAR_RIGHT "\033[K"
-#define COLOR_RESET "\033[0m"
-
 #define CLI_PROMPT "vsentry cli> "
 #define RULE "rule"
 #define TUPLE "tuple"
@@ -95,71 +90,47 @@ static SR_U8 num_of_actions;
 
 static SR_BOOL is_dirty = SR_FALSE;
 
-static void error(char *msg, SR_BOOL is_nl)
-{
-	if (is_nl)
-		printf("\n");
-	printf(COLOR_RED);
-	printf("%s\n", msg);
-	printf(COLOR_RESET);
-}
-		
-static void notify_info(char *msg)
-{
-	printf(COLOR_GREEN);
-	printf("\n%s\n", msg);
-	printf(COLOR_RESET);
-}
-		
 static void notify_updated_can_rule(SR_U32 rule_id, rule_info_t *update_rule, char *action_name)
 {
-	printf(COLOR_GREEN);
-	printf("can rule update:\n");
-	printf("  rule:%d tuple:%d\n", rule_id, update_rule->tuple_id);
-	printf("  mid :%x interface :%s direction :%s user:%s program:%s action:%s \n",
+	char msg[256];
+
+	snprintf(msg, sizeof(msg), "can rule update:\n   rule:%d tuple:%d\n   mid :%x interface :%s direction :%s user:%s program:%s action:%s \n",
+		rule_id, update_rule->tuple_id, 
 		update_rule->can_rule.tuple.msg_id,
 		update_rule->can_rule.tuple.interface,
 		get_dir_desc(update_rule->can_rule.tuple.direction),
 		update_rule->can_rule.tuple.user, update_rule->can_rule.tuple.program,
 		action_name);
-	printf(COLOR_RESET);
+	cli_notify_info(msg);
 }
 
 static void notify_updated_ip_rule(SR_U32 rule_id, rule_info_t *update_rule, char *action_name)
 {
 	char src_addr[IPV4_STR_MAX_LEN], src_netmask[IPV4_STR_MAX_LEN], dst_addr[IPV4_STR_MAX_LEN], dst_netmask[IPV4_STR_MAX_LEN];
+	char msg[512];
 
-	printf(COLOR_GREEN);
 	inet_ntop(AF_INET, &update_rule->ip_rule.tuple.srcaddr, src_addr, IPV4_STR_MAX_LEN);
 	inet_ntop(AF_INET, &update_rule->ip_rule.tuple.srcnetmask, src_netmask, IPV4_STR_MAX_LEN);
 	inet_ntop(AF_INET, &update_rule->ip_rule.tuple.dstaddr, dst_addr, IPV4_STR_MAX_LEN);
 	inet_ntop(AF_INET, &update_rule->ip_rule.tuple.dstnetmask, dst_netmask, IPV4_STR_MAX_LEN);
-	printf("ip rule updated: \n");
-	printf("  rule:%d tuple:%d \n", rule_id, update_rule->tuple_id);
-        printf("  src_addr:%s/%s dst_addr:%s/%s proto:%d src_port:%d dst_port:%d user:%s program:%s action:%s\n", 
+	snprintf(msg, sizeof(msg), "ip rule updated: \n  rule:%d tuple:%d \n  src_addr:%s/%s dst_addr:%s/%s proto:%d src_port:%d dst_port:%d user:%s program:%s action:%s\n",
+		rule_id, update_rule->tuple_id,
 		src_addr, src_netmask, dst_addr, dst_netmask, update_rule->ip_rule.tuple.proto,
 		update_rule->ip_rule.tuple.srcport, update_rule->ip_rule.tuple.dstport,
 		update_rule->ip_rule.tuple.user, update_rule->ip_rule.tuple.program, action_name);
-	printf(COLOR_RESET);
+	cli_notify_info(msg);
 }
 		
 static void notify_updated_file_rule(SR_U32 rule_id, rule_info_t *update_rule, char *action_name)
 {
-	printf(COLOR_GREEN);
-	printf("file rule updated: \n");
-	printf("  rule:%d tuple:%d \n", rule_id, update_rule->tuple_id);
-	printf("  file:%s perm:%s user:%s program:%s action:%s \n",
-		update_rule->file_rule.tuple.filename, prem_db_to_cli(update_rule->file_rule.tuple.permission),
-		update_rule->file_rule.tuple.user, update_rule->file_rule.tuple.program, action_name);
-	printf(COLOR_RESET);
-}
+	char msg[256];
 
-static void chop_nl(char *str)
-{
-	SR_32 len = strlen(str);
+	snprintf(msg, sizeof(msg), "file rule updated: \n  rule:%d tuple:%d \n  file:%s perm:%s user:%s program:%s action:%s\n",
+			rule_id, update_rule->tuple_id,
+			update_rule->file_rule.tuple.filename, prem_db_to_cli(update_rule->file_rule.tuple.permission),
+			update_rule->file_rule.tuple.user, update_rule->file_rule.tuple.program, action_name);
 
-	if (len > 0 && str[len - 1] == '\n')
-		str[len - 1] = '\0';
+	cli_notify_info(msg);
 }
 
 static int engine_connect(void)
@@ -645,15 +616,15 @@ static void print_can_rules(SR_BOOL is_wl, rule_container_t table[], SR_32 rule_
 	printf("\r");
 }
 
-static SR_BOOL is_valid_msg_ig(char *str)
+static int is_valid_msg_ig(char *str)
 {
 	if (!strcmp(str, "any"))
-		return SR_TRUE;
+		return 1;
 	for (; *str; str++) {
 		if (!isxdigit(*str))
-			return SR_FALSE;
+			return 0;
 	}
-	return SR_TRUE;
+	return 1;
 }
 
 static SR_BOOL is_special_interface(char *interface)
@@ -669,91 +640,61 @@ static SR_BOOL is_special_interface(char *interface)
 	return SR_FALSE;
 }
 
-static SR_BOOL is_valid_interface(char *interface)
+static int is_valid_interface(char *interface)
 {
 	if (if_nametoindex(interface))
-		return SR_TRUE;
+		return 1;
 	if (is_special_interface(interface))
-		return SR_TRUE;
-	return SR_FALSE;
+		return 1;
+	return 0;
 }
 
-static SR_BOOL is_valid_action(char *action_name)
+static int is_valid_action(char *action_name)
 {
 	if (!get_action(action_name)) { 
 		printf("invalid action: %s \n", action_name);
-		return SR_FALSE;
+		return 0;
 	}
 
-	return SR_TRUE;
+	return 1;
 }
 
-static SR_BOOL is_valid_dir(char *dir)
+static int is_valid_dir(char *dir)
 {
 	return get_dir_id(dir) != -1;
 }
 
-static SR_BOOL is_valid_ip_proto(char *ip_proto)
+static int is_valid_ip_proto(char *ip_proto)
 {
 	return (!strcmp(ip_proto, "tcp") || !strcmp(ip_proto, "udp") || !strcmp(ip_proto, "any"));
 }
 
-static SR_BOOL is_valid_port(char *port)
+static int _is_valid_ip(char *ip_addr)
+{
+	return (int)is_valid_ip(ip_addr);
+}
+
+static int is_valid_port(char *port)
 {
 	for (; *port; port++) {
 		if (!isdigit(*port))
-			return SR_FALSE;
+			return 0;
 	}
 
-	return SR_TRUE;
+	return 1;
 }
 
-static SR_BOOL is_perm_valid(char *perm)
+static int is_perm_valid(char *perm)
 {
 	if (strlen(perm) > 3)
-		return SR_FALSE;
+		return 0;
 
 	for(; *perm; perm++) {
 		if (*perm != 'r' && *perm != 'w' && *perm != 'x')
-			return SR_FALSE;
+			return 0;
 	}
 
-	return SR_TRUE;
-}
-
-static char *get_string_user_input(SR_BOOL is_current, char *def_val, char *prompt, SR_BOOL (*is_valid_cb)(char *data), void (*help_cb)(void))
-{
-	char buf[512];
-	static char input[512];
-
-	sprintf(buf, "%s is %s", is_current ? "current" : "default", def_val ?: "none");
-	while (1) { 
-		printf(">%s: (%s):", prompt, buf);
-		if (!fgets(input, sizeof(input), stdin)) {
-			printf("error reading\n");
-			continue;
-		}
-		chop_nl(input);
-		if (*input) {
-			if (*input == '?') {
-				if (help_cb)
-					help_cb();
-				continue;
-			}
-			if (is_valid_cb && !is_valid_cb(input)) {
-				error("invalid value", SR_FALSE);
-				continue;
-			}
-			return input;
-		}
-		if (!def_val) {
-			error("enter field value", SR_FALSE);
-			continue;
-		}
-		return def_val;
-	}
-
-	return NULL;
+	return 1;
 }
 
 static void msg_id_help(void)
@@ -780,48 +721,48 @@ static void can_interface_help(void)
 	freeifaddrs(addrs);
 }
 
-static SR_BOOL is_valid_program(char *program)
+static int is_valid_program(char *program)
 {
 	struct stat buf;
 
 	if (*program == '*')
-		return SR_TRUE;
+		return 1;
 
 	if (stat(program, &buf)) {
 		printf("program does not exist\n");
-		return SR_FALSE;
+		return 0;
 	}
 
         if (!(buf.st_mode & S_IXUSR)) {
 		printf("program does reflect an executable\n");
-		return SR_FALSE;
+		return 0;
 	}
 
-	return SR_TRUE;
+	return 1;
 
 }
 
-static SR_BOOL is_valid_user(char *user)
+static int is_valid_user(char *user)
 {
 	if (*user == '*')
-		return SR_TRUE;
+		return 1;
 
 	if (getpwnam(user))
-		return SR_TRUE;
+		return 1;
 
-	return SR_FALSE;
+	return 0;
 }
 
-static SR_BOOL is_valid_file(char *file)
+static int is_valid_file(char *file)
 {
 	struct stat buf;
 
 	if (stat(file, &buf)) {
 		printf("file does not exist\n");
-		return SR_FALSE;
+		return 0;
 	}
 
-	return SR_TRUE;
+	return 1;
 }
 
 static void file_perm_help(void)
@@ -857,22 +798,22 @@ static SR_32 handle_update_can(SR_BOOL is_wl, SR_U32 rule_id, SR_U32 tuple_id)
 		strcpy(dir_def, "both");
 	}
 
-	msg_id_input = get_string_user_input(rule_info != NULL, msg_id_def , "mid", is_valid_msg_ig, msg_id_help);
+	msg_id_input = cli_get_string_user_input(rule_info != NULL, msg_id_def , "mid", is_valid_msg_ig, msg_id_help);
 	if (!strcmp(msg_id_input, "any"))
 		update_rule.can_rule.tuple.msg_id = MSGID_ANY;
 	else
 		update_rule.can_rule.tuple.msg_id = strtoul(msg_id_input, &ptr, 16);
 
 	strncpy(update_rule.can_rule.tuple.interface, 
-		get_string_user_input(rule_info != NULL, rule_info ? rule_info->can_rule.tuple.interface : NULL , "interface", is_valid_interface, can_interface_help), INTERFACE_SIZE);
+		cli_get_string_user_input(rule_info != NULL, rule_info ? rule_info->can_rule.tuple.interface : NULL , "interface", is_valid_interface, can_interface_help), INTERFACE_SIZE);
 
-	dir_input = get_string_user_input(rule_info != NULL, dir_def, "direction (in, out, both)", is_valid_dir, NULL);
+	dir_input = cli_get_string_user_input(rule_info != NULL, dir_def, "direction (in, out, both)", is_valid_dir, NULL);
 	update_rule.can_rule.tuple.direction = get_dir_id(dir_input);
 
-	strncpy(update_rule.can_rule.tuple.program, get_string_user_input(rule_info != NULL, rule_info ? rule_info->can_rule.tuple.program : "*" , "program", is_valid_program, NULL), PROG_NAME_SIZE);
-	strncpy(update_rule.can_rule.tuple.user, get_string_user_input(rule_info != NULL, rule_info ? rule_info->can_rule.tuple.user : "*" , "user", is_valid_user, NULL), USER_NAME_SIZE);
+	strncpy(update_rule.can_rule.tuple.program, cli_get_string_user_input(rule_info != NULL, rule_info ? rule_info->can_rule.tuple.program : "*" , "program", is_valid_program, NULL), PROG_NAME_SIZE);
+	strncpy(update_rule.can_rule.tuple.user, cli_get_string_user_input(rule_info != NULL, rule_info ? rule_info->can_rule.tuple.user : "*" , "user", is_valid_user, NULL), USER_NAME_SIZE);
 
-	strncpy(new_action_name, get_string_user_input(rule_info != NULL, action_name , "action", is_valid_action, NULL), ACTION_STR_SIZE);
+	strncpy(new_action_name, cli_get_string_user_input(rule_info != NULL, action_name , "action", is_valid_action, NULL), ACTION_STR_SIZE);
 
 	update_rule.tuple_id = update_rule.can_rule.tuple.id = tuple_id;
 	update_rule.can_rule.rulenum = rule_id;
@@ -936,26 +877,26 @@ static SR_32 handle_update_ip(SR_BOOL is_wl, SR_U32 rule_id, SR_U32 tuple_id)
 		strcpy(dst_port_def, "0");
 	}
 
-	param = get_string_user_input(rule_info != NULL, src_ip_address_def , "src addr", is_valid_ip, NULL);
+	param = cli_get_string_user_input(rule_info != NULL, src_ip_address_def , "src addr", _is_valid_ip, NULL);
 	inet_aton(param, &update_rule.ip_rule.tuple.srcaddr);
-	param = get_string_user_input(rule_info != NULL, src_netmask_def , "src netmask", is_valid_ip, NULL);
+	param = cli_get_string_user_input(rule_info != NULL, src_netmask_def , "src netmask", _is_valid_ip, NULL);
 	inet_aton(param, &update_rule.ip_rule.tuple.srcnetmask);
-	param = get_string_user_input(rule_info != NULL, dst_ip_address_def , "dst addr", is_valid_ip, NULL);
+	param = cli_get_string_user_input(rule_info != NULL, dst_ip_address_def , "dst addr", _is_valid_ip, NULL);
 	inet_aton(param, &update_rule.ip_rule.tuple.dstaddr);
-	param = get_string_user_input(rule_info != NULL, dst_netmask_def , "dst netmask", is_valid_ip, NULL);
+	param = cli_get_string_user_input(rule_info != NULL, dst_netmask_def , "dst netmask", _is_valid_ip, NULL);
 	inet_aton(param, &update_rule.ip_rule.tuple.dstnetmask);
-	param = get_string_user_input(rule_info != NULL, ip_proto_def , "ip proto", is_valid_ip_proto, ip_proto_help);
+	param = cli_get_string_user_input(rule_info != NULL, ip_proto_def , "ip proto", is_valid_ip_proto, ip_proto_help);
 	update_rule.ip_rule.tuple.proto = get_ip_proto_code(param);
-	param = get_string_user_input(rule_info != NULL, src_port_def , "src port", is_valid_port, NULL);
+	param = cli_get_string_user_input(rule_info != NULL, src_port_def , "src port", is_valid_port, NULL);
 	update_rule.ip_rule.tuple.srcport = atoi(param);
-	param = get_string_user_input(rule_info != NULL, dst_port_def , "dst port", is_valid_port, NULL);
+	param = cli_get_string_user_input(rule_info != NULL, dst_port_def , "dst port", is_valid_port, NULL);
 	update_rule.ip_rule.tuple.dstport = atoi(param);
 
-	strncpy(update_rule.ip_rule.tuple.program, get_string_user_input(rule_info != NULL, rule_info ? rule_info->ip_rule.tuple.program : "*" , "program", is_valid_program, NULL),
+	strncpy(update_rule.ip_rule.tuple.program, cli_get_string_user_input(rule_info != NULL, rule_info ? rule_info->ip_rule.tuple.program : "*" , "program", is_valid_program, NULL),
 		 PROG_NAME_SIZE);
-	strncpy(update_rule.ip_rule.tuple.user, get_string_user_input(rule_info != NULL, rule_info ? rule_info->ip_rule.tuple.user : "*" , "user", is_valid_user, NULL),
+	strncpy(update_rule.ip_rule.tuple.user, cli_get_string_user_input(rule_info != NULL, rule_info ? rule_info->ip_rule.tuple.user : "*" , "user", is_valid_user, NULL),
 		USER_NAME_SIZE);
-	strncpy(new_action_name, get_string_user_input(rule_info != NULL, action_name , "action", is_valid_action, NULL), ACTION_STR_SIZE);
+	strncpy(new_action_name, cli_get_string_user_input(rule_info != NULL, action_name , "action", is_valid_action, NULL), ACTION_STR_SIZE);
 	update_rule.tuple_id = update_rule.ip_rule.tuple.id = tuple_id;
 	update_rule.ip_rule.rulenum = rule_id;
 	update_rule.rule_type = RULE_TYPE_IP;
@@ -993,13 +934,13 @@ static SR_32 handle_update_file(SR_BOOL is_wl, SR_U32 rule_id, SR_U32 tuple_id)
 	}
 
 	strncpy(update_rule.file_rule.tuple.filename,
-		get_string_user_input(rule_info != NULL, rule_info ? rule_info->file_rule.tuple.filename : NULL , "file", is_valid_file, NULL), FILE_NAME_SIZE);
+		cli_get_string_user_input(rule_info != NULL, rule_info ? rule_info->file_rule.tuple.filename : NULL , "file", is_valid_file, NULL), FILE_NAME_SIZE);
 	strncpy(update_rule.file_rule.tuple.permission,
-		perm_cli_to_db(get_string_user_input(rule_info != NULL, rule_info ? prem_db_to_cli(rule_info->file_rule.tuple.permission) : NULL , "perm", is_perm_valid,
+		perm_cli_to_db(cli_get_string_user_input(rule_info != NULL, rule_info ? prem_db_to_cli(rule_info->file_rule.tuple.permission) : NULL , "perm", is_perm_valid,
 			 file_perm_help)), 4);
-	strncpy(update_rule.file_rule.tuple.program, get_string_user_input(rule_info != NULL, rule_info ? rule_info->file_rule.tuple.program : "*" , "program", is_valid_program, NULL), PROG_NAME_SIZE);
-	strncpy(update_rule.file_rule.tuple.user, get_string_user_input(rule_info != NULL, rule_info ? rule_info->file_rule.tuple.user : "*" , "user", is_valid_user, NULL), USER_NAME_SIZE);
-	strncpy(new_action_name, get_string_user_input(rule_info != NULL, action_name, "action", is_valid_action, NULL), ACTION_STR_SIZE);
+	strncpy(update_rule.file_rule.tuple.program, cli_get_string_user_input(rule_info != NULL, rule_info ? rule_info->file_rule.tuple.program : "*" , "program", is_valid_program, NULL), PROG_NAME_SIZE);
+	strncpy(update_rule.file_rule.tuple.user, cli_get_string_user_input(rule_info != NULL, rule_info ? rule_info->file_rule.tuple.user : "*" , "user", is_valid_user, NULL), USER_NAME_SIZE);
+	strncpy(new_action_name, cli_get_string_user_input(rule_info != NULL, action_name, "action", is_valid_action, NULL), ACTION_STR_SIZE);
 
 	update_rule.tuple_id = update_rule.file_rule.tuple.id = tuple_id;
 	update_rule.file_rule.rulenum = rule_id;
@@ -1039,13 +980,13 @@ static SR_32 handle_delete(rule_type_t rule_type, rule_container_t *rule_contain
 	sprintf(rules_msg, "rule id:%d tuple id:%d was deleted", rule_id, tuple_id);
 	if (delete_rule(&rule_container[rule_id].rule_info, tuple_id) != SR_SUCCESS) {
 		sprintf(msg, "%s delete failed", rule_type_str);
-		error(msg, SR_TRUE);
+		cli_error(msg, SR_TRUE);
 		return SR_ERROR;
 	}
 
 out:
 	sprintf(msg, "%s %s", rule_type_str, rules_msg);
-	notify_info(msg);
+	cli_notify_info(msg);
 
 	return SR_SUCCESS;
 }
@@ -1097,24 +1038,24 @@ static SR_32 delete_action(char *action_name)
 	for (i = 0; i < num_of_actions && strcmp(action_name, actions[i].action_name) != 0; i++);
 	if (i == num_of_actions) {
 		snprintf(msg, sizeof(msg), "action %s does not exist\n", action_name);
-		error(msg, SR_TRUE);
+		cli_error(msg, SR_TRUE);
 		return SR_NOT_FOUND;
 	}
 
 	/* check if the action exists in any of the rules */
 	if (is_action_exist_in_rule(file_rules, action_name)) {
 		sprintf(msg, "action %s exists in file rules", action_name);
-		error(msg, SR_TRUE);
+		cli_error(msg, SR_TRUE);
 		return SR_ERROR;
 	}
 	if (is_action_exist_in_rule(can_rules, action_name)) {
 		sprintf(msg, "action %s exists in can rules", action_name);
-		error(msg, SR_TRUE);
+		cli_error(msg, SR_TRUE);
 		return SR_ERROR;
 	}
 	if (is_action_exist_in_rule(ip_rules, action_name)) {
 		sprintf(msg, "action %s exists in ip rules", action_name);
-		error(msg, SR_TRUE);
+		cli_error(msg, SR_TRUE);
 		return SR_ERROR;
 	}
 
@@ -1325,16 +1266,16 @@ static void handle_cmd_gen(char *cmd, char *msg, SR_BOOL is_print)
 	int rc;
 
 	if ((fd = engine_connect()) < 0) {
-		error("failed engine connect", SR_TRUE);
+		cli_error("failed engine connect", SR_TRUE);
 		return;
 	}
 	rc = write(fd, cmd, strlen(cmd));
 	if (rc < 0) {
-		error("write error", SR_TRUE);
+		cli_error("write error", SR_TRUE);
 		return;
 	}
 	if (rc < strlen(cmd)) {
-		error("partial write", SR_TRUE);
+		cli_error("partial write", SR_TRUE);
 		return;
 	}
 
@@ -1346,7 +1287,7 @@ static void handle_cmd_gen(char *cmd, char *msg, SR_BOOL is_print)
 	close(fd);
 
 	if (msg)
-		notify_info(msg);
+		cli_notify_info(msg);
 }
 
 static void handle_learn(char *buf)
@@ -1373,16 +1314,16 @@ static void handle_apply(char *buf)
 	struct timeval tv;
 
 	if ((fd = engine_connect()) < 0) {
-		error("failed engine connect", SR_TRUE);
+		cli_error("failed engine connect", SR_TRUE);
 		return;
 	}
 	rc = write(fd, "wl_apply", strlen("wl_apply"));
 	if (rc < 0) {
-		error("write error", SR_TRUE);
+		cli_error("write error", SR_TRUE);
 		return;
 	}
 	if (rc < strlen("wl_apply")) {
-		error("partial write", SR_TRUE);
+		cli_error("partial write", SR_TRUE);
 		return;
 	}
 
@@ -1410,14 +1351,14 @@ static void handle_apply(char *buf)
 	if (read(fd, &cval, 1) < 1)
 		printf("failed reading from socket");
 
-	notify_info("apply finished.");
+	cli_notify_info("apply finished.");
 	close(fd);
 	printf("\nloading....\n");
 	db_cleanup();
 	if (handle_load() != SR_SUCCESS) {
 		printf("error handling load\n");
 	}
-	notify_info("load finished.");
+	cli_notify_info("load finished.");
 
 }
 
@@ -1427,16 +1368,16 @@ static void handle_sr_ver(char *buf)
 	char buf2[256];
 
 	if ((fd = engine_connect()) < 0) {
-		error("failed engine connect", SR_TRUE);
+		cli_error("failed engine connect", SR_TRUE);
 		return;
 	}
 	rc = write(fd, "sr_ver", strlen("sr_ver"));
 	if (rc < 0) {
-		error("write error", SR_TRUE);
+		cli_error("write error", SR_TRUE);
 		return;
 	}
 	if (rc < strlen("sr_ver")) {
-		error("partial write", SR_TRUE);
+		cli_error("partial write", SR_TRUE);
 		return;
 	}
 
@@ -1574,7 +1515,7 @@ static void update_rule_can(char *buf)
 
 	get_rule_ids(buf, &rule_id, &tuple_id);
 	if (rule_id == -1 || tuple_id == -1) {
-		error("\rRule id or Tuple is missing", SR_FALSE);
+		cli_error("\rRule id or Tuple is missing", SR_FALSE);
 		return;
 	}
 	handle_update_can(SR_FALSE, rule_id, tuple_id);
@@ -1606,13 +1547,13 @@ static void __update_action(char *buf, SR_BOOL is_delete)
 
 	if (strlen(action_name) >= ACTION_STR_SIZE) {
 		snprintf(msg, sizeof(msg), "Action name exeeds max len %d/%d ", (int)strlen(action_name), ACTION_STR_SIZE - 1);
-		error(msg ,SR_TRUE);
+		cli_error(msg ,SR_TRUE);
 		return;
 	}
 	if (is_delete) {
 		if (delete_action(action_name) == SR_SUCCESS) {
 			sprintf(msg, "action %s was deleted", action_name);
-			notify_info(msg);
+			cli_notify_info(msg);
 		}
 		return;
 	}
@@ -1630,7 +1571,7 @@ static void __update_action(char *buf, SR_BOOL is_delete)
 
 	action_type = strtok(NULL, " ");
 	if (!action_type || (action_code = get_action_code(action_type)) == ACTION_INVALID) {
-		error("invalid action type" ,SR_TRUE);
+		cli_error("invalid action type" ,SR_TRUE);
 		printf("usage: update action action_name action_type (none | allow | drop) log\n");
 		return;
 	}
@@ -1638,13 +1579,13 @@ static void __update_action(char *buf, SR_BOOL is_delete)
 	log = strtok(NULL, " ");
 	if (log) {
 		if (memcmp(log, "log=", strlen("log="))) {
-			error("invalid action log", SR_TRUE);
+			cli_error("invalid action log", SR_TRUE);
 			printf("usage: update action action_name action_type (none | allow | drop) [log=syslog | file | none]\n");
 			return;
 		}
 		log_facility = log + strlen("log=");
 		if ((log_facility_code = get_action_log_facility_code(log_facility)) == LOG_INVALID) {
-			error("invalid log facility", SR_TRUE);
+			cli_error("invalid log facility", SR_TRUE);
 			printf("usage: update action action_name action_type (none | allow | drop) [log=syslog | file | none]\n");
 			return;
 		}
@@ -1655,7 +1596,7 @@ static void __update_action(char *buf, SR_BOOL is_delete)
 		action_name, action_type, action_code, log_facility, log_facility_code);
 #endif
 	sprintf(msg, "action %s was updated", action_name);
-	notify_info(msg);
+	cli_notify_info(msg);
 	action->action = action_code;
 	action->log_facility = log_facility_code;
 
@@ -1681,7 +1622,7 @@ static void update_wl_can(char *buf)
 
 	get_rule_ids(buf, &rule_id, &tuple_id);
 	if (rule_id == -1 || tuple_id == -1) {
-		error("\rRule id or Tuple is missing", SR_FALSE);
+		cli_error("\rRule id or Tuple is missing", SR_FALSE);
 		return;
 	}
 	handle_update_can(SR_TRUE, rule_id, tuple_id);
@@ -1695,7 +1636,7 @@ static void update_rule_file(char *buf)
 	get_rule_ids(buf, &rule_id, &tuple_id);
 	
 	if (rule_id == -1 || tuple_id == -1) {
-		error("\rRule id or Tuple is missing", SR_FALSE);
+		cli_error("\rRule id or Tuple is missing", SR_FALSE);
 		return;
 	}
 	handle_update_file(SR_FALSE, rule_id, tuple_id);
@@ -1709,7 +1650,7 @@ static void update_wl_file(char *buf)
 	get_rule_ids(buf, &rule_id, &tuple_id);
 	
 	if (rule_id == -1 || tuple_id == -1) {
-		error("\rRule id or Tuple is missing", SR_FALSE);
+		cli_error("\rRule id or Tuple is missing", SR_FALSE);
 		return;
 	}
 	handle_update_file(SR_TRUE, rule_id, tuple_id);
@@ -1723,7 +1664,7 @@ static void update_rule_ip(char *buf)
 	get_rule_ids(buf, &rule_id, &tuple_id);
 	
 	if (rule_id == -1 || tuple_id == -1) {
-		error("\rRule id or Tuple is missing", SR_FALSE);
+		cli_error("\rRule id or Tuple is missing", SR_FALSE);
 		return;
 	}
 	handle_update_ip(SR_FALSE, rule_id, tuple_id);
@@ -1737,7 +1678,7 @@ static void update_wl_ip(char *buf)
 	get_rule_ids(buf, &rule_id, &tuple_id);
 	
 	if (rule_id == -1 || tuple_id == -1) {
-		error("\rRule id or Tuple is missing", SR_FALSE);
+		cli_error("\rRule id or Tuple is missing", SR_FALSE);
 		return;
 	}
 	handle_update_ip(SR_TRUE, rule_id, tuple_id);
@@ -1800,9 +1741,9 @@ static void handle_load_cb(char *buf)
 {
 	db_cleanup();
 	if (handle_load() != SR_SUCCESS) {
-		error("error handling load\n", SR_TRUE);
+		cli_error("error handling load\n", SR_TRUE);
 	}
-	notify_info("load finished.");
+	cli_notify_info("load finished.");
 }
 
 static void engine_state_cb(char *buf)
@@ -1829,12 +1770,12 @@ static void engine_update_cb(char *buf)
 	
 	if (!strcmp(ptr, "on")) {
 		engine_state = SR_TRUE;
-		notify_info("engine set to on");
+		cli_notify_info("engine set to on");
 	} else if (!strcmp(ptr, "off")) {
 		engine_state = SR_FALSE;
-		notify_info("engine set to off");
+		cli_notify_info("engine set to off");
 	} else {
-		error("Invalid state, Posible states: on, off", SR_TRUE);
+		cli_error("Invalid state, Posible states: on, off", SR_TRUE);
 	}
 
 	if (tmp)

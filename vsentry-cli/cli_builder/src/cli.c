@@ -61,16 +61,17 @@ static unsigned int cmd_curr;
 
 static char cli_prompt[128];
 
-static void error(char *msg, int is_nl)
+void cli_error(char *msg, int is_nl)
 {
 	if (is_nl)
-		printf("\n");
+		printf("\n\r");
+	printf(CLEAR_RIGHT);
 	printf(COLOR_RED);
 	printf("%s\n", msg);
 	printf(COLOR_RESET);
 }
 		
-static void notify_info(char *msg)
+void cli_notify_info(char *msg)
 {
 	printf(COLOR_GREEN);
 	printf("\n%s\n", msg);
@@ -120,11 +121,7 @@ static void chop_nl(char *str)
 		str[len - 1] = '\0';
 }
 
-static void print_usage(void)
-{
-}
-
-static char *get_string_user_input(int is_current, char *def_val, char *prompt, int (*is_valid_cb)(char *data), void (*help_cb)(void))
+char *cli_get_string_user_input(int is_current, char *def_val, char *prompt, int (*is_valid_cb)(char *data), void (*help_cb)(void))
 {
 	char buf[512];
 	static char input[512];
@@ -144,13 +141,13 @@ static char *get_string_user_input(int is_current, char *def_val, char *prompt, 
 				continue;
 			}
 			if (is_valid_cb && !is_valid_cb(input)) {
-				error("invalid value", 0);
+				cli_error("invalid value", 0);
 				continue;
 			}
 			return input;
 		}
 		if (!def_val) {
-			error("enter field value", 0);
+			cli_error("enter field value", 0);
 			continue;
 		}
 		return def_val;
@@ -181,7 +178,6 @@ static void parse_command(char *cmd)
 	// chekc if the command exists in db
 	help_node = node_get_path(&cur_node, words[0]);
 	if (!help_node) {
-		print_usage();
 		goto out;
 	}
 
