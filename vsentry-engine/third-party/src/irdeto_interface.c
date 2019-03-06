@@ -168,31 +168,36 @@ static SR_32 irdeto_policy_server(void *data)
 	return SR_SUCCESS;
 }
 
-typedef struct {
-	char	filename[FILE_NAME_SIZE];
-	char	permission[4];
-	char	user[USER_NAME_SIZE];
-	char	program[PROG_NAME_SIZE]; 
-} static_file_rule_t;
+#include "irdeto_static_wl_rules.h"
+
+static SR_BOOL is_valid_rules(static_file_rule_t rules[])
+{
+	SR_U32 i;
+
+	for (i = 0; *rules[i].filename; i++) {
+		if (rules[i].rule_id >= SR_FILE_WL_START_RULE_NO || rules[i].rule_id < SR_FILE_WL_START_STATIC_RULE_NO) {
+                	CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+                       	                         "%s=Rule id is not in the range:%d ", REASON, rules[i].rule_id);
+			return SR_FALSE;
+		}
+	}
+
+	return SR_TRUE;
+}
 
 SR_32 create_irdeto_static_white_list(void)
 {
-	static static_file_rule_t irdeto_static_wl [] = {
-		/* {"/work/file1.txt", "rwx", "*", "/bin/cat"}, Example */
-		{""},  // Must be the last entry.
-	};
-	SR_U32 rule_no, i;
+	SR_U32 i;
+	SR_32 rc;
 	SR_U8 perm;
-	SR_U16 actions_bitmap = SR_CLS_ACTION_ALLOW | SR_CLS_ACTION_LOG;
+	SR_U16 actions_bitmap = SR_CLS_ACTION_ALLOW;
+
+	if (!is_valid_rules(irdeto_static_wl)) {
+		return SR_ERROR;
+	}
 
 	for (i = 0; *irdeto_static_wl[i].filename; i++) {
 		perm = 0;
-		rule_no = i + SR_FILE_WL_START_STATIC_RULE_NO;
-		if (rule_no >= SR_FILE_WL_START_RULE_NO) {
-                	CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-                       	                         "%s=Maximum number of statis wl rules have reached.", REASON);
-			return SR_ERROR;
-		}
 		if (strstr(irdeto_static_wl[i].permission, "r"))
 			perm |= SR_FILEOPS_READ;
 		if (strstr(irdeto_static_wl[i].permission, "w"))
@@ -200,8 +205,12 @@ SR_32 create_irdeto_static_white_list(void)
 		if (strstr(irdeto_static_wl[i].permission, "x"))
 			perm |= SR_FILEOPS_EXEC;
 
-		sr_cls_file_add_rule(irdeto_static_wl[i].filename, irdeto_static_wl[i].program, irdeto_static_wl[i].user, rule_no, (SR_U8)1);
-		sr_cls_rule_add(SR_FILE_RULES, rule_no, actions_bitmap, perm, SR_RATE_TYPE_BYTES, 0, 0 ,0, 0, 0, 0);
+		rc = sr_cls_file_add_rule(irdeto_static_wl[i].filename, irdeto_static_wl[i].program, irdeto_static_wl[i].user, irdeto_static_wl[i].rule_id, (SR_U8)1);
+		if (rc != SR_SUCCESS) {
+			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+       				"%s=Irdeto static WL, Failed add file rule:%d ", REASON, irdeto_static_wl[i].rule_id);
+		}
+		sr_cls_rule_add(SR_FILE_RULES, irdeto_static_wl[i].rule_id, actions_bitmap, perm, SR_RATE_TYPE_BYTES, 0, 0 ,0, 0, 0, 0);
 	}                   
 
 	return SR_SUCCESS;
