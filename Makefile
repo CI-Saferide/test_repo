@@ -20,8 +20,6 @@ MORE_CLEAN_TARGETS += $(if $(SR_CLI),clean_cli)
 all: $(MORE_TRAGETS)
 	@echo "***** enter vsentry-mod *****"
 	@$(MAKE) -C vsentry-mod KERNEL_SRC=${KERNEL_SRC}
-	@echo "***** enter vsentry-proxy *****"
-	@$(MAKE) -s -C vsentry-proxy
 	@echo "***** enter vsentry-engine *****"
 	@$(MAKE) -s -C vsentry-engine $(ENG_FLAGS)
 	@echo "***** enter vsentry-cli *****"
@@ -31,7 +29,6 @@ all: $(MORE_TRAGETS)
 
 clean: $(MORE_CLEAN_TARGETS)
 	@$(MAKE) -C vsentry-mod clean
-	@$(MAKE) -s -C vsentry-proxy clean
 	@$(MAKE) -s -C vsentry-engine clean
 	@$(MAKE) -s -C vsentry-cli clean
 	@$(MAKE) -s -C vsentry-ut clean
