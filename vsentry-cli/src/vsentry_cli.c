@@ -1533,9 +1533,11 @@ out:
 	return st;
 }
 
-SR_BOOL is_valid_file_rule_id(rule_id)
+static SR_BOOL is_valid_file_rule_id(SR_32 rule_id, SR_BOOL is_wl)
 {
-	if (rule_id < SR_FILE_WL_START_STATIC_RULE_NO)
+	if (!is_wl && rule_id < SR_FILE_WL_START_STATIC_RULE_NO)
+		return SR_TRUE;
+	if (is_wl && rule_id >= SR_FILE_WL_START_RULE_NO)
 		return SR_TRUE;
 	return SR_FALSE;
 }
@@ -1594,7 +1596,7 @@ static void handle_update(SR_BOOL is_delete)
 				handle_delete_ip(is_wl, rule_id, tuple_id);
 		}
 		if (is_file) {
-			if (!is_valid_file_rule_id(rule_id)) {
+			if (!is_valid_file_rule_id(rule_id, is_wl)) {
 				error("rule id is not valid", SR_TRUE);
 				return;
 			}
