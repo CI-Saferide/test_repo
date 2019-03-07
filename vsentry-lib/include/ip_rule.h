@@ -12,9 +12,15 @@
 typedef struct {
     unsigned int    id;
     struct in_addr  srcaddr;
-    struct in_addr  srcnetmask;
+    union {
+    	struct in_addr  srcnetmask;
+    	unsigned char   srcnetmasklen;
+    };
     struct in_addr  dstaddr;
-    struct in_addr  dstnetmask;
+    union {
+    	struct in_addr  dstnetmask;
+    	unsigned char   dstnetmasklen;
+    };
     unsigned short  dstport;
     unsigned short  srcport;
     unsigned char   proto;

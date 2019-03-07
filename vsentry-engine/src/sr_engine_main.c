@@ -54,6 +54,10 @@
 #include "sr_bin_cls_eng.h"
 #endif
 
+#ifdef REDIS_TEST
+#include "redis_mng.h"
+#endif
+
 static SR_BOOL is_engine_on;
 
 SR_BOOL get_engine_state(void)
@@ -252,6 +256,377 @@ static void sr_interrupt_cb(int i)
 	exit(0);
 }
 
+#ifdef REDIS_TEST
+// cb function to load db
+static void db_add_rule_or_action(void *rule, SR_8 type, SR_32 *status)
+{
+	switch (type) {
+	case CONFIG_NET_RULE:
+		*status = sr_db_ip_rule_add(rule);
+		break;
+	case CONFIG_FILE_RULE:
+		*status = sr_db_file_rule_add(rule);
+		break;
+	case CONFIG_CAN_RULE:
+//		printf("*** DBG *** add can rule\n");
+		*status = sr_db_can_rule_add(rule);
+		break;
+	case CONFIG_TYPE_MAX:
+		*status = sr_db_action_update_action(rule);
+		break;
+	default:
+		printf("ERROR: db_add_rule_or_action called with non supported type %d\n", type);
+		*status = -1;
+		break;
+	}
+}
+
+static int sr_redis_load(int tcp)
+{
+	int i;
+	can_rule_t can_rule, *can_rule_ptr;
+	ip_rule_t net_rule, *net_rule_ptr;
+	file_rule_t file_rule, *file_rule_ptr;
+	char file[60];
+	char perms[4];
+	struct timeval t1, t2;
+	redisContext *c = redis_mng_session_start(tcp);
+	if (c == NULL) {
+		printf("ERROR: redis_mng_session_start failed\n");
+		redis_mng_session_end(c);
+		return -1;
+	}
+	sr_db_init();
+
+	gettimeofday(&t1,NULL);
+	if (redis_mng_load_db(c, 1, db_add_rule_or_action)) {
+		printf("ERROR: redis_mng_load_db failed\n");
+		redis_mng_session_end(c);
+		sr_db_deinit();
+		return -1;
+	}
+	gettimeofday(&t2,NULL);
+	printf("Load time: %.3fs\n",
+			(((((long long)t2.tv_sec)*1000000)+t2.tv_usec) - ((((long long)t1.tv_sec)*1000000)+t1.tv_usec))/1000000.0);
+
+	redis_mng_session_end(c);
+
+	// verify all rules are there (NOTE: every 10th rule was removed)
+	for (i = 0; i < 1200; i++) {
+		can_rule.rulenum = i;
+		can_rule.tuple.id = 1;
+
+		net_rule.rulenum = i;
+		net_rule.tuple.id = 1;
+
+		file_rule.rulenum = i;
+		file_rule.tuple.id = 1;
+
+		if (i % 10 == 0) { // removed
+
+			if (sr_db_can_rule_get(&can_rule)) {
+				printf("ERROR: sr_db_can_rule_get %d exist\n", i);
+				sr_db_deinit();
+				return -1;
+			}
+
+			if (sr_db_ip_rule_get(&net_rule)) {
+				printf("ERROR: sr_db_net_rule_get %d exist\n", i);
+				sr_db_deinit();
+				return -1;
+			}
+
+			if (sr_db_file_rule_get(&file_rule)) {
+				printf("ERROR: sr_db_file_rule_get %d exist\n", i);
+				sr_db_deinit();
+				return -1;
+			}
+
+		} else { // added
+			if (!(can_rule_ptr = sr_db_can_rule_get(&can_rule))) {
+				printf("ERROR: sr_db_can_rule_get %d failed\n", i);
+				sr_db_deinit();
+				return -1;
+			}
+			// verify CAN params
+			if (strcmp(can_rule_ptr->action_name, "log")) {
+				printf("ERROR: can rule %d action %s != log\n", i, can_rule_ptr->action_name);
+				sr_db_deinit();
+				return -1;
+			}
+			if (can_rule_ptr->tuple.direction != 0) {
+				printf("ERROR: can rule %d dir %d != 0\n", i, can_rule_ptr->tuple.direction);
+				sr_db_deinit();
+				return -1;
+			}
+			if (strcmp(can_rule_ptr->tuple.interface, "NULL")) {
+				printf("ERROR: can rule %d interface %s != NULL\n", i, can_rule_ptr->tuple.interface);
+				sr_db_deinit();
+				return -1;
+			}
+			if (can_rule_ptr->tuple.max_rate != 100) {
+				printf("ERROR: can rule %d rate %d != 100\n", i, can_rule_ptr->tuple.max_rate);
+				sr_db_deinit();
+				return -1;
+			}
+			if (can_rule_ptr->tuple.msg_id != i + 2) {
+				printf("ERROR: can rule %d mid %d != %d\n", i, can_rule_ptr->tuple.msg_id, i + 2);
+				sr_db_deinit();
+				return -1;
+			}
+			if (strcmp(can_rule_ptr->tuple.program, "NULL")) {
+				printf("ERROR: can rule %d prog %s != NULL\n", i, can_rule_ptr->tuple.program);
+				sr_db_deinit();
+				return -1;
+			}
+			if (strcmp(can_rule_ptr->tuple.user, "NULL")) {
+				printf("ERROR: can rule %d user %s != NULL\n", i, can_rule_ptr->tuple.user);
+				sr_db_deinit();
+				return -1;
+			}
+
+			if (!(net_rule_ptr = sr_db_ip_rule_get(&net_rule))) {
+				printf("ERROR: sr_db_ip_rule_get %d failed\n", i);
+				sr_db_deinit();
+				return -1;
+			}
+			// verify NET params
+			if (strcmp(net_rule_ptr->action_name, "drop_log")) {
+				printf("ERROR: can rule %d action %s != log\n", i, net_rule_ptr->action_name);
+				sr_db_deinit();
+				return -1;
+			}
+			// addr_lsb = i % 256;
+			// mask = (i / 256) * 8;
+			// 192.168.2.%d/%d", addr_lsb, 32 - mask);
+			if (net_rule_ptr->tuple.dstaddr.s_addr != (192 << 24 | 168 << 16 | 2 << 8 | (i % 256))) {
+				printf("ERROR: ip rule %d dst addr %08x != %08x\n", i, net_rule_ptr->tuple.dstaddr.s_addr,
+						192 << 24 | 168 << 16 | 2 << 8 | (i % 256));
+				sr_db_deinit();
+				return -1;
+			}
+			if (net_rule_ptr->tuple.dstnetmasklen != 32 - ((i / 256) * 8)) {
+				printf("ERROR: ip rule %d dst mask len %d != %d\n", i, net_rule_ptr->tuple.dstnetmasklen, 32 - ((i / 256) * 8));
+				sr_db_deinit();
+				return -1;
+			}
+			// sprintf(strs.addrs.sa, "192.168.1.%d/%d", addr_lsb, mask);
+			if (net_rule_ptr->tuple.srcaddr.s_addr != (192 << 24 | 168 << 16 | 1 << 8 | (i % 256))) {
+				printf("ERROR: ip rule %d src addr %08x != %08x\n", i, net_rule_ptr->tuple.srcaddr.s_addr,
+						192 << 24 | 168 << 16 | 2 << 8 | (i % 256));
+				sr_db_deinit();
+				return -1;
+			}
+			if (net_rule_ptr->tuple.srcnetmasklen != (i / 256) * 8) {
+				printf("ERROR: ip rule %d src mask len %d != %d\n", i, net_rule_ptr->tuple.srcnetmasklen, (i / 256) * 8);
+				sr_db_deinit();
+				return -1;
+			}
+//			if (i == 1)
+//					printf("*** DBG *** GET dp %d, sp %d\n", net_rule_ptr->tuple.dstport, net_rule_ptr->tuple.srcport);
+			if (net_rule_ptr->tuple.dstport != i + 3) {
+				printf("ERROR: ip rule %d dst port %d != %d\n", i, net_rule_ptr->tuple.dstport, i + 3);
+				sr_db_deinit();
+				return -1;
+			}
+			if (net_rule_ptr->tuple.srcport != i + 1) {
+				printf("ERROR: ip rule %d src port %d != %d\n", i, net_rule_ptr->tuple.srcport, i + 1);
+				sr_db_deinit();
+				return -1;
+			}
+			if (net_rule_ptr->tuple.max_rate != 100) {
+				printf("ERROR: ip rule %d rate %d != 100\n", i, net_rule_ptr->tuple.max_rate);
+				sr_db_deinit();
+				return -1;
+			}
+			if (strcmp(net_rule_ptr->tuple.program, "NULL")) {
+				printf("ERROR: ip rule %d prog %s != NULL\n", i, net_rule_ptr->tuple.program);
+				sr_db_deinit();
+				return -1;
+			}
+			if (strcmp(net_rule_ptr->tuple.user, "NULL")) {
+				printf("ERROR: ip rule %d user %s != NULL\n", i, net_rule_ptr->tuple.user);
+				sr_db_deinit();
+				return -1;
+			}
+
+			if (!(file_rule_ptr = sr_db_file_rule_get(&file_rule))) {
+				printf("ERROR: sr_db_file_rule_get %d failed\n", i);
+				sr_db_deinit();
+				return -1;
+			}
+			// verify file params
+			if (strcmp(file_rule_ptr->action_name, "drop")) {
+				printf("ERROR: file rule %d action %s != drop\n", i, file_rule_ptr->action_name);
+				sr_db_deinit();
+				return -1;
+			}
+			sprintf(file, "a_file_path_of_50_chars_length_123456789_0AB____GH");
+			sprintf(file + 44, "%04d", i);
+			if (strcmp(file_rule_ptr->tuple.filename, file)) {
+				printf("ERROR: file rule %d filepath %s != %s\n", i, file_rule_ptr->tuple.filename, file);
+				sr_db_deinit();
+				return -1;
+			}
+			file_op_convert((i % 3) ? ((i % 3) == 1 ? SR_FILEOPS_EXEC : SR_FILEOPS_READ) : SR_FILEOPS_WRITE, perms);
+			if (strcmp(file_rule_ptr->tuple.permission, perms)) {
+				printf("ERROR: file rule %d permission %s != %s\n", i, file_rule_ptr->tuple.permission, perms);
+				sr_db_deinit();
+				return -1;
+			}
+			if (file_rule_ptr->tuple.max_rate != 100) {
+				printf("ERROR: file rule %d rate %d != 100\n", i, file_rule_ptr->tuple.max_rate);
+				sr_db_deinit();
+				return -1;
+			}
+			if (strcmp(file_rule_ptr->tuple.program, "NULL")) {
+				printf("ERROR: file rule %d prog %s != NULL\n", i, file_rule_ptr->tuple.program);
+				sr_db_deinit();
+				return -1;
+			}
+			if (strcmp(file_rule_ptr->tuple.user, "NULL")) {
+				printf("ERROR: file rule %d user %s != NULL\n", i, file_rule_ptr->tuple.user);
+				sr_db_deinit();
+				return -1;
+			}
+		}
+	}
+
+	sr_db_deinit();
+	return 0;
+}
+// test Redis: connect either by TCP or Unix sockets
+static int sr_redis_test(int tcp, int clean_first, int clean_at_end)
+{
+	SR_32 rc, i, j;
+	SR_U8 addr_lsb, mask;
+	union {
+		char file[64];
+		struct {
+			char sa[20];
+			char da[20];
+			char s_port[8];
+			char d_port[8];
+			char proto[4];
+		} addrs;
+		char mid[16];
+	} strs;
+
+	redisContext *c = redis_mng_session_start(tcp);
+	if (c == NULL) {
+		printf("ERROR: redis_mng_session_start failed\n");
+		redis_mng_session_end(c);
+		return -1;
+	}
+
+	if (clean_first) { // clean DB
+		if (redis_mng_clean_db(c)) {
+			printf("ERROR: redis_mng_clean_db failed\n");
+			redis_mng_session_end(c);
+			return -1;
+		}
+	}
+
+	// add 1200 file rules
+	sprintf(strs.file, "a_file_path_of_50_chars_length_123456789_0AB____GH");
+	for (i = 0; i < 1200; i++) {
+		sprintf(strs.file + 44, "%04d", i);
+		j = i % 3;
+		if ((rc = redis_mng_add_file_rule(c, i, strs.file, "NULL", "NULL", "drop",
+				j ? (j == 1 ? SR_FILEOPS_READ : SR_FILEOPS_WRITE) : SR_FILEOPS_EXEC))) {
+			printf("ERROR: redis_mng_add_file_rule %d failed, ret %d\n", i, rc);
+			redis_mng_session_end(c);
+			return -1;
+		}
+	}
+	// add 1200 net rules
+	for (i = 0; i < 1200; i++) {
+		addr_lsb = i % 256;
+		mask = (i / 256) * 8;
+		sprintf(strs.addrs.sa, "192.168.1.%d/%d", addr_lsb, mask);
+		sprintf(strs.addrs.da, "192.168.2.%d/%d", addr_lsb, 32 - mask);
+		sprintf(strs.addrs.proto, "%02d", addr_lsb);
+		sprintf(strs.addrs.s_port, "%04d", i);
+		sprintf(strs.addrs.d_port, "%04d", i + 3);
+//		if (i == 1) {
+//			printf("*** DBG *** ADD: d_port %s\n", strs.addrs.d_port);
+//			printf("*** DBG *** ADD: s_port %s\n", strs.addrs.s_port);
+//		}
+		if ((rc = redis_mng_add_net_rule(c, i, strs.addrs.sa, strs.addrs.da, strs.addrs.proto, strs.addrs.s_port,
+				strs.addrs.d_port, "NULL", "NULL", "drop_log"))) {
+			printf("ERROR: redis_mng_add_net_rule %d failed, ret %d\n", i, rc);
+			redis_mng_session_end(c);
+			return -1;
+		}
+	}
+	// add 1200 can rules
+	for (i = 0; i < 1200; i++) {
+		sprintf(strs.mid, "%d", i);
+		if ((rc = redis_mng_add_can_rule(c, i, strs.mid, "NULL", "NULL", "NULL", "log", 0))) {
+			printf("ERROR: redis_mng_add_can_rule %d failed, ret %d\n", i, rc);
+			redis_mng_session_end(c);
+			return -1;
+		}
+	}
+
+	// update all the rules
+	for (i = 0; i < 1200; i++) {
+		j = i % 3;
+		if ((rc = redis_mng_mod_file_rule(c, i, NULL, NULL, NULL, NULL,
+				j ? (j == 1 ? SR_FILEOPS_EXEC : SR_FILEOPS_READ) : SR_FILEOPS_WRITE))) {
+			printf("ERROR: redis_mng_modify_file_rule %d failed, ret %d\n", i, rc);
+			redis_mng_session_end(c);
+			return -1;
+		}
+		addr_lsb = i % 256;
+		mask = (i / 256) * 8;
+		sprintf(strs.addrs.s_port, "%04d", i + 1);
+		if ((rc = redis_mng_mod_net_rule(c, i, NULL, NULL, NULL, strs.addrs.s_port, NULL, NULL, NULL, NULL))) {
+			printf("ERROR: redis_mng_modify_net_rule %d failed, ret %d\n", i, rc);
+			redis_mng_session_end(c);
+			return -1;
+		}
+		sprintf(strs.mid, "%d", i + 2);
+		if ((rc = redis_mng_mod_can_rule(c, i, strs.mid, NULL, NULL, NULL, NULL, 1))) {
+			printf("ERROR: redis_mng_modify_can_rule %d failed, ret %d\n", i, rc);
+			redis_mng_session_end(c);
+			return -1;
+		}
+	}
+
+	// delete 1/10 of the rules
+	for (i = 0; i < 1200; i++) {
+		if (i % 10 == 0) {
+			if ((rc = redis_mng_del_file_rule(c, i))) {
+				printf("ERROR: redis_mng_del_file_rule %d failed, ret %d\n", i, rc);
+				redis_mng_session_end(c);
+				return -1;
+			}
+			if ((rc = redis_mng_del_net_rule(c, i))) {
+				printf("ERROR: redis_mng_del_net_rule %d failed, ret %d\n", i, rc);
+				redis_mng_session_end(c);
+				return -1;
+			}
+			if ((rc = redis_mng_del_can_rule(c, i))) {
+				printf("ERROR: redis_mng_del_can_rule %d failed, ret %d\n", i, rc);
+				redis_mng_session_end(c);
+				return -1;
+			}
+		}
+	}
+
+	if (clean_at_end) { // clean DB
+		if (redis_mng_clean_db(c)) {
+			printf("ERROR: redis_mng_clean_db failed\n");
+			redis_mng_session_end(c);
+			return -1;
+		}
+	}
+	redis_mng_session_end(c);
+	return 0;
+}
+#endif
+
 SR_32 sr_engine_start(int argc, char *argv[])
 {
 	SR_32 ret;
@@ -427,6 +802,21 @@ SR_32 sr_engine_start(int argc, char *argv[])
 #ifdef BIN_CLS_DB
 	bin_cls_init();
 #endif
+#ifdef REDIS_TEST
+#define TCP 1
+	printf("\nRedis start - %s:\n", TCP ? "TCP" : "Unix socket");
+	// read after boot
+	if (sr_redis_load(TCP))
+		printf("*** REDIS LOAD *** failed\n");
+	else
+		printf("*** REDIS LOAD *** SUCCESS!!!\n");
+	// add entries for next boot
+	if (sr_redis_test(TCP, 1, 0))
+		printf("*** REDIS TEST *** failed\n\n");
+	else
+		printf("*** REDIS TEST *** SUCCESS!!!\n\n");
+#endif
+
 	sr_db_init();
 	sentry_init(sr_config_vsentry_db_cb);
 	
