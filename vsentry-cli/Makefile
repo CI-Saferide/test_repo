@@ -37,9 +37,14 @@ else
 CFLAGS 		+= -O2
 endif
 
+LIBCLI = cli_builder/build/libcli.a
+
 all: $(TARGET)
 
-$(TARGET): lib$(TARGET) libdb_tools
+$(LIBCLI):
+	make -C cli_builder
+
+$(TARGET): lib$(TARGET) libdb_tools $(LIBCLI)
 	@echo "linking $(notdir $@)"
 	$(CC) $(LDFLAGS) -o $(BINDIR)/$(TARGET) $(LIB_PATH) $(LIBS)
 
