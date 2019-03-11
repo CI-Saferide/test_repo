@@ -270,7 +270,7 @@ static void db_add_rule_or_action(void *rule, SR_8 type, SR_32 *status)
 	}
 }
 
-static int sr_redis_load(int tcp)
+static int sr_redis_load(int tcp, int pipeline)
 {
 	int i;
 	can_rule_t can_rule, *can_rule_ptr;
@@ -288,7 +288,7 @@ static int sr_redis_load(int tcp)
 	sr_db_init();
 
 	gettimeofday(&t1,NULL);
-	if (redis_mng_load_db(c, 1, db_add_rule_or_action)) {
+	if (redis_mng_load_db(c, pipeline, db_add_rule_or_action)) {
 		printf("ERROR: redis_mng_load_db failed\n");
 		redis_mng_session_end(c);
 		sr_db_deinit();
@@ -777,9 +777,10 @@ SR_32 sr_engine_start(int argc, char *argv[])
 
 #ifdef REDIS_TEST
 #define TCP 1
-	printf("\nRedis start - %s:\n", TCP ? "TCP" : "Unix socket");
+#define PIPELINE 0
+	printf("\nRedis start - %s, %s:\n", TCP ? "TCP" : "Unix socket", PIPELINE ? "pipelined" : "non-pipelined");
 	// read after boot
-	if (sr_redis_load(TCP))
+	if (sr_redis_load(TCP, PIPELINE))
 		printf("*** REDIS LOAD *** failed\n");
 	else
 		printf("*** REDIS LOAD *** SUCCESS!!!\n");
