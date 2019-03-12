@@ -467,10 +467,6 @@ static SR_32 handle_load(void)
 	return st;
 }
 
-static void print_engine_usage(void) {
-	printf("\n\rengine [state|update [on|off]]\n");
-}
-
 static void print_show_usage(void) 
 {
 	printf("\n\r");
@@ -500,22 +496,6 @@ static void print_show_usage(void)
 	printf("\r	[on | off] - applicable when using update \n");
 	printf("\r\n");
 	printf("\r\n");
-}
-
-static void print_update_rule_usage(SR_BOOL is_type)
-{
-	if (is_type)
-		printf("\r[can | ip | file] - specifies the desired table\n");
-	printf("\rrule=x, tuple=y\n");
-}
-
-static void print_update_usage(void)
-{
-	printf("\n\r");
-	printf("\rupdate | delete action | rule | wl action_obj | can | ip | file rule=x tuple=y\n");
-	printf("\r  update tables\n");
-	printf("\raction | rule | wl - action table, user defined table or white list table \n");
-	print_update_rule_usage(SR_TRUE);
 }
 
 static void print_usage(void)
