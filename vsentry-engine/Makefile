@@ -88,7 +88,8 @@ INCLUDES 	:=  -I../common/include \
 				-Iwhite_list/include \
 				-Ithird-party/include \
 				-Idb/include \
-				-I../vsentry-proxy \
+				-I../mutual-repo/include \
+				-I../mutual-repo/client \
 
 OBJS		:=  $(addprefix $(OBJDIR)/,$(SRCS:.c=.o))
 DEPS		:=  $(OBJS:.o=.d)

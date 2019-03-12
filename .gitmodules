@@ -1,0 +1,3 @@
+[submodule "mutual-repo"]
+	path = mutual-repo
+	url = git@github.com:saferide-tech/mutual-repo.git
