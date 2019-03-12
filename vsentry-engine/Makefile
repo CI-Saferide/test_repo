@@ -8,6 +8,7 @@ BUILD_DIR 	:= $(TOP_DIR)/build
 OBJDIR		:= $(BUILD_DIR)/objs
 LIBDIR		:= $(BUILD_DIR)/lib
 BINDIR 		:= $(BUILD_DIR)/bin
+MUTUAL_REPO_DIR := $(TOP_DIR)/../mutual-repo
 
 TARGET 		:= sr_engine
 
@@ -128,7 +129,15 @@ $(TARGET): libsr_log libsr_hash libjsmn libsysrepo_mng libdb_tools lib$(TARGET)
 	echo $(LIB_PATH)
 	$(CC) $(LDFLAGS) -o $(BINDIR)/$(TARGET) $(LIB_PATH) $(LIBS)
 
-lib$(TARGET): build_ver OBJSDIR $(OBJS)
+$(MUTUAL_REPO_DIR):
+	cd .. && \
+	git clone -n git@github.com:saferide-tech/mutual-repo.git --depth 1 &&\
+	cd mutual-repo  &&\
+	git checkout HEAD client/lib/libclient.a && \
+	git checkout HEAD include/message.h && \
+	git checkout HEAD client/vproxy_client.h
+
+lib$(TARGET): build_ver OBJSDIR $(OBJS) 
 	@echo "linking $(notdir $@)"
 	$(AR) rc $(LIBDIR)/$@.a $(OBJS)
 
@@ -153,7 +162,7 @@ libsysrepo_mng:
 libdb_tools:
 	@$(MAKE) -s -C ../tools/db_tools TOP_DIR=$(TOP_DIR)
 
-$(OBJDIR)/%.o: %.c
+$(OBJDIR)/%.o: %.c $(MUTUAL_REPO_DIR)
 	@echo "compiling $(notdir $<)"
 	@$(CC) $(CFLAGS) $(INCLUDES) -c $< -o $@
 
