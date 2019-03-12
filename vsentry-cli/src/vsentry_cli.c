@@ -495,7 +495,7 @@ static void print_show_usage(void)
 	printf("\r	[sr_ver] - show running vsentry engine version \n");
 	printf("\r	[learn | apply | print | reset] - specifies specific action to preform\n");
 	printf ("\n");
-	printf("\rengine [state | update] [on | off] \n");
+	printf("\rengine  [state | update] [on | off] \n");
 	printf("\r	[state | update] - state to show, update to change \n");
 	printf("\r	[on | off] - applicable when using update \n");
 	printf("\r\n");
@@ -521,8 +521,6 @@ static void print_update_usage(void)
 static void print_usage(void)
 {
 	print_show_usage();
-	print_update_usage();
-	print_engine_usage();
 }
 
 static void print_usage_cb(char *buf)
@@ -1842,7 +1840,7 @@ SR_32 main(int argc, char **argv)
 		}
 	}
 
-        cli_init("(cli(help)(show (rule (can)(ip)(file)) (wl (can)(ip)(file))(action)) (update (rule (can)(ip)(file)) (wl (can)(ip)(file))(action))(delete (rule (can)(ip)(file)) (wl (can)(ip)(file))(action))(commit)(control (wl (learn)(apply)(print)(reset))(sr_ver)(sp (learn)(apply)(off)))(load)(engine (state)(update))(exit))");
+        cli_init("(vsentry-cli (help) (show (rule (can)(ip)(file)) (wl (can)(ip)(file))(action)) (update (rule (can)(ip)(file)) (wl (can)(ip)(file))(action))(delete (rule (can)(ip)(file)) (wl (can)(ip)(file))(action))(commit)(control (wl (learn)(apply)(print)(reset))(sr_ver)(sp (learn)(apply)(off)))(load)(engine (state)(update))(exit))");
 
         help_operations.help_cb = NULL;
         help_operations.run_cb = print_usage_cb;
