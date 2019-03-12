@@ -210,10 +210,10 @@ int cls_classify_event(vsentry_ev_type_e ev_type, vsentry_event_t *event, bool a
 	bit_array_t verdict;
 	act_t *act = NULL;
 	unsigned short bit;
-	bool is_default = false;
 	unsigned int rl_offset = 0;
 	unsigned int size = 0;
 #ifdef CLS_DEBUG
+	bool is_default = false;
 	char *type_name_arr[CLS_TOTAL_RULE_TYPE] = {
 		"ip",
 		"can",
@@ -240,6 +240,19 @@ int cls_classify_event(vsentry_ev_type_e ev_type, vsentry_event_t *event, bool a
 		break;
 
 	case VSENTRY_IP_EVENT:
+#define	IN_LOOPBACK(a)		((((long int) (a)) & 0xff000000) == 0x7f000000)
+		/* local ip address */
+		if (event->ip_event.daddr.v4addr == 0 || event->ip_event.saddr.v4addr == 0) {
+			event->act_bitmap |= VSENTRY_ACTION_ALLOW;
+			return VSENTRY_SUCCESS;
+		}
+
+		/* loop-back ip address */
+		if (IN_LOOPBACK(event->ip_event.daddr.v4addr) && IN_LOOPBACK(event->ip_event.saddr.v4addr)) {
+			event->act_bitmap |= VSENTRY_ACTION_ALLOW;
+			return VSENTRY_SUCCESS;
+		}
+
 		/* classify ip_addresses */
 		size = event->ip_event.len;
 		event->type = CLS_IP_RULE_TYPE;
@@ -282,9 +295,6 @@ int cls_classify_event(vsentry_ev_type_e ev_type, vsentry_event_t *event, bool a
 				return ret;
 			}
 		}
-	}
-
-	if (!ba_is_empty(&verdict)) {
 		/* we matched a specific rule, get its action */
 		bit = ba_ffs(&verdict);
 		if (bit == MAX_RULES) {
@@ -295,24 +305,27 @@ int cls_classify_event(vsentry_ev_type_e ev_type, vsentry_event_t *event, bool a
 		act = get_pointer(rules_db->action_offset[event->type][bit]);
 		if (rules_db->rl_offset[event->type][bit])
 			rl_offset = rules_db->rl_offset[event->type][bit];
+	}
 
-	} else if (db_head->mode == CLS_MODE_ENFOCE) {
+	if (!act && db_head->mode == CLS_MODE_ENFROCE) {
 		/* we didn't matched a specific rule, use the default rules.
 		 * we use default rules only when enforcing, otherwise we will
 		 * not be able to detect if we need to learn this event */
 		act = &db_head->deafults.actions[event->type];
 		rl_offset = db_head->deafults.rl_offset[event->type];
+#ifdef CLS_DEBUG
 		is_default = true;
+#endif
 	}
 
 	if (act) {
-
+#ifdef CLS_DEBUG
 		if (is_default)
-			cls_dbg("using %s default: \n", type_name_arr[event->type]);
+			cls_dbg("using %s default\n", type_name_arr[event->type]);
 		else
 			cls_dbg("rule [%s][%u]: action %s\n", type_name_arr[event->type],
 					bit, act->name);
-
+#endif
 		event->act_bitmap = act->action_bitmap;
 
 		/* check rule rate limit if action is drop */
@@ -333,12 +346,10 @@ int cls_classify_event(vsentry_ev_type_e ev_type, vsentry_event_t *event, bool a
 	}
 
 	switch (db_head->mode) {
-	case CLS_MODE_PERMISSIVE:
-		/* in permissive mode we always allow */
-		event->act_bitmap |= VSENTRY_ACTION_ALLOW;
-		break;
 	case CLS_MODE_LEARN:
 		cls_learn_event(event->type, event, atomic);
+	case CLS_MODE_PERMISSIVE:
+		/* in permissive/learn mode we always allow */
 		event->act_bitmap |= VSENTRY_ACTION_ALLOW;
 		break;
 	default:
@@ -386,9 +397,10 @@ int cls_set_mode(cls_mode_e mode)
 	return VSENTRY_SUCCESS;
 }
 
-int cls_add_rule(cls_rule_type_e type, unsigned int rule, char *act_name, unsigned int limit)
+int cls_add_rule(cls_rule_type_e type, unsigned int rule, char *act_name, int act_name_len, unsigned int limit)
 {
 	act_t *db_act;
+
 #ifdef CLS_DEBUG
 	char *type_name_arr[CLS_TOTAL_RULE_TYPE] = {
 		"ip",
@@ -402,7 +414,7 @@ int cls_add_rule(cls_rule_type_e type, unsigned int rule, char *act_name, unsign
 		return VSENTRY_INVALID;
 	}
 
-	db_act = action_cls_search(act_name);
+	db_act = action_cls_search(act_name, act_name_len);
 	if (!db_act) {
 		cls_err("can't set rule action, no such action %s\n", act_name);
 		return VSENTRY_NONE_EXISTS;
@@ -412,7 +424,7 @@ int cls_add_rule(cls_rule_type_e type, unsigned int rule, char *act_name, unsign
 		rules_db->action_offset[type][rule] = get_offset(db_act);
 		cls_dbg("created new %s rule %u with action %s\n",
 			type_name_arr[type], rule, db_act->name);
-		action_cls_ref(true, act_name);
+		action_cls_ref(true, act_name, act_name_len);
 		if (limit) {
 			cls_ratelimit_t *rl = heap_calloc(sizeof(cls_ratelimit_t));
 			if (!rl) {
@@ -456,7 +468,7 @@ int cls_del_rule(cls_rule_type_e type, unsigned int rule)
 	}
 
 	act = get_pointer(rules_db->action_offset[type][rule]);
-	action_cls_ref(false, act->name);
+	action_cls_ref(false, act->name, act->name_len);
 	rules_db->action_offset[type][rule] = 0;
 	if (rules_db->rl_offset[type][rule]) {
 		cls_ratelimit_t *rl = get_pointer(rules_db->rl_offset[type][rule]);

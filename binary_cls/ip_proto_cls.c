@@ -156,7 +156,7 @@ int ip_proto_cls_add_rule(unsigned int rule, unsigned int proto)
 		return VSENTRY_INVALID;
 	}
 
-	if ((proto != IP_PROTO_ANY) && (proto > (unsigned char)(-1))) {
+	if ((proto != IP_PROTO_ANY) && (proto > IP_PROTO_MAX)) {
 		ip_proto_err("invalid ip_proto argument\n");
 		return VSENTRY_INVALID;
 	}
@@ -200,7 +200,7 @@ int ip_proto_cls_del_rule(unsigned int rule, unsigned int proto)
 		return VSENTRY_INVALID;
 	}
 
-	if ((proto != IP_PROTO_ANY) && (proto > (unsigned short)(-1))) {
+	if ((proto != IP_PROTO_ANY) && (proto > IP_PROTO_MAX)) {
 		ip_proto_err("invalid ip_proto argument\n");
 		return VSENTRY_INVALID;
 	}
@@ -233,10 +233,10 @@ int ip_proto_cls_del_rule(unsigned int rule, unsigned int proto)
  * and AND it with verdict */
 int ip_proto_cls_search(ip_event_t *data, bit_array_t *verdict)
 {
-	bit_array_t *arr = NULL;
+	bit_array_t *arr_any = &ip_proto_any_rules->any_rules;
 	ip_proto_hash_item_t *ip_proto_item = NULL;
 
-	if ((data->ip_proto != IP_PROTO_ANY) && (data->ip_proto > (unsigned short)(-1))) {
+	if ((data->ip_proto != IP_PROTO_ANY) && (data->ip_proto > IP_PROTO_MAX)) {
 		ip_proto_err("invalid ip_proto argument\n");
 		return VSENTRY_INVALID;
 	}
@@ -244,21 +244,25 @@ int ip_proto_cls_search(ip_event_t *data, bit_array_t *verdict)
 	/* search if this data exist */
 	ip_proto_item = hash_get_data(&ip_proto_hash_array, &data->ip_proto);
 	if (ip_proto_item) {
-		arr = &ip_proto_item->rules;
-	} else {
-		if (cls_get_mode() == CLS_MODE_LEARN) {
-			/* in learn mode we dont want to get the default rule
-			 * since we want to learn this event, so we clear the
-			 * verdict bitmap to signal no match */
-			ba_clear(verdict);
+		ba_and(verdict, verdict, &ip_proto_item->rules);
+		/* if any rule is active, or it */
+		if (!ba_is_empty(arr_any))
+			ba_or(verdict, verdict, arr_any);
 
-			return VSENTRY_SUCCESS;
-		}
-		/* use the default rule if no item was found */
-		arr = &ip_proto_any_rules->any_rules;
+		return VSENTRY_SUCCESS;
 	}
 
-	ba_and(verdict, verdict, arr);
+	if (cls_get_mode() == CLS_MODE_LEARN) {
+		/* in learn mode we dont want to get the default rule
+		 * since we want to learn this event, so we clear the
+		 * verdict bitmap to signal no match */
+		ba_clear(verdict);
+
+		return VSENTRY_SUCCESS;
+	}
+
+	/* if no specific rule and it with any*/
+	ba_and(verdict, verdict, arr_any);
 
 	return VSENTRY_SUCCESS;
 }

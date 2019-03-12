@@ -166,7 +166,7 @@ void reset_heap(void)
 	unsigned char index;
 	node_t *init_region;
 
-	memset(heap.bins, 0, BINS_SIZE);
+	vs_memset(heap.bins, 0, BINS_SIZE);
 
 	init_region = (node_t*)heap.start;
 	init_region->hole = 1;
@@ -239,7 +239,7 @@ void *heap_calloc(unsigned int size)
 	void *ptr = heap_alloc(size);
 
 	if (ptr)
-		memset(ptr, 0 , size);
+		vs_memset(ptr, 0 , size);
 
 	return ptr;
 }

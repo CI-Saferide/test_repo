@@ -153,7 +153,7 @@ static int test(void)
 
 	memset(&ev, 0, sizeof(vsentry_event_t));
 
-	return cls_event(VSENTRY_IP_EVENT, &ev, false);
+	return cls_event(VSENTRY_CAN_EVENT, &ev, false);
 }
 
 int main(int argc, char **argv)
@@ -163,6 +163,7 @@ int main(int argc, char **argv)
 	char *execfile = EXEC_FILE;
 	char *dbfile = DB_FILE;
 	bool debug = false;
+	unsigned int mode = CLS_MODE_ENFROCE;
 
 	while ((opt = getopt (argc, argv, "e:f:h")) != -1) {
 		switch (opt) {
@@ -210,6 +211,8 @@ int main(int argc, char **argv)
 		fprintf(stderr, "failed to init standalone classifier\n");
 		goto exit_err;
 	}
+
+	cls_event(VSENTRY_CLASIFFIER_SET_MODE, (vsentry_event_t*)&mode, false);
 
 	test();
 

@@ -5,6 +5,7 @@
 #include "bitops.h"
 
 #define IP_PROTO_ANY 		(unsigned int)(-1)
+#define IP_PROTO_MAX 		0xFF
 
 int  ip_proto_cls_init(cls_hash_params_t *hash_params);
 int  ip_proto_cls_add_rule(unsigned int rule, unsigned int proto);

@@ -198,7 +198,7 @@ int  port_cls_add_rule(unsigned int rule, unsigned int port, unsigned int type, 
 	else
 		return VSENTRY_ERROR;
 
-	if ((port != PORT_ANY) && (port >(unsigned short)(-1)))
+	if ((port != PORT_ANY) && (port > PORT_MAX))
 		return VSENTRY_ERROR;
 
 	if (port == PORT_ANY) {
@@ -240,7 +240,7 @@ int port_cls_del_rule(unsigned int rule, unsigned int port, unsigned int type, u
 	else
 		return VSENTRY_ERROR;
 
-	if ((port != PORT_ANY) && (port >(unsigned short)(-1)))
+	if ((port != PORT_ANY) && (port > PORT_MAX))
 		return VSENTRY_ERROR;
 
 	if (port == PORT_ANY) {
@@ -269,7 +269,7 @@ int port_cls_del_rule(unsigned int rule, unsigned int port, unsigned int type, u
 
 int port_cls_search(ip_event_t *data, bit_array_t *verdict)
 {
-	bit_array_t *arr = NULL;
+	bit_array_t *arr_any = NULL;
 	port_hash_item_t *port_item = NULL;
 	port_type_e port_type;
 
@@ -280,37 +280,48 @@ int port_cls_search(ip_event_t *data, bit_array_t *verdict)
 	else
 		return VSENTRY_ERROR;
 
-	/* classify sport */
-	port_item = hash_get_data(&port_hash_array[CLS_NET_DIR_SRC][port_type], &data->sport);
-	if (port_item) {
-		arr = &port_item->rules;
-	} else {
-		arr = &port_any_rules->any_rules[CLS_NET_DIR_SRC][port_type];
-	}
-
-	ba_and(verdict, verdict, arr);
-
-	if (ba_is_empty(verdict))
-		return VSENTRY_SUCCESS;
-
 	/* classify dport */
+	arr_any = &port_any_rules->any_rules[CLS_NET_DIR_DST][port_type];
+
 	port_item = hash_get_data(&port_hash_array[CLS_NET_DIR_DST][port_type], &data->dport);
 	if (port_item) {
-		arr = &port_item->rules;
+		ba_and(verdict, verdict, &port_item->rules);
+
+		/* if any rule is active, or it */
+		if (!ba_is_empty(arr_any))
+			ba_or(verdict, verdict, arr_any);
+
+		return VSENTRY_SUCCESS;
+
+	} else if (cls_get_mode() == CLS_MODE_LEARN) {
+		/* in learn mode we dont want to get the default rule
+		 * since we want to learn this event, so we clear the
+		 * verdict bitmap to signal no match */
+		ba_clear(verdict);
+
+		return VSENTRY_SUCCESS;
 	} else {
-		if (cls_get_mode() == CLS_MODE_LEARN) {
-			/* in learn mode we dont want to get the default rule
-			 * since we want to learn this event, so we clear the
-			 * verdict bitmap to signal no match */
-			ba_clear(verdict);
-
+		/* if no specific rule and it with any*/
+		ba_and(verdict, verdict, arr_any);
+		if (ba_is_empty(verdict))
+			/* no need to continue. classification failed */
 			return VSENTRY_SUCCESS;
-		}
-
-		arr = &port_any_rules->any_rules[CLS_NET_DIR_DST][port_type];
 	}
 
-	ba_and(verdict, verdict, arr);
+	/* classify sport */
+	arr_any = &port_any_rules->any_rules[CLS_NET_DIR_SRC][port_type];
+	port_item = hash_get_data(&port_hash_array[CLS_NET_DIR_SRC][port_type], &data->sport);
+	if (port_item) {
+		ba_and(verdict, verdict, &port_item->rules);
+		/* if any rule is active, or it */
+		if (!ba_is_empty(arr_any))
+			ba_or(verdict, verdict, arr_any);
+
+		return VSENTRY_SUCCESS;
+	}
+
+	/* if no specific rule and it with any*/
+	ba_and(verdict, verdict, arr_any);
 
 	return VSENTRY_SUCCESS;
 }

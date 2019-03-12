@@ -213,7 +213,7 @@ int can_cls_add_rule(unsigned int rule, can_header_t *data, unsigned int dir)
 			if (!can_item)
 				return VSENTRY_ERROR;
 
-			memcpy(&can_item->can_data, data, sizeof(can_header_t));
+			vs_memcpy(&can_item->can_data, data, sizeof(can_header_t));
 			hash_insert_data(&can_hash_array[dir], can_item);
 			can_dbg("created new can rule mid 0x%x dir %s if_index %u\n",
 				data->msg_id , can_dir_name[dir], data->if_index);
@@ -275,31 +275,37 @@ int can_cls_del_rule(unsigned int rule, can_header_t *data, unsigned int dir)
 
 int can_cls_search(vsentry_event_t *can_ev, bit_array_t *verdict)
 {
-	bit_array_t *arr = NULL;
+	bit_array_t *arr_any = NULL;
 	can_hash_item_t *can_item = NULL;
 
 	if (can_cls_check_valid(&can_ev->can_event.can_header, can_ev->dir))
 		return VSENTRY_ERROR;
 
+	arr_any = &can_any_rules->any_rules[can_ev->dir];
+
 	/* search if this data exist */
 	can_item = hash_get_data(&can_hash_array[can_ev->dir], &can_ev->can_event.can_header);
 	if (can_item) {
 		__sync_add_and_fetch(&can_item->counter, 1);
-		arr = &can_item->rules;
-	} else {
-		if (cls_get_mode() == CLS_MODE_LEARN) {
-			/* in learn mode we dont want to get the default rule
-			 * since we want to learn this event, so we clear the
-			 * verdict bitmap to signal no match */
-			ba_clear(verdict);
+		ba_and(verdict, verdict, &can_item->rules);
+		/* if any rule is active, or it */
+		if (!ba_is_empty(arr_any))
+			ba_or(verdict, verdict, arr_any);
 
-			return VSENTRY_SUCCESS;
-		}
-
-		arr = &can_any_rules->any_rules[can_ev->dir];
+		return VSENTRY_SUCCESS;
 	}
 
-	ba_and(verdict, verdict, arr);
+	if (cls_get_mode() == CLS_MODE_LEARN) {
+		/* in learn mode we dont want to get the default rule
+		 * since we want to learn this event, so we clear the
+		 * verdict bitmap to signal no match */
+		ba_clear(verdict);
+
+		return VSENTRY_SUCCESS;
+	}
+
+	/* if no specific rule and it with any*/
+	ba_and(verdict, verdict, arr_any);
 
 	return VSENTRY_SUCCESS;
 }

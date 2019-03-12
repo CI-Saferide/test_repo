@@ -246,7 +246,7 @@ int prog_cls_del_rule(cls_rule_type_e type, unsigned int rule, unsigned int exec
  * and AND it with verdict */
 int prog_cls_search(cls_rule_type_e type, id_event_t *data, bit_array_t *verdict)
 {
-	bit_array_t *arr = NULL;
+	bit_array_t *arr_any = NULL;
 	prog_hash_item_t *prog_item = NULL;
 
 	if (type >= CLS_TOTAL_RULE_TYPE) {
@@ -254,15 +254,30 @@ int prog_cls_search(cls_rule_type_e type, id_event_t *data, bit_array_t *verdict
 		return VSENTRY_INVALID;
 	}
 
+	arr_any = &prog_any_rules->any_rules[type];
+
 	/* search if this data exist */
 	prog_item = hash_get_data(&prog_hash_array[type], &data->exec_ino);
-	if (prog_item)
-		arr = &prog_item->rules;
-	else
-		/* use the default rule if no item was found */
-		arr = &prog_any_rules->any_rules[type];
+	if (prog_item) {
+		ba_and(verdict, verdict, &prog_item->rules);
+		/* if any rule is active, or it */
+		if (!ba_is_empty(arr_any))
+			ba_or(verdict, verdict, arr_any);
 
-	ba_and(verdict, verdict, arr);
+		return VSENTRY_SUCCESS;
+	}
+
+	if (cls_get_mode() == CLS_MODE_LEARN) {
+		/* in learn mode we dont want to get the default rule
+		 * since we want to learn this event, so we clear the
+		 * verdict bitmap to signal no match */
+		ba_clear(verdict);
+
+		return VSENTRY_SUCCESS;
+	}
+
+	/* if no specific rule and it with any*/
+	ba_and(verdict, verdict, arr_any);
 
 	return VSENTRY_SUCCESS;
 }

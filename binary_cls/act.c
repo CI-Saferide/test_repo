@@ -33,20 +33,15 @@ int action_cls_init(unsigned int *head_offset)
 	return VSENTRY_SUCCESS;
 }
 
-static bool action_cls_compare(act_t *candidat, char *act_name)
+static bool action_cls_compare(act_t *candidat, char *act_name, int search_len)
 {
-	int len_candidat, len_searched;
-
 	if (!candidat || !act_name)
 		return false;
 
-	len_candidat = strlen(candidat->name);
-	len_searched = strlen(act_name);
-
-	if (len_candidat != len_searched)
+	if (candidat->name_len != search_len)
 		return false;
 
-	if (memcmp(candidat->name, act_name, len_searched) == 0)
+	if (vs_memcmp(candidat->name, act_name, search_len) == 0)
 		return true;
 
 	return false;
@@ -56,7 +51,7 @@ int action_cls_add(act_t *act)
 {
 	act_list_item_t *item = list_head, *prev = NULL;
 
-	if (!act || !strlen(act->name))
+	if (!act || !act->name || !act->name_len)
 		return VSENTRY_INVALID;
 
 	if (!list_head) {
@@ -67,7 +62,7 @@ int action_cls_add(act_t *act)
 			return VSENTRY_ERROR;
 		}
 
-		memcpy(&list_head->action, act, sizeof(act_t));
+		vs_memcpy(&list_head->action, act, sizeof(act_t));
 
 		/* update the main db */
 		*db_offset = get_offset(list_head);
@@ -79,10 +74,10 @@ int action_cls_add(act_t *act)
 	}
 
 	while (item) {
-		if (action_cls_compare(&item->action, act->name)) {
+		if (action_cls_compare(&item->action, act->name, act->name_len)) {
 			/* we found existing action .. just update it */
 			act_dbg("updating action %s\n", item->action.name);
-			memcpy(&item->action, act, sizeof(act_t));
+			vs_memcpy(&item->action, act, sizeof(act_t));
 			return VSENTRY_SUCCESS;
 		}
 
@@ -96,7 +91,7 @@ int action_cls_add(act_t *act)
 		return VSENTRY_ERROR;
 	}
 
-	memcpy(&item->action, act, sizeof(act_t));
+	vs_memcpy(&item->action, act, sizeof(act_t));
 
 	act_dbg("created new action %s: ", item->action.name);
 	action_print_act(&item->action);
@@ -107,15 +102,15 @@ int action_cls_add(act_t *act)
 	return VSENTRY_SUCCESS;
 }
 
-int action_cls_del(char *act_name)
+int action_cls_del(char *act_name, int name_len)
 {
 	act_list_item_t *item = list_head, *prev = NULL;
 
-	if (!act_name || !strlen(act_name))
+	if (!act_name || name_len)
 		return VSENTRY_INVALID;
 
 	while (item) {
-		if (action_cls_compare(&item->action, act_name))
+		if (action_cls_compare(&item->action, act_name, name_len))
 			break;
 
 		prev = item;
@@ -141,15 +136,15 @@ int action_cls_del(char *act_name)
 	return VSENTRY_SUCCESS;
 }
 
-int action_cls_ref(bool ref, char *act_name)
+int action_cls_ref(bool ref, char *act_name, int name_len)
 {
 	act_list_item_t *item = list_head;
 
-	if (!act_name || !strlen(act_name))
+	if (!act_name || !vs_strlen(act_name))
 		return VSENTRY_INVALID;
 
 	while (item) {
-		if (action_cls_compare(&item->action, act_name))
+		if (action_cls_compare(&item->action, act_name, name_len))
 			break;
 
 		item = get_pointer(item->next_offset);
@@ -168,12 +163,12 @@ int action_cls_ref(bool ref, char *act_name)
 	return VSENTRY_SUCCESS;
 }
 
-act_t *action_cls_search(char *act_name)
+act_t *action_cls_search(char *act_name, int name_len)
 {
 	act_list_item_t *item = list_head;
 
 	while (item) {
-		if (action_cls_compare(&item->action, act_name))
+		if (action_cls_compare(&item->action, act_name, name_len))
 			return &item->action;
 
 		item = get_pointer(item->next_offset);

@@ -21,11 +21,13 @@
 #define learn_err(...)
 #endif
 
-#define DEFAULT_LEARN_RULE (VSENTRY_ACTION_ALLOW | VSENTRY_ACTION_LOG)
+#define DEFAULT_LEARN_RULE 	(VSENTRY_ACTION_ALLOW | VSENTRY_ACTION_LOG)
+#define INVALID_RULE 		(unsigned int)(-1);
 
 static act_t learn_action = {
 	.action_bitmap = DEFAULT_LEARN_RULE,
 	.name = "learn_act",
+	.name_len = 9,
 };
 
 typedef struct {
@@ -71,10 +73,11 @@ static cls_uid_prog_pair_t *cls_learn_create_pair(unsigned int uid, unsigned int
 	tmp->exec_ino = exec_ino;
 	tmp->uid = uid;
 	tmp->next = head;
+
 	/* set invalid rule numbers */
-	tmp->rules[CLS_IP_RULE_TYPE] = (unsigned int)(-1);
-	tmp->rules[CLS_CAN_RULE_TYPE] = (unsigned int)(-1);
-	tmp->rules[CLS_FILE_RULE_TYPE] = (unsigned int)(-1);
+	tmp->rules[CLS_IP_RULE_TYPE] = INVALID_RULE;
+	tmp->rules[CLS_CAN_RULE_TYPE] = INVALID_RULE;
+	tmp->rules[CLS_FILE_RULE_TYPE] = INVALID_RULE;
 
 	/* set head to the new pair */
 	head = tmp;
@@ -87,12 +90,12 @@ static int cls_learn_set_new_rule(cls_uid_prog_pair_t *pair, cls_rule_type_e typ
 	int i, rule;
 	act_t act;
 
-	memset(&act, 0, sizeof(act_t));
+	vs_memset(&act, 0, sizeof(act_t));
 	act.action_bitmap = DEFAULT_LEARN_RULE;
 
 	for (i=0; i<MAX_RULES; i++) {
 		rule = (last_used_rule[type] + i)%MAX_RULES;
-		if (cls_add_rule(type, rule, learn_action.name, 0) == VSENTRY_SUCCESS) {
+		if (cls_add_rule(type, rule, learn_action.name, learn_action.name_len, 0) == VSENTRY_SUCCESS) {
 			pair->rules[type] = rule;
 			last_used_rule[type] = rule;
 			return VSENTRY_SUCCESS;
@@ -112,10 +115,10 @@ int cls_learn_event(cls_rule_type_e type, vsentry_event_t *event, bool atomic)
 	 * read only. it become a problem in learn mode, in which
 	 * we need to allocate and add new elemets */
 	if (atomic) {
-		if (!spin_trylock(&cls_lock))
+		if (!vs_spin_trylock(&cls_lock))
 			return VSENTRY_ERROR;
 	} else {
-		spin_lock(&cls_lock);
+		vs_spin_lock(&cls_lock);
 	}
 
 	/* check if the pair already exist, if not create one */
@@ -190,14 +193,14 @@ int cls_learn_event(cls_rule_type_e type, vsentry_event_t *event, bool atomic)
 		ret = prog_cls_add_rule(type, pair->rules[type], pair->exec_ino);
 
 learn_unlock:
-	spin_unlock(&cls_lock);
+	vs_spin_unlock(&cls_lock);
 
 	return ret;
 }
 
 int cls_learn_set_action(void)
 {
-	if (!action_cls_search(learn_action.name))
+	if (!action_cls_search(learn_action.name, learn_action.name_len))
 		return action_cls_add(&learn_action);
 
 	return VSENTRY_SUCCESS;

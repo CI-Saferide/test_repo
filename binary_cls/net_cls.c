@@ -396,43 +396,47 @@ static int ip_cls_search_addr(unsigned int address, int dir, bit_array_t *verdic
 	struct radix_node *node = NULL;
 	struct sockaddr_in ip;
 	struct radix_tree *tree;
-	bit_array_t *arr = NULL;
+	bit_array_t *arr_any = NULL;
 
 	if (dir == CLS_NET_DIR_SRC)
 		tree = src_tree;
 	else
 		tree = dst_tree;
 
-	memset(&ip, 0, sizeof(struct sockaddr_in));
+	arr_any = &any_rules_array->any_rules[dir];
+
+	vs_memset(&ip, 0, sizeof(struct sockaddr_in));
 	ip.sin_family = AF_INET;
 	ip.sin_addr.s_addr = address;
 
+	/* search for specific rule for the address */
 	node = bin_rn_match((void*)&ip, tree);
 	if (node) {
-		arr = &node->private.rules;
-	} else {
-		if (cls_get_mode() == CLS_MODE_LEARN && dir == CLS_NET_DIR_DST) {
-			/* in learn mode we dont want to get the default rule
-			 * since we want to learn this event, so we clear the
-			 * verdict bitmap to signal no match */
-			ba_clear(verdict);
+		ba_and(verdict, verdict, &node->private.rules);
+		/* if any rule is active, or it */
+		if (!ba_is_empty(arr_any))
+			ba_or(verdict, verdict, arr_any);
 
-			return VSENTRY_SUCCESS;
-		}
-
-		arr = &any_rules_array->any_rules[dir];
+		return VSENTRY_SUCCESS;
 	}
 
-	ba_and(verdict, verdict, arr);
+	if (cls_get_mode() == CLS_MODE_LEARN && dir == CLS_NET_DIR_DST) {
+		/* in learn mode we dont want to get the default rule
+		 * since we want to learn this event, so we clear the
+		 * verdict bitmap to signal no match */
+		ba_clear(verdict);
+
+		return VSENTRY_SUCCESS;
+	}
+
+	/* if no specific rule and it with any*/
+	ba_and(verdict, verdict, arr_any);
 
 	return VSENTRY_SUCCESS;
 }
 
 int net_cls_search(ip_event_t *ev, bit_array_t *verdict)
 {
-	if (ev->daddr.v4addr == 0 || ev->saddr.v4addr == 0)
-		return VSENTRY_SUCCESS;
-
 	/* classify src addr */
 	ip_cls_search_addr(htonl(ev->saddr.v4addr), CLS_NET_DIR_SRC, verdict);
 

@@ -233,7 +233,7 @@ bin_rn_lookup(void *v_arg, void *m_arg, struct radix_tree *tree)
 		return (NULL);
 
 	/* Check if found key is the same */
-	if (LEN(R_GET(x->rn_key)) != LEN(v_arg) || memcmp(R_GET(x->rn_key), v_arg, LEN(v_arg)))
+	if (LEN(R_GET(x->rn_key)) != LEN(v_arg) || vs_memcmp(R_GET(x->rn_key), v_arg, LEN(v_arg)))
 		return (NULL);
 
 	/* Check if this is not host route */
@@ -506,12 +506,12 @@ rn_addmask(void *n_arg, struct radix_mask_head *maskhead, int search, int skip)
 		return (maskhead->mask_nodes);
 	}
 
-	memset(addmask_key, 0, RADIX_MAX_KEY_LEN);
+	vs_memset(addmask_key, 0, RADIX_MAX_KEY_LEN);
 	if (skip > 1) {
 		d = R_GET(maskhead->head.rn_ones);
-		memcpy(addmask_key + 1, d + 1, skip - 1);
+		vs_memcpy(addmask_key + 1, d + 1, skip - 1);
 	}
-	memcpy(addmask_key + skip, netmask + skip, mlen - skip);
+	vs_memcpy(addmask_key + skip, netmask + skip, mlen - skip);
 	/*
 	 * Trim trailing zeroes.
 	 */
@@ -524,7 +524,7 @@ rn_addmask(void *n_arg, struct radix_mask_head *maskhead, int search, int skip)
 	}
 	*addmask_key = mlen;
 	x = rn_search(addmask_key, R_GET(maskhead->head.rnh_treetop));
-	if (memcmp(addmask_key, R_GET(x->rn_key), mlen) != 0) {
+	if (vs_memcmp(addmask_key, R_GET(x->rn_key), mlen) != 0) {
 		x = NULL;
 	}
 	if (x || search) {
@@ -535,7 +535,7 @@ rn_addmask(void *n_arg, struct radix_mask_head *maskhead, int search, int skip)
 		return (NULL);
 	}
 	netmask = cp = (unsigned char *)(x + 2);
-	memcpy(cp, addmask_key, mlen);
+	vs_memcpy(cp, addmask_key, mlen);
 	x = rn_insert(cp, &maskhead->head, &maskduplicated, x);
 	if (maskduplicated) {
 		R_Free(saved_x);
@@ -590,7 +590,7 @@ rn_new_radix_mask(struct radix_node *tt, struct radix_mask *next)
 		radix_err("Failed to allocate route mask\n");
 		return (0);
 	}
-	memset(m, 0, sizeof(*m));
+	vs_memset(m, 0, sizeof(*m));
 	m->rm_bit = tt->rn_bit;
 	m->rm_flags = tt->rn_flags;
 	if (tt->rn_flags & RNF_NORMAL)
@@ -842,7 +842,7 @@ rn_delete_head(void *v_arg, void *netmask_arg, struct radix_head *head)
 	saved_tt = tt;
 	top = x;
 	if (tt == NULL ||
-	    memcmp(v + head_off, R_GET(tt->rn_key) + head_off, vlen - head_off))
+	    vs_memcmp(v + head_off, R_GET(tt->rn_key) + head_off, vlen - head_off))
 		return (0);
 	/*
 	 * Delete our route from mask lists.
@@ -1287,7 +1287,7 @@ bin_rn_inithead(struct radix_tree *tree, int off)
 		R_Free(arr_z);
 		return (0);
 	}
-	memset(arr_o, -1, RADIX_MAX_KEY_LEN * sizeof(char));
+	vs_memset(arr_o, -1, RADIX_MAX_KEY_LEN * sizeof(char));
 	rnh->rh.rn_zeros = R_SET(arr_z);
 	rnh->rh.rn_ones = R_SET(arr_o);
 	rmh->head.rn_zeros = R_SET(arr_z);

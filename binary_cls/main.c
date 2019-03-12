@@ -17,6 +17,7 @@ int cls_handle_event(vsentry_ev_type_e ev_type, vsentry_event_t *event, bool ato
 
 	case VSENTRY_PRINT_INFO:
 		cls_print_db();
+		ret = VSENTRY_SUCCESS;
 		break;
 #endif
 

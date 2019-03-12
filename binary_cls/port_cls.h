@@ -5,6 +5,7 @@
 #include "bitops.h"
 
 #define PORT_ANY 	(unsigned int)(-1)
+#define PORT_MAX 	(unsigned short)(-1)
 
 int  port_cls_init(cls_hash_params_t *hash_params);
 int  port_cls_add_rule(unsigned int rule, unsigned int port, unsigned int type, unsigned int dir);

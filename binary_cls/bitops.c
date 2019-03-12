@@ -171,13 +171,13 @@ bool ba_is_empty(bit_array_t *arr)
 
 void ba_clear(bit_array_t *arr)
 {
-	memset(arr->bitmap, 0, sizeof(arr->bitmap));
+	vs_memset(arr->bitmap, 0, sizeof(arr->bitmap));
 	arr->empty = true;
 }
 
 void ba_set(bit_array_t *arr)
 {
-	memset(arr->bitmap, 0xFF, sizeof(arr->bitmap));
+	vs_memset(arr->bitmap, 0xFF, sizeof(arr->bitmap));
 	arr->empty = false;
 }
 

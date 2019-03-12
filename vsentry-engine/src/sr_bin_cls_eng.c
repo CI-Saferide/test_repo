@@ -374,7 +374,7 @@ static int init_db_mem(char *dbfile)
 int bin_cls_init(void)
 {
 	act_t act;
-	unsigned int mode = CLS_MODE_ENFOCE;
+	unsigned int mode = CLS_MODE_ENFROCE;
 	struct config_params_t *config = sr_config_get_param();
 	pthread_t thread;
 
@@ -616,7 +616,7 @@ int cls_action(bool add, bool allow, bool log, char *name)
 	if (add) {
 		memset(&act, 0, sizeof(act_t));
 
-		snprintf(act.name, ACTION_NAME_SIZE, "%s", name);
+		act.name_len = snprintf(act.name, ACTION_NAME_SIZE, "%s", name);
 		if (allow)
 			act.action_bitmap = VSENTRY_ACTION_ALLOW;
 
@@ -626,7 +626,7 @@ int cls_action(bool add, bool allow, bool log, char *name)
 		return action_cls_add(&act);
 	}
 
-	return action_cls_del(name);
+	return action_cls_del(name, strlen(name));
 }
 
 int cls_rule(bool add, unsigned int type, unsigned int rule, char *act_name, unsigned int limit)
@@ -639,7 +639,7 @@ int cls_rule(bool add, unsigned int type, unsigned int rule, char *act_name, uns
 	file_modified = true;
 
 	if (add)
-		ret = cls_add_rule(type, rule, act_name, limit);
+		ret = cls_add_rule(type, rule, act_name, strlen(act_name), limit);
 	else
 		ret = cls_del_rule(type, rule);
 

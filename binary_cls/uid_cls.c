@@ -245,7 +245,7 @@ int uid_cls_del_rule(cls_rule_type_e type, unsigned int rule, unsigned int uid)
  * and AND it with verdict */
 int uid_cls_search(cls_rule_type_e type, id_event_t *data, bit_array_t *verdict)
 {
-	bit_array_t *arr = NULL;
+	bit_array_t *arr_any = NULL;
 	uid_hash_item_t *uid_item = NULL;
 
 	if (type >= CLS_TOTAL_RULE_TYPE) {
@@ -253,24 +253,30 @@ int uid_cls_search(cls_rule_type_e type, id_event_t *data, bit_array_t *verdict)
 		return VSENTRY_INVALID;
 	}
 
+	arr_any = &uid_any_rules->any_rules[type];
+
 	/* search if this data exist */
 	uid_item = hash_get_data(&uid_hash_array[type], &data->uid);
 	if (uid_item) {
-		arr = &uid_item->rules;
-	} else {
-		if (cls_get_mode() == CLS_MODE_LEARN) {
-			/* in learn mode we dont want to get the default rule
-			 * since we want to learn this event, so we clear the
-			 * verdict bitmap to signal no match */
-			ba_clear(verdict);
+		ba_and(verdict, verdict, &uid_item->rules);
+		/* if any rule is active, or it */
+		if (!ba_is_empty(arr_any))
+			ba_or(verdict, verdict, arr_any);
 
-			return VSENTRY_SUCCESS;
-		}
-		/* use the default rule if no item was found */
-		arr = &uid_any_rules->any_rules[type];
+		return VSENTRY_SUCCESS;
 	}
 
-	ba_and(verdict, verdict, arr);
+	if (cls_get_mode() == CLS_MODE_LEARN) {
+		/* in learn mode we dont want to get the default rule
+		 * since we want to learn this event, so we clear the
+		 * verdict bitmap to signal no match */
+		ba_clear(verdict);
+
+		return VSENTRY_SUCCESS;
+	}
+
+	/* if no specific rule and it with any*/
+	ba_and(verdict, verdict, arr_any);
 
 	return VSENTRY_SUCCESS;
 }

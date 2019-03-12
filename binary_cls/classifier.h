@@ -25,7 +25,7 @@ typedef enum {
 } cls_rule_type_e;
 
 typedef enum {
-	CLS_MODE_ENFOCE,
+	CLS_MODE_ENFROCE,
 	CLS_MODE_PERMISSIVE,
 	CLS_MODE_LEARN,
 	CLS_MODE_TOTAL,
@@ -40,9 +40,9 @@ typedef enum {
 int  cls_init(void *shmem);
 int  cls_classify_event(vsentry_ev_type_e ev_type, vsentry_event_t *event, bool atomic);
 int  cls_handle_event(vsentry_ev_type_e ev_type, vsentry_event_t *event, bool atomic);
-int  cls_get_mode(void);
+inline int cls_get_mode(void);
 int  cls_set_mode(cls_mode_e mode);
-int  cls_add_rule(cls_rule_type_e type, unsigned int rule, char *act_name, unsigned int limit);
+int  cls_add_rule(cls_rule_type_e type, unsigned int rule, char *act_name, int act_name_len, unsigned int limit);
 int  cls_del_rule(cls_rule_type_e type, unsigned int rule);
 int  cls_default_action(unsigned int type, act_t *act);
 void cls_print_db(void);
