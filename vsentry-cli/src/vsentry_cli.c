@@ -15,6 +15,7 @@
 #include "sal_linux.h"
 #include "sr_engine_cli.h"
 #include "sr_canbus_common.h"
+#include "sr_cls_wl_common.h"
 #include "db_tools.h"
 #include <termios.h>
 #include <sys/stat.h>
@@ -126,7 +127,7 @@ static void notify_updated_file_rule(SR_U32 rule_id, rule_info_t *update_rule, c
 	char msg[256];
 
 	snprintf(msg, sizeof(msg), "file rule updated: \n  rule:%d tuple:%d \n  file:%s perm:%s user:%s program:%s action:%s\n",
-			rule_id, update_rule->tuple_id,
+			rule_id - SR_FILE_START_STATIC_RULE_NO, update_rule->tuple_id,
 			update_rule->file_rule.tuple.filename, prem_db_to_cli(update_rule->file_rule.tuple.permission),
 			update_rule->file_rule.tuple.user, update_rule->file_rule.tuple.program, action_name);
 
@@ -534,7 +535,7 @@ static void print_file_rules(SR_BOOL is_wl, rule_container_t table[], SR_32 rule
 		for (iter = table[i].rule_info; iter; iter = iter->next) {
 			if ((rule_id == -1 || rule_id == i) && (tuple_id == -1 || tuple_id == iter->file_rule.tuple.id)) {
 				printf("%-6d %-6d %-88.88s %-4s %-24.24s %-10.10s %-10.10s\n", 
-					i, iter->file_rule.tuple.id,  iter->file_rule.tuple.filename, prem_db_to_cli(iter->file_rule.tuple.permission),
+					i - SR_FILE_START_STATIC_RULE_NO, iter->file_rule.tuple.id,  iter->file_rule.tuple.filename, prem_db_to_cli(iter->file_rule.tuple.permission),
 					iter->file_rule.tuple.program, iter->file_rule.tuple.user, table[i].action_name); 
 			}
 		}
@@ -955,7 +956,7 @@ static SR_32 handle_delete(rule_type_t rule_type, rule_container_t *rule_contain
 		sprintf(rules_msg, "rule id:%d was deleted", rule_id);
 		goto out;
 	}
-	sprintf(rules_msg, "rule id:%d tuple id:%d was deleted", rule_id, tuple_id);
+	sprintf(rules_msg, "rule id:%d tuple id:%d was deleted", rule_id - SR_FILE_START_STATIC_RULE_NO, tuple_id);
 	if (delete_rule(&rule_container[rule_id].rule_info, tuple_id) != SR_SUCCESS) {
 		sprintf(msg, "%s delete failed", rule_type_str);
 		cli_error(msg, SR_TRUE);
@@ -1614,9 +1615,17 @@ static void update_rule_file(char *buf)
 	get_rule_ids(buf, &rule_id, &tuple_id);
 	
 	if (rule_id == -1 || tuple_id == -1) {
-		cli_error("\rRule id or Tuple is missing", SR_FALSE);
+		cli_error("\rRule id or Tuple is missing", SR_TRUE);
 		return;
 	}
+	if (rule_id >= SR_FILE_WL_START_RULE_NO - SR_FILE_START_STATIC_RULE_NO) {
+		char msg[256];
+
+		snprintf(msg, sizeof(msg), "\r Max rule id is :%d", SR_FILE_WL_START_RULE_NO - SR_FILE_START_STATIC_RULE_NO);
+		cli_error(msg, SR_TRUE);
+		return;
+	}
+	rule_id += SR_FILE_START_STATIC_RULE_NO;
 	handle_update_file(SR_FALSE, rule_id, tuple_id);
 	is_dirty = SR_TRUE;
 }
@@ -1669,6 +1678,7 @@ static void delete_rule_file(char *buf)
 
 	get_rule_ids(buf, &rule_id, &tuple_id);
 
+	rule_id += SR_FILE_START_STATIC_RULE_NO;
 	handle_delete_file(SR_FALSE, rule_id, tuple_id);
 	is_dirty = SR_TRUE;
 }

@@ -175,7 +175,7 @@ static SR_BOOL is_valid_rules(static_file_rule_t rules[])
 	SR_U32 i;
 
 	for (i = 0; *rules[i].filename; i++) {
-		if (rules[i].rule_id >= SR_FILE_WL_START_RULE_NO || rules[i].rule_id < SR_FILE_WL_START_STATIC_RULE_NO) {
+		if (rules[i].rule_id >= SR_FILE_START_STATIC_RULE_NO) {
                 	CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
                        	                         "%s=Rule id is not in the range:%d ", REASON, rules[i].rule_id);
 			return SR_FALSE;
