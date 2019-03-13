@@ -1195,9 +1195,12 @@ SR_32 sys_repo_mng_create_net_rule(sysrepo_mng_handler_t *handler, SR_32 rule_id
 	return SR_SUCCESS;
 }
 
-static void can_packet_convert(SR_U32 msg_id,SR_U8 dir, char * msgid_str,char * dir_str)
+static void can_packet_convert(SR_32 msg_id,SR_U8 dir, char * msgid_str,char * dir_str)
 {
-	sprintf(msgid_str, "%08x", msg_id);
+	if (msg_id > 0)
+		sprintf(msgid_str, "%08x", msg_id);
+	else
+		strcpy(msgid_str, "any");
 	strcpy(dir_str, get_dir_desc(dir));
 }
 
