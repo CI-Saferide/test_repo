@@ -374,7 +374,7 @@ static int init_db_mem(char *dbfile)
 int bin_cls_init(void)
 {
 	act_t act;
-	unsigned int mode = CLS_MODE_ENFROCE;
+	unsigned int mode = CLS_MODE_ENFORCE;
 	struct config_params_t *config = sr_config_get_param();
 	pthread_t thread;
 

@@ -412,14 +412,18 @@ static int ip_cls_search_addr(unsigned int address, int dir, bit_array_t *verdic
 	/* search for specific rule for the address */
 	node = bin_rn_match((void*)&ip, tree);
 	if (node) {
-		ba_and(verdict, verdict, &node->private.rules);
-		/* if any rule is active, or it */
 		if (!ba_is_empty(arr_any))
-			ba_or(verdict, verdict, arr_any);
+			/* if we have non-empty ANY rule , verdict calculation:
+			 * verdict = verdict & (ANY | RULE)*/
+			ba_and_or(verdict, verdict, &node->private.rules, arr_any);
+		else
+			/* no ANY rule, just AND verdict with specific rule */
+			ba_and(verdict, verdict, &node->private.rules);
 
 		return VSENTRY_SUCCESS;
 	}
 
+#ifdef ENABLE_LEARN
 	if (cls_get_mode() == CLS_MODE_LEARN && dir == CLS_NET_DIR_DST) {
 		/* in learn mode we dont want to get the default rule
 		 * since we want to learn this event, so we clear the
@@ -428,8 +432,9 @@ static int ip_cls_search_addr(unsigned int address, int dir, bit_array_t *verdic
 
 		return VSENTRY_SUCCESS;
 	}
+#endif
 
-	/* if no specific rule and it with any*/
+	/* no specific rule, just AND verdict with ANY rule */
 	ba_and(verdict, verdict, arr_any);
 
 	return VSENTRY_SUCCESS;

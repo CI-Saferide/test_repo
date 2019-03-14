@@ -307,7 +307,7 @@ int cls_classify_event(vsentry_ev_type_e ev_type, vsentry_event_t *event, bool a
 			rl_offset = rules_db->rl_offset[event->type][bit];
 	}
 
-	if (!act && db_head->mode == CLS_MODE_ENFROCE) {
+	if (!act && db_head->mode == CLS_MODE_ENFORCE) {
 		/* we didn't matched a specific rule, use the default rules.
 		 * we use default rules only when enforcing, otherwise we will
 		 * not be able to detect if we need to learn this event */
@@ -346,8 +346,10 @@ int cls_classify_event(vsentry_ev_type_e ev_type, vsentry_event_t *event, bool a
 	}
 
 	switch (db_head->mode) {
+#ifdef ENABLE_LEARN
 	case CLS_MODE_LEARN:
 		cls_learn_event(event->type, event, atomic);
+#endif
 	case CLS_MODE_PERMISSIVE:
 		/* in permissive/learn mode we always allow */
 		event->act_bitmap |= VSENTRY_ACTION_ALLOW;
@@ -370,7 +372,9 @@ int cls_set_mode(cls_mode_e mode)
 	char *mode_str[CLS_MODE_TOTAL] = {
 	"enforce",
 	"permissive",
+#ifdef ENABLE_LEARN
 	"learn"
+#endif
 };
 #endif
 
@@ -384,6 +388,7 @@ int cls_set_mode(cls_mode_e mode)
 
 	cls_dbg("set new mode %s\n", mode_str[mode]);
 
+#ifdef ENABLE_LEARN
 	if (db_head->mode == CLS_MODE_LEARN)
 		/* when switch from learn mode, we need to free all allocated data memory */
 		cls_learn_free_data();
@@ -391,6 +396,7 @@ int cls_set_mode(cls_mode_e mode)
 	if (mode == CLS_MODE_LEARN)
 		/* when switching to learn mode, we need to add the default learn action */
 		cls_learn_set_action();
+#endif
 
 	db_head->mode = mode;
 

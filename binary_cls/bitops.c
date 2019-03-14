@@ -134,6 +134,28 @@ static void bitmap_or(unsigned long *dst, const unsigned long *src1,
 		dst[k] = src1[k] | src2[k];
 }
 
+/* dst = (and & (or1 | or2)) */
+static int bitmap_and_or(unsigned long *dst, const unsigned long *and,
+	const unsigned long *or1, const unsigned long *or2,
+	unsigned int nbits)
+{
+	unsigned int k;
+	unsigned int lim = nbits/__BITS_PER_LONG;
+	unsigned long result = 0;
+
+	if (nbits <= __BITS_PER_LONG)
+		return (*dst = *and & (*or1 | *or2) & BITMAP_LAST_WORD_MASK(nbits)) != 0;
+
+	for (k = 0; k < lim; k++)
+		result |= (dst[k] = and[k] & (or1[k] | or2[k]));
+
+	if (nbits % __BITS_PER_LONG)
+		result |= (dst[k] = (and[k] & (or1[k] | or2[k])) &
+			BITMAP_LAST_WORD_MASK(nbits));
+
+	return result != 0;
+}
+
 void ba_set_bit(unsigned short bit, bit_array_t *arr)
 {
 	if (bit < MAX_RULES) {
@@ -193,4 +215,14 @@ void ba_or(bit_array_t *dst, bit_array_t *src1, bit_array_t *src2)
 {
 	bitmap_or(dst->bitmap, src1->bitmap, src2->bitmap, MAX_RULES);
 	dst->empty = (src1->empty && src2->empty);
+}
+
+/* dst = (and & (or1 | or2)) */
+void ba_and_or(bit_array_t *dst, bit_array_t *and, bit_array_t *or1, bit_array_t *or2)
+{
+	if (bitmap_and_or(dst->bitmap, and->bitmap, or1->bitmap,
+			or2->bitmap, MAX_RULES))
+		dst->empty = false;
+	else
+		dst->empty = true;
 }

@@ -282,17 +282,16 @@ int port_cls_search(ip_event_t *data, bit_array_t *verdict)
 
 	/* classify dport */
 	arr_any = &port_any_rules->any_rules[CLS_NET_DIR_DST][port_type];
-
 	port_item = hash_get_data(&port_hash_array[CLS_NET_DIR_DST][port_type], &data->dport);
 	if (port_item) {
-		ba_and(verdict, verdict, &port_item->rules);
-
-		/* if any rule is active, or it */
 		if (!ba_is_empty(arr_any))
-			ba_or(verdict, verdict, arr_any);
-
-		return VSENTRY_SUCCESS;
-
+			/* if we have non-empty ANY rule , verdict calculation:
+			 * verdict = verdict & (ANY | RULE)*/
+			ba_and_or(verdict, verdict, &port_item->rules, arr_any);
+		else
+			/* no ANY rule, just AND verdict with specific rule */
+			ba_and(verdict, verdict, &port_item->rules);
+#ifdef ENABLE_LEARN
 	} else if (cls_get_mode() == CLS_MODE_LEARN) {
 		/* in learn mode we dont want to get the default rule
 		 * since we want to learn this event, so we clear the
@@ -300,9 +299,11 @@ int port_cls_search(ip_event_t *data, bit_array_t *verdict)
 		ba_clear(verdict);
 
 		return VSENTRY_SUCCESS;
+#endif
 	} else {
-		/* if no specific rule and it with any*/
+		/* no specific rule, just AND verdict with ANY rule */
 		ba_and(verdict, verdict, arr_any);
+
 		if (ba_is_empty(verdict))
 			/* no need to continue. classification failed */
 			return VSENTRY_SUCCESS;
@@ -312,15 +313,18 @@ int port_cls_search(ip_event_t *data, bit_array_t *verdict)
 	arr_any = &port_any_rules->any_rules[CLS_NET_DIR_SRC][port_type];
 	port_item = hash_get_data(&port_hash_array[CLS_NET_DIR_SRC][port_type], &data->sport);
 	if (port_item) {
-		ba_and(verdict, verdict, &port_item->rules);
-		/* if any rule is active, or it */
 		if (!ba_is_empty(arr_any))
-			ba_or(verdict, verdict, arr_any);
+			/* if we have non-empty ANY rule , verdict calculation:
+			 * verdict = verdict & (ANY | RULE)*/
+			ba_and_or(verdict, verdict, &port_item->rules, arr_any);
+		else
+			/* no ANY rule, just AND verdict with specific rule */
+			ba_and(verdict, verdict, &port_item->rules);
 
 		return VSENTRY_SUCCESS;
 	}
 
-	/* if no specific rule and it with any*/
+	/* no specific rule, just AND verdict with ANY rule */
 	ba_and(verdict, verdict, arr_any);
 
 	return VSENTRY_SUCCESS;

@@ -39,5 +39,6 @@ void ba_clear(bit_array_t *arr);
 void ba_set(bit_array_t *arr);
 void ba_and(bit_array_t *dst, bit_array_t *src1, bit_array_t *src2);
 void ba_or(bit_array_t *dst, bit_array_t *src1, bit_array_t *src2);
+void ba_and_or(bit_array_t *dst, bit_array_t *and1, bit_array_t *or1, bit_array_t *or2);
 
 #endif /* __BITOPS_H__ */

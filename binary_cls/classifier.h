@@ -25,9 +25,11 @@ typedef enum {
 } cls_rule_type_e;
 
 typedef enum {
-	CLS_MODE_ENFROCE,
+	CLS_MODE_ENFORCE,
 	CLS_MODE_PERMISSIVE,
+#ifdef ENABLE_LEARN
 	CLS_MODE_LEARN,
+#endif
 	CLS_MODE_TOTAL,
 } cls_mode_e;
 

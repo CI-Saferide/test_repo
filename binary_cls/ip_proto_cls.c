@@ -244,14 +244,18 @@ int ip_proto_cls_search(ip_event_t *data, bit_array_t *verdict)
 	/* search if this data exist */
 	ip_proto_item = hash_get_data(&ip_proto_hash_array, &data->ip_proto);
 	if (ip_proto_item) {
-		ba_and(verdict, verdict, &ip_proto_item->rules);
-		/* if any rule is active, or it */
 		if (!ba_is_empty(arr_any))
-			ba_or(verdict, verdict, arr_any);
+			/* if we have non-empty ANY rule , verdict calculation:
+			 * verdict = verdict & (ANY | RULE)*/
+			ba_and_or(verdict, verdict, &ip_proto_item->rules, arr_any);
+		else
+			/* no ANY rule, just AND verdict with specific rule */
+			ba_and(verdict, verdict, &ip_proto_item->rules);
 
 		return VSENTRY_SUCCESS;
 	}
 
+#ifdef ENABLE_LEARN
 	if (cls_get_mode() == CLS_MODE_LEARN) {
 		/* in learn mode we dont want to get the default rule
 		 * since we want to learn this event, so we clear the
@@ -260,8 +264,9 @@ int ip_proto_cls_search(ip_event_t *data, bit_array_t *verdict)
 
 		return VSENTRY_SUCCESS;
 	}
+#endif
 
-	/* if no specific rule and it with any*/
+	/* no specific rule, just AND verdict with ANY rule */
 	ba_and(verdict, verdict, arr_any);
 
 	return VSENTRY_SUCCESS;

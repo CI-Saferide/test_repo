@@ -287,14 +287,19 @@ int can_cls_search(vsentry_event_t *can_ev, bit_array_t *verdict)
 	can_item = hash_get_data(&can_hash_array[can_ev->dir], &can_ev->can_event.can_header);
 	if (can_item) {
 		__sync_add_and_fetch(&can_item->counter, 1);
-		ba_and(verdict, verdict, &can_item->rules);
-		/* if any rule is active, or it */
+
 		if (!ba_is_empty(arr_any))
-			ba_or(verdict, verdict, arr_any);
+			/* if we have non-empty ANY rule , verdict calculation:
+			 * verdict = verdict & (ANY | RULE)*/
+			ba_and_or(verdict, verdict, &can_item->rules, arr_any);
+		else
+			/* no ANY rule, just AND verdict with specific rule */
+			ba_and(verdict, verdict, &can_item->rules);
 
 		return VSENTRY_SUCCESS;
 	}
 
+#ifdef ENABLE_LEARN
 	if (cls_get_mode() == CLS_MODE_LEARN) {
 		/* in learn mode we dont want to get the default rule
 		 * since we want to learn this event, so we clear the
@@ -303,8 +308,9 @@ int can_cls_search(vsentry_event_t *can_ev, bit_array_t *verdict)
 
 		return VSENTRY_SUCCESS;
 	}
+#endif
 
-	/* if no specific rule and it with any*/
+	/* no specific rule, just AND verdict with ANY rule */
 	ba_and(verdict, verdict, arr_any);
 
 	return VSENTRY_SUCCESS;

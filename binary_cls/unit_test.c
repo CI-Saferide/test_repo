@@ -163,7 +163,7 @@ int main(int argc, char **argv)
 	char *execfile = EXEC_FILE;
 	char *dbfile = DB_FILE;
 	bool debug = false;
-	unsigned int mode = CLS_MODE_ENFROCE;
+	unsigned int mode = CLS_MODE_ENFORCE;
 
 	while ((opt = getopt (argc, argv, "e:f:h")) != -1) {
 		switch (opt) {

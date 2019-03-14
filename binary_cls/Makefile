@@ -25,6 +25,10 @@ CFLAGS 		+= -gdwarf-4 -Wdeclaration-after-statement -Wno-pointer-sign
 CFLAGS 		+= -fno-strict-overflow -fno-stack-check -fconserve-stack
 CFLAGS 		+= -Werror=implicit-int -Werror=strict-prototypes
 
+ifeq ($(ENABLE_LEARN),1)
+CFLAGS 		+= -DENABLE_LEARN
+endif
+
 ifeq ($(DEBUG),1)
 CFLAGS 		+= -DDEBUG -DCLS_DEBUG -DCAN_DEBUG -DUID_DEBUG -DACT_DEBUG
 CFLAGS 		+= -DPROG_DEBUG -DNET_DEBUG -DHEAP_DEBUG -DPORT_DEBUG
@@ -49,8 +53,11 @@ SRCS 		:= 	main.c \
 			printf.c \
 			port_cls.c \
 			ip_proto_cls.c \
-			learn.c \
 			classifier.c \
+
+ifeq ($(ENABLE_LEARN),1)
+SRCS 			+= learn.c
+endif
 
 OBJS 		:= $(addprefix $(OBJDIR)/,$(SRCS:.c=.o))
 DEPS 		:= $(OBJS:.o=.d)
