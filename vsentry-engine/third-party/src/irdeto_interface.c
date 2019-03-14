@@ -38,7 +38,7 @@ static void handle_msg(int type, char *msg)
 {
 	switch (type) {
 		case TELEMETRY_MSG:
-		        CEF_log_event(SR_CEF_CID_SYSTEM, "IRDETO", SEVERITY_MEDIUM, "%s", msg);
+			handle_log_options(msg, SEVERITY_MEDIUM);
 			break;
 		default:
 			break;
