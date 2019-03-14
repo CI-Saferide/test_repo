@@ -100,7 +100,7 @@ else
 LIBS 		:= -Wl,--start-group -l$(TARGET) -lsr_hash -lsr_log -lsysrepo_mng -ldb_tools -Wl,--end-group -lpthread -ljsmn -lsentry -lsysrepo -lcurl -larchive -lcrypto
 endif
 # and where to search them 
-LIB_PATH 	:= -L$(LIBDIR) -L../vsentry-lib/lib
+LIB_PATH 	:= -L$(LIBDIR)
 
 CFLAGS 		+= -MMD -Wall
 CFLAGS 		+= -DCONFIG_STAT_ANALYSIS

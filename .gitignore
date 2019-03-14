@@ -41,6 +41,7 @@ modules.order
 vsentry-engine/build/
 vsentry-ut/build/
 vsentry-cli/build/
+vsentry-cli/cli_builder/build/
 vsentry-mod/Module.symvers
 sr_config.cfg
 sr_build_ver.h
