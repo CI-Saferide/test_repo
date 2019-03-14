@@ -36,8 +36,16 @@ static SR_32 fd = -1;
 
 static void handle_msg(int type, char *msg)
 {
+	int len;
+
 	switch (type) {
 		case TELEMETRY_MSG:
+
+			len = strlen(msg);
+			if (len > 0 && msg[len - 1] != '\n')  {
+				msg[len] = '\n';
+				msg[len+ 1] = 0;
+			}
 			handle_log_options(msg, SEVERITY_MEDIUM);
 			break;
 		default:
@@ -52,7 +60,7 @@ static SR_32 start_client(void)
 	struct sockaddr *remote_saddr = (struct sockaddr *)&remote;
 	SR_32 ret;
 	int type;
-	char msg[TOTAL_MSG_SIZE];
+	char msg[TOTAL_MSG_SIZE + 2] ;
 
 	/* create socket and connect to server */
 	fd = socket(AF_UNIX, SOCK_SEQPACKET,0);
