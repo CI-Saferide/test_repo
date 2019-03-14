@@ -34,11 +34,11 @@ static SR_BOOL run_irdeto = SR_FALSE;
 static SR_BOOL connected = SR_FALSE;
 static SR_32 fd = -1;
 
-static void handle_msg(struct raw_message *raw_msg)
+static void handle_msg(int type, char *msg)
 {
-	switch (raw_msg->type) {
+	switch (type) {
 		case TELEMETRY_MSG:
-		        CEF_log_event(SR_CEF_CID_SYSTEM, "IRDETO", SEVERITY_MEDIUM, "%s", raw_msg->data);
+		        CEF_log_event(SR_CEF_CID_SYSTEM, "IRDETO", SEVERITY_MEDIUM, "%s", msg);
 			break;
 		default:
 			break;
@@ -51,6 +51,8 @@ static SR_32 start_client(void)
 	struct sockaddr_un remote;
 	struct sockaddr *remote_saddr = (struct sockaddr *)&remote;
 	SR_32 ret;
+	int type;
+	char msg[TOTAL_MSG_SIZE];
 
 	/* create socket and connect to server */
 	fd = socket(AF_UNIX, SOCK_SEQPACKET,0);
@@ -94,9 +96,12 @@ static SR_32 start_client(void)
 			}
 
 			/* handle request */
-			if (vproxy_client_handle_recv_msg(fd, &raw_msg) != MSG_SUCCESS)
-				break;
-			handle_msg(&raw_msg);
+			if (vproxy_client_handle_recv_msg(fd, &raw_msg, &type, msg) != MSG_SUCCESS) {
+				CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+     				"%s=client handle failed ", REASON);
+				continue;
+			}
+			handle_msg(type, msg);
 		}
 	}
 
