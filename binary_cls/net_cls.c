@@ -14,6 +14,16 @@
 #define net_err(...)
 #endif
 
+#undef htonl
+#if BYTE_ORDER == BIG_ENDIAN
+#define htonl(x) (unsigned int)(x)
+#else
+//#define htonl(x) __builtin_bswap32((unsigned int)(x))
+#define htonl(x) \
+	((((x) & 0xff000000u) >> 24) | (((x) & 0x00ff0000u) >> 8) \
+	| (((x) & 0x0000ff00u) << 8) | (((x) & 0x000000ffu) << 24))
+#endif
+
 /* the default rules data struct */
 typedef struct __attribute__ ((packed, aligned(8))) {
 	bit_array_t	any_rules[CLS_NET_DIR_TOTAL];
@@ -369,27 +379,24 @@ int net_cls_del_rule(unsigned int rule, unsigned int addr, unsigned int netmask,
 	return VSENTRY_SUCCESS;
 }
 
+#ifdef CLS_DEBUG
 static int net_print_node(struct radix_node *node, void *data)
 {
-	unsigned short bit;
-#ifdef NET_DEBUG
 	char *addr, *mask;
 
 	addr = ((char *)get_pointer(node->rn_u.rn_leaf.rn_Key) + 4);
 	mask = ((char *)get_pointer(node->rn_u.rn_leaf.rn_Mask) + 4);
-#endif
+
 	cls_printf("    address %hhu.%hhu.%hhu.%hhu mask %hhu.%hhu.%hhu.%hhu. rules: ",
 		*addr, *(addr+1), *(addr+2), *(addr+3),
 		(unsigned char)*mask, (unsigned char)*(mask+1),
 		(unsigned char)*(mask+2), (unsigned char)*(mask+3));
 
-	ba_for_each_set_bit(bit, &node->private.rules)
-		cls_printf("%d ", bit);
-
-	cls_printf("\n");
+	ba_print_set_bits(&node->private.rules);
 
 	return VSENTRY_SUCCESS;
 }
+#endif
 
 static int ip_cls_search_addr(unsigned int address, int dir, bit_array_t *verdict)
 {
@@ -445,17 +452,17 @@ int net_cls_search(ip_event_t *ev, bit_array_t *verdict)
 	/* classify src addr */
 	ip_cls_search_addr(htonl(ev->saddr.v4addr), CLS_NET_DIR_SRC, verdict);
 
-	if (!ba_is_empty(verdict))
+	if (!ba_is_empty(verdict)) {
 		/* classify dst addr */
 		ip_cls_search_addr(htonl(ev->daddr.v4addr), CLS_NET_DIR_DST, verdict);
+	}
 
 	return VSENTRY_SUCCESS;
 }
 
+#ifdef CLS_DEBUG
 void net_print_tree(void)
 {
-	unsigned short bit;
-
 	cls_printf("ip db:\n");
 
 	cls_printf("  src tree:\n");
@@ -464,17 +471,11 @@ void net_print_tree(void)
 	bin_rn_walktree(dst_tree, net_print_node, NULL);
 
 	cls_printf("  any src: ");
-	ba_for_each_set_bit(bit, &any_rules_array->any_rules[CLS_NET_DIR_SRC])
-		cls_printf("%d ", bit);
-
-	cls_printf("\n");
+	ba_print_set_bits(&any_rules_array->any_rules[CLS_NET_DIR_SRC]);
 
 	cls_printf("  any dst: ");
-	ba_for_each_set_bit(bit, &any_rules_array->any_rules[CLS_NET_DIR_DST])
-		cls_printf("%d ", bit);
-
-	cls_printf("\n");
+	ba_print_set_bits(&any_rules_array->any_rules[CLS_NET_DIR_DST]);
 
 	cls_printf("\n");
 }
-
+#endif

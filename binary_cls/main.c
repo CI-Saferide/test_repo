@@ -5,6 +5,9 @@ int cls_handle_event(vsentry_ev_type_e ev_type, vsentry_event_t *event, bool ato
 {
 	int ret;
 
+	if (likely(ev_type >= VSENTRY_FILE_EVENT))
+		return cls_classify_event(ev_type, event, atomic);
+
 	switch (ev_type) {
 	case VSENTRY_CLASIFFIER_INIT:
 		ret = cls_init(event);
@@ -23,12 +26,6 @@ int cls_handle_event(vsentry_ev_type_e ev_type, vsentry_event_t *event, bool ato
 
 	case VSENTRY_CLASIFFIER_SET_MODE:
 		ret = cls_set_mode(*(unsigned int*)event);
-		break;
-
-	case VSENTRY_FILE_EVENT:
-	case VSENTRY_IP_EVENT:
-	case VSENTRY_CAN_EVENT:
-		ret = cls_classify_event(ev_type, event, atomic);
 		break;
 
 	default:

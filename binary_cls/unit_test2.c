@@ -129,6 +129,78 @@ enable_exit:
 	return VSENTRY_SUCCESS;
 }
 
+static void *dbmem = NULL;
+static int dbmem_size = 0;
+static FILE *db_file = NULL;
+
+static int init_db_mem(char *dbfile)
+{
+	struct stat st;
+	int fd;
+
+	db_file = fopen(dbfile, "r+");
+	if (!db_file) {
+		fprintf(stderr, "failed to open db file %s. error %s\n",
+				dbfile, strerror(errno));
+		return VSENTRY_ERROR;
+	}
+
+	fseek(db_file, 0L, SEEK_SET);
+
+	fd = fileno(db_file);
+	if (fd <= 0) {
+		fprintf(stderr, "failed extract dbfile fd\n");
+		return VSENTRY_ERROR;
+	}
+
+	if (stat(dbfile, &st)) {
+		fprintf(stderr, "failed to run stat on %s\n", dbfile);
+		return VSENTRY_ERROR;
+	}
+
+	/* map file to memory */
+	/* MAP_LOCKED is marked as it result an error when mapping large files */
+	dbmem = mmap(NULL, st.st_size, (PROT_READ | PROT_WRITE),
+		(MAP_SHARED/*| MAP_LOCKED*/ ) ,fd, 0);
+	if (dbmem == MAP_FAILED) {
+		fprintf(stderr, "failed to alloc dbmem. %s\n", strerror(errno));
+		return VSENTRY_ERROR;
+	}
+
+	dbmem_size = st.st_size;
+
+	fprintf(stdout, "database memory %p mmaped successfully (file %s)\n",
+		dbmem, dbfile);
+
+	return VSENTRY_SUCCESS;
+}
+
+int print_db(void)
+{
+	int ret = init_db_mem(DB_FILE);
+	if (ret != VSENTRY_SUCCESS)
+		goto print_exit;
+
+	/* init classifier database used by binary */
+	ret = cls_handle_event(VSENTRY_CLASIFFIER_INIT, dbmem, false);
+	if (ret != VSENTRY_SUCCESS) {
+		fprintf(stderr, "failed to init standalone classifier\n");
+		goto print_exit;
+	}
+
+	cls_handle_event(VSENTRY_REGISTER_PRINTF, (void*)printf, false);
+	cls_handle_event(VSENTRY_PRINT_INFO, NULL, false);
+
+print_exit:
+	if (db_file)
+		fclose(db_file);
+
+	if (dbmem)
+		munmap(dbmem, dbmem_size);
+
+	return ret;
+}
+
 int main(int argc, char **argv)
 {
 	bool run = true;
@@ -143,12 +215,15 @@ int main(int argc, char **argv)
 		case 'r':
 			bin_cls_reload();
 			break;
-		case'u':
+		case 'u':
 			bin_cls_update();
 			break;
 		case 'e':
 			bin_cls_enable(enable);
 			enable = enable?false:true;
+			break;
+		case 'p':
+			print_db();
 			break;
 		}
 	}

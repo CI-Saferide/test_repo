@@ -5,7 +5,7 @@
 #include "bitops.h"
 
 #define MSGID_ANY 		(unsigned int)(-1)
-#define CAN_MAX_IF_INDEX 	16
+#define CAN_MAX_IF_INDEX 	256
 #define MAX_CAN_MSG_ID 		0x1FFFFFFFU
 
 int can_cls_init(cls_hash_params_t *hash_params);

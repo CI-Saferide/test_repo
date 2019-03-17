@@ -7,6 +7,13 @@
 #include <linux/vsentry/vsentry.h>
 #include "act.h"
 
+#ifndef NULL
+#define NULL 		0
+#endif
+
+#define likely(x) 	__builtin_expect(!!(x), 1)
+#define unlikely(x) 	__builtin_expect(!!(x), 0)
+
 typedef struct {
 	/* this param holds the hash table offset */
 	unsigned int hash_offset;
@@ -52,6 +59,7 @@ void cls_print_db(void);
 #ifdef CLS_DEBUG
 
 void cls_register_printf(void *func);
+char *get_type_str(cls_rule_type_e type);
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wstrict-prototypes"

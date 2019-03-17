@@ -1,13 +1,7 @@
 #include <stdbool.h>
 #include "bitops.h"
 #include "aux.h"
-
-#define BITS_PER_BYTE 8
-#define BITMAP_FIRST_WORD_MASK(start) (~0UL << ((start) & (__BITS_PER_LONG - 1)))
-#define __round_mask(x, y) ((__typeof__(x))((y)-1))
-#define round_down(x, y) ((x) & ~__round_mask(x, y))
-#define DIV_ROUND_UP(n,d) (((n) + (d) - 1) / (d))
-#define BITS_TO_LONGS(nr) DIV_ROUND_UP(nr, BITS_PER_BYTE * sizeof(long))
+#include "classifier.h"
 
 #define BIT_MASK(nr) 	(1UL<<((nr)%__BITS_PER_LONG))
 #define BIT_WORD(nr) 	((nr)/__BITS_PER_LONG)
@@ -38,142 +32,82 @@ static inline unsigned long __ffs(unsigned long word)
 	return __builtin_ctzl(word);
 }
 
-static inline unsigned long __ffz(unsigned long word)
+unsigned int ba_ffs(bit_array_t *arr)
 {
-	return __ffs(~(word));
-}
+	unsigned int index;
+#if __BITS_PER_LONG != 64
+	unsigned long *address;
+#endif
 
-unsigned long find_first_bit(const unsigned long *addr, unsigned long size)
-{
-	unsigned long idx;
+	if (arr->empty)
+		return MAX_RULES;
 
-	for (idx = 0; idx * __BITS_PER_LONG < size; idx++) {
-		if (addr[idx])
-			return min(idx * __BITS_PER_LONG + __ffs(addr[idx]), size);
+#if __BITS_PER_LONG == 64
+	index = min(__ffs(arr->summary), __BITS_PER_LONG);
+	if (index == __BITS_PER_LONG)
+		return MAX_RULES;
+
+	return min(index * __BITS_PER_LONG + __ffs(arr->bitmap[index]), MAX_RULES);
+#else
+	if (((unsigned long)arr->summary) == 0UL) {
+		/* search the upper 32 bits */
+		index = min(__ffs((unsigned long)(arr->summary >> __BITS_PER_LONG)), __BITS_PER_LONG);
+		if (index == __BITS_PER_LONG)
+			return MAX_RULES;
+
+		/* add to index 32 if we found in the upper bit */
+		index += __BITS_PER_LONG;
+	} else {
+		/* search the lower 32 bits */
+		index = min(__ffs((unsigned long)arr->summary), __BITS_PER_LONG);
+		if (index == __BITS_PER_LONG)
+			return MAX_RULES;
 	}
 
-	return size;
-}
-
-static inline unsigned long _find_next_bit(const unsigned long *addr,
-	unsigned long nbits, unsigned long start, unsigned long invert)
-{
-	unsigned long tmp;
-
-	if (start >= nbits)
-		return nbits;
-
-	tmp = addr[start / __BITS_PER_LONG] ^ invert;
-
-	/* Handle 1st word. */
-	tmp &= BITMAP_FIRST_WORD_MASK(start);
-	start = round_down(start, __BITS_PER_LONG);
-
-	while (!tmp) {
-		start += __BITS_PER_LONG;
-		if (start >= nbits)
-			return nbits;
-
-		tmp = addr[start / __BITS_PER_LONG] ^ invert;
-	}
-
-	return min(start + __ffs(tmp), nbits);
-}
-
-unsigned long find_next_bit(const unsigned long *addr, unsigned long size,
-	unsigned long offset)
-{
-	return _find_next_bit(addr, size, offset, 0UL);
-}
-
-unsigned long find_first_zero_bit(const unsigned long *addr, unsigned long size)
-{
-        unsigned long idx;
-
-        for (idx = 0; idx * __BITS_PER_LONG < size; idx++) {
-                if (addr[idx] != ~0UL)
-                        return min(idx * __BITS_PER_LONG + __ffz(addr[idx]), size);
-        }
-
-        return size;
-}
-
-
-#define BITMAP_LAST_WORD_MASK(nbits) (~0UL >> (-(nbits) & (__BITS_PER_LONG - 1)))
-
-static int bitmap_and(unsigned long *dst, const unsigned long *src1,
-	const unsigned long *src2, unsigned int nbits)
-{
-	unsigned int k;
-	unsigned int lim = nbits/__BITS_PER_LONG;
-	unsigned long result = 0;
-
-	if (nbits <= __BITS_PER_LONG)
-		return (*dst = *src1 & *src2 & BITMAP_LAST_WORD_MASK(nbits)) != 0;
-
-	for (k = 0; k < lim; k++)
-		result |= (dst[k] = src1[k] & src2[k]);
-
-	if (nbits % __BITS_PER_LONG)
-		result |= (dst[k] = src1[k] & src2[k] &
-			BITMAP_LAST_WORD_MASK(nbits));
-
-	return result != 0;
-}
-
-static void bitmap_or(unsigned long *dst, const unsigned long *src1,
-	const unsigned long *src2, unsigned int nbits)
-{
-	unsigned int k;
-	unsigned int nr = BITS_TO_LONGS(nbits);
-
-	if (nbits <= __BITS_PER_LONG)
-		*dst = *src1 | *src2;
-
-	for (k = 0; k < nr; k++)
-		dst[k] = src1[k] | src2[k];
-}
-
-/* dst = (and & (or1 | or2)) */
-static int bitmap_and_or(unsigned long *dst, const unsigned long *and,
-	const unsigned long *or1, const unsigned long *or2,
-	unsigned int nbits)
-{
-	unsigned int k;
-	unsigned int lim = nbits/__BITS_PER_LONG;
-	unsigned long result = 0;
-
-	if (nbits <= __BITS_PER_LONG)
-		return (*dst = *and & (*or1 | *or2) & BITMAP_LAST_WORD_MASK(nbits)) != 0;
-
-	for (k = 0; k < lim; k++)
-		result |= (dst[k] = and[k] & (or1[k] | or2[k]));
-
-	if (nbits % __BITS_PER_LONG)
-		result |= (dst[k] = (and[k] & (or1[k] | or2[k])) &
-			BITMAP_LAST_WORD_MASK(nbits));
-
-	return result != 0;
+	address = arr->bitmap[index * 2];
+	if (*address)
+		/* search the lower 32 bits */
+		return min((index * __BITS_PER_LONG * 2) +__ffs(*address), MAX_RULES);
+	else
+		/* search the upper 32 bits */
+		return min((index * __BITS_PER_LONG * 2) + __BITS_PER_LONG +__ffs(*(++address)), MAX_RULES);
+#endif
 }
 
 void ba_set_bit(unsigned short bit, bit_array_t *arr)
 {
 	if (bit < MAX_RULES) {
 		set_bit(bit, arr->bitmap);
+		set_bit(bit/BITS_IN_SUMMARY, (unsigned long*)&arr->summary);
 		arr->empty = false;
 	}
 }
 
 void ba_clear_bit(unsigned short bit, bit_array_t *arr)
 {
+	unsigned int index;
+#if __BITS_PER_LONG != 64
+	unsigned long *address;
+#endif
+
 	if (bit < MAX_RULES) {
 		clear_bit(bit, arr->bitmap);
 
-		if (find_first_bit(arr->bitmap, MAX_RULES) == MAX_RULES)
+		index = bit/BITS_IN_SUMMARY;
+#if __BITS_PER_LONG == 64
+		if (!arr->bitmap[index])
+			clear_bit(index, (unsigned long*)&arr->summary);
+#else
+		address = arr->bitmap[index * 2];
+		if (!*address && !*(address+1))
+			clear_bit(index, &arr->summary);
+#endif
+		if (!arr->summary)
 			arr->empty = true;
 	}
 }
 
+/* check if bit is set in bit_array */
 bool ba_is_set(unsigned short bit, bit_array_t *arr)
 {
 	if (bit < MAX_RULES) {
@@ -186,43 +120,68 @@ bool ba_is_set(unsigned short bit, bit_array_t *arr)
 	return false;
 }
 
-bool ba_is_empty(bit_array_t *arr)
-{
-	return arr->empty;
-}
-
-void ba_clear(bit_array_t *arr)
-{
-	vs_memset(arr->bitmap, 0, sizeof(arr->bitmap));
-	arr->empty = true;
-}
-
-void ba_set(bit_array_t *arr)
-{
-	vs_memset(arr->bitmap, 0xFF, sizeof(arr->bitmap));
-	arr->empty = false;
-}
-
+/* dst = src1 & src2 */
 void ba_and(bit_array_t *dst, bit_array_t *src1, bit_array_t *src2)
 {
-	if (bitmap_and(dst->bitmap, src1->bitmap, src2->bitmap, MAX_RULES))
-		dst->empty = false;
-	else
-		dst->empty = true;
+	unsigned int index;
+
+	for (index = 0; index < (MAX_RULES/__BITS_PER_LONG); index++)
+		dst->bitmap[index] = (src1->bitmap[index] & src2->bitmap[index]);
+
+	dst->summary = (src1->summary & src2->summary);
+	dst->empty = (src1->empty | src2->empty);
 }
 
+/* dst = src1 | src2 */
 void ba_or(bit_array_t *dst, bit_array_t *src1, bit_array_t *src2)
 {
-	bitmap_or(dst->bitmap, src1->bitmap, src2->bitmap, MAX_RULES);
+	unsigned int index;
+
+	for (index = 0; index < (MAX_RULES/__BITS_PER_LONG); index++)
+		dst->bitmap[index] = src1->bitmap[index] | src2->bitmap[index];
+
+	dst->summary = (src1->summary | src2->summary);
 	dst->empty = (src1->empty && src2->empty);
 }
 
-/* dst = (and & (or1 | or2)) */
-void ba_and_or(bit_array_t *dst, bit_array_t *and, bit_array_t *or1, bit_array_t *or2)
+/* dst = (src1 & (src2 | src3)) */
+void ba_and_or(bit_array_t *dst, bit_array_t *src1, bit_array_t *src2, bit_array_t *src3)
 {
-	if (bitmap_and_or(dst->bitmap, and->bitmap, or1->bitmap,
-			or2->bitmap, MAX_RULES))
+	unsigned long result = 0;
+	unsigned int index;
+
+	for (index = 0; index < (MAX_RULES/__BITS_PER_LONG); index++)
+		result |= dst->bitmap[index] = (src1->bitmap[index] & (src2->bitmap[index] | src3->bitmap[index]));
+
+	dst->summary = (src1->summary & (src2->summary | src3->summary));
+
+	if (result)
 		dst->empty = false;
 	else
 		dst->empty = true;
+}
+
+#ifdef CLS_DEBUG
+void ba_print_set_bits(bit_array_t *arr)
+{
+	unsigned short index;
+
+	for (index=0; index<MAX_RULES; index++)
+		if (ba_is_set(index, arr))
+			cls_printf("%u ", index);
+
+	cls_printf("\n", index);
+}
+#endif
+
+unsigned int ba_count_set_bits(bit_array_t *arr)
+{
+	unsigned short index;
+	unsigned int res = 0;
+
+	for (index=0; index<MAX_RULES; index++)
+		if (ba_is_set(index, arr))
+			res++;
+
+	return res;
 }

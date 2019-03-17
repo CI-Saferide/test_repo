@@ -69,19 +69,16 @@ static bool port_hash_compare(void *candidat, void *searched)
 	return false;
 }
 
+#ifdef CLS_DEBUG
 /* print port item content */
 static void port_print_item(void *data)
 {
 	port_hash_item_t *port_item = (port_hash_item_t*)data;
-	unsigned short bit;
 
 	cls_printf("    port %d rules: ", port_item->port);
-
-	ba_for_each_set_bit(bit, &port_item->rules)
-		cls_printf("%d ", bit);
-
-	cls_printf("\n");
+	ba_print_set_bits(&port_item->rules);
 }
+#endif
 
 /*  global array of 2x2 (per direction, per type) port hashs */
 static hash_t port_hash_array[CLS_NET_DIR_TOTAL][PORT_TYPE_TOTAL] = {
@@ -118,8 +115,9 @@ int port_cls_init(cls_hash_params_t *hash_params)
 	/* init the hash ops */
 	port_hash_ops.comp = port_hash_compare;
 	port_hash_ops.create_key = port_hash_genkey;
+#ifdef CLS_DEBUG
 	port_hash_ops.print = port_print_item;
-
+#endif
 	/* init the 3 uid hash array  ops */
 	for (i=0; i<CLS_NET_DIR_TOTAL; i++)
 		for (j=0; j<PORT_TYPE_TOTAL; j++)
@@ -330,9 +328,9 @@ int port_cls_search(ip_event_t *data, bit_array_t *verdict)
 	return VSENTRY_SUCCESS;
 }
 
+#ifdef CLS_DEBUG
 void port_print_hash(void)
 {
-	unsigned short bit;
 	int i, j;
 
 	cls_printf("port db:\n");
@@ -344,28 +342,17 @@ void port_print_hash(void)
 	}
 
 	cls_printf("  any src tcp: ");
-	ba_for_each_set_bit(bit, &port_any_rules->any_rules[CLS_NET_DIR_SRC][PORT_TYPE_TCP])
-		cls_printf("%d ", bit);
-
-	cls_printf("\n");
+	ba_print_set_bits(&port_any_rules->any_rules[CLS_NET_DIR_SRC][PORT_TYPE_TCP]);
 
 	cls_printf("  any src udp: ");
-	ba_for_each_set_bit(bit, &port_any_rules->any_rules[CLS_NET_DIR_SRC][PORT_TYPE_UDP])
-		cls_printf("%d ", bit);
-
-	cls_printf("\n");
+	ba_print_set_bits(&port_any_rules->any_rules[CLS_NET_DIR_SRC][PORT_TYPE_UDP]);
 
 	cls_printf("  any dst tcp: ");
-	ba_for_each_set_bit(bit, &port_any_rules->any_rules[CLS_NET_DIR_DST][PORT_TYPE_TCP])
-		cls_printf("%d ", bit);
-
-	cls_printf("\n");
+	ba_print_set_bits(&port_any_rules->any_rules[CLS_NET_DIR_DST][PORT_TYPE_TCP]);
 
 	cls_printf("  any dst udp: ");
-	ba_for_each_set_bit(bit, &port_any_rules->any_rules[CLS_NET_DIR_DST][PORT_TYPE_UDP])
-		cls_printf("%d ", bit);
-
-	cls_printf("\n");
+	ba_print_set_bits(&port_any_rules->any_rules[CLS_NET_DIR_DST][PORT_TYPE_UDP]);
 
 	cls_printf("\n");
 }
+#endif

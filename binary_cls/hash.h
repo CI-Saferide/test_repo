@@ -3,20 +3,24 @@
 
 #include <stdbool.h>
 
-#define HASH_NAME_SIZE 	32
 #define MAX_NUM_OF_BITS	32
-#define GOLDEN_RATIO_32 0x61C88647
 
-static inline unsigned int hash_32_generic(unsigned int val)
-{
-        return (val * GOLDEN_RATIO_32);
-}
-
+/* based on http://burtleburtle.net/bob/hash/integer.html
+ * "The hashes on this page are all public domain." */
 static inline unsigned int hash32(unsigned int val, unsigned int bits)
 {
+	val = (val+0x7ed55d16) + (val<<12);
+	val = (val^0xc761c23c) ^ (val>>19);
+	val = (val+0x165667b1) + (val<<5);
+	val = (val+0xd3a2646c) ^ (val<<9);
+	val = (val+0xfd7046c5) + (val<<3);
+	val = (val^0xb55a4f09) ^ (val>>16);
+
         /* High bits are more random, so use them. */
-        return hash_32_generic(val) >> (MAX_NUM_OF_BITS - bits);
+	return val  >> (32 - bits);
 }
+
+#define HASH_NAME_SIZE 	32
 
 typedef struct hash_item {
 	unsigned int 	next_offset;

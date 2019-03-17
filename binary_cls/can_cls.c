@@ -9,7 +9,7 @@
 #define can_dbg cls_dbg
 #define can_err cls_err
 
-char *can_dir_name[DIR_TOTAL] = {
+static char *can_dir_name[DIR_TOTAL] = {
 	"in",
 	"out",
 };
@@ -78,20 +78,18 @@ static bool can_hash_compare(void *candidat, void *searched)
 	return false;
 }
 
+#ifdef CLS_DEBUG
 /* print can item content */
 static void can_print_item(void *data)
 {
 	can_hash_item_t *can_item = (can_hash_item_t*)data;
-	unsigned short bit;
 
 	cls_printf("    msg_id 0x%08x if %d rules: ",
 		can_item->can_data.msg_id, can_item->can_data.if_index);
 
-	ba_for_each_set_bit(bit, &can_item->rules)
-		cls_printf("%d ", bit);
-
-	cls_printf("\n");
+	ba_print_set_bits(&can_item->rules);
 }
+#endif
 
 /*  global array of 2 (per direction) can hashs */
 static hash_t can_hash_array[DIR_TOTAL] = {
@@ -116,7 +114,9 @@ int can_cls_init(cls_hash_params_t *hash_params)
 	/* init the hash ops */
 	can_hash_ops.comp = can_hash_compare;
 	can_hash_ops.create_key = can_hash_genkey;
+#ifdef CLS_DEBUG
 	can_hash_ops.print = can_print_item;
+#endif
 
 	/* init the 3 uid hash array ops */
 	for (i=0; i<DIR_TOTAL; i++)
@@ -248,7 +248,6 @@ int can_cls_del_rule(unsigned int rule, can_header_t *data, unsigned int dir)
 		if (!can_item) {
 			can_err("could not find mid 0x%x dir %s if %u\n",
 				data->msg_id, can_dir_name[dir], data->if_index);
-			can_print_hash();
 			return VSENTRY_NONE_EXISTS;
 		}
 
@@ -316,9 +315,9 @@ int can_cls_search(vsentry_event_t *can_ev, bit_array_t *verdict)
 	return VSENTRY_SUCCESS;
 }
 
+#ifdef CLS_DEBUG
 void can_print_hash(void)
 {
-	unsigned short bit;
 	int i;
 
 	cls_printf("can db:\n");
@@ -328,16 +327,11 @@ void can_print_hash(void)
 	}
 
 	cls_printf("  any in: ");
-	ba_for_each_set_bit(bit, &can_any_rules->any_rules[DIR_IN])
-		cls_printf("%d ", bit);
-
-	cls_printf("\n");
+	ba_print_set_bits(&can_any_rules->any_rules[DIR_IN]);
 
 	cls_printf("  any out: ");
-	ba_for_each_set_bit(bit, &can_any_rules->any_rules[DIR_OUT])
-		cls_printf("%d ", bit);
-
-	cls_printf("\n");
+	ba_print_set_bits(&can_any_rules->any_rules[DIR_OUT]);
 
 	cls_printf("\n");
 }
+#endif

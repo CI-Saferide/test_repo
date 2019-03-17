@@ -191,7 +191,7 @@ static SR_32 add_ip_rule(ip_rule_t *rule)
 
 #ifdef BIN_CLS_DB
 	/* create the rule */
-	ret = cls_rule(true, CLS_IP_RULE_TYPE, rule->rulenum, rule->action_name, 100000);
+	ret = cls_rule(true, CLS_IP_RULE_TYPE, rule->rulenum, rule->action_name, 0);
 	if (ret != SR_SUCCESS) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 			"%s=failed to create ip rule %u with action %s",REASON,
@@ -659,7 +659,7 @@ static SR_32 add_can_rule(can_rule_t *rule)
 	}
 
 #ifdef BIN_CLS_DB
-	ret = cls_rule(true, CLS_CAN_RULE_TYPE, rule->rulenum, rule->action_name, 10);
+	ret = cls_rule(true, CLS_CAN_RULE_TYPE, rule->rulenum, rule->action_name, 0);
 	if (ret != SR_SUCCESS) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 			"%s=failed to create can rule %u with action %s",REASON,

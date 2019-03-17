@@ -180,7 +180,7 @@ static bool cls_rl(unsigned int rl_offset, unsigned int dir, unsigned long long 
 		 * set credit to limit-size and set the last ts */
 		if (__sync_bool_compare_and_swap(&rl->credit[dir], credit, (rl->limit - size))) {
 			__sync_bool_compare_and_swap(&rl->last_ts[dir], last_ts, ts);
-			cls_dbg("%llu delta_ts %llu credit %u size %u\n", ts, delta_ts, rl->credit[dir], size);
+//			cls_dbg("%llu delta_ts %llu credit %u size %u\n", ts, delta_ts, rl->credit[dir], size);
 		}
 		return false;
 	}
@@ -188,7 +188,7 @@ static bool cls_rl(unsigned int rl_offset, unsigned int dir, unsigned long long 
 	/* figure the added credit */
 	added_credit = (delta_ts * rl->limit)/SEC_IN_USEC;
 	if ((credit + added_credit) < size) {
-		cls_dbg("rate limit exceeded");
+//		cls_dbg("rate limit exceeded");
 		return true;
 	}
 
@@ -199,7 +199,7 @@ static bool cls_rl(unsigned int rl_offset, unsigned int dir, unsigned long long 
 	if (__sync_bool_compare_and_swap(&rl->credit[dir], credit, new_credit))
 		__sync_bool_compare_and_swap(&rl->last_ts[dir], last_ts, ts);
 
-	cls_dbg("%llu delta_ts %llu credit %u size %u\n", ts, delta_ts, rl->credit[dir], size);
+//	cls_dbg("%llu delta_ts %llu credit %u size %u\n", ts, delta_ts, rl->credit[dir], size);
 
 	return false;
 }
@@ -214,14 +214,9 @@ int cls_classify_event(vsentry_ev_type_e ev_type, vsentry_event_t *event, bool a
 	unsigned int size = 0;
 #ifdef CLS_DEBUG
 	bool is_default = false;
-	char *type_name_arr[CLS_TOTAL_RULE_TYPE] = {
-		"ip",
-		"can",
-		"file",
-	};
 #endif
 
-	if (!event || event->dir >= DIR_TOTAL) {
+	if (unlikely(!event || event->dir >= DIR_TOTAL || ev_type >= VSENTRY_TOTAL_EVENT)) {
 		cls_err("invalid event\n");
 		return VSENTRY_INVALID;
 	}
@@ -321,19 +316,20 @@ int cls_classify_event(vsentry_ev_type_e ev_type, vsentry_event_t *event, bool a
 	if (act) {
 #ifdef CLS_DEBUG
 		if (is_default)
-			cls_dbg("using %s default\n", type_name_arr[event->type]);
+			cls_dbg("using %s default\n", get_type_str(event->type));
 		else
-			cls_dbg("rule [%s][%u]: action %s\n", type_name_arr[event->type],
+			cls_dbg("rule [%s][%u]: action %s\n", get_type_str(event->type),
 					bit, act->name);
 #endif
 		event->act_bitmap = act->action_bitmap;
 
-		/* check rule rate limit if action is drop */
-		if (rl_offset && !(event->act_bitmap & VSENTRY_ACTION_ALLOW)) {
-			cls_dbg("rl_offset %u\n", rl_offset);
-			if (!cls_rl(rl_offset, event->dir, event->ts, size)) {
-				cls_dbg("rate limit override with allow\n");
-				event->act_bitmap |= VSENTRY_ACTION_ALLOW;
+		/* check rule rate limit if action is allow */
+		if (rl_offset && (event->act_bitmap & VSENTRY_ACTION_ALLOW)) {
+			if (cls_rl(rl_offset, event->dir, event->ts, size)) {
+				event->act_bitmap &= ~VSENTRY_ACTION_ALLOW;
+#ifdef CLS_DEBUG
+				cls_dbg("rate limit exceeded");
+#endif
 			}
 		}
 
@@ -407,14 +403,6 @@ int cls_add_rule(cls_rule_type_e type, unsigned int rule, char *act_name, int ac
 {
 	act_t *db_act;
 
-#ifdef CLS_DEBUG
-	char *type_name_arr[CLS_TOTAL_RULE_TYPE] = {
-		"ip",
-		"can",
-		"file",
-	};
-#endif
-
 	if (type >= CLS_TOTAL_RULE_TYPE || rule >= MAX_RULES || !act_name) {
 		cls_err("invalid rule argument\n");
 		return VSENTRY_INVALID;
@@ -429,9 +417,11 @@ int cls_add_rule(cls_rule_type_e type, unsigned int rule, char *act_name, int ac
 	if (!rules_db->action_offset[type][rule]) {
 		rules_db->action_offset[type][rule] = get_offset(db_act);
 		cls_dbg("created new %s rule %u with action %s\n",
-			type_name_arr[type], rule, db_act->name);
+				get_type_str(type), rule, db_act->name);
 		action_cls_ref(true, act_name, act_name_len);
-		if (limit) {
+
+		/* set rate-limit only for allow action */
+		if (limit && (db_act->action_bitmap & VSENTRY_ACTION_ALLOW)) {
 			cls_ratelimit_t *rl = heap_calloc(sizeof(cls_ratelimit_t));
 			if (!rl) {
 				cls_err("failed to allocate rate-limiter\n");
@@ -440,11 +430,11 @@ int cls_add_rule(cls_rule_type_e type, unsigned int rule, char *act_name, int ac
 			rl->limit = limit;
 			rules_db->rl_offset[type][rule] = get_offset(rl);
 			cls_dbg("created new rate-limiter for %s rule %u with limit %u/sec\n",
-				type_name_arr[type], rule, rl->limit);
+					get_type_str(type), rule, rl->limit);
 		}
 	} else {
 		cls_dbg("%s rule %u already assigned to action %s\n",
-			type_name_arr[type], rule, db_act->name);
+				get_type_str(type), rule, db_act->name);
 	}
 
 	return VSENTRY_SUCCESS;
@@ -453,13 +443,7 @@ int cls_add_rule(cls_rule_type_e type, unsigned int rule, char *act_name, int ac
 int cls_del_rule(cls_rule_type_e type, unsigned int rule)
 {
 	act_t *act;
-#ifdef CLS_DEBUG
-	char *type_name_arr[CLS_TOTAL_RULE_TYPE] = {
-		"ip",
-		"can",
-		"file",
-	};
-#endif
+
 	if (type >= CLS_TOTAL_RULE_TYPE || rule >= MAX_RULES) {
 		cls_err("invalid rule argument\n");
 
@@ -468,7 +452,7 @@ int cls_del_rule(cls_rule_type_e type, unsigned int rule)
 
 	if (!rules_db->action_offset[type][rule]) {
 		cls_err("%s rule %u not assigned to any action\n",
-			type_name_arr[type], rule);
+				get_type_str(type), rule);
 
 		return VSENTRY_NONE_EXISTS;
 	}
@@ -505,15 +489,10 @@ int cls_default_action(unsigned int type, act_t *act)
 	return VSENTRY_SUCCESS;
 }
 
+#ifdef CLS_DEBUG
 static void cls_print_rules_db(void)
 {
-#ifdef CLS_DEBUG
 	int i, j;
-	char *type_name_arr[CLS_TOTAL_RULE_TYPE] = {
-		"ip",
-		"can",
-		"file",
-	};
 
 	cls_printf("rules:\n");
 
@@ -528,17 +507,36 @@ static void cls_print_rules_db(void)
 		for (i=0; i<MAX_RULES; i++) {
 			if (rules_db->action_offset[j][i]) {
 				act_t *act = get_pointer(rules_db->action_offset[j][i]);
-				cls_printf("  rule [%s][%u]: %s\n", type_name_arr[j], i, act->name);
+				cls_printf("  rule [%s][%u]: %s\n", get_type_str(j), i, act->name);
 			}
 		}
 	}
 
 	cls_printf("\n");
+}
 #endif
+
+char *get_type_str(cls_rule_type_e type)
+{
+	char *type_name_arr[CLS_TOTAL_RULE_TYPE] = {
+		"ip",
+		"can",
+		"file",
+	};
+
+	switch (type) {
+	case CLS_IP_RULE_TYPE:
+	case CLS_CAN_RULE_TYPE:
+	case CLS_FILE_RULE_TYPE:
+		return type_name_arr[type];
+	default:
+		return "n\a";
+	}
 }
 
 void cls_print_db(void)
 {
+#ifdef CLS_DEBUG
 	cls_print_rules_db();
 	action_print_list();
 	uid_print_hash();
@@ -548,4 +546,5 @@ void cls_print_db(void)
 	ip_proto_print_hash();
 	port_print_hash();
 	heap_print();
+#endif
 }

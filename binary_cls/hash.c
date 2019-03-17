@@ -66,6 +66,7 @@ static int hash_default_del_data(void *data)
 	return false;
 }
 
+#ifdef HASH_DEBUG
 static void hash_default_print_data(void *data)
 {
 	if (!data) {
@@ -75,6 +76,7 @@ static void hash_default_print_data(void *data)
 
 	cls_printf("data 0x%lx value %u\n", data, *(unsigned int*)data);
 }
+#endif
 
 int hash_create(hash_t *new_hash)
 {
@@ -115,9 +117,10 @@ void hash_set_ops(hash_t *hash)
 
 	if (!hash->hash_ops->create_key)
 		hash->hash_ops->create_key = hash_default_create_key;
-
+#ifdef HASH_DEBUG
 	if (!hash->hash_ops->print)
 		hash->hash_ops->print = hash_default_print_data;
+#endif
 }
 
 /* hash_delete: delete the hash */

@@ -4,41 +4,42 @@
 #include <asm/bitsperlong.h>
 #include <stddef.h>
 #include <stdbool.h>
+#include "aux.h"
 
 #define min(x, y) ((x < y) ? x : y)
 #define max(x, y) ((x >= y) ? x : y)
 
 #define MAX_RULES 	4096
+#define BITS_IN_SUMMARY 	64
 
-typedef struct {
+typedef struct __attribute__((packed, aligned(8))) {
+	unsigned long long	summary; /* 64 bit, each bit represent 64 bit in bitmap */
 	bool 		empty;
 	unsigned long 	bitmap[MAX_RULES/__BITS_PER_LONG]; /* 4096 bits */
 } bit_array_t;
 
-unsigned long find_first_bit(const unsigned long *addr, unsigned long size);
-unsigned long find_next_bit(const unsigned long *addr, unsigned long size, unsigned long offset);
-unsigned long find_first_zero_bit(const unsigned long *addr, unsigned long size);
+#define ba_set(arr) \
+	vs_memset(((bit_array_t*)arr)->bitmap, 0xFF, sizeof(((bit_array_t*)arr)->bitmap)); \
+	((bit_array_t*)arr)->summary = (unsigned long long)(-1); \
+	((bit_array_t*)arr)->empty = false;
 
-#define for_each_set_bit(bit, addr, size) \
-	for ((bit) = find_first_bit((addr), (size));            \
-		(bit) < (size);                                    \
-		(bit) = find_next_bit((addr), (size), (bit) + 1))
+#define ba_clear(arr) \
+	vs_memset(((bit_array_t*)arr)->bitmap, 0, sizeof(((bit_array_t*)arr)->bitmap)); \
+	((bit_array_t*)arr)->summary = 0; \
+	((bit_array_t*)arr)->empty = true;
 
-#define ba_for_each_set_bit(bit, arr) \
-	for_each_set_bit(bit, ((bit_array_t*)arr)->bitmap, MAX_RULES)
+#define ba_is_empty(arr) \
+	((bit_array_t*)arr)->empty
 
-#define ba_ffs(arr) \
-	find_first_bit(((bit_array_t*)arr)->bitmap, MAX_RULES);
-
-
+unsigned int ba_ffs(bit_array_t *arr);
 void ba_set_bit(unsigned short bit, bit_array_t *arr);
 void ba_clear_bit(unsigned short bit, bit_array_t *arr);
 bool ba_is_set(unsigned short bit, bit_array_t *arr);
-bool ba_is_empty(bit_array_t *arr);
-void ba_clear(bit_array_t *arr);
-void ba_set(bit_array_t *arr);
 void ba_and(bit_array_t *dst, bit_array_t *src1, bit_array_t *src2);
 void ba_or(bit_array_t *dst, bit_array_t *src1, bit_array_t *src2);
 void ba_and_or(bit_array_t *dst, bit_array_t *and1, bit_array_t *or1, bit_array_t *or2);
-
+#ifdef CLS_DEBUG
+void ba_print_set_bits(bit_array_t *arr);
+unsigned int ba_count_set_bits(bit_array_t *arr);
+#endif
 #endif /* __BITOPS_H__ */

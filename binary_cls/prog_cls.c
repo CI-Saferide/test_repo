@@ -61,19 +61,16 @@ static bool prog_hash_compare(void *candidat, void *searched)
 	return false;
 }
 
+#ifdef CLS_DEBUG
 /* print prog item content */
 static void prog_print_item(void *data)
 {
 	prog_hash_item_t *prog_item = (prog_hash_item_t*)data;
-	unsigned short bit;
 
 	cls_printf("    exec_ino %u rules: ", prog_item->exec_ino);
-
-	ba_for_each_set_bit(bit, &prog_item->rules)
-		cls_printf("%d ", bit);
-
-	cls_printf("\n");
+	ba_print_set_bits(&prog_item->rules);
 }
+#endif
 
 /*  global array of 3 prog hashs (can, ip, file) */
 static hash_t prog_hash_array[CLS_TOTAL_RULE_TYPE] = {
@@ -102,7 +99,9 @@ int prog_cls_init(cls_hash_params_t *hash_params)
 	/* init the hash ops */
 	prog_hash_ops.comp = prog_hash_compare;
 	prog_hash_ops.create_key = prog_hash_genkey;
+#ifdef CLS_DEBUG
 	prog_hash_ops.print = prog_print_item;
+#endif
 
 	/* init the 3 prog hash array  ops */
 	for (i=0; i<CLS_TOTAL_RULE_TYPE; i++)
@@ -165,13 +164,6 @@ int prog_cls_add_rule(cls_rule_type_e type, unsigned int rule, unsigned int exec
 {
 	bit_array_t *arr = NULL;
 	prog_hash_item_t *prog_item = NULL;
-#ifdef PROG_DEBUG
-	char *type_name_arr[CLS_TOTAL_RULE_TYPE] = {
-	"ip",
-	"can",
-	"file",
-};
-#endif
 
 	if (type >= CLS_TOTAL_RULE_TYPE || rule >= MAX_RULES) {
 		prog_err("invalid prog rule argument\n");
@@ -195,7 +187,7 @@ int prog_cls_add_rule(cls_rule_type_e type, unsigned int rule, unsigned int exec
 			prog_item->exec_ino = exec_ino;
 			/* insert new item to prog hash */
 			hash_insert_data(&prog_hash_array[type], prog_item);
-			prog_dbg("created new %s prog inode %u\n", type_name_arr[type], exec_ino);
+			prog_dbg("created new %s prog inode %u\n", get_type_str(type), exec_ino);
 		}
 
 		arr = &prog_item->rules;
@@ -203,7 +195,7 @@ int prog_cls_add_rule(cls_rule_type_e type, unsigned int rule, unsigned int exec
 
 	/* set the rule bit ib the relevant bit array */
 	ba_set_bit(rule, arr);
-	prog_dbg("set bit %u on %s prog inode %u\n", rule, type_name_arr[type], exec_ino);
+	prog_dbg("set bit %u on %s prog inode %u\n", rule, get_type_str(type), exec_ino);
 
 	return VSENTRY_SUCCESS;
 }
@@ -287,27 +279,10 @@ int prog_cls_search(cls_rule_type_e type, id_event_t *data, bit_array_t *verdict
 	return VSENTRY_SUCCESS;
 }
 
-int prog_find_free_rule(cls_rule_type_e type, unsigned int prog)
-{
-	prog_hash_item_t *prog_item = NULL;
-
-	if (type >= CLS_TOTAL_RULE_TYPE) {
-		prog_err("invalid prog rule argument\n");
-		return VSENTRY_INVALID;
-	}
-
-	/* search if this data exist */
-	prog_item = hash_get_data(&prog_hash_array[type], &prog);
-	if (!prog_item)
-		return VSENTRY_NONE_EXISTS;
-
-	return find_first_zero_bit(prog_item->rules.bitmap, MAX_RULES);
-}
-
+#ifdef CLS_DEBUG
 /* pritn all prog hash array */
 void prog_print_hash(void)
 {
-	unsigned short bit;
 	unsigned int i;
 
 	cls_printf("exec_ino db:\n");
@@ -318,19 +293,14 @@ void prog_print_hash(void)
 	}
 
 	cls_printf("  any ip : ");
-	ba_for_each_set_bit(bit, &prog_any_rules->any_rules[CLS_IP_RULE_TYPE])
-		cls_printf("%d ", bit);
-	cls_printf("\n");
+	ba_print_set_bits(&prog_any_rules->any_rules[CLS_IP_RULE_TYPE]);
 
 	cls_printf("  any can : ");
-	ba_for_each_set_bit(bit, &prog_any_rules->any_rules[CLS_CAN_RULE_TYPE])
-		cls_printf("%d ", bit);
-	cls_printf("\n");
+	ba_print_set_bits(&prog_any_rules->any_rules[CLS_CAN_RULE_TYPE]);
 
 	cls_printf("  any file : ");
-	ba_for_each_set_bit(bit, &prog_any_rules->any_rules[CLS_FILE_RULE_TYPE])
-		cls_printf("%d ", bit);
-	cls_printf("\n");
+	ba_print_set_bits(&prog_any_rules->any_rules[CLS_FILE_RULE_TYPE]);
 
 	cls_printf("\n");
 }
+#endif

@@ -62,19 +62,16 @@ static bool ip_proto_hash_compare(void *candidat, void *searched)
 	return false;
 }
 
+#ifdef CLS_DEBUG
 /* print prog item content */
 static void ip_proto_print_item(void *data)
 {
 	ip_proto_hash_item_t *ip_proto_item = (ip_proto_hash_item_t*)data;
-	unsigned short bit;
 
 	cls_printf("    ip_proto %u rules: ", ip_proto_item->ip_proto);
-
-	ba_for_each_set_bit(bit, &ip_proto_item->rules)
-		cls_printf("%d ", bit);
-
-	cls_printf("\n");
+	ba_print_set_bits(&ip_proto_item->rules);
 }
+#endif
 
 /*  global ip_proto hash */
 static hash_t ip_proto_hash_array = {
@@ -91,7 +88,9 @@ int ip_proto_cls_init(cls_hash_params_t *hash_params)
 	/* init the hash ops */
 	ip_proto_hash_ops.comp = ip_proto_hash_compare;
 	ip_proto_hash_ops.create_key = ip_proto_hash_genkey;
+#ifdef CLS_DEBUG
 	ip_proto_hash_ops.print = ip_proto_print_item;
+#endif
 
 	/* init the ip_proto hash array  ops */
 	ip_proto_hash_array.hash_ops = &ip_proto_hash_ops;
@@ -272,20 +271,18 @@ int ip_proto_cls_search(ip_event_t *data, bit_array_t *verdict)
 	return VSENTRY_SUCCESS;
 }
 
+#ifdef CLS_DEBUG
 /* pritn all prog hash array */
 void ip_proto_print_hash(void)
 {
-	unsigned short bit;
-
 	cls_printf("ip_proto db:\n");
 
 	cls_printf("  hash %s\n", ip_proto_hash_array.name);
 	hash_print(&ip_proto_hash_array);
 
 	cls_printf("  any ip_prot: ");
-	ba_for_each_set_bit(bit, &ip_proto_any_rules->any_rules)
-		cls_printf("%d ", bit);
-	cls_printf("\n");
+	ba_print_set_bits(&ip_proto_any_rules->any_rules);
 
 	cls_printf("\n");
 }
+#endif

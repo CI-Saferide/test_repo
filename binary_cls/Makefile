@@ -100,13 +100,13 @@ UT_CFLAGS 	+= -DNET_STAT_DEBUG -DIP_PROTO_DEBUG -DLEARN_DEBUG
 UT_CFLAGS 	+= -g
 endif
 
-$(BINDIR)/unit_test: OBJSDIR
+$(BINDIR)/unit_test: $(TARGET)
 	@echo "linking $(notdir $@)"
-	$(CC) $(UT_CFLAGS) $(INCLUDES) $(notdir $@).c -o $@
+	@$(CC) $(UT_CFLAGS) $(INCLUDES) $(notdir $@).c -o $@
 	
-$(BINDIR)/unit_test2: OBJSDIR
+$(BINDIR)/unit_test2: $(TARGET)
 	@echo "linking $(notdir $@)"
-	$(CC) $(UT_CFLAGS) $(INCLUDES) $(notdir $@).c -o $@
+	@$(CC) $(UT_CFLAGS) $(INCLUDES) $(notdir $@).c -o $@ -L$(LIBDIR) -lbin_cls
 
 clean:
 	@rm -fr $(BUILD_DIR)

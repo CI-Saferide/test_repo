@@ -29,7 +29,7 @@ typedef struct {
 
 #define OVERHEAD (sizeof(footer_t) + sizeof(node_t))
 
-inline unsigned int get_offset(void *node)
+unsigned int get_offset(void *node)
 {
 	if (node == NULL)
 		return 0;
@@ -37,7 +37,7 @@ inline unsigned int get_offset(void *node)
 	return ((unsigned char*)node - (unsigned char*)heap.start) + 1;
 }
 
-inline void *get_pointer(unsigned int offset)
+void *get_pointer(unsigned int offset)
 {
 	if (!offset)
 		return NULL;
@@ -284,6 +284,7 @@ void heap_free(void *p)
 	add_node(&heap, heap.bins + get_bin_index(head->size), head);
 }
 
+#ifdef CLS_DEBUG
 void heap_print(void)
 {
 	unsigned int i, size = 0;
@@ -306,3 +307,4 @@ void heap_print(void)
 
 	cls_printf("total free size: %u, out of %u bytes\n", size, (unsigned int)(heap.end - heap.start));
 }
+#endif

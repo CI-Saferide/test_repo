@@ -61,19 +61,16 @@ static bool uid_hash_compare(void *candidat, void *searched)
 	return false;
 }
 
+#ifdef CLS_DEBUG
 /* print uid item content */
 static void uid_print_item(void *data)
 {
 	uid_hash_item_t *uid_item = (uid_hash_item_t*)data;
-	unsigned short bit;
 
 	cls_printf("    uid %u rules: ", uid_item->uid);
-
-	ba_for_each_set_bit(bit, &uid_item->rules)
-		cls_printf("%d ", bit);
-
-	cls_printf("\n");
+	ba_print_set_bits(&uid_item->rules);
 }
+#endif
 
 /*  global array of 3 uid hashs (can, ip, file) */
 static hash_t uid_hash_array[CLS_TOTAL_RULE_TYPE] = {
@@ -102,8 +99,9 @@ int uid_cls_init(cls_hash_params_t *hash_params)
 	/* init the hash ops */
 	uid_hash_ops.comp = uid_hash_compare;
 	uid_hash_ops.create_key = uid_hash_genkey;
+#ifdef CLS_DEBUG
 	uid_hash_ops.print = uid_print_item;
-
+#endif
 	/* init the 3 uid hash array  ops */
 	for (i=0; i<CLS_TOTAL_RULE_TYPE; i++)
 		uid_hash_array[i].hash_ops = &uid_hash_ops;
@@ -165,13 +163,7 @@ int uid_cls_add_rule(cls_rule_type_e type, unsigned int rule, unsigned int uid)
 {
 	bit_array_t *arr = NULL;
 	uid_hash_item_t *uid_item = NULL;
-#ifdef UID_DEBUG
-	char *type_name_arr[CLS_TOTAL_RULE_TYPE] = {
-	"ip",
-	"can",
-	"file",
-};
-#endif
+
 	if (type >= CLS_TOTAL_RULE_TYPE || rule >= MAX_RULES) {
 		uid_err("invalid uid rule argument\n");
 		return VSENTRY_INVALID;
@@ -194,7 +186,7 @@ int uid_cls_add_rule(cls_rule_type_e type, unsigned int rule, unsigned int uid)
 			uid_item->uid = uid;
 			/* insert new item to uid hash */
 			hash_insert_data(&uid_hash_array[type], uid_item);
-			uid_dbg("created new %s uid %u\n", type_name_arr[type], uid);
+			uid_dbg("created new %s uid %u\n", get_type_str(type), uid);
 		}
 
 		arr = &uid_item->rules;
@@ -202,7 +194,7 @@ int uid_cls_add_rule(cls_rule_type_e type, unsigned int rule, unsigned int uid)
 
 	/* set the rule bit ib the relevant bit array */
 	ba_set_bit(rule, arr);
-	uid_dbg("set bit %u on %s uid %u\n", rule, type_name_arr[type], uid);
+	uid_dbg("set bit %u on %s uid %u\n", rule, get_type_str(type), uid);
 
 	return VSENTRY_SUCCESS;
 }
@@ -287,27 +279,10 @@ int uid_cls_search(cls_rule_type_e type, id_event_t *data, bit_array_t *verdict)
 	return VSENTRY_SUCCESS;
 }
 
-int uid_find_free_rule(cls_rule_type_e type, unsigned int uid)
-{
-	uid_hash_item_t *uid_item = NULL;
-
-	if (type >= CLS_TOTAL_RULE_TYPE) {
-		uid_err("invalid uid rule argument\n");
-		return VSENTRY_INVALID;
-	}
-
-	/* search if this data exist */
-	uid_item = hash_get_data(&uid_hash_array[type], &uid);
-	if (!uid_item)
-		return VSENTRY_NONE_EXISTS;
-
-	return find_first_zero_bit(uid_item->rules.bitmap, MAX_RULES);
-}
-
+#ifdef CLS_DEBUG
 /* print all uid hash array */
 void uid_print_hash(void)
 {
-	unsigned short bit;
 	unsigned int i;
 
 	cls_printf("uid db:\n");
@@ -318,19 +293,14 @@ void uid_print_hash(void)
 	}
 
 	cls_printf("  any ip : ");
-	ba_for_each_set_bit(bit, &uid_any_rules->any_rules[CLS_IP_RULE_TYPE])
-		cls_printf("%d ", bit);
-	cls_printf("\n");
+	ba_print_set_bits(&uid_any_rules->any_rules[CLS_IP_RULE_TYPE]);
 
 	cls_printf("  any can : ");
-	ba_for_each_set_bit(bit, &uid_any_rules->any_rules[CLS_CAN_RULE_TYPE])
-		cls_printf("%d ", bit);
-	cls_printf("\n");
+	ba_print_set_bits(&uid_any_rules->any_rules[CLS_CAN_RULE_TYPE]);
 
 	cls_printf("  any file : ");
-	ba_for_each_set_bit(bit, &uid_any_rules->any_rules[CLS_FILE_RULE_TYPE])
-		cls_printf("%d ", bit);
-	cls_printf("\n");
+	ba_print_set_bits(&uid_any_rules->any_rules[CLS_FILE_RULE_TYPE]);
 
 	cls_printf("\n");
 }
+#endif
