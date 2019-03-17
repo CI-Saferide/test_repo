@@ -356,7 +356,7 @@ void handle_enter(char *buf)
 		goto out;
 	if (!rule_operation->run_cb)
 		goto out;
-	rule_operation->run_cb();
+	rule_operation->run_cb(NULL);
 
 out:
 	if (tmp)
