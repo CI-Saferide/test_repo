@@ -25,6 +25,7 @@
 #define NUM_OF_RULES 4096
 #define MAX_BUF_SIZE 10000
 #define NUM_OF_CMD_ENTRIES 100
+#define MAX_LIST_NAME 64
 
 #define CLI_PROMPT "vsentry cli> "
 #define RULE "rule"
@@ -54,6 +55,7 @@
 		return SR_ERROR;
 
 SR_BOOL is_run = SR_TRUE;
+static redisContext *c;
 
 #if 0
 typedef struct rule_info {
@@ -516,7 +518,7 @@ static void print_usage(void)
 	print_show_usage();
 }
 
-static void print_usage_cb(void *buf)
+static void print_usage_cb(char *buf)
 {
 	print_usage();
 }
@@ -1436,22 +1438,22 @@ static void handle_cmd_gen(char *cmd, char *msg, SR_BOOL is_print)
 		cli_notify_info(msg);
 }
 
-static void handle_learn(void *buf)
+static void handle_learn(char *buf)
 {
 	return  handle_cmd_gen("wl_learn", "learning...", SR_FALSE);
 }
 
-static void handle_reset(void *buf)
+static void handle_reset(char *buf)
 {
 	return  handle_cmd_gen("wl_reset", "reseting...", SR_FALSE);
 }
 
-static void handle_wl_print(void *buf)
+static void handle_wl_print(char *buf)
 {
 	return  handle_cmd_gen("wl_print", NULL, SR_TRUE);
 }
 
-static void handle_apply(void *buf)
+static void handle_apply(char *buf)
 {
 	SR_32 fd;
 	int ret = 0, rc, counter = 0;
@@ -1508,7 +1510,7 @@ static void handle_apply(void *buf)
 
 }
 
-static void handle_sr_ver(void *buf)
+static void handle_sr_ver(char *buf)
 {
 	int fd, rc;
 	char buf2[256];
@@ -1543,6 +1545,11 @@ static void rule_help(void)
         printf("[rule=X] [tuple=X]");
 }
 
+static void update_list(void)
+{
+        printf("listname");
+}
+
 static void action_help(void)
 {
 	printf("action_name action_type (none | allow | drop) [log=syslog | file | none]\n");
@@ -1558,30 +1565,30 @@ static void engine_update_help(void)
         printf("on | off\b");
 }
 
-static void show_rule(void *c)
+static void show_rule(char *buf)
 {
 	print_file_rules(c, SR_FALSE, -1);
 	print_can_rules(c, SR_FALSE, -1);
 	print_ip_rules(c, SR_FALSE, -1);
 }
 
-static void show_wl(void *c)
+static void show_wl(char *buf)
 {
 	print_file_rules(c, SR_TRUE, -1);
 	print_can_rules(c, SR_TRUE, -1);
 	print_ip_rules(c, SR_TRUE, -1);
 }
 
-static void show_action(void *c)
+static void show_action(char *buf)
 {
 	print_actions(c);
 }
 
-static void show(void *c)
+static void show(char *buf)
 {
 	print_actions(c);
-	show_rule(c);
-	show_wl(c);
+	show_rule(buf);
+	show_wl(buf);
 }
 
 #if 0
@@ -1609,7 +1616,7 @@ static void get_rule_ids(char *buf, int *rule_id, int *tuple_id)
 }
 #endif
 
-static void show_rule_can(void *c)
+static void show_rule_can(char *buf)
 {
 //	int rule_id, tuple_id;
 
@@ -1617,7 +1624,7 @@ static void show_rule_can(void *c)
 	print_can_rules(c, SR_FALSE, -1/*rule_id*/);
 }
 
-static void show_wl_can(void *c)
+static void show_wl_can(char *buf)
 {
 //	int rule_id, tuple_id;
 
@@ -1626,7 +1633,7 @@ static void show_wl_can(void *c)
 	print_can_rules(c, SR_TRUE, -1/*rule_id*/);
 }
 
-static void show_rule_file(void *c)
+static void show_rule_file(char *buf)
 {
 //	int rule_id, tuple_id;
 
@@ -1634,7 +1641,7 @@ static void show_rule_file(void *c)
 	print_file_rules(c, SR_FALSE, -1/*rule_id*/);
 }
 
-static void show_wl_file(void *c)
+static void show_wl_file(char *buf)
 {
 //	int rule_id, tuple_id;
 
@@ -1643,7 +1650,7 @@ static void show_wl_file(void *c)
 	print_file_rules(c, SR_TRUE, -1/*rule_id*/);
 }
 
-static void show_rule_ip(void *c)
+static void show_rule_ip(char *buf)
 {
 //	int rule_id, tuple_id;
 
@@ -1651,7 +1658,7 @@ static void show_rule_ip(void *c)
 	print_ip_rules(c, SR_FALSE, -1/*rule_id*/);
 }
 
-static void show_wl_ip(void *c)
+static void show_wl_ip(char *buf)
 {
 //	int rule_id, tuple_id;
 
@@ -1768,7 +1775,7 @@ static void delete_action_cb(char *buf)
 }
 #endif
 
-static void update_wl_can(void *c)
+static void update_wl_can(char *buf)
 {
 /*	int rule_id, tuple_id;
 
@@ -1781,7 +1788,7 @@ static void update_wl_can(void *c)
 	is_dirty = SR_TRUE;
 }
 
-static void update_rule_file(void *c)
+static void update_rule_file(char *buf)
 {
 /*	int rule_id, tuple_id;
 
@@ -1795,7 +1802,7 @@ static void update_rule_file(void *c)
 	is_dirty = SR_TRUE;
 }
 
-static void update_wl_file(void *c)
+static void update_wl_file(char *buf)
 {
 /*	int rule_id, tuple_id;
 
@@ -1809,7 +1816,7 @@ static void update_wl_file(void *c)
 	is_dirty = SR_TRUE;
 }
 
-static void update_rule_ip(void *c)
+static void update_rule_ip(char *buf)
 {
 /*	int rule_id, tuple_id;
 
@@ -1823,7 +1830,7 @@ static void update_rule_ip(void *c)
 	is_dirty = SR_TRUE;
 }
 
-static void update_wl_ip(void *c)
+static void update_wl_ip(char *buf)
 {
 /*	int rule_id, tuple_id;
 
@@ -1837,7 +1844,7 @@ static void update_wl_ip(void *c)
 	is_dirty = SR_TRUE;
 }
 
-static void delete_rule_file(void *c)
+static void delete_rule_file(char *buf)
 {
 /*	int rule_id, tuple_id;
 
@@ -1847,7 +1854,7 @@ static void delete_rule_file(void *c)
 	is_dirty = SR_TRUE;
 }
 
-static void delete_rule_can(void *c)
+static void delete_rule_can(char *buf)
 {
 /*	int rule_id, tuple_id;
 
@@ -1857,7 +1864,7 @@ static void delete_rule_can(void *c)
 	is_dirty = SR_TRUE;
 }
 
-static void delete_rule_ip(void *c)
+static void delete_rule_ip(char *buf)
 {
 	/*int rule_id, tuple_id;
 
@@ -1936,19 +1943,88 @@ static void engine_update_cb(char *buf)
 }
 #endif
 
-static void handle_sp_learn(void *buf)
+static void handle_sp_learn(char *buf)
 {
 	return  handle_cmd_gen("sp_learn", "system policer learning...", SR_FALSE);
 }
 
-static void handle_sp_apply(void *buf)
+static void handle_sp_apply(char *buf)
 {
 	return  handle_cmd_gen("sp_apply", "system policer applying...", SR_FALSE);
 }
 
-static void handle_sp_off(void *buf)
+static void handle_sp_off(char *buf)
 {
 	return  handle_cmd_gen("sp_off", "system policer off...", SR_FALSE);
+}
+
+void get_listname(char *buf, char *name)
+{
+	char *tmp = NULL, *p;
+
+	if (!(tmp = strdup(buf)))
+		return;
+	if (!(p = strtok(tmp, " ")))
+		goto out;
+	if (!(p = strtok(NULL, " ")))
+		goto out;
+	if (!(p = strtok(NULL, " ")))
+		goto out;
+	if (!(p = strtok(NULL, " ")))
+		goto out;
+	strncpy(name, p, MAX_LIST_NAME);
+out:
+	if (tmp)
+		free(tmp);
+}
+
+static void handle_list_filename(char *buf)
+{
+	char name[MAX_LIST_NAME];
+
+	get_listname(buf, name);
+	printf("\r\nbuf:%s: \n", name);
+#if 0
+	rule_info_t *rule_info, update_rule, *new_rule;
+	char  *action_name = NULL, new_action_name[ACTION_STR_SIZE];
+
+	// Check if the rule exists
+	rule_info = get_rule_sorted(is_wl ? file_wl[rule_id].rule_info : file_rules[rule_id].rule_info, tuple_id);
+	action_name = is_wl ? file_wl[rule_id].action_name : file_rules[rule_id].action_name;
+	if (rule_info) {
+		update_rule = *rule_info;
+		printf("> updating an existing rule...\n");
+	} else {
+		printf("\n> adding a new rule...\n");
+		action_name = NULL;
+	}
+
+	strncpy(update_rule.file_rule.tuple.filename,
+		cli_get_string_user_input(rule_info != NULL, rule_info ? rule_info->file_rule.tuple.filename : NULL , "file", is_valid_file, NULL), FILE_NAME_SIZE);
+	strncpy(update_rule.file_rule.tuple.permission,
+		perm_cli_to_db(cli_get_string_user_input(rule_info != NULL, rule_info ? prem_db_to_cli(rule_info->file_rule.tuple.permission) : NULL , "perm", is_perm_valid,
+			 file_perm_help)), 4);
+	strncpy(update_rule.file_rule.tuple.program, cli_get_string_user_input(rule_info != NULL, rule_info ? rule_info->file_rule.tuple.program : "*" , "program", is_valid_program, NULL), PROG_NAME_SIZE);
+	strncpy(update_rule.file_rule.tuple.user, cli_get_string_user_input(rule_info != NULL, rule_info ? rule_info->file_rule.tuple.user : "*" , "user", is_valid_user, NULL), USER_NAME_SIZE);
+	strncpy(new_action_name, cli_get_string_user_input(rule_info != NULL, action_name, "action", is_valid_action, NULL), ACTION_STR_SIZE);
+
+	update_rule.tuple_id = update_rule.file_rule.tuple.id = tuple_id;
+	update_rule.file_rule.rulenum = rule_id;
+	update_rule.rule_type = RULE_TYPE_FILE;
+
+	notify_updated_file_rule(rule_id, &update_rule, new_action_name);
+
+	strncpy(is_wl ? file_wl[rule_id].action_name : file_rules[rule_id].action_name, new_action_name, ACTION_STR_SIZE);
+	if (!rule_info) { 
+		if (!(new_rule = malloc(sizeof(rule_info_t)))) {
+			return SR_ERROR;
+		}
+		*new_rule = update_rule;
+		insert_rule_sorted(is_wl ? &file_wl[rule_id].rule_info : &file_rules[rule_id].rule_info, new_rule, tuple_id);
+	} else {
+		*rule_info = update_rule;
+	}
+#endif
 }
 
 SR_32 main(int argc, char **argv)
@@ -1988,6 +2064,7 @@ SR_32 main(int argc, char **argv)
 	node_operations_t control_sp_off_operations;
 	node_operations_t engine_state_operations;
 	node_operations_t engine_update_operations;
+	node_operations_t update_list_filename_operations;
 
 	// fixme
 /*	if (!(argc > 1 && !strcmp(argv[1], "nl"))) {
@@ -1997,7 +2074,25 @@ SR_32 main(int argc, char **argv)
 		}
 	}*/
 
-        cli_init("(vsentry-cli (help) (show (rule (can)(ip)(file)) (wl (can)(ip)(file))(action)) (update (rule (can)(ip)(file)) (wl (can)(ip)(file))(action))(delete (rule (can)(ip)(file)) (wl (can)(ip)(file))(action))(commit)(control (wl (learn)(apply)(print)(reset))(sr_ver)(sp (learn)(apply)(off)))(load)(engine (state)(update))(exit))");
+	cli_init("(vsentry-cli"
+		  "(help)"
+		  "(show (rule (can)(ip)(file)) (wl (can)(ip)(file))(action))"
+		  "(update "
+		    "(rule (can)(ip)(file))"
+		    "(wl (can)(ip)(file))"
+		    "(action)"
+		    "(list "
+		       "(filename)"
+		       "(user)"
+		       "(program)"
+		     ")"
+		   ")" 
+		  "(delete (rule (can)(ip)(file)) (wl (can)(ip)(file))(action))"
+		  "(commit)"
+		  "(control (wl (learn)(apply)(print)(reset))(sr_ver)(sp (learn)(apply)(off)))"
+		  "(load)"
+		  "(engine (state)(update))"
+		  "(exit))"); 
 
         help_operations.help_cb = NULL;
         help_operations.run_cb = print_usage_cb;
@@ -2074,6 +2169,10 @@ SR_32 main(int argc, char **argv)
         update_wl_ip_operations.help_cb = rule_help;
         update_wl_ip_operations.run_cb = update_wl_ip;
         cli_register_operatios("update/wl/ip", &update_wl_ip_operations);
+
+        update_list_filename_operations.help_cb = update_list;
+        update_list_filename_operations.run_cb = handle_list_filename;
+        cli_register_operatios("update/list/filename", &update_list_filename_operations);
 
         commit_operations.help_cb = NULL;
         commit_operations.run_cb = NULL/*handle_commit*/;
