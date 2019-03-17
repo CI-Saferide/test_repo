@@ -587,7 +587,7 @@ static int sr_redis_test(int tcp, int clean_first, int clean_at_end)
 			return -1;
 		}
 		sprintf(strs.mid, "%d", i + 2);
-		if ((rc = redis_mng_mod_can_rule(c, i, strs.mid, NULL, NULL, NULL, NULL, 1))) {
+		if ((rc = redis_mng_mod_can_rule(c, i, strs.mid, NULL, NULL, NULL, NULL, "both"))) {
 			printf("ERROR: redis_mng_modify_can_rule %d failed, ret %d\n", i, rc);
 			redis_mng_session_end(c);
 			return -1;
@@ -804,7 +804,7 @@ SR_32 sr_engine_start(int argc, char *argv[])
 #endif
 #ifdef REDIS_TEST
 #define TCP 1
-#define PIPELINE 0
+#define PIPELINE 1
 	printf("\nRedis start - %s, %s:\n", TCP ? "TCP" : "Unix socket", PIPELINE ? "pipelined" : "non-pipelined");
 	// read after boot
 	if (sr_redis_load(TCP, PIPELINE))

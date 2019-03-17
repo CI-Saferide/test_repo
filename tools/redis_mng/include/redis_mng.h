@@ -3,6 +3,7 @@
 
 #include <sr_types.h>
 #include "hiredis.h"
+#include "db_tools.h"
 
 #if 0
 enum connection_type {
@@ -46,20 +47,36 @@ redisContext *redis_mng_session_start(SR_BOOL is_tcp);
 void redis_mng_session_end(redisContext *c);
 SR_32 redis_mng_clean_db(redisContext *c); // for test only
 SR_32 redis_mng_load_db(redisContext *c, int pipelined, handle_rule_f_t cb_func);
+
+SR_32 redis_mng_print_db(redisContext *c, rule_type_t type, SR_32 rule_id);
+
 /* add / modify / delete rules and verify reply */
 SR_32 redis_mng_add_file_rule(redisContext *c, SR_32 rule_id, char *file_name, char *exec, char *user, char *action, SR_U8 file_op);
 SR_32 redis_mng_mod_file_rule(redisContext *c, SR_32 rule_id, char *file_name, char *exec, char *user, char *action, SR_U8 file_op);
 SR_32 redis_mng_del_file_rule(redisContext *c, SR_32 rule_id);
+
 SR_32 redis_mng_add_net_rule(redisContext *c, SR_32 rule_id, char *src_addr_netmask, char *dst_addr_netmask,
 		char *proto, char *src_port, char *dst_port, char *exec, char *user, char *action);
 SR_32 redis_mng_mod_net_rule(redisContext *c, SR_32 rule_id, char *src_addr_netmask, char *dst_addr_netmask,
 		char *proto, char *src_port, char *dst_port, char *exec, char *user, char *action);
 SR_32 redis_mng_del_net_rule(redisContext *c, SR_32 rule_id);
+
 SR_32 redis_mng_add_can_rule(redisContext *c, SR_32 rule_id, char *msg_id, char *interface, char *exec, char *user,
-		char *action, SR_U8 dir);
+		char *action, char *dir);
 SR_32 redis_mng_mod_can_rule(redisContext *c, SR_32 rule_id, char *mid, char *interface, char *exec, char *user,
-		char *action, SR_U8 dir);
+		char *action, char *dir);
 SR_32 redis_mng_del_can_rule(redisContext *c, SR_32 rule_id);
+
+SR_32 redis_mng_add_action(redisContext *c, char *name, SR_U8 bm, char *log, char *sms, char *mail);
+SR_32 redis_mng_del_action(redisContext *c, char *name);
+
+/* return:	1 if the key exists
+ * 			0 if the key does not exist
+ * 			-1 if error
+ */
+SR_32 redis_mng_has_file_rule(redisContext *c, SR_32 rule_id);
+SR_32 redis_mng_has_net_rule(redisContext *c, SR_32 rule_id);
+SR_32 redis_mng_has_can_rule(redisContext *c, SR_32 rule_id);
 
 /* add rules pipelined
  * without waiting for replies
