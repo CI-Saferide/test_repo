@@ -48,7 +48,6 @@
 #define FILENAME		"file"
 #define PERMISSION	 	"perm"
 // action specific fields
-#define ACTION_ID		"id"
 #define BITMAP	 		"bm"
 #define LOG		 		"log"
 #define SMS		 		"sms"
@@ -1127,6 +1126,141 @@ void file_op_convert(SR_U8 file_op, char *perms)
                 return SR_ERROR; \
         }
 
+SR_32 redis_mng_print_db(redisContext *c, rule_type_t type, SR_32 rule_id)
+{
+	int i, j, num;
+	redisReply *reply;
+	redisReply **replies;
+
+	// get all keys
+	reply = redisCommand(c,"KEYS *");
+	if (reply == NULL || reply->type != REDIS_REPLY_ARRAY) {
+		printf("ERROR: redis_mng_load_db failed, %d\n", reply ? reply->type : -1);
+		freeReplyObject(reply);
+		return SR_ERROR;
+	}
+	printf("Redis has %d keys\n", (int)reply->elements);
+
+	replies = malloc(sizeof(redisReply*) * reply->elements);
+
+	for (i = 0; i < reply->elements; i++)
+		redisAppendCommand(c,"HGETALL %s", reply->element[i]->str);
+
+	for (i = 0; i < (int)reply->elements; i++) {
+		if (redisGetReply(c, (void*)&replies[i]) != REDIS_OK) {
+			printf("ERROR: redisGetReply %d failed\n", i);
+			for (j = 0; j < i; j++)
+				freeReplyObject(replies[j]);
+			free(replies);
+			freeReplyObject(reply);
+			return SR_ERROR;
+		}
+		if (replies[i]->type != REDIS_REPLY_ARRAY) {
+			printf("ERROR: redisGetReply %d type is wrong %d\n", i, replies[i]->type);
+			for (j = 0; j < i; j++)
+				freeReplyObject(replies[j]);
+			free(replies);
+			freeReplyObject(reply);
+			return SR_ERROR;
+		}
+
+		if ((type == RULE_TYPE_CAN) && strstr(reply->element[i]->str, CAN_PREFIX)) { // can rule
+
+			if (replies[i]->elements != 12) {
+				printf("ERROR: redisGetReply %d length is wrong %d instead of 12\n", i, (int)replies[i]->elements);
+				for (j = 0; j < i; j++)
+					freeReplyObject(replies[j]);
+				free(replies);
+				freeReplyObject(reply);
+				return SR_ERROR;
+			}
+
+			sscanf(reply->element[i]->str, ":%d", &num);
+			if ((rule_id == -1) || (num == rule_id)) {
+				printf("\r%-6d %-8s %-10.10s %-10.10s %-24.24s %-10.10s %-10.10s\n",
+						num,
+						replies[i]->element[3]->str, /* msg_id */
+						replies[i]->element[5]->str, /* direction */
+						replies[i]->element[7]->str, /* interface */
+						replies[i]->element[9]->str, /* program */
+						replies[i]->element[11]->str, /* user */
+						replies[i]->element[1]->str /* action */);
+			}
+
+		} else if ((type == RULE_TYPE_IP) && strstr(reply->element[i]->str, NET_PREFIX)) { // net rule
+
+			if (replies[i]->elements != 16) {
+				printf("ERROR: redisGetReply %d length is wrong %d instead of 16\n", i, (int)replies[i]->elements);
+				for (j = 0; j < i; j++)
+					freeReplyObject(replies[j]);
+				free(replies);
+				freeReplyObject(reply);
+				return SR_ERROR;
+			}
+
+			sscanf(reply->element[i]->str, ":%d", &num);
+			if ((rule_id == -1) || (num == rule_id)) {
+				printf("%-6d %-32s %-32s %s %s %s %-24.24s %-10.10s %-10.10s\n",
+						num,
+						replies[i]->element[3]->str, /* src_addr | src_netmask */
+						replies[i]->element[5]->str, /* dst_addr | dst_netmask */
+						replies[i]->element[11]->str, /* proto */
+						replies[i]->element[13]->str, /* srcport */
+						replies[i]->element[15]->str, /* dstport */
+						replies[i]->element[7]->str, /*program */
+						replies[i]->element[9]->str, /* user */
+						replies[i]->element[1]->str /* action */);
+			}
+
+		} else if ((type == RULE_TYPE_FILE) && strstr(reply->element[i]->str, FILE_PREFIX)) { // file rule
+
+			if (replies[i]->elements != 10) {
+				printf("ERROR: redisGetReply %d length is wrong %d instead of 10\n", i, (int)replies[i]->elements);
+				for (j = 0; j < i; j++)
+					freeReplyObject(replies[j]);
+				free(replies);
+				freeReplyObject(reply);
+				return SR_ERROR;
+			}
+
+			sscanf(reply->element[i]->str, ":%d", &num);
+			if ((rule_id == -1) || (num == rule_id)) {
+				printf("%-6d %-88.88s %-4s %-24.24s %-10.10s %-10.10s\n",
+						num,
+						replies[i]->element[3]->str, /* filename */
+						replies[i]->element[5]->str, /* permission */
+						replies[i]->element[7]->str, /* program */
+						replies[i]->element[9]->str, /* user */
+						replies[i]->element[1]->str /* action */);
+			}
+
+		} else if ((type == -1) && strstr(reply->element[i]->str, ACTION_PREFIX)) { // action
+
+			if (replies[i]->elements != 8) {
+				printf("ERROR: redisGetReply %d length is wrong %d instead of 8\n", i, (int)replies[i]->elements);
+				for (j = 0; j < i; j++)
+					freeReplyObject(replies[j]);
+				free(replies);
+				freeReplyObject(reply);
+				return SR_ERROR;
+			}
+
+			// action has no number so all are printed
+			printf("%-10s %-6s %-6s \n",
+					reply->element[i]->str + strlen(ACTION_PREFIX), /* name */
+					/*get_action_string(*/replies[i]->element[1]->str/*)*/, /* bm */
+					strcmp(replies[i]->element[3]->str, "none") != 0 ? "1" : "0" /* log */);
+		}
+	}
+
+	// free replies
+	for (i = 0; i < reply->elements; i++)
+		freeReplyObject(replies[i]);
+	free(replies);
+	freeReplyObject(reply);
+	return SR_SUCCESS;
+}
+
 SR_32 redis_mng_clean_db(redisContext *c)
 {
 	redisReply *reply;
@@ -1293,6 +1427,35 @@ SR_32 redis_mng_load_db(redisContext *c, int pipelined, handle_rule_f_t cb_func)
 
 			} else { // action
 
+				// ACTION_PREFIX, name, BITMAP, bm, LOG, log, SMS, sms, EMAIL, mail
+				if (replies[i]->elements != 8) {
+					printf("ERROR: redisGetReply %d length is wrong %d instead of 8\n", i, (int)replies[i]->elements);
+					for (j = 0; j < i; j++)
+						freeReplyObject(replies[j]);
+					free(replies);
+					freeReplyObject(reply);
+					return SR_ERROR;
+				}
+				// fixme
+#if 0
+				memset(&file_rule, 0, sizeof(file_rule));
+				file_rule.rulenum = atoi(reply->element[i]->str + strlen(FILE_PREFIX));
+				memcpy(file_rule.action_name, replies[i]->element[1]->str, strlen(replies[i]->element[1]->str));
+				memcpy(file_rule.tuple.filename ,replies[i]->element[3]->str, strlen(replies[i]->element[3]->str));
+				memcpy(file_rule.tuple.permission, replies[i]->element[5]->str, strlen(replies[i]->element[5]->str));
+				memcpy(file_rule.tuple.program, replies[i]->element[7]->str, strlen(replies[i]->element[7]->str));
+				memcpy(file_rule.tuple.user, replies[i]->element[9]->str, strlen(replies[i]->element[9]->str));
+
+				cb_func(&file_rule, CONFIG_FILE_RULE, &rc);
+				if (rc) {
+					printf("ERROR: cb func failed to add file rule %d, ret %d\n", i, rc);
+					for (j = 0; j < i; j++)
+						freeReplyObject(replies[j]);
+					free(replies);
+					freeReplyObject(reply);
+					return SR_ERROR;
+				}
+#endif
 			}
 		}
 
@@ -1416,6 +1579,34 @@ SR_32 redis_mng_load_db(redisContext *c, int pipelined, handle_rule_f_t cb_func)
 	return SR_SUCCESS;
 }
 
+SR_32 redis_mng_add_action(redisContext *c, char *name, SR_U8 bm, char *log, char *sms, char *mail)
+{
+    redisReply *reply;
+
+	reply = redisCommand(c,"HMSET %s%d %s %d %s %s %s %s %s %s", ACTION_PREFIX, name, BITMAP, bm, LOG, log, SMS, sms,
+							EMAIL, mail);
+	if (reply == NULL || reply->type != REDIS_REPLY_STATUS) {
+		printf("ERROR: redis_mng_add_file_rule failed, %d\n", reply ? reply->type : -1);
+		freeReplyObject(reply);
+		return SR_ERROR;
+	}
+	freeReplyObject(reply);
+	return SR_SUCCESS;
+}
+
+SR_32 redis_mng_del_action(redisContext *c, char *name)
+{
+    redisReply *reply;
+
+	reply = redisCommand(c,"DEL %s%s", ACTION_PREFIX, name);
+	if (reply == NULL || reply->type != REDIS_REPLY_INTEGER || reply->integer != 1) {
+		printf("ERROR: redis_mng_del_file_rule failed, type %d, i %d\n", reply ? reply->type : -1, reply ? (int)reply->integer : 0);
+		freeReplyObject(reply);
+		return SR_ERROR;
+	}
+	freeReplyObject(reply);
+	return SR_SUCCESS;
+}
 
 SR_32 redis_mng_add_file_rule(redisContext *c, SR_32 rule_id, char *file_name, char *exec, char *user, char *action, SR_U8 file_op)
 {
@@ -1574,14 +1765,14 @@ SR_32 redis_mng_create_net_rule(redisContext *c, SR_32 rule_id, char *src_addr, 
 }
 
 SR_32 redis_mng_add_can_rule(redisContext *c, SR_32 rule_id, char *mid, char *interface, char *exec, char *user,
-		char *action, SR_U8 dir)
+		char *action, char *dir)
 {
 	redisReply *reply;
-	char dir_str[4];
+//	char dir_str[4];
 
-	strcpy(dir_str, get_dir_desc(dir));
+//	strcpy(dir_str, get_dir_desc(dir));
 	reply = redisCommand(c,"HMSET %s%d %s %s %s %s %s %s %s %s %s %s %s %s", CAN_PREFIX, rule_id, ACTION, action,
-			MID, mid, IN_INTERFACE, dir_str, OUT_INTERFACE, interface, PROGRAM_ID, exec, USER_ID, user);
+			MID, mid, IN_INTERFACE, dir/*_str*/, OUT_INTERFACE, interface, PROGRAM_ID, exec, USER_ID, user);
 	if (reply == NULL || reply->type != REDIS_REPLY_STATUS) {
 		printf("ERROR: redis_mng_add_canbus_rule failed, %d\n", reply ? reply->type : -1);
 		freeReplyObject(reply);
@@ -1592,10 +1783,10 @@ SR_32 redis_mng_add_can_rule(redisContext *c, SR_32 rule_id, char *mid, char *in
 }
 
 SR_32 redis_mng_mod_can_rule(redisContext *c, SR_32 rule_id, char *mid, char *interface, char *exec, char *user,
-		char *action, SR_U8 dir)
+		char *action, char *dir)
 {
 	redisReply *reply;
-	char dir_str[4];
+//	char dir_str[4];
 	char rule[512];
 	int len;
 
@@ -1604,9 +1795,9 @@ SR_32 redis_mng_mod_can_rule(redisContext *c, SR_32 rule_id, char *mid, char *in
 		len += sprintf(rule + len, " %s %s", ACTION, action);
 	if (mid)
 		len += sprintf(rule + len, " %s %s", MID, mid);
-	if (dir != -1) {
-		strcpy(dir_str, get_dir_desc(dir));
-		len += sprintf(rule + len, " %s %s", IN_INTERFACE, dir_str);
+	if (dir/* != -1*/) {
+		//strcpy(dir_str, get_dir_desc(dir));
+		len += sprintf(rule + len, " %s %s", IN_INTERFACE, dir/*_str*/);
 	}
 	if (interface)
 		len += sprintf(rule + len, " %s %s", OUT_INTERFACE, interface);
@@ -1637,6 +1828,54 @@ SR_32 redis_mng_del_can_rule(redisContext *c, SR_32 rule_id)
 	}
 	freeReplyObject(reply);
 	return SR_SUCCESS;
+}
+
+SR_32 redis_mng_has_file_rule(redisContext *c, SR_32 rule_id)
+{
+    redisReply *reply;
+    SR_32 ret;
+
+	reply = redisCommand(c,"EXISTS %s%d", FILE_PREFIX, rule_id);
+	if (reply == NULL || reply->type != REDIS_REPLY_INTEGER) {
+		printf("ERROR: redis_mng_has_file_rule failed, %d\n", reply ? reply->type : -1);
+		freeReplyObject(reply);
+		return SR_ERROR;
+	}
+	ret = reply->integer;
+	freeReplyObject(reply);
+	return ret;
+}
+
+SR_32 redis_mng_has_net_rule(redisContext *c, SR_32 rule_id)
+{
+    redisReply *reply;
+    SR_32 ret;
+
+	reply = redisCommand(c,"EXISTS %s%d", NET_PREFIX, rule_id);
+	if (reply == NULL || reply->type != REDIS_REPLY_INTEGER) {
+		printf("ERROR: redis_mng_has_file_rule failed, %d\n", reply ? reply->type : -1);
+		freeReplyObject(reply);
+		return SR_ERROR;
+	}
+	ret = reply->integer;
+	freeReplyObject(reply);
+	return ret;
+}
+
+SR_32 redis_mng_has_can_rule(redisContext *c, SR_32 rule_id)
+{
+    redisReply *reply;
+    SR_32 ret;
+
+	reply = redisCommand(c,"EXISTS %s%d", CAN_PREFIX, rule_id);
+	if (reply == NULL || reply->type != REDIS_REPLY_INTEGER) {
+		printf("ERROR: redis_mng_has_file_rule failed, %d\n", reply ? reply->type : -1);
+		freeReplyObject(reply);
+		return SR_ERROR;
+	}
+	ret = reply->integer;
+	freeReplyObject(reply);
+	return ret;
 }
 
 SR_32 redis_mng_create_canbus_rule(redisContext *c, SR_32 rule_id, SR_U32 msg_id, char *interface, char *exec, char *user, char *action, SR_U8 dir)
@@ -1691,7 +1930,7 @@ SR_32 redis_mng_update_engine_state(redisContext *c, SR_BOOL is_on)
 
 SR_32 redis_mng_create_action(redisContext *c, char *action_name, SR_BOOL is_allow, SR_BOOL is_log)
 {
-	redisAppendCommand(c,"HMSET %s%s %s %d %s %s %s %s %s %s %s %s", ACTION_PREFIX, action_name, ACTION_ID, 1 /* fixme */,
+	redisAppendCommand(c,"HMSET %s%s %s %s %s %s %s %s %s %s", ACTION_PREFIX, action_name,
 			BITMAP, is_allow ? "allow" : "drop", LOG, is_log ? "syslog" : "none", SMS, NULL, EMAIL, NULL);
 	redis_changes++;
 	return SR_SUCCESS;

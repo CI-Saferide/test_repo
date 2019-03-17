@@ -16,6 +16,7 @@
 #include "sr_engine_cli.h"
 #include "sr_canbus_common.h"
 #include "db_tools.h"
+#include "redis_mng.h"
 #include <termios.h>
 #include <sys/stat.h>
 #include <pwd.h>
@@ -27,11 +28,11 @@
 
 #define CLI_PROMPT "vsentry cli> "
 #define RULE "rule"
-#define TUPLE "tuple"
-#define FILENAME "file"
+//#define TUPLE "tuple"
+#define FILENAME "files"
 #define PERM "perm"
-#define PROGRAM "program"
-#define USER "user"
+#define PROGRAM "programs"
+#define USER "users"
 #define ACTION "action"
 #define SRC_IP "src_ip"
 #define SRC_NETMASK "src_netmask"
@@ -54,6 +55,7 @@
 
 SR_BOOL is_run = SR_TRUE;
 
+#if 0
 typedef struct rule_info {
 	SR_U32 tuple_id;
 	rule_type_t rule_type;
@@ -77,19 +79,21 @@ rule_container_t file_wl[NUM_OF_RULES] = {};
 rule_container_t ip_wl[NUM_OF_RULES] = {};
 rule_container_t can_wl[NUM_OF_RULES] = {};
 action_t actions[DB_MAX_NUM_OF_ACTIONS] = {};
+#endif
 
-static action_t *get_action(char *action_name);
+//static action_t *get_action(char *action_name);
 static SR_32 cli_handle_reply(SR_32 fd, SR_32 (*handle_data_cb)(char *buf));
-static void cleanup_rule_table(rule_container_t table[]);
-static void cleanup_rule(rule_container_t table[], SR_32 rule_id);
-static void db_cleanup(void);
+//static void cleanup_rule_table(rule_container_t table[]);
+//static void cleanup_rule(rule_container_t table[], SR_32 rule_id);
+//static void db_cleanup(void);
 
 SR_BOOL engine_state;
 
-static SR_U8 num_of_actions;
+//static SR_U8 num_of_actions;
 
 static SR_BOOL is_dirty = SR_FALSE;
 
+#if 0
 static void notify_updated_can_rule(SR_U32 rule_id, rule_info_t *update_rule, char *action_name)
 {
 	char msg[256];
@@ -120,7 +124,7 @@ static void notify_updated_ip_rule(SR_U32 rule_id, rule_info_t *update_rule, cha
 		update_rule->ip_rule.tuple.user, update_rule->ip_rule.tuple.program, action_name);
 	cli_notify_info(msg);
 }
-		
+
 static void notify_updated_file_rule(SR_U32 rule_id, rule_info_t *update_rule, char *action_name)
 {
 	char msg[256];
@@ -132,6 +136,7 @@ static void notify_updated_file_rule(SR_U32 rule_id, rule_info_t *update_rule, c
 
 	cli_notify_info(msg);
 }
+#endif
 
 static int engine_connect(void)
 {
@@ -154,6 +159,8 @@ static int engine_connect(void)
 	return fd;
 }
 
+// for load (from eng)
+#if 0
 static SR_32 handle_file_data(rule_info_t *new_rule, SR_U32 rule_num, char *action_name, SR_U32 tuple_id)
 {
 	char *ptr;
@@ -234,7 +241,10 @@ static SR_32 handle_ip_data(rule_info_t *new_rule, SR_U32 rule_num, char *action
 
 	return SR_SUCCESS;
 }
+#endif
 
+// insert a rule to cli db (sorted by tuple id)
+#if 0
 static void insert_rule_sorted(rule_info_t **table, rule_info_t *new_rule, SR_U32 tuple_id)
 {
 	rule_info_t **iter;
@@ -397,6 +407,7 @@ out:
 
 	return rc;
 }
+#endif
 
 static SR_32 cli_handle_reply(SR_32 fd, SR_32 (*handle_data_cb)(char *buf))
 {
@@ -436,6 +447,7 @@ out:
 	return SR_SUCCESS;
 }
 
+#if 0
 static SR_32 handle_load(void)
 {
 	SR_32 fd, rc, st = SR_SUCCESS;
@@ -466,6 +478,7 @@ static SR_32 handle_load(void)
 
 	return st;
 }
+#endif
 
 static void print_show_usage(void) 
 {
@@ -503,55 +516,60 @@ static void print_usage(void)
 	print_show_usage();
 }
 
-static void print_usage_cb(char *buf)
+static void print_usage_cb(void *buf)
 {
 	print_usage();
 }
 
-static void print_actions(void)
+static void print_actions(redisContext *c)
 {
-	SR_U32 i;
-
+	//SR_U32 i;
 	printf("\nactions \n");
 	printf("%-10s %-6s %-6s\n", ACTION_OBJ, ACTION, LOG);
 	printf("----------------------------------------\n");
-	for (i = 0 ;i < num_of_actions; i++) { 
+	redis_mng_print_db(c, -1, -1);
+	/*for (i = 0 ;i < num_of_actions; i++) {
 		printf("%-10s %-6s %-6s \n", actions[i].action_name, get_action_string(actions[i].action), 
 				strcmp(get_action_log_facility_string(actions[i].log_facility), "none") != 0 ? "1" : "0");
-	}
+	}*/
 }
 
-static void print_file_rules(SR_BOOL is_wl, rule_container_t table[], SR_32 rule_id, SR_32 tuple_id)
+static void print_file_rules(redisContext *c, SR_BOOL is_wl, SR_32 rule_id)
 {
-	SR_U32 i;
-	rule_info_t *iter;
+	//SR_U32 i;
+	//rule_info_t *iter;
 
 	printf("\n%sfile rules:\n", is_wl ? "wl " : "");
-	printf("%-6s %-6s %-88s %-4s %-24s %-10s %s\n",
-		RULE, TUPLE, FILENAME, PERM, PROGRAM, USER, ACTION); 
+	printf("%-6s %-88s %-4s %-24s %-10s %s\n",
+		RULE, FILENAME, PERM, PROGRAM, USER, ACTION);
 	printf("----------------------------------------------------------------------------------------------------------------------------------------------------------\n");
+	redis_mng_print_db(c, RULE_TYPE_FILE, rule_id);
+#if 0
 	for (i = 0; i < NUM_OF_RULES; i++) {
 		for (iter = table[i].rule_info; iter; iter = iter->next) {
 			if ((rule_id == -1 || rule_id == i) && (tuple_id == -1 || tuple_id == iter->file_rule.tuple.id)) {
-				printf("%-6d %-6d %-88.88s %-4s %-24.24s %-10.10s %-10.10s\n", 
-					i, iter->file_rule.tuple.id,  iter->file_rule.tuple.filename, prem_db_to_cli(iter->file_rule.tuple.permission),
+				printf("%-6d %-88.88s %-4s %-24.24s %-10.10s %-10.10s\n",
+					i, iter->file_rule.tuple.filename, prem_db_to_cli(iter->file_rule.tuple.permission),
 					iter->file_rule.tuple.program, iter->file_rule.tuple.user, table[i].action_name); 
 			}
 		}
 	}
+#endif
 }
 
-static void print_ip_rules(SR_BOOL is_wl, rule_container_t table[], SR_32 rule_id, SR_32 tuple_id)
+static void print_ip_rules(redisContext *c, SR_BOOL is_wl, SR_32 rule_id)
 {
-	SR_U32 i;
-	rule_info_t *iter;
-	char src_addr[IPV4_STR_MAX_LEN], dst_addr[IPV4_STR_MAX_LEN];
-        char src_netmask[IPV4_STR_MAX_LEN], dst_netmask[IPV4_STR_MAX_LEN];
+	//SR_U32 i;
+	//rule_info_t *iter;
+	//char src_addr[IPV4_STR_MAX_LEN], dst_addr[IPV4_STR_MAX_LEN];
+      //  char src_netmask[IPV4_STR_MAX_LEN], dst_netmask[IPV4_STR_MAX_LEN];
 
 	printf("\n%sip rules:\n", is_wl ? "wl " : "");
-	printf("%-6s %-6s %-16s %-16s %-16s %-16s %-5s %-8s %-8s %-24.24s %-10.10s %-10.10s\n",
-		RULE, TUPLE, SRC_IP, SRC_NETMASK, DST_IP, DST_NETMASK, IP_PROTO, SRC_PORT, SDT_PORT, PROGRAM, USER, ACTION); 
+	printf("%-6s %-16s %-16s %-16s %-16s %-5s %-8s %-8s %-24.24s %-10.10s %-10.10s\n",
+		RULE, SRC_IP, SRC_NETMASK, DST_IP, DST_NETMASK, IP_PROTO, SRC_PORT, SDT_PORT, PROGRAM, USER, ACTION);
 	printf("---------------------------------------------------------------------------------------------------------------------------------------------------------\n");
+	redis_mng_print_db(c, RULE_TYPE_IP, rule_id);
+#if 0
 	for (i = 0; i < NUM_OF_RULES; i++) {
 		for (iter = table[i].rule_info; iter; iter = iter->next) {
 			if ((rule_id == -1 || rule_id == i) && (tuple_id == -1 || tuple_id == iter->ip_rule.tuple.id)) {
@@ -566,18 +584,21 @@ static void print_ip_rules(SR_BOOL is_wl, rule_container_t table[], SR_32 rule_i
 			}
 		}
 	}
+#endif
 }
 
-static void print_can_rules(SR_BOOL is_wl, rule_container_t table[], SR_32 rule_id, SR_32 tuple_id)
+static void print_can_rules(redisContext *c, SR_BOOL is_wl, SR_32 rule_id)
 {
-	SR_U32 i;
-	rule_info_t *iter;
-	char msg_id[32];
+	//SR_U32 i;
+	//rule_info_t *iter;
+	//char msg_id[32];
 
 	printf("\r\n%scan rules:\n", is_wl ? "wl " : "");
-	printf("\r%-6s %-6s %-8s %-10s %-10s %-24.24s %-10.10s %-10.10s\n",
-		RULE, TUPLE, CAN_MSG, DIRECTION, INTERFACE, PROGRAM, USER, ACTION); 
+	printf("\r%-6s %-8s %-10s %-10s %-24.24s %-10.10s %-10.10s\n",
+		RULE, CAN_MSG, DIRECTION, INTERFACE, PROGRAM, USER, ACTION);
 	printf("\r--------------------------------------------------------------------------------------------------------------------------------\n");
+	redis_mng_print_db(c, RULE_TYPE_CAN, rule_id);
+#if 0
 	for (i = 0; i < NUM_OF_RULES; i++) {
 		for (iter = table[i].rule_info; iter; iter = iter->next) {
 			if ((rule_id == -1 || rule_id == i) && (tuple_id == -1 || tuple_id == iter->can_rule.tuple.id)) {
@@ -591,6 +612,7 @@ static void print_can_rules(SR_BOOL is_wl, rule_container_t table[], SR_32 rule_
 			}
 		}
 	}
+#endif
 	printf("\r");
 }
 
@@ -605,6 +627,7 @@ static int is_valid_msg_ig(char *str)
 	return 1;
 }
 
+#if 0
 static SR_BOOL is_special_interface(char *interface)
 {
 	struct stat buf;
@@ -674,12 +697,14 @@ static int is_perm_valid(char *perm)
 
 	return 1;
 }
+#endif
 
 static void msg_id_help(void)
 {
 	printf("hex digits, for any mid - \"any\", default: \"any\" \n");
 }
 
+#if 0
 static void can_interface_help(void)
 {
 	struct ifaddrs *addrs,*tmp;
@@ -752,50 +777,103 @@ static void ip_proto_help(void)
 {
 	printf("tcp, udp, any\n");
 }
+#endif
 
-static SR_32 handle_update_can(SR_BOOL is_wl, SR_U32 rule_id, SR_U32 tuple_id)
+/* fixme get (and verify) each mid
+ * add to list */
+#if 0
+static char *handle_update_can(void)
 {
-	rule_info_t *rule_info, update_rule, *new_rule;
-	char *ptr, *msg_id_input, msg_id_def[32], *dir_input, dir_def[16];
-	char *action_name = NULL, new_action_name[ACTION_STR_SIZE];
+	char msg_id_def[32];
+
+	strcpy(msg_id_def, "any"); // default
+
+	return cli_get_string_user_input(0, msg_id_def, "mid", is_valid_msg_ig, msg_id_help);
+}
+#endif
+
+static SR_32 handle_update_can(redisContext *c, SR_BOOL is_wl, SR_U32 rule_id)
+{
+	//rule_info_t *rule_info, update_rule, *new_rule;
+	char /**ptr,*/ *msg_id_input, msg_id_def[32]/*, *dir_input*/, dir_def[16];
+	char /**action_name = NULL,*/ new_action_name[ACTION_STR_SIZE];
+	SR_32 ret;
+	SR_8 update;
+
+	// todo need to know if this is a new rule or modifed, because if new and not all fields are given, need to use default vals
 
 	// Check if the rule exists
-	rule_info = get_rule_sorted(is_wl ? can_wl[rule_id].rule_info : can_rules[rule_id].rule_info, tuple_id);
-	if (rule_info) {
-		update_rule = *rule_info;
+	if ((ret = redis_mng_has_can_rule(c, rule_id)) == SR_ERROR)
+		return SR_ERROR;
+
+	if (ret) {
 		printf("\r\n> updating an existing rule...\n\r");
-		if (rule_info->can_rule.tuple.msg_id == MSGID_ANY)
+		update = 1;
+/*		if (rule_info->can_rule.tuple.msg_id == MSGID_ANY)
 			strcpy(msg_id_def, "any");
 		else
 			sprintf(msg_id_def, "%x", rule_info->can_rule.tuple.msg_id);
 		strcpy(dir_def, get_dir_desc(rule_info->can_rule.tuple.direction));
-		action_name = is_wl ? can_wl[rule_id].action_name : can_rules[rule_id].action_name;
+		action_name = is_wl ? can_wl[rule_id].action_name : can_rules[rule_id].action_name;*/
 	} else {
 		printf("\r\n> adding a new rule...\n\r");
+		update = 0;
+		// defaults if no mid list or dir given
 		strcpy(msg_id_def, "any");
 		strcpy(dir_def, "both");
 	}
 
-	msg_id_input = cli_get_string_user_input(rule_info != NULL, msg_id_def , "mid", is_valid_msg_ig, msg_id_help);
+	// mid - should string or list name, if string verify valid val, else verify nothing (or that list exist ? list type ?)
+	msg_id_input = cli_get_string_user_input(update,
+			msg_id_def,
+			"mid",
+			is_valid_msg_ig,
+			msg_id_help);
+	// fixme
+#if 0
 	if (!strcmp(msg_id_input, "any"))
 		update_rule.can_rule.tuple.msg_id = MSGID_ANY;
 	else
 		update_rule.can_rule.tuple.msg_id = strtoul(msg_id_input, &ptr, 16);
 
 	strncpy(update_rule.can_rule.tuple.interface, 
-		cli_get_string_user_input(rule_info != NULL, rule_info ? rule_info->can_rule.tuple.interface : NULL , "interface", is_valid_interface, can_interface_help), INTERFACE_SIZE);
+		cli_get_string_user_input(update,
+				rule_info ? rule_info->can_rule.tuple.interface : NULL,
+				"interface",
+				is_valid_interface,
+				can_interface_help), INTERFACE_SIZE);
 
-	dir_input = cli_get_string_user_input(rule_info != NULL, dir_def, "direction (in, out, both)", is_valid_dir, NULL);
+	dir_input = cli_get_string_user_input(update,
+			dir_def,
+			"direction (in, out, both)",
+			is_valid_dir,
+			NULL);
 	update_rule.can_rule.tuple.direction = get_dir_id(dir_input);
 
-	strncpy(update_rule.can_rule.tuple.program, cli_get_string_user_input(rule_info != NULL, rule_info ? rule_info->can_rule.tuple.program : "*" , "program", is_valid_program, NULL), PROG_NAME_SIZE);
-	strncpy(update_rule.can_rule.tuple.user, cli_get_string_user_input(rule_info != NULL, rule_info ? rule_info->can_rule.tuple.user : "*" , "user", is_valid_user, NULL), USER_NAME_SIZE);
+	strncpy(update_rule.can_rule.tuple.program,
+			cli_get_string_user_input(update,
+					rule_info ? rule_info->can_rule.tuple.program : "*",
+					"program",
+					is_valid_program,
+					NULL), PROG_NAME_SIZE);
+	strncpy(update_rule.can_rule.tuple.user,
+			cli_get_string_user_input(update,
+					rule_info ? rule_info->can_rule.tuple.user : "*",
+					"user",
+					is_valid_user,
+					NULL), USER_NAME_SIZE);
 
-	strncpy(new_action_name, cli_get_string_user_input(rule_info != NULL, action_name , "action", is_valid_action, NULL), ACTION_STR_SIZE);
+	strncpy(new_action_name,
+			cli_get_string_user_input(update,
+					action_name,
+					"action",
+					is_valid_action,
+					NULL), ACTION_STR_SIZE);
 
 	update_rule.tuple_id = update_rule.can_rule.tuple.id = tuple_id;
 	update_rule.can_rule.rulenum = rule_id;
 	update_rule.rule_type = RULE_TYPE_CAN;
+#endif
 
 #ifdef CLI_DEBUG
 	printf("tuple id :%d \n", update_rule.tuple_id);
@@ -806,8 +884,28 @@ static SR_32 handle_update_can(SR_BOOL is_wl, SR_U32 rule_id, SR_U32 tuple_id)
 	printf("user :%s \n", update_rule.can_rule.tuple.user);
 	printf("action :%s \n", new_action_name);
 #endif
-	notify_updated_can_rule(rule_id, &update_rule, new_action_name);
 	
+#if 0
+	//notify_updated_can_rule(rule_id, &update_rule, new_action_name);
+	snprintf(msg, sizeof(msg), "can rule update:\n   rule:%d tuple:%d\n   mid :%x interface :%s direction :%s user:%s program:%s action:%s \n",
+			rule_id, update_rule->tuple_id,
+			update_rule->can_rule.tuple.msg_id,
+			update_rule->can_rule.tuple.interface,
+			get_dir_desc(update_rule->can_rule.tuple.direction),
+			update_rule->can_rule.tuple.user, update_rule->can_rule.tuple.program,
+			action_name);
+	cli_notify_info(msg);
+#endif
+
+	// fixme
+	if (update)
+		ret = redis_mng_mod_can_rule(c, rule_id, msg_id_input, NULL/*interface*/, NULL/*exec*/, NULL/*user*/,
+				new_action_name, dir_def);
+	else
+		ret = redis_mng_add_can_rule(c, rule_id, msg_id_input, "NULL"/*interface*/, "NULL"/*exec*/, "NULL"/*user*/,
+				new_action_name, dir_def);
+
+#if 0
 	strncpy(is_wl ? can_wl[rule_id].action_name : can_rules[rule_id].action_name, new_action_name, ACTION_STR_SIZE);
 	if (!rule_info) { 
 		if (!(new_rule = malloc(sizeof(rule_info_t)))) {
@@ -818,25 +916,35 @@ static SR_32 handle_update_can(SR_BOOL is_wl, SR_U32 rule_id, SR_U32 tuple_id)
 	} else {
 		*rule_info = update_rule;
 	}
+#endif
 
-	return SR_SUCCESS;
+	return ret;
 }
 
-static SR_32 handle_update_ip(SR_BOOL is_wl, SR_U32 rule_id, SR_U32 tuple_id)
+static SR_32 handle_update_ip(redisContext *c, SR_BOOL is_wl, SR_U32 rule_id)
 {
-	rule_info_t *rule_info, update_rule, *new_rule;
-	char *param, src_ip_address_def[IPV4_STR_MAX_LEN], src_netmask_def[IPV4_STR_MAX_LEN];
-	char dst_ip_address_def[IPV4_STR_MAX_LEN], dst_netmask_def[IPV4_STR_MAX_LEN], ip_proto_def[8], src_port_def[8], dst_port_def[8];
-	char  *action_name = NULL, new_action_name[ACTION_STR_SIZE];
+	char /**param,*/ src_ip_address_def[IPV4_STR_MAX_LEN];
+	char dst_ip_address_def[IPV4_STR_MAX_LEN], ip_proto_def[8], src_port_def[8], dst_port_def[8];
+	char  /**action_name = NULL,*/ new_action_name[ACTION_STR_SIZE];
+	SR_32 ret;
+	SR_8 update;
 
 	// Check if the rule exists
+	if ((ret = redis_mng_has_net_rule(c, rule_id)) == SR_ERROR)
+		return SR_ERROR;
+
+#if 0
 	rule_info = get_rule_sorted(is_wl ? ip_wl[rule_id].rule_info : ip_rules[rule_id].rule_info, tuple_id);
 	action_name = is_wl ? ip_wl[rule_id].action_name : ip_rules[rule_id].action_name;
 	if (!*action_name)
 		action_name = NULL;
-	if (rule_info) {
-		update_rule = *rule_info;
+#endif
+//	if (rule_info) {
+	if (ret) {
+//		update_rule = *rule_info;
+		update = 1;
 		printf("> updating an existing rule...\n");
+#if 0
 		inet_ntop(AF_INET, &(rule_info->ip_rule.tuple.srcaddr.s_addr), src_ip_address_def, IPV4_STR_MAX_LEN);
 		inet_ntop(AF_INET, &(rule_info->ip_rule.tuple.dstaddr.s_addr), dst_ip_address_def, IPV4_STR_MAX_LEN);
 		inet_ntop(AF_INET, &(rule_info->ip_rule.tuple.srcnetmask.s_addr), src_netmask_def, IPV4_STR_MAX_LEN);
@@ -844,17 +952,21 @@ static SR_32 handle_update_ip(SR_BOOL is_wl, SR_U32 rule_id, SR_U32 tuple_id)
 		strcpy(ip_proto_def, get_ip_proto_name(rule_info->ip_rule.tuple.proto)); 
 		sprintf(src_port_def, "%d", rule_info->ip_rule.tuple.srcport);
 		sprintf(dst_port_def, "%d", rule_info->ip_rule.tuple.dstport);
+#endif
 	} else {
+		update = 0;
 		printf("\n> adding a new rule...\n");
-		strcpy(src_ip_address_def, "0.0.0.0");
-		strcpy(dst_ip_address_def, "0.0.0.0");
-		strcpy(dst_netmask_def, "255.255.255.255");
-		strcpy(src_netmask_def, "255.255.255.255");
+		strcpy(src_ip_address_def, "0.0.0.0/32");
+		strcpy(dst_ip_address_def, "0.0.0.0/32");
+//		strcpy(dst_netmask_def, "255.255.255.255");
+//		strcpy(src_netmask_def, "255.255.255.255");
 		strcpy(ip_proto_def, "tcp");
 		strcpy(src_port_def, "0");
 		strcpy(dst_port_def, "0");
 	}
 
+	// fixme
+#if 0
 	param = cli_get_string_user_input(rule_info != NULL, src_ip_address_def , "src addr", _is_valid_ip, NULL);
 	inet_aton(param, &update_rule.ip_rule.tuple.srcaddr);
 	param = cli_get_string_user_input(rule_info != NULL, src_netmask_def , "src netmask", _is_valid_ip, NULL);
@@ -878,9 +990,10 @@ static SR_32 handle_update_ip(SR_BOOL is_wl, SR_U32 rule_id, SR_U32 tuple_id)
 	update_rule.tuple_id = update_rule.ip_rule.tuple.id = tuple_id;
 	update_rule.ip_rule.rulenum = rule_id;
 	update_rule.rule_type = RULE_TYPE_IP;
+#endif
 
-	notify_updated_ip_rule(rule_id, &update_rule, new_action_name);
-
+	//notify_updated_ip_rule(rule_id, &update_rule, new_action_name);
+#if 0
 	strncpy(is_wl ? ip_wl[rule_id].action_name : ip_rules[rule_id].action_name, new_action_name, ACTION_STR_SIZE);
 	if (!rule_info) { 
 		if (!(new_rule = malloc(sizeof(rule_info_t)))) {
@@ -891,26 +1004,42 @@ static SR_32 handle_update_ip(SR_BOOL is_wl, SR_U32 rule_id, SR_U32 tuple_id)
 	} else {
 		*rule_info = update_rule;
 	}
-
-	return SR_SUCCESS;
+#endif
+	if (update)
+		ret = redis_mng_mod_net_rule(c, rule_id, src_ip_address_def, dst_ip_address_def, ip_proto_def,
+				src_port_def, dst_port_def, NULL/*exec*/, NULL/*user*/, new_action_name);
+	else
+		ret = redis_mng_add_net_rule(c, rule_id, src_ip_address_def, dst_ip_address_def, ip_proto_def,
+				src_port_def, dst_port_def, "NULL"/*exec*/, "NULL"/*user*/, new_action_name);
+	return ret;
 }
 
-static SR_32 handle_update_file(SR_BOOL is_wl, SR_U32 rule_id, SR_U32 tuple_id)
+static SR_32 handle_update_file(redisContext *c, SR_BOOL is_wl, SR_U32 rule_id)
 {
-	rule_info_t *rule_info, update_rule, *new_rule;
-	char  *action_name = NULL, new_action_name[ACTION_STR_SIZE];
+	char  /**action_name = NULL,*/ new_action_name[ACTION_STR_SIZE];
+	SR_32 ret;
+	SR_8 update;
 
 	// Check if the rule exists
+	if ((ret = redis_mng_has_file_rule(c, rule_id)) == SR_ERROR)
+		return SR_ERROR;
+#if 0
 	rule_info = get_rule_sorted(is_wl ? file_wl[rule_id].rule_info : file_rules[rule_id].rule_info, tuple_id);
 	action_name = is_wl ? file_wl[rule_id].action_name : file_rules[rule_id].action_name;
-	if (rule_info) {
-		update_rule = *rule_info;
+#endif
+//	if (rule_info) {
+	if (ret) {
+//		update_rule = *rule_info;
+		update = 1;
 		printf("> updating an existing rule...\n");
 	} else {
+		update = 0;
 		printf("\n> adding a new rule...\n");
-		action_name = NULL;
+//		action_name = NULL;
 	}
 
+	// fixme
+#if 0
 	strncpy(update_rule.file_rule.tuple.filename,
 		cli_get_string_user_input(rule_info != NULL, rule_info ? rule_info->file_rule.tuple.filename : NULL , "file", is_valid_file, NULL), FILE_NAME_SIZE);
 	strncpy(update_rule.file_rule.tuple.permission,
@@ -923,9 +1052,11 @@ static SR_32 handle_update_file(SR_BOOL is_wl, SR_U32 rule_id, SR_U32 tuple_id)
 	update_rule.tuple_id = update_rule.file_rule.tuple.id = tuple_id;
 	update_rule.file_rule.rulenum = rule_id;
 	update_rule.rule_type = RULE_TYPE_FILE;
+#endif
 
-	notify_updated_file_rule(rule_id, &update_rule, new_action_name);
-
+	//notify_updated_file_rule(rule_id, &update_rule, new_action_name);
+	
+#if 0
 	strncpy(is_wl ? file_wl[rule_id].action_name : file_rules[rule_id].action_name, new_action_name, ACTION_STR_SIZE);
 	if (!rule_info) { 
 		if (!(new_rule = malloc(sizeof(rule_info_t)))) {
@@ -936,54 +1067,79 @@ static SR_32 handle_update_file(SR_BOOL is_wl, SR_U32 rule_id, SR_U32 tuple_id)
 	} else {
 		*rule_info = update_rule;
 	}
+#endif
 
-	return SR_SUCCESS;
+	if (update)
+		ret = redis_mng_mod_file_rule(c, rule_id, NULL/*file_name*/, NULL/*exec*/, NULL/*user*/, new_action_name, 0/*file_op*/);
+	else
+		ret = redis_mng_add_file_rule(c, rule_id, "help"/*file_name*/, "NULL"/*exec*/, "NULL"/*user*/, new_action_name, 0/*file_op*/);
+	return ret;
 }
 
-static SR_32 handle_delete(rule_type_t rule_type, rule_container_t *rule_container, SR_U32 rule_id, SR_U32 tuple_id)
+static SR_32 handle_delete(redisContext *c, rule_type_t rule_type, SR_U32 rule_id)
 {
-	char rule_type_str[MAX_RULE_TYPE], msg[256], rules_msg[256]; 
+	char rule_type_str[MAX_RULE_TYPE], msg[256], rules_msg[256];
+	SR_32 ret;
 
 	strcpy(rule_type_str, get_rule_string(rule_type));
+#if 0
 	if (rule_id == -1) {
 		cleanup_rule_table(rule_container);
 		strcpy(rules_msg, "rules were deleted");
 		goto out;
-	} 
-	if (tuple_id == -1) {
-		cleanup_rule(rule_container, rule_id);
-		sprintf(rules_msg, "rule id:%d was deleted", rule_id);
-		goto out;
 	}
-	sprintf(rules_msg, "rule id:%d tuple id:%d was deleted", rule_id, tuple_id);
-	if (delete_rule(&rule_container[rule_id].rule_info, tuple_id) != SR_SUCCESS) {
+#endif
+	sprintf(rules_msg, "rule id:%d was deleted", rule_id);
+
+	switch (rule_type) {
+	case RULE_TYPE_CAN:
+		ret = redis_mng_del_can_rule(c, rule_id);
+		break;
+	case RULE_TYPE_IP:
+		ret = redis_mng_del_net_rule(c, rule_id);
+		break;
+	case RULE_TYPE_FILE:
+		ret = redis_mng_del_file_rule(c, rule_id);
+		break;
+	default:
+		ret = SR_ERROR;
+	}
+	if (ret) {
+		sprintf(msg, "%s delete failed", rule_type_str);
+		cli_error(msg, SR_TRUE);
+	}
+
+#if 0
+	if (delete_rule(rule_type, rule_id) != SR_SUCCESS) {
 		sprintf(msg, "%s delete failed", rule_type_str);
 		cli_error(msg, SR_TRUE);
 		return SR_ERROR;
 	}
+#endif
 
-out:
+//out:
 	sprintf(msg, "%s %s", rule_type_str, rules_msg);
 	cli_notify_info(msg);
-
-	return SR_SUCCESS;
+	return ret;
 }
 
-static SR_32 handle_delete_can(SR_BOOL is_wl, SR_U32 rule_id, SR_U32 tuple_id)
+// todo there was a different container for wl and user rules, how to define now? by rule num ?
+static SR_32 handle_delete_can(redisContext *c, SR_BOOL is_wl, SR_U32 rule_id)
 {
-	return handle_delete(RULE_TYPE_CAN, is_wl ? can_wl : can_rules, rule_id, tuple_id);
+	return handle_delete(c, RULE_TYPE_CAN, rule_id);
 }
 
-static SR_32 handle_delete_ip(SR_BOOL is_wl, SR_U32 rule_id, SR_U32 tuple_id)
+static SR_32 handle_delete_ip(redisContext *c, SR_BOOL is_wl, SR_U32 rule_id)
 {
-	return handle_delete(RULE_TYPE_IP, is_wl ? ip_wl : ip_rules, rule_id, tuple_id);
+	return handle_delete(c, RULE_TYPE_IP, rule_id);
 }
 
-static SR_32 handle_delete_file(SR_BOOL is_wl, SR_U32 rule_id, SR_U32 tuple_id)
+static SR_32 handle_delete_file(redisContext *c, SR_BOOL is_wl, SR_U32 rule_id)
 {
-	return handle_delete(RULE_TYPE_FILE, is_wl ? file_wl : file_rules, rule_id, tuple_id);
+	return handle_delete(c, RULE_TYPE_FILE, rule_id);
 }
 
+#if 0
 static action_t *get_action(char *action_name)
 {
 	SR_U32 i;
@@ -995,7 +1151,10 @@ static action_t *get_action(char *action_name)
 	}
 	return &actions[i];
 }
+#endif
 
+// fixme will be updated and will print the msg
+#if 0
 static SR_BOOL is_action_exist_in_rule(rule_container_t table[], char *action_name)
 {
 	SR_U32 i;
@@ -1007,19 +1166,24 @@ static SR_BOOL is_action_exist_in_rule(rule_container_t table[], char *action_na
 
 	return SR_FALSE;
 }
+#endif
 
-static SR_32 delete_action(char *action_name)
+/*static*/ SR_32 delete_action(redisContext *c, char *action_name)
 {
-	SR_U32 i;
-	char msg[128];
+//	SR_U32 i;
+//	char msg[128];
 
+#if 0
 	for (i = 0; i < num_of_actions && strcmp(action_name, actions[i].action_name) != 0; i++);
 	if (i == num_of_actions) {
 		snprintf(msg, sizeof(msg), "action %s does not exist\n", action_name);
 		cli_error(msg, SR_TRUE);
 		return SR_NOT_FOUND;
 	}
+#endif
 
+	// fixme I will add an API for this
+#if 0
 	/* check if the action exists in any of the rules */
 	if (is_action_exist_in_rule(file_rules, action_name)) {
 		sprintf(msg, "action %s exists in file rules", action_name);
@@ -1036,14 +1200,17 @@ static SR_32 delete_action(char *action_name)
 		cli_error(msg, SR_TRUE);
 		return SR_ERROR;
 	}
+#endif
 
+#if 0
 	for (; i < num_of_actions - 1; i++) 
 		actions[i] = actions[i + 1];
 	num_of_actions--;
-
-	return SR_SUCCESS;
+#endif
+	return redis_mng_del_action(c, action_name);
 }
 
+#if 0
 static void engine_commit(SR_32 fd)
 {
 	char buf[MAX_BUF_SIZE];
@@ -1231,6 +1398,7 @@ static void db_cleanup(void)
 	cleanup_rule_table(ip_wl);
 	num_of_actions = 0;
 }
+#endif
 
 static SR_32 handle_print_cb(char *buf)
 {
@@ -1268,22 +1436,22 @@ static void handle_cmd_gen(char *cmd, char *msg, SR_BOOL is_print)
 		cli_notify_info(msg);
 }
 
-static void handle_learn(char *buf)
+static void handle_learn(void *buf)
 {
 	return  handle_cmd_gen("wl_learn", "learning...", SR_FALSE);
 }
 
-static void handle_reset(char *buf)
+static void handle_reset(void *buf)
 {
 	return  handle_cmd_gen("wl_reset", "reseting...", SR_FALSE);
 }
 
-static void handle_wl_print(char *buf)
+static void handle_wl_print(void *buf)
 {
 	return  handle_cmd_gen("wl_print", NULL, SR_TRUE);
 }
 
-static void handle_apply(char *buf)
+static void handle_apply(void *buf)
 {
 	SR_32 fd;
 	int ret = 0, rc, counter = 0;
@@ -1332,15 +1500,15 @@ static void handle_apply(char *buf)
 	cli_notify_info("apply finished.");
 	close(fd);
 	printf("\nloading....\n");
-	db_cleanup();
+/*	db_cleanup();
 	if (handle_load() != SR_SUCCESS) {
 		printf("error handling load\n");
-	}
+	}*/
 	cli_notify_info("load finished.");
 
 }
 
-static void handle_sr_ver(char *buf)
+static void handle_sr_ver(void *buf)
 {
 	int fd, rc;
 	char buf2[256];
@@ -1390,32 +1558,33 @@ static void engine_update_help(void)
         printf("on | off\b");
 }
 
-static void show_rule(char *buf)
+static void show_rule(void *c)
 {
-	print_file_rules(SR_FALSE, file_rules, -1, -1);
-	print_can_rules(SR_FALSE, can_rules, -1, -1);
-	print_ip_rules(SR_FALSE, ip_rules, -1, -1);
+	print_file_rules(c, SR_FALSE, -1);
+	print_can_rules(c, SR_FALSE, -1);
+	print_ip_rules(c, SR_FALSE, -1);
 }
 
-static void show_wl(char *buf)
+static void show_wl(void *c)
 {
-	print_file_rules(SR_TRUE, file_wl, -1, -1);
-	print_can_rules(SR_TRUE, can_wl, -1, -1);
-	print_ip_rules(SR_TRUE, ip_wl, -1, -1);
+	print_file_rules(c, SR_TRUE, -1);
+	print_can_rules(c, SR_TRUE, -1);
+	print_ip_rules(c, SR_TRUE, -1);
 }
 
-static void show_action(char *buf)
+static void show_action(void *c)
 {
-	print_actions();
+	print_actions(c);
 }
 
-static void show(char *buf)
+static void show(void *c)
 {
-	print_actions();
-	show_rule(buf);
-	show_wl(buf);
+	print_actions(c);
+	show_rule(c);
+	show_wl(c);
 }
 
+#if 0
 static void get_rule_ids(char *buf, int *rule_id, int *tuple_id)
 {
 	char *tmp = NULL, *ptr;
@@ -1438,65 +1607,68 @@ static void get_rule_ids(char *buf, int *rule_id, int *tuple_id)
 	if (tmp)
 		free(tmp);
 }
+#endif
 
-static void show_rule_can(char *buf)
+static void show_rule_can(void *c)
 {
-	int rule_id, tuple_id;
+//	int rule_id, tuple_id;
 
-	get_rule_ids(buf, &rule_id, &tuple_id);
-	print_can_rules(SR_FALSE, can_rules, rule_id, tuple_id);
+//	get_rule_ids(buf, &rule_id, &tuple_id);
+	print_can_rules(c, SR_FALSE, -1/*rule_id*/);
 }
 
-static void show_wl_can(char *buf)
+static void show_wl_can(void *c)
 {
-	int rule_id, tuple_id;
+//	int rule_id, tuple_id;
 
-	get_rule_ids(buf, &rule_id, &tuple_id);
-	print_can_rules(SR_TRUE, can_wl, rule_id, tuple_id);
+//	get_rule_ids(buf, &rule_id, &tuple_id);
+	// fixme define high rule numbers only ?
+	print_can_rules(c, SR_TRUE, -1/*rule_id*/);
 }
 
-static void show_rule_file(char *buf)
+static void show_rule_file(void *c)
 {
-	int rule_id, tuple_id;
+//	int rule_id, tuple_id;
 
-	get_rule_ids(buf, &rule_id, &tuple_id);
-	print_file_rules(SR_FALSE, file_rules, rule_id, tuple_id);
+//	get_rule_ids(buf, &rule_id, &tuple_id);
+	print_file_rules(c, SR_FALSE, -1/*rule_id*/);
 }
 
-static void show_wl_file(char *buf)
+static void show_wl_file(void *c)
 {
-	int rule_id, tuple_id;
+//	int rule_id, tuple_id;
 
-	get_rule_ids(buf, &rule_id, &tuple_id);
-	print_file_rules(SR_TRUE, file_wl, rule_id, tuple_id);
+//	get_rule_ids(buf, &rule_id, &tuple_id);
+	// fixme define high rule numbers only ?
+	print_file_rules(c, SR_TRUE, -1/*rule_id*/);
 }
 
-static void show_rule_ip(char *buf)
+static void show_rule_ip(void *c)
 {
-	int rule_id, tuple_id;
+//	int rule_id, tuple_id;
 
-	get_rule_ids(buf, &rule_id, &tuple_id);
-	print_ip_rules(SR_FALSE, ip_rules, rule_id, tuple_id);
+//	get_rule_ids(buf, &rule_id, &tuple_id);
+	print_ip_rules(c, SR_FALSE, -1/*rule_id*/);
 }
 
-static void show_wl_ip(char *buf)
+static void show_wl_ip(void *c)
 {
-	int rule_id, tuple_id;
+//	int rule_id, tuple_id;
 
-	get_rule_ids(buf, &rule_id, &tuple_id);
-	print_ip_rules(SR_TRUE, ip_wl, rule_id, tuple_id);
+//	get_rule_ids(buf, &rule_id, &tuple_id);
+	// fixme define high rule numbers only ?
+	print_ip_rules(c, SR_TRUE, -1/*rule_id*/);
 }
 
-static void update_rule_can(char *buf)
+#if 0
+static void update_rule_can(redisContext *c)
 {
-	int rule_id, tuple_id;
-
-	get_rule_ids(buf, &rule_id, &tuple_id);
+/*	get_rule_ids(buf, &rule_id, &tuple_id);
 	if (rule_id == -1 || tuple_id == -1) {
 		cli_error("\rRule id or Tuple is missing", SR_FALSE);
 		return;
-	}
-	handle_update_can(SR_FALSE, rule_id, tuple_id);
+	}*/
+	handle_update_can(c, SR_FALSE, rule_id);
 	is_dirty = SR_TRUE;
 }
 
@@ -1535,7 +1707,8 @@ static void __update_action(char *buf, SR_BOOL is_delete)
 		}
 		return;
 	}
-	action = get_action(action_name);
+	// todo get from redis
+	//action = get_action(action_name);
 	if (!action) {
 		// Check if a new action can be created
 		if (num_of_actions == DB_MAX_NUM_OF_ACTIONS) {
@@ -1593,106 +1766,108 @@ static void delete_action_cb(char *buf)
 	is_dirty = SR_TRUE;
 	return __update_action(buf, SR_TRUE);
 }
+#endif
 
-static void update_wl_can(char *buf)
+static void update_wl_can(void *c)
 {
-	int rule_id, tuple_id;
+/*	int rule_id, tuple_id;
 
 	get_rule_ids(buf, &rule_id, &tuple_id);
 	if (rule_id == -1 || tuple_id == -1) {
 		cli_error("\rRule id or Tuple is missing", SR_FALSE);
 		return;
-	}
-	handle_update_can(SR_TRUE, rule_id, tuple_id);
+	}*/
+	handle_update_can(c, SR_TRUE, -1/*rule_id*/);
 	is_dirty = SR_TRUE;
 }
 
-static void update_rule_file(char *buf)
+static void update_rule_file(void *c)
 {
-	int rule_id, tuple_id;
+/*	int rule_id, tuple_id;
 
 	get_rule_ids(buf, &rule_id, &tuple_id);
 	
 	if (rule_id == -1 || tuple_id == -1) {
 		cli_error("\rRule id or Tuple is missing", SR_FALSE);
 		return;
-	}
-	handle_update_file(SR_FALSE, rule_id, tuple_id);
+	}*/
+	handle_update_file(c, SR_FALSE, -1/*rule_id*/);
 	is_dirty = SR_TRUE;
 }
 
-static void update_wl_file(char *buf)
+static void update_wl_file(void *c)
 {
-	int rule_id, tuple_id;
+/*	int rule_id, tuple_id;
 
 	get_rule_ids(buf, &rule_id, &tuple_id);
 	
 	if (rule_id == -1 || tuple_id == -1) {
 		cli_error("\rRule id or Tuple is missing", SR_FALSE);
 		return;
-	}
-	handle_update_file(SR_TRUE, rule_id, tuple_id);
+	}*/
+	handle_update_file(c, SR_TRUE, -1/*rule_id*/);
 	is_dirty = SR_TRUE;
 }
 
-static void update_rule_ip(char *buf)
+static void update_rule_ip(void *c)
 {
-	int rule_id, tuple_id;
+/*	int rule_id, tuple_id;
 
 	get_rule_ids(buf, &rule_id, &tuple_id);
 	
 	if (rule_id == -1 || tuple_id == -1) {
 		cli_error("\rRule id or Tuple is missing", SR_FALSE);
 		return;
-	}
-	handle_update_ip(SR_FALSE, rule_id, tuple_id);
+	}*/
+	handle_update_ip(c, SR_FALSE, -1/*rule_id*/);
 	is_dirty = SR_TRUE;
 }
 
-static void update_wl_ip(char *buf)
+static void update_wl_ip(void *c)
 {
-	int rule_id, tuple_id;
+/*	int rule_id, tuple_id;
 
 	get_rule_ids(buf, &rule_id, &tuple_id);
 	
 	if (rule_id == -1 || tuple_id == -1) {
 		cli_error("\rRule id or Tuple is missing", SR_FALSE);
 		return;
-	}
-	handle_update_ip(SR_TRUE, rule_id, tuple_id);
+	}*/
+	handle_update_ip(c, SR_TRUE, -1/*rule_id*/);
 	is_dirty = SR_TRUE;
 }
 
-static void delete_rule_file(char *buf)
+static void delete_rule_file(void *c)
 {
-	int rule_id, tuple_id;
+/*	int rule_id, tuple_id;
 
-	get_rule_ids(buf, &rule_id, &tuple_id);
+	get_rule_ids(buf, &rule_id, &tuple_id);*/
 
-	handle_delete_file(SR_FALSE, rule_id, tuple_id);
+	handle_delete_file(c, SR_FALSE, -1);
 	is_dirty = SR_TRUE;
 }
 
-static void delete_rule_can(char *buf)
+static void delete_rule_can(void *c)
 {
-	int rule_id, tuple_id;
+/*	int rule_id, tuple_id;
 
-	get_rule_ids(buf, &rule_id, &tuple_id);
+	get_rule_ids(buf, &rule_id, &tuple_id);*/
 
-	handle_delete_can(SR_FALSE, rule_id, tuple_id);
+	handle_delete_can(c, SR_FALSE, -1);
 	is_dirty = SR_TRUE;
 }
 
-static void delete_rule_ip(char *buf)
+static void delete_rule_ip(void *c)
 {
-	int rule_id, tuple_id;
+	/*int rule_id, tuple_id;
 
-	get_rule_ids(buf, &rule_id, &tuple_id);
+	get_rule_ids(buf, &rule_id, &tuple_id);*/
 
-	handle_delete_ip(SR_FALSE, rule_id, tuple_id);
+	handle_delete_ip(c, SR_FALSE, -1);
 	is_dirty = SR_TRUE;
 }
 
+#if 0
 static void handle_commit(char *buf)
 {
 	printf("\ncommitting...\n");
@@ -1759,18 +1934,19 @@ static void engine_update_cb(char *buf)
 	if (tmp)
 		free(tmp);
 }
+#endif
 
-static void handle_sp_learn(char *buf)
+static void handle_sp_learn(void *buf)
 {
 	return  handle_cmd_gen("sp_learn", "system policer learning...", SR_FALSE);
 }
 
-static void handle_sp_apply(char *buf)
+static void handle_sp_apply(void *buf)
 {
 	return  handle_cmd_gen("sp_apply", "system policer applying...", SR_FALSE);
 }
 
-static void handle_sp_off(char *buf)
+static void handle_sp_off(void *buf)
 {
 	return  handle_cmd_gen("sp_off", "system policer off...", SR_FALSE);
 }
@@ -1813,12 +1989,13 @@ SR_32 main(int argc, char **argv)
 	node_operations_t engine_state_operations;
 	node_operations_t engine_update_operations;
 
-	if (!(argc > 1 && !strcmp(argv[1], "nl"))) {
+	// fixme
+/*	if (!(argc > 1 && !strcmp(argv[1], "nl"))) {
 		if (handle_load() != 0) {
 			printf("error handling load\n");
 			return SR_ERROR;
 		}
-	}
+	}*/
 
         cli_init("(vsentry-cli (help) (show (rule (can)(ip)(file)) (wl (can)(ip)(file))(action)) (update (rule (can)(ip)(file)) (wl (can)(ip)(file))(action))(delete (rule (can)(ip)(file)) (wl (can)(ip)(file))(action))(commit)(control (wl (learn)(apply)(print)(reset))(sr_ver)(sp (learn)(apply)(off)))(load)(engine (state)(update))(exit))");
 
@@ -1867,15 +2044,15 @@ SR_32 main(int argc, char **argv)
         cli_register_operatios("show/wl/ip", &show_wl_ip_operations);
 
         update_action_operations.help_cb = action_help;
-        update_action_operations.run_cb = update_action_cb;
+        update_action_operations.run_cb = NULL/*update_action_cb*/;
         cli_register_operatios("update/action", &update_action_operations);
 
         delete_action_operations.help_cb = delete_action_help;
-        delete_action_operations.run_cb = delete_action_cb;
+        delete_action_operations.run_cb = NULL/*delete_action_cb*/;
         cli_register_operatios("delete/action", &delete_action_operations);
 
         update_rule_can_operations.help_cb = rule_help;
-        update_rule_can_operations.run_cb = update_rule_can;
+        update_rule_can_operations.run_cb = NULL/*update_rule_can*/;
         cli_register_operatios("update/rule/can", &update_rule_can_operations);
 
         update_rule_file_operations.help_cb = rule_help;
@@ -1899,15 +2076,15 @@ SR_32 main(int argc, char **argv)
         cli_register_operatios("update/wl/ip", &update_wl_ip_operations);
 
         commit_operations.help_cb = NULL;
-        commit_operations.run_cb = handle_commit;
+        commit_operations.run_cb = NULL/*handle_commit*/;
         cli_register_operatios("commit", &commit_operations);
 
         exit_operations.help_cb = NULL;
-        exit_operations.run_cb = handle_exit;
+        exit_operations.run_cb = NULL/*handle_exit*/;
         cli_register_operatios("exit", &exit_operations);
 
         load_operations.help_cb = NULL;
-        load_operations.run_cb = handle_load_cb;
+        load_operations.run_cb = NULL/*handle_load_cb*/;
         cli_register_operatios("load", &load_operations);
 
         control_wl_learn_operations.help_cb = NULL;
@@ -1943,11 +2120,11 @@ SR_32 main(int argc, char **argv)
         cli_register_operatios("delete/rule/ip", &delete_rule_ip_operations);
 
         engine_state_operations.help_cb = NULL;
-        engine_state_operations.run_cb = engine_state_cb;
+        engine_state_operations.run_cb = NULL/*engine_state_cb*/;
         cli_register_operatios("engine/state", &engine_state_operations);
 
         engine_update_operations.help_cb = engine_update_help,
-        engine_update_operations.run_cb = engine_update_cb;
+        engine_update_operations.run_cb = NULL/*engine_update_cb*/;
         cli_register_operatios("engine/update", &engine_update_operations);
 
         control_sp_learn_operations.help_cb = NULL;

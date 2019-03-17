@@ -6,7 +6,7 @@
 
 typedef struct {
         void (*help_cb)(void);
-        void (*run_cb)(char *buf);
+        void (*run_cb)(void *);
 } node_operations_t;
 
 int cli_init(char *buf);
