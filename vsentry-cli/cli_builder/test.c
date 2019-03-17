@@ -6,7 +6,7 @@ static void can_help(void)
         printf("[rule=X] [tuple=X]");
 }
 
-static void can_run(void *buf)
+static void can_run(char *buf)
 {
         printf("\r\n>>>.XXX can run buf:%s:\n\r", buf);
 }
