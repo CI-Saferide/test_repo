@@ -25,9 +25,9 @@ OBJS		:=  $(addprefix $(OBJDIR)/,$(SRCS:.c=.o))
 DEPS		:=  $(OBJS:.o=.d)
 
 # libs to link with
-LIBS		:= -l$(TARGET) -lsentry -ldb_tools -lcli
+LIBS		:= -l$(TARGET) -lsentry -ldb_tools -lcli -lredis_mng
 # and where to search them 
-LIB_PATH 	:= -L$(LIBDIR) -L$(TOP_DIR)/cli_builder/build
+LIB_PATH 	:= -L$(LIBDIR) -L$(TOP_DIR)/cli_builder/build -L$(TOP_DIR)/../vsentry-engine/build/lib
 
 CFLAGS 		+= -MMD -Wall
 
