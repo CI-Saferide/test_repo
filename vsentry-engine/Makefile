@@ -66,7 +66,8 @@ SRCS 		:=  main.c \
 				log_uploader.c \
 				sr_canbus_common.c \
 				sr_stat_system_policer.c \
-				irdeto_unix_interface.c
+				irdeto_unix_interface.c \
+				sr_bin_cls_eng.c \
 
 SRCS 		+= $(if $(SR_CLI),sal_cli_interface.c sr_engine_cli.c)
 
@@ -87,12 +88,17 @@ INCLUDES 	:=  -I../common/include \
 				-Iwhite_list/include \
 				-Ithird-party/include \
 				-Idb/include \
+				-I$(TOP_DIR)/../binary_cls \
 
 OBJS		:=  $(addprefix $(OBJDIR)/,$(SRCS:.c=.o))
 DEPS		:=  $(OBJS:.o=.d)
 
 # libs to link with
-LIBS		:= -Wl,--start-group -l$(TARGET) -lsr_hash -lsr_log -lsysrepo_mng -ldb_tools -Wl,--end-group -lpthread -ljsmn -lsentry -lsysrepo -lcurl -larchive -lcrypto
+ifdef BIN_CLS_DB
+LIBS		:= -Wl,--start-group -l$(TARGET) -lsr_hash -lsr_log -lsysrepo_mng -ldb_tools -lbin_cls -Wl,--end-group -lpthread -ljsmn -lsentry -lsysrepo -lcurl -larchive -lcrypto
+else
+LIBS 		:= -Wl,--start-group -l$(TARGET) -lsr_hash -lsr_log -lsysrepo_mng -ldb_tools -Wl,--end-group -lpthread -ljsmn -lsentry -lsysrepo -lcurl -larchive -lcrypto
+endif
 # and where to search them 
 LIB_PATH 	:= -L$(LIBDIR)
 
@@ -108,6 +114,7 @@ CFLAGS 		+= -DSR_CAN_DEBUG_PRINT
 CFLAGS 		+= -D__linux
 #CFLAGS 		+= -DUNIT_TEST
 CFLAGS		+= $(if $(SR_CLI),-DSR_CLI)
+CFLAGS		+= $(if $(BIN_CLS_DB),-DBIN_CLS_DB)
 
 ifdef DEBUG
 CFLAGS		+= -g -O0
@@ -120,14 +127,17 @@ all: $(TARGET)
 build_ver:
 	@echo "/*@unused@*/ static const char SR_GIT_BUILD[] = \"`git log --pretty=format:'%h' -n 1`\"; " > $(TOP_DIR)/../common/include/sr_build_ver.h
 
+ifdef BIN_CLS_DB
+$(TARGET): libsr_log libsr_hash libjsmn libsysrepo_mng libdb_tools libbin_cls lib$(TARGET)
+else
 $(TARGET): libsr_log libsr_hash libjsmn libsysrepo_mng libdb_tools lib$(TARGET)
+endif
 	@echo "linking $(notdir $@)"
-	echo $(LIB_PATH)
-	$(CC) $(LDFLAGS) -o $(BINDIR)/$(TARGET) $(LIB_PATH) $(LIBS)
+	@$(CC) $(LDFLAGS) -o $(BINDIR)/$(TARGET) $(LIB_PATH) $(LIBS)
 
 lib$(TARGET): build_ver OBJSDIR $(OBJS)
 	@echo "linking $(notdir $@)"
-	$(AR) rc $(LIBDIR)/$@.a $(OBJS)
+	@$(AR) rc $(LIBDIR)/$@.a $(OBJS)
 
 OBJSDIR:
 	@echo "creating $(OBJDIR) $(LIBDIR) $(BINDIR)"
@@ -149,6 +159,9 @@ libsysrepo_mng:
 
 libdb_tools:
 	@$(MAKE) -s -C ../tools/db_tools TOP_DIR=$(TOP_DIR)
+
+libbin_cls:
+	@$(MAKE) -s -C ../binary_cls TOP_DIR=$(TOP_DIR)
 
 $(OBJDIR)/%.o: %.c
 	@echo "compiling $(notdir $<)"

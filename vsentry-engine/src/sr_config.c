@@ -32,6 +32,11 @@
 #include "jsmn.h"
 #include <sysrepo.h>
 #include "sr_static_policy.h"
+#ifdef BIN_CLS_DB
+#include "sr_engine_utils.h"
+#include "sr_bin_cls_eng.h"
+#include "classifier.h"
+#endif
 
 #ifdef SR_STAT_ANALYSIS_DEBUG
 static int help;
@@ -66,6 +71,9 @@ static void handler(int signal)
 
 static char filename[] = "sr_engine.cfg";
 
+#ifdef BIN_CLS_DB
+#endif
+
 static SR_32 handle_engine_start_stop(char *engine)
 {
 	FILE *f;
@@ -73,10 +81,20 @@ static SR_32 handle_engine_start_stop(char *engine)
 	usleep(500000);
 	f = fopen("/tmp/sec_state", "w");
 	if (!strncmp(engine, SR_DB_ENGINE_START, SR_DB_ENGINE_NAME_SIZE)) {
+#ifdef BIN_CLS_DB
+		printf("enable cls_bin\n");
+		bin_cls_enable(true);
+#else
 		sr_control_set_state(SR_TRUE);
+#endif
 		fprintf(f, "on");
 	} else if (!strncmp(engine, SR_DB_ENGINE_STOP, SR_DB_ENGINE_NAME_SIZE)) {
+#ifdef BIN_CLS_DB
+		printf("disable cls_bin\n");
+		bin_cls_enable(false);
+#else
 		sr_control_set_state(SR_FALSE);
+#endif
 		fprintf(f, "off");
 	}
 	fclose(f);
@@ -93,6 +111,16 @@ static SR_32 handle_action(action_t *action)
 		return SR_ERROR;
 	}
 
+#ifdef BIN_CLS_DB
+	if (cls_action(true, (action->action == ACTION_ALLOW),
+			(action->log_facility != LOG_NONE), action->action_name) == SR_ERROR) {
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+			"%s=handle action failed act=%s",REASON,
+			action->action_name);
+		return SR_ERROR;
+	}
+#endif
+
 	return SR_SUCCESS;
 }
 
@@ -100,11 +128,20 @@ static SR_32 handle_action(action_t *action)
 static SR_32 delete_action(action_t *action)
 {
 	if (sr_db_action_delete_action(action) != SR_SUCCESS) {
-		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, 
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 			"%s=delete action failed act=%s",REASON,
 			action->action_name);
 		return SR_ERROR;
 	}
+
+#ifdef BIN_CLS_DB
+	if (cls_action(false, false, false, action->action_name) == SR_ERROR) {
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+			"%s=handle action failed act=%s",REASON,
+			action->action_name);
+		return SR_ERROR;
+	}
+#endif
 
 	return SR_SUCCESS;
 }
@@ -138,8 +175,13 @@ static SR_32 convert_action(char *action_name, SR_U16 *actions_bitmap)
 
 static SR_32 add_ip_rule(ip_rule_t *rule)
 {
+#ifdef BIN_CLS_DB
+	unsigned int uid = UID_ANY, exec_ino = INODE_ANY;
+	int ret;
+#else
 	SR_U16 actions_bitmap = 0;
 	char *user, *program;
+#endif
 
 	if (sr_db_ip_rule_add(rule) != SR_SUCCESS) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
@@ -147,6 +189,95 @@ static SR_32 add_ip_rule(ip_rule_t *rule)
 		return SR_ERROR;
 	}
 
+#ifdef BIN_CLS_DB
+	/* create the rule */
+	ret = cls_rule(true, CLS_IP_RULE_TYPE, rule->rulenum, rule->action_name, 0);
+	if (ret != SR_SUCCESS) {
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+			"%s=failed to create ip rule %u with action %s",REASON,
+			rule->rulenum, rule->action_name);
+		return ret;
+	}
+
+	/* create the uid rule */
+	if (*(rule->tuple.user))
+		uid = sal_get_uid(rule->tuple.user);
+
+	ret = cls_uid_rule(true, CLS_IP_RULE_TYPE, rule->rulenum, uid);
+	if (ret != SR_SUCCESS) {
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+			"%s=failed to add uid %u for ip rule %d",REASON,
+			uid, rule->rulenum);
+		return ret;
+	}
+
+	/* create the exec rule */
+	if (*(rule->tuple.program)) {
+		ret = sr_get_inode(rule->tuple.program, &exec_ino);
+		if (ret != SR_SUCCESS) {
+			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+				"%s=failed to get prog %s inode",REASON,
+				rule->tuple.program);
+			return ret;
+		}
+	}
+
+	ret = cls_prog_rule(true, CLS_IP_RULE_TYPE, rule->rulenum, exec_ino);
+	if (ret != SR_SUCCESS) {
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+			"%s=failed to add exec_ino %u for ip rule %d",REASON,
+			exec_ino, rule->rulenum);
+		return ret;
+	}
+
+	/* create the src ip rule */
+	ret = cls_ip_rule(true, rule->rulenum, rule->tuple.srcaddr.s_addr,
+			rule->tuple.srcnetmask.s_addr, CLS_NET_DIR_SRC);
+	if (ret != SR_SUCCESS) {
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+			"%s=failed to add src ip rule %d",REASON, rule->rulenum);
+		return ret;
+	}
+
+	/* create the dst ip rule */
+	ret = cls_ip_rule(true, rule->rulenum, rule->tuple.dstaddr.s_addr,
+			rule->tuple.dstnetmask.s_addr, CLS_NET_DIR_DST);
+	if (ret != SR_SUCCESS) {
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+			"%s=failed to add dst ip rule %d",REASON, rule->rulenum);
+		return ret;
+	}
+
+	/* create the ip_proto rule */
+	ret = cls_ip_porto_rule(true, rule->rulenum, rule->tuple.proto);
+	if (ret != SR_SUCCESS) {
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+			"%s=failed to add ipproto %u rule %d",REASON,
+			rule->tuple.proto, rule->rulenum);
+		return ret;
+	}
+
+	/* create the src port rule */
+	ret = cls_port_rule(true, rule->rulenum, rule->tuple.srcport,
+			rule->tuple.proto, CLS_NET_DIR_SRC);
+	if (ret != SR_SUCCESS) {
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+			"%s=failed to add src port %u rule %d",REASON,
+			rule->tuple.srcport, rule->rulenum);
+		return ret;
+	}
+
+	/* create the dst port rule */
+	ret = cls_port_rule(true, rule->rulenum, rule->tuple.dstport,
+			rule->tuple.proto, CLS_NET_DIR_DST);
+	if (ret != SR_SUCCESS) {
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+			"%s=failed to add dst port %u rule %d",REASON,
+			rule->tuple.dstport, rule->rulenum);
+		return ret;
+	}
+
+#else
 	if (convert_action(rule->action_name, &actions_bitmap) != SR_SUCCESS) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 			"%s=add ip rule convert action failed",REASON);
@@ -162,6 +293,123 @@ static SR_32 add_ip_rule(ip_rule_t *rule)
 	sr_cls_add_ipv4(rule->tuple.dstaddr.s_addr, program, user, rule->tuple.dstnetmask.s_addr, rule->rulenum, SR_DIR_DST);
 	sr_cls_rule_add(SR_NET_RULES, rule->rulenum, actions_bitmap, SR_FILEOPS_READ, SR_RATE_TYPE_BYTES, rule->tuple.max_rate, /* net_rule.rate_action */ 0 ,
                          /* net_ruole.action.log_target */ 0 , /* net_rule.tuple.action.email_id */ 0 , /* net_rule.tuple.action.phone_id */ 0 , /* net_rule.action.skip_rulenum */ 0);
+#endif
+	return SR_SUCCESS;
+}
+
+static SR_32 delete_ip_rule(ip_rule_t *rule)
+{
+	ip_rule_t *old_rule;
+#ifdef BIN_CLS_DB
+	int ret;
+	unsigned int uid = UID_ANY, exec_ino = INODE_ANY;
+#else
+	char *old_user, *old_program;
+#endif
+
+	if (!(old_rule = sr_db_ip_rule_get(rule))) {
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+			"%s=delete ip rule db get rule failed gettig old %s=%d",REASON,
+			RULE_NUM_KEY,rule->rulenum);
+		return SR_SUCCESS;
+	}
+#ifdef BIN_CLS_DB
+	/* delete the src ip rule */
+	ret = cls_ip_rule(false, old_rule->rulenum, old_rule->tuple.srcaddr.s_addr,
+			old_rule->tuple.srcnetmask.s_addr, CLS_NET_DIR_SRC);
+	if (ret != SR_SUCCESS) {
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+			"%s=failed to add src ip rule %d",REASON, old_rule->rulenum);
+		return ret;
+	}
+
+	/* delete the dst ip rule */
+	ret = cls_ip_rule(false, old_rule->rulenum, old_rule->tuple.dstaddr.s_addr,
+			old_rule->tuple.dstnetmask.s_addr, CLS_NET_DIR_DST);
+	if (ret != SR_SUCCESS) {
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+			"%s=failed to add dst ip rule %d",REASON, old_rule->rulenum);
+		return ret;
+	}
+
+	/* delete the ip_proto rule */
+	ret = cls_ip_porto_rule(false, old_rule->rulenum, old_rule->tuple.proto);
+	if (ret != SR_SUCCESS) {
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+			"%s=failed to add ipproto %u rule %d",REASON,
+			old_rule->tuple.proto, old_rule->rulenum);
+		return ret;
+	}
+
+	/* delete the src port rule */
+	ret = cls_port_rule(false, old_rule->rulenum, old_rule->tuple.srcport,
+			old_rule->tuple.proto, CLS_NET_DIR_SRC);
+	if (ret != SR_SUCCESS) {
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+			"%s=failed to add src port %u rule %d",REASON,
+			old_rule->tuple.srcport, old_rule->rulenum);
+		return ret;
+	}
+
+	/* delete the dst port rule */
+	ret = cls_port_rule(false, old_rule->rulenum, old_rule->tuple.dstport,
+			old_rule->tuple.proto, CLS_NET_DIR_DST);
+	if (ret != SR_SUCCESS) {
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+			"%s=failed to add dst port %u rule %d",REASON,
+			old_rule->tuple.dstport, old_rule->rulenum);
+		return ret;
+	}
+
+	/* delete the uid rule */
+	if (*(old_rule->tuple.user))
+		uid = sal_get_uid(old_rule->tuple.user);
+
+	ret = cls_uid_rule(false, CLS_IP_RULE_TYPE, old_rule->rulenum, uid);
+	if (ret != SR_SUCCESS) {
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+			"%s=failed to delete uid %u for ip rule %d",REASON,
+			uid, old_rule->rulenum);
+		return ret;
+	}
+
+	/* delete the exec rule */
+	if (*(old_rule->tuple.program)) {
+		ret = sr_get_inode(old_rule->tuple.program, &exec_ino);
+		if (ret != SR_SUCCESS) {
+			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+				"%s=failed to get prog %s inode",REASON,
+				old_rule->tuple.program);
+			return ret;
+		}
+	}
+
+	ret = cls_prog_rule(false, CLS_IP_RULE_TYPE, old_rule->rulenum, exec_ino);
+	if (ret != SR_SUCCESS) {
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+			"%s=failed to delete exec_ino %u for ip rule %d",REASON,
+			exec_ino, old_rule->rulenum);
+		return ret;
+	}
+
+	/* delete the rule */
+	ret = cls_rule(false, CLS_IP_RULE_TYPE, old_rule->rulenum, old_rule->action_name, 0);
+	if (ret != SR_SUCCESS) {
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+			"%s=failed to delete ip rule %d",REASON, old_rule->rulenum);
+
+		return ret;
+	}
+#else
+	old_program = *(old_rule->tuple.program) ? old_rule->tuple.program : "*";
+	old_user = *(old_rule->tuple.user) ? old_rule->tuple.user : "*";
+
+	sr_cls_port_del_rule(old_rule->tuple.srcport, old_program, old_user, old_rule->rulenum, SR_DIR_SRC, old_rule->tuple.proto);
+	sr_cls_port_del_rule(old_rule->tuple.dstport, old_program, old_user, old_rule->rulenum, SR_DIR_DST, old_rule->tuple.proto);
+	sr_cls_del_ipv4(old_rule->tuple.srcaddr.s_addr, old_program, old_user, old_rule->tuple.srcnetmask.s_addr, old_rule->rulenum, SR_DIR_SRC);
+	sr_cls_del_ipv4(old_rule->tuple.dstaddr.s_addr, old_program, old_user, old_rule->tuple.dstnetmask.s_addr, old_rule->rulenum, SR_DIR_DST);
+#endif
+	sr_db_ip_rule_delete(rule);
 
 	return SR_SUCCESS;
 }
@@ -169,8 +417,10 @@ static SR_32 add_ip_rule(ip_rule_t *rule)
 static SR_32 update_ip_rule(ip_rule_t *rule)
 {
 	ip_rule_t *old_rule;
-	SR_U16 actions_bitmap = 0;
 	char *user, *program, *old_user, *old_program;
+#ifndef BIN_CLS_DB
+	SR_U16 actions_bitmap = 0;
+#endif
 
 	if (!(old_rule = sr_db_ip_rule_get(rule))) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
@@ -178,10 +428,25 @@ static SR_32 update_ip_rule(ip_rule_t *rule)
 			RULE_NUM_KEY,rule->rulenum);
 		return SR_ERROR;
 	}
+
 	user = *(rule->tuple.user) ? rule->tuple.user : "*";
 	program = *(rule->tuple.program) ? rule->tuple.program : "*";
 	old_user = *(old_rule->tuple.user) ? old_rule->tuple.user : "*";
 	old_program = *(old_rule->tuple.program) ? old_rule->tuple.program : "*";
+
+#ifdef BIN_CLS_DB
+	if (delete_ip_rule(old_rule) == SR_ERROR) {
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+			"%s=update can rule: delete old rule failed",REASON);
+		return SR_ERROR;
+	}
+
+	if (add_ip_rule(rule) == SR_ERROR) {
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+			"%s=update can rule: add updated rule failed",REASON);
+		return SR_ERROR;
+	}
+#else
 
 	if (strncmp(rule->action_name, old_rule->action_name, ACTION_STR_SIZE) != 0) {
 		if (convert_action(rule->action_name, &actions_bitmap) != SR_SUCCESS) {
@@ -193,63 +458,51 @@ static SR_32 update_ip_rule(ip_rule_t *rule)
                          /* net_ruole.action.log_target */ 0 , /* net_rule.tuple.action.email_id */ 0 , /* net_rule.tuple.action.phone_id */ 0 , /* net_rule.action.skip_rulenum */ 0);
 		strncpy(old_rule->action_name, rule->action_name, ACTION_STR_SIZE);
 	}
-
+#endif
 	if (old_rule->tuple.srcport != rule->tuple.srcport) {
+#ifndef BIN_CLS_DB
 		sr_cls_port_del_rule(old_rule->tuple.srcport, old_program, old_user, old_rule->rulenum, SR_DIR_SRC, old_rule->tuple.proto);
 		sr_cls_port_add_rule(rule->tuple.srcport, program, user, rule->rulenum, SR_DIR_SRC, rule->tuple.proto);
+#endif
 		old_rule->tuple.srcport = rule->tuple.srcport;
 	}	
 	if (old_rule->tuple.dstport != rule->tuple.dstport) {
+#ifndef BIN_CLS_DB
 		sr_cls_port_del_rule(old_rule->tuple.dstport, old_program, old_user, old_rule->rulenum, SR_DIR_DST, old_rule->tuple.proto);
 		sr_cls_port_add_rule(rule->tuple.dstport, program, user, rule->rulenum, SR_DIR_DST, rule->tuple.proto);
+#endif
 		old_rule->tuple.dstport = rule->tuple.dstport;
 	}	
 	if (old_rule->tuple.srcaddr.s_addr != rule->tuple.srcaddr.s_addr ||
 	    old_rule->tuple.srcnetmask.s_addr != rule->tuple.srcnetmask.s_addr) {
+#ifndef BIN_CLS_DB
 		sr_cls_del_ipv4(old_rule->tuple.srcaddr.s_addr, old_program, old_user, old_rule->tuple.srcnetmask.s_addr, old_rule->rulenum, SR_DIR_SRC);
 		sr_cls_add_ipv4(rule->tuple.srcaddr.s_addr, program, user, rule->tuple.srcnetmask.s_addr, rule->rulenum, SR_DIR_SRC);
+#endif
 		old_rule->tuple.srcaddr.s_addr = rule->tuple.srcaddr.s_addr;
 	}	
 	if (old_rule->tuple.dstaddr.s_addr != rule->tuple.dstaddr.s_addr ||
 	    old_rule->tuple.dstnetmask.s_addr != rule->tuple.dstnetmask.s_addr) {
+#ifndef BIN_CLS_DB
 		sr_cls_del_ipv4(old_rule->tuple.dstaddr.s_addr, old_program, old_user, old_rule->tuple.dstnetmask.s_addr, old_rule->rulenum, SR_DIR_DST);
 		sr_cls_add_ipv4(rule->tuple.dstaddr.s_addr, program, user, rule->tuple.dstnetmask.s_addr, rule->rulenum, SR_DIR_DST);
+#endif
 		old_rule->tuple.dstaddr.s_addr = rule->tuple.dstaddr.s_addr;
 	}	
 	if (strncmp(old_program, program, PROG_NAME_SIZE) != 0) {
+#ifndef BIN_CLS_DB
 		sr_cls_port_del_rule(old_rule->tuple.srcport, old_program, old_user, old_rule->rulenum, SR_DIR_SRC, old_rule->tuple.proto);
 		sr_cls_port_add_rule(rule->tuple.srcport, program, user, rule->rulenum, SR_DIR_SRC, rule->tuple.proto);
+#endif
 		strncpy(old_rule->tuple.program, rule->tuple.program, PROG_NAME_SIZE);
 	}	
 	if (strncmp(old_user, user, USER_NAME_SIZE) != 0) {
+#ifndef BIN_CLS_DB
 		sr_cls_port_del_rule(old_rule->tuple.srcport, old_program, old_user, old_rule->rulenum, SR_DIR_SRC, old_rule->tuple.proto);
 		sr_cls_port_add_rule(rule->tuple.srcport, program, user, rule->rulenum, SR_DIR_SRC, rule->tuple.proto);
+#endif
 		strncpy(old_rule->tuple.user, rule->tuple.user, USER_NAME_SIZE);
 	}	
-
-	return SR_SUCCESS;
-}
-
-static SR_32 delete_ip_rule(ip_rule_t *rule)
-{
-	ip_rule_t *old_rule;
-	char *old_user, *old_program;
-
-	if (!(old_rule = sr_db_ip_rule_get(rule))) {
-		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-			"%s=delete ip rule db get rule failed gettig old %s=%d",REASON,
-			RULE_NUM_KEY,rule->rulenum);
-		return SR_SUCCESS;
-	}
-
-	old_program = *(old_rule->tuple.program) ? old_rule->tuple.program : "*";
-	old_user = *(old_rule->tuple.user) ? old_rule->tuple.user : "*";
-
-	sr_cls_port_del_rule(old_rule->tuple.srcport, old_program, old_user, old_rule->rulenum, SR_DIR_SRC, old_rule->tuple.proto);
-	sr_cls_port_del_rule(old_rule->tuple.dstport, old_program, old_user, old_rule->rulenum, SR_DIR_DST, old_rule->tuple.proto);
-	sr_cls_del_ipv4(old_rule->tuple.srcaddr.s_addr, old_program, old_user, old_rule->tuple.srcnetmask.s_addr, old_rule->rulenum, SR_DIR_SRC);
-	sr_cls_del_ipv4(old_rule->tuple.dstaddr.s_addr, old_program, old_user, old_rule->tuple.dstnetmask.s_addr, old_rule->rulenum, SR_DIR_DST);
-	sr_db_ip_rule_delete(rule);
 
 	return SR_SUCCESS;
 }
@@ -369,6 +622,7 @@ static SR_32 delete_file_rule(file_rule_t *rule)
 	return SR_SUCCESS;
 }
 
+#ifndef BIN_CLS_DB
 static SR_U8 convert_can_dir(SR_U8 dir)
 {
 	switch (dir) { 
@@ -386,14 +640,17 @@ static SR_U8 convert_can_dir(SR_U8 dir)
 	}
 	return SR_CAN_BOTH;
 }
+#endif
 
 static SR_32 add_can_rule(can_rule_t *rule)
 {
-	SR_U16 actions_bitmap = 0;
+#ifdef BIN_CLS_DB
+	unsigned int uid = UID_ANY, exec_ino = INODE_ANY, if_index = (unsigned int)(-1);
+	int ret;
+#else
 	char *user, *program;
-
-	user = *(rule->tuple.user) ? rule->tuple.user : "*";
-	program = *(rule->tuple.program) ? rule->tuple.program : "*";
+	SR_U16 actions_bitmap = 0;
+#endif
 
 	if (sr_db_can_rule_add(rule) != SR_SUCCESS) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
@@ -401,11 +658,82 @@ static SR_32 add_can_rule(can_rule_t *rule)
 		return SR_ERROR;
 	}
 
+#ifdef BIN_CLS_DB
+	ret = cls_rule(true, CLS_CAN_RULE_TYPE, rule->rulenum, rule->action_name, 0);
+	if (ret != SR_SUCCESS) {
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+			"%s=failed to create can rule %u with action %s",REASON,
+			rule->rulenum, rule->action_name);
+		return ret;
+	}
+
+	/* create the uid rule */
+	if (*(rule->tuple.user))
+		uid = sal_get_uid(rule->tuple.user);
+
+	ret = cls_uid_rule(true, CLS_CAN_RULE_TYPE, rule->rulenum, uid);
+	if (ret != SR_SUCCESS) {
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+			"%s=failed to add uid %u for can rule %d",REASON,
+			uid, rule->rulenum);
+		return ret;
+	}
+
+	/* create the exec rule */
+	if (*(rule->tuple.program)) {
+		ret = sr_get_inode(rule->tuple.program, &exec_ino);
+		if (ret != SR_SUCCESS) {
+			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+				"%s=failed to get prog %s inode",REASON,
+				rule->tuple.program);
+			return ret;
+		}
+	}
+
+	ret = cls_prog_rule(true, CLS_CAN_RULE_TYPE, rule->rulenum, exec_ino);
+	if (ret != SR_SUCCESS) {
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+			"%s=failed to add exec_ino %u for can rule %d",REASON,
+			exec_ino, rule->rulenum);
+		return ret;
+	}
+
+	/* create the can rule */
+	ret = sal_get_interface_id(rule->tuple.interface, (SR_32*)&if_index);
+	if (ret != SR_SUCCESS) {
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+			"%s=failed to get if_index for can %s",REASON,
+			rule->tuple.interface);
+		return ret;
+	}
+
+	if (rule->tuple.direction & SENTRY_DIR_IN) {
+		ret = cls_can_rule(true, rule->rulenum, rule->tuple.msg_id, DIR_IN, if_index);
+		if (ret != SR_SUCCESS) {
+			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+				"%s=failed to add can rule in",REASON);
+			return ret;
+		}
+	}
+
+	if (rule->tuple.direction & SENTRY_DIR_OUT) {
+		ret = cls_can_rule(true, rule->rulenum, rule->tuple.msg_id, DIR_OUT, if_index);
+		if (ret != SR_SUCCESS) {
+			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+				"%s=failed to add can rule out",REASON);
+			return ret;
+		}
+	}
+
+#else
 	if (convert_action(rule->action_name, &actions_bitmap) != SR_SUCCESS) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 			"%s=add can rule: convert to action failed",REASON);
 		return SR_ERROR;
 	}
+
+	user = *(rule->tuple.user) ? rule->tuple.user : "*";
+	program = *(rule->tuple.program) ? rule->tuple.program : "*";
 
 	sr_cls_canid_add_rule(rule->tuple.msg_id, program, user, rule->rulenum, convert_can_dir(rule->tuple.direction), rule->tuple.interface);
 	sr_cls_rule_add(SR_CAN_RULES,
@@ -420,23 +748,140 @@ static SR_32 add_can_rule(can_rule_t *rule)
 					(SR_U16)0 /* net_rule.tuple.action.phone_id */,
 					(SR_U16)0/* net_rule.action.skip_rulenum */);
 
+#endif
+	return SR_SUCCESS;
+}
+
+static SR_32 delete_can_rule(can_rule_t *rule)
+{
+	can_rule_t *old_rule;
+#ifdef BIN_CLS_DB
+	int ret;
+	unsigned int uid = UID_ANY, exec_ino = INODE_ANY, if_index = (unsigned int)(-1);
+#else
+	char *program = NULL, *user = NULL;
+#endif
+
+	if (!(old_rule = sr_db_can_rule_get(rule))) {
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+			"%s=delete can rule: get from db failed rule:%d",REASON,
+			rule->rulenum);
+		return SR_ERROR;
+	}
+
+#ifdef BIN_CLS_DB
+	/* delete the can rule */
+	ret = sal_get_interface_id(old_rule->tuple.interface, (SR_32*)&if_index);
+	if (ret != SR_SUCCESS) {
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+			"%s=failed to get if_index for can %s",REASON,
+			rule->tuple.interface);
+		return ret;
+	}
+
+	if (old_rule->tuple.direction & SENTRY_DIR_IN) {
+		ret = cls_can_rule(false, rule->rulenum, old_rule->tuple.msg_id, DIR_IN, if_index);
+		if (ret != SR_SUCCESS) {
+			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+				"%s=failed to delete can rule in %u mid 0x%x if %u",
+				REASON, rule->rulenum, old_rule->tuple.msg_id, if_index);
+			return ret;
+		}
+	}
+
+	if (old_rule->tuple.direction & SENTRY_DIR_OUT) {
+		ret = cls_can_rule(false, rule->rulenum, old_rule->tuple.msg_id, DIR_OUT, if_index);
+		if (ret != SR_SUCCESS) {
+			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+				"%s=failed to delete can rule out %u mid 0x%x if %u",
+				REASON, rule->rulenum, old_rule->tuple.msg_id, if_index);
+			return ret;
+		}
+	}
+
+	/* delete the uid rule */
+	if (*(old_rule->tuple.user))
+		uid = sal_get_uid(old_rule->tuple.user);
+
+	ret = cls_uid_rule(false, CLS_CAN_RULE_TYPE, rule->rulenum, uid);
+	if (ret != SR_SUCCESS) {
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+			"%s=failed to delete uid %u for can rule %d",REASON,
+			uid, rule->rulenum);
+		return ret;
+	}
+
+	/* delete the exec rule */
+	if (*(old_rule->tuple.program)) {
+		ret = sr_get_inode(old_rule->tuple.program, &exec_ino);
+		if (ret != SR_SUCCESS) {
+			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+				"%s=failed to get prog %s inode",REASON,
+				rule->tuple.program);
+			return ret;
+		}
+	}
+
+	ret = cls_prog_rule(false, CLS_CAN_RULE_TYPE, rule->rulenum, exec_ino);
+	if (ret != SR_SUCCESS) {
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+			"%s=failed to delete exec_ino %u for can rule %d",REASON,
+			exec_ino, rule->rulenum);
+		return ret;
+	}
+
+	ret = cls_rule(false, CLS_CAN_RULE_TYPE, rule->rulenum, rule->action_name, 0);
+	if (ret != SR_SUCCESS) {
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+			"%s=failed to delete can rule %d",REASON, rule->rulenum);
+
+		return ret;
+	}
+
+#else
+	// Check if there other tuples in the rules.
+	if (!can_rule_tuple_exist_for_field(rule->rulenum, rule->tuple.id, SR_TRUE, *(old_rule->tuple.program) ? old_rule->tuple.program : "*"))
+		program = *(old_rule->tuple.program) ? old_rule->tuple.program : "*";
+	if (!can_rule_tuple_exist_for_field(rule->rulenum, rule->tuple.id, SR_FALSE, *(old_rule->tuple.user) ? old_rule->tuple.user : "*"))
+		user = *(old_rule->tuple.user) ? old_rule->tuple.user : "*";
+
+	sr_cls_canid_del_rule(old_rule->tuple.msg_id, program, user, old_rule->rulenum,
+		convert_can_dir(old_rule->tuple.direction), old_rule->tuple.interface);
+#endif
+
+	sr_db_can_rule_delete(rule);
+
 	return SR_SUCCESS;
 }
 
 static SR_32 update_can_rule(can_rule_t *rule)
 {
-	SR_U16 actions_bitmap = 0;
 	can_rule_t *old_rule;
+#ifndef BIN_CLS_DB
+	SR_U16 actions_bitmap = 0;
 	char *user, *program, *old_user, *old_program;
-
-	user = *(rule->tuple.user) ? rule->tuple.user : "*";
-	program = *(rule->tuple.program) ? rule->tuple.program : "*";
+#endif
 
 	if (!(old_rule = sr_db_can_rule_get(rule))) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 			"%s=update can rule: add to db failed",REASON);
 		return SR_ERROR;
 	}
+#ifdef BIN_CLS_DB
+	if (delete_can_rule(old_rule) == SR_ERROR) {
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+			"%s=update can rule: delete old rule failed",REASON);
+		return SR_ERROR;
+	}
+	if (add_can_rule(rule) == SR_ERROR) {
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+			"%s=update can rule: add updated rule failed",REASON);
+		return SR_ERROR;
+	}
+#else
+	user = *(rule->tuple.user) ? rule->tuple.user : "*";
+	program = *(rule->tuple.program) ? rule->tuple.program : "*";
+
 	old_user = *(old_rule->tuple.user) ? old_rule->tuple.user : "*";
 	old_program = *(old_rule->tuple.program) ? old_rule->tuple.program : "*";
 	sr_cls_canid_del_rule(old_rule->tuple.msg_id, old_program, old_user, old_rule->rulenum, convert_can_dir(old_rule->tuple.direction), old_rule->tuple.interface);
@@ -452,37 +897,13 @@ static SR_32 update_can_rule(can_rule_t *rule)
 		strncpy(old_rule->action_name, rule->action_name, ACTION_STR_SIZE);
 	}
 
+	sr_cls_canid_add_rule(rule->tuple.msg_id, program, user, rule->rulenum, convert_can_dir(rule->tuple.direction), rule->tuple.interface);
+#endif
 	old_rule->tuple.msg_id = rule->tuple.msg_id;
 	old_rule->tuple.direction = rule->tuple.direction;
 	strncpy(old_rule->tuple.program, rule->tuple.program, PROG_NAME_SIZE);
 	strncpy(old_rule->tuple.user, rule->tuple.user, USER_NAME_SIZE);
 	strncpy(old_rule->tuple.interface, rule->tuple.interface, INTERFACE_SIZE);
-	sr_cls_canid_add_rule(rule->tuple.msg_id, program, user, rule->rulenum, convert_can_dir(rule->tuple.direction), rule->tuple.interface);
-
-	return SR_SUCCESS;
-}
-
-static SR_32 delete_can_rule(can_rule_t *rule)
-{
-	can_rule_t *old_rule;
-	char *program = NULL, *user = NULL;
-
-	if (!(old_rule = sr_db_can_rule_get(rule))) {
-		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-			"%s=delete can rule: get from db failed rule:%d",REASON,
-			rule->rulenum);
-		return SR_SUCCESS;
-	}
-
-	// Check if there other tuples in the rules.
-	if (!can_rule_tuple_exist_for_field(rule->rulenum, rule->tuple.id, SR_TRUE, *(old_rule->tuple.program) ? old_rule->tuple.program : "*"))
-		program = *(old_rule->tuple.program) ? old_rule->tuple.program : "*";
-	if (!can_rule_tuple_exist_for_field(rule->rulenum, rule->tuple.id, SR_FALSE, *(old_rule->tuple.user) ? old_rule->tuple.user : "*"))
-		user = *(old_rule->tuple.user) ? old_rule->tuple.user : "*";
-
-	sr_cls_canid_del_rule(old_rule->tuple.msg_id, program, user, old_rule->rulenum,
-		convert_can_dir(old_rule->tuple.direction), old_rule->tuple.interface);
-	sr_db_can_rule_delete(rule);
 
 	return SR_SUCCESS;
 }
@@ -500,6 +921,13 @@ void sr_config_vsentry_db_cb(int type, int op, void *entry)
 		if (during_modification) {
 			during_modification = SR_FALSE;
 			printf("during_modification %d\n", during_modification);
+#ifdef BIN_CLS_DB
+			/* modification is completed. update the bin cls with changes */
+			if (bin_cls_update(false) != SR_SUCCESS)
+				fprintf(stderr, "cls bin update failed\n");
+			else
+				fprintf(stdout, "cls bin updated\n");
+#endif
 		}
 		return;
 	}
