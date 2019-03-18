@@ -5,6 +5,14 @@
 #include "hiredis.h"
 #include "db_tools.h"
 
+#define MAX_LIST_NAME_LEN	96
+#define MAX_RULE_FIELDS		12
+
+typedef struct redis_mng_reply {
+	SR_U8	num_fields;
+    char	feilds[MAX_RULE_FIELDS][MAX_LIST_NAME_LEN];
+} redis_mng_reply_t;
+
 #if 0
 enum connection_type {
     CONN_TCP,
@@ -51,9 +59,10 @@ SR_32 redis_mng_load_db(redisContext *c, int pipelined, handle_rule_f_t cb_func)
 SR_32 redis_mng_print_db(redisContext *c, rule_type_t type, SR_32 rule_id);
 
 /* add / modify / delete rules and verify reply */
-SR_32 redis_mng_add_file_rule(redisContext *c, SR_32 rule_id, char *file_name, char *exec, char *user, char *action, SR_U8 file_op);
-SR_32 redis_mng_mod_file_rule(redisContext *c, SR_32 rule_id, char *file_name, char *exec, char *user, char *action, SR_U8 file_op);
+SR_32 redis_mng_add_file_rule(redisContext *c, SR_32 rule_id, char *file_name, char *exec, char *user, char *action, char *file_op);
+SR_32 redis_mng_mod_file_rule(redisContext *c, SR_32 rule_id, char *file_name, char *exec, char *user, char *action, char *file_op);
 SR_32 redis_mng_del_file_rule(redisContext *c, SR_32 rule_id);
+SR_32 redis_mng_get_file_rule(redisContext *c, SR_32 rule_id, redis_mng_reply_t *reply);
 
 SR_32 redis_mng_add_net_rule(redisContext *c, SR_32 rule_id, char *src_addr_netmask, char *dst_addr_netmask,
 		char *proto, char *src_port, char *dst_port, char *exec, char *user, char *action);

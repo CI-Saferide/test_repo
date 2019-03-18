@@ -1023,7 +1023,7 @@ static SR_32 handle_update_file(redisContext *c, SR_BOOL is_wl, SR_U32 rule_id)
 	char permission[4];
  	char user[USER_NAME_SIZE];
 	char program[PROG_NAME_SIZE];
-	SR_U8 file_op = 0;
+//	SR_U8 file_op = 0;
 
 	// Check if the rule exists
 	ret = redis_mng_has_file_rule(c, rule_id);
@@ -1058,9 +1058,9 @@ static SR_32 handle_update_file(redisContext *c, SR_BOOL is_wl, SR_U32 rule_id)
 	}
 #endif
 	if (is_update)
-		ret = redis_mng_mod_file_rule(c, rule_id, NULL/*file_name*/, NULL/*exec*/, NULL/*user*/, new_action_name, file_op/*file_op*/);
+		ret = redis_mng_mod_file_rule(c, rule_id, NULL/*file_name*/, NULL/*exec*/, NULL/*user*/, new_action_name, permission/*file_op*/);
 	else {
-		ret = redis_mng_add_file_rule(c, rule_id, filename, program, user, new_action_name, file_op);
+		ret = redis_mng_add_file_rule(c, rule_id, filename, program, user, new_action_name, permission);
 	}
 /*
 	  if ((rc = redis_mng_add_file_rule(c, i, strs.file, "NULL", "NULL", "drop",

@@ -522,7 +522,7 @@ static int sr_redis_test(int tcp, int clean_first, int clean_at_end)
 		sprintf(strs.file + 44, "%04d", i);
 		j = i % 3;
 		if ((rc = redis_mng_add_file_rule(c, i, strs.file, "NULL", "NULL", "drop",
-				j ? (j == 1 ? SR_FILEOPS_READ : SR_FILEOPS_WRITE) : SR_FILEOPS_EXEC))) {
+				j ? (j == 1 ? "R"/*SR_FILEOPS_READ*/ : "W"/*SR_FILEOPS_WRITE*/) : "X"/*SR_FILEOPS_EXEC*/))) {
 			printf("ERROR: redis_mng_add_file_rule %d failed, ret %d\n", i, rc);
 			redis_mng_session_end(c);
 			return -1;
@@ -562,7 +562,7 @@ static int sr_redis_test(int tcp, int clean_first, int clean_at_end)
 	for (i = 0; i < 1200; i++) {
 		j = i % 3;
 		if ((rc = redis_mng_mod_file_rule(c, i, NULL, NULL, NULL, NULL,
-				j ? (j == 1 ? SR_FILEOPS_EXEC : SR_FILEOPS_READ) : SR_FILEOPS_WRITE))) {
+				j ? (j == 1 ? "X"/*SR_FILEOPS_EXEC*/ : "R"/*SR_FILEOPS_READ*/) : "W"/*SR_FILEOPS_WRITE*/))) {
 			printf("ERROR: redis_mng_modify_file_rule %d failed, ret %d\n", i, rc);
 			redis_mng_session_end(c);
 			return -1;

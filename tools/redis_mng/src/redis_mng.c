@@ -1608,14 +1608,14 @@ SR_32 redis_mng_del_action(redisContext *c, char *name)
 	return SR_SUCCESS;
 }
 
-SR_32 redis_mng_add_file_rule(redisContext *c, SR_32 rule_id, char *file_name, char *exec, char *user, char *action, SR_U8 file_op)
+SR_32 redis_mng_add_file_rule(redisContext *c, SR_32 rule_id, char *file_name, char *exec, char *user, char *action, char *file_op)
 {
-	char perms[4];
+//	char perms[4];
     redisReply *reply;
 
-	file_op_convert(file_op, perms);
+//	file_op_convert(file_op, perms);
 	reply = redisCommand(c,"HMSET %s%d %s %s %s %s %s %s %s %s %s %s", FILE_PREFIX, rule_id, ACTION, action,
-							FILENAME, file_name, PERMISSION, perms, PROGRAM_ID, exec, USER_ID, user);
+							FILENAME, file_name, PERMISSION, file_op, PROGRAM_ID, exec, USER_ID, user);
 	if (reply == NULL || reply->type != REDIS_REPLY_STATUS) {
 		printf("ERROR: redis_mng_add_file_rule failed, %d\n", reply ? reply->type : -1);
 		freeReplyObject(reply);
@@ -1626,21 +1626,21 @@ SR_32 redis_mng_add_file_rule(redisContext *c, SR_32 rule_id, char *file_name, c
 	return SR_SUCCESS;
 }
 
-SR_32 redis_mng_mod_file_rule(redisContext *c, SR_32 rule_id, char *file_name, char *exec, char *user, char *action, SR_U8 file_op)
+SR_32 redis_mng_mod_file_rule(redisContext *c, SR_32 rule_id, char *file_name, char *exec, char *user, char *action, char *file_op)
 {
 	redisReply *reply;
 	char rule[512];
 	int len;
-	char perms[4];
+//	char perms[4];
 
 	len = sprintf(rule, "HMSET %s%d", FILE_PREFIX, rule_id);
 	if (action)
 		len += sprintf(rule + len, " %s %s", ACTION, action);
 	if (file_name)
 		len += sprintf(rule + len, " %s %s", FILENAME, file_name);
-	if (file_op != -1) {
-		file_op_convert(file_op, perms);
-		len += sprintf(rule + len, " %s %s", PERMISSION, perms);
+	if (file_op/* != -1*/) {
+//		file_op_convert(file_op, perms);
+		len += sprintf(rule + len, " %s %s", PERMISSION, file_op);
 	}
 	if (exec)
 		len += sprintf(rule + len, " %s %s", PROGRAM_ID, exec);
@@ -1667,6 +1667,30 @@ SR_32 redis_mng_del_file_rule(redisContext *c, SR_32 rule_id)
 		freeReplyObject(reply);
 		return SR_ERROR;
 	}
+	freeReplyObject(reply);
+	return SR_SUCCESS;
+}
+
+SR_32 redis_mng_get_file_rule(redisContext *c, SR_32 rule_id, redis_mng_reply_t *my_reply)
+{
+	int i;
+	redisReply *reply;
+
+	reply = redisCommand(c,"HGETALL %s%d", FILE_PREFIX, rule_id);
+	if (reply == NULL || reply->type != REDIS_REPLY_ARRAY) {
+		printf("ERROR: redis_mng_get_file_rule %d failed, %d\n", rule_id, reply ? reply->type : -1);
+		freeReplyObject(reply);
+		return SR_ERROR;
+	}
+	if (reply->elements != 10) {
+		printf("ERROR: redis_mng_get_file_rule %d length is wrong %d instead of 10\n", rule_id, (int)reply->elements);
+		freeReplyObject(reply);
+		return SR_ERROR;
+	}
+	my_reply->num_fields = 10;
+	for (i = 0; i < reply->elements; i++)
+		memcpy(my_reply->feilds[i], reply->element[i]->str, strlen(reply->element[i]->str));
+
 	freeReplyObject(reply);
 	return SR_SUCCESS;
 }
