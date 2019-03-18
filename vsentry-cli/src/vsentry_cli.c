@@ -122,18 +122,17 @@ static void notify_updated_ip_rule(SR_U32 rule_id, rule_info_t *update_rule, cha
 	cli_notify_info(msg);
 }
 
-static void notify_updated_file_rule(SR_U32 rule_id, rule_info_t *update_rule, char *action_name)
+#endif
+
+static void notify_updated_file_rule(SR_U32 rule_id, char *filename, char *perm, char *user, char *program, char *action_name)
 {
 	char msg[256];
 
-	snprintf(msg, sizeof(msg), "file rule updated: \n  rule:%d tuple:%d \n  file:%s perm:%s user:%s program:%s action:%s\n",
-			rule_id, update_rule->tuple_id,
-			update_rule->file_rule.tuple.filename, prem_db_to_cli(update_rule->file_rule.tuple.permission),
-			update_rule->file_rule.tuple.user, update_rule->file_rule.tuple.program, action_name);
+	snprintf(msg, sizeof(msg), "file rule updated: \n  rule:%d\n  file:%s perm:%s user:%s program:%s action:%s\n",
+			rule_id, filename, perm, user, program, action_name);
 
 	cli_notify_info(msg);
 }
-#endif
 
 static int engine_connect(void)
 {
@@ -930,14 +929,12 @@ static SR_32 handle_update_ip(redisContext *c, SR_BOOL is_wl, SR_U32 rule_id)
 
 static SR_32 handle_update_file(redisContext *c, SR_BOOL is_wl, SR_U32 rule_id)
 {
-	char  *action_name = NULL, new_action_name[ACTION_STR_SIZE];
+	char action_name[ACTION_STR_SIZE], def_action_name[ACTION_STR_SIZE];
 	SR_32 ret;
 	SR_8 is_update;
-	char filename[FILE_NAME_SIZE];
-	char permission[4];
- 	char user[USER_NAME_SIZE];
-	char program[PROG_NAME_SIZE];
-//	SR_U8 file_op = 0;
+	char filename[FILE_NAME_SIZE], def_filename[FILE_NAME_SIZE];
+	char permission[4], permission_def[4];
+	char user[USER_NAME_SIZE], def_user[USER_NAME_SIZE], program[PROG_NAME_SIZE], def_program[PROG_NAME_SIZE];
 
 	// Check if the rule exists
 	ret = redis_mng_has_file_rule(c, rule_id);
@@ -953,11 +950,11 @@ static SR_32 handle_update_file(redisContext *c, SR_BOOL is_wl, SR_U32 rule_id)
 	}
 
 	strncpy(filename,
-		cli_get_string_user_input(is_update, is_update ? filename : NULL , "file", is_valid_file, NULL), FILE_NAME_SIZE);
-	strncpy(permission, cli_get_string_user_input(is_update, is_update ? permission : NULL , "perm", is_perm_valid, file_perm_help), sizeof(permission));
-	strncpy(program, cli_get_string_user_input(is_update, is_update ? program : "*" , "program", is_valid_program, NULL), PROG_NAME_SIZE);
-	strncpy(user, cli_get_string_user_input(is_update, is_update ? user : "*" , "user", is_valid_user, NULL), USER_NAME_SIZE);
-	strncpy(new_action_name, cli_get_string_user_input(is_update, action_name, "action", is_valid_action, NULL), ACTION_STR_SIZE);
+		cli_get_string_user_input(is_update, is_update ? def_filename : NULL , "file", is_valid_file, NULL), FILE_NAME_SIZE);
+	strncpy(permission, cli_get_string_user_input(is_update, is_update ? permission_def : NULL , "perm", is_perm_valid, file_perm_help), sizeof(permission));
+	strncpy(program, cli_get_string_user_input(is_update, is_update ? def_program : "*" , "program", is_valid_program, NULL), PROG_NAME_SIZE);
+	strncpy(user, cli_get_string_user_input(is_update, is_update ? def_user : "*" , "user", is_valid_user, NULL), USER_NAME_SIZE);
+	strncpy(action_name, cli_get_string_user_input(is_update, is_update ? def_action_name : NULL, "action", is_valid_action, NULL), ACTION_STR_SIZE);
 
 #if 0
 	strncpy(is_wl ? file_wl[rule_id].action_name : file_rules[rule_id].action_name, new_action_name, ACTION_STR_SIZE);
@@ -972,9 +969,9 @@ static SR_32 handle_update_file(redisContext *c, SR_BOOL is_wl, SR_U32 rule_id)
 	}
 #endif
 	if (is_update)
-		ret = redis_mng_mod_file_rule(c, rule_id, NULL/*file_name*/, NULL/*exec*/, NULL/*user*/, new_action_name, permission/*file_op*/);
+		ret = redis_mng_mod_file_rule(c, rule_id, filename, program, user, action_name, perm_cli_to_db(permission));
 	else {
-		ret = redis_mng_add_file_rule(c, rule_id, filename, program, user, new_action_name, permission);
+		ret = redis_mng_add_file_rule(c, rule_id, filename, program, user, action_name, perm_cli_to_db(permission));
 	}
 /*
 	  if ((rc = redis_mng_add_file_rule(c, i, strs.file, "NULL", "NULL", "drop",
@@ -986,7 +983,7 @@ static SR_32 handle_update_file(redisContext *c, SR_BOOL is_wl, SR_U32 rule_id)
 
 */
 
-	//notify_updated_file_rule(rule_id, &update_rule, new_action_name);
+	notify_updated_file_rule(rule_id, filename, permission, user, program, action_name);
 	return ret;
 }
 
