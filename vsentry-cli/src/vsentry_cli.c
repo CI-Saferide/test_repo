@@ -629,6 +629,11 @@ static int is_valid_msg_ig(char *str)
 	return 1;
 }
 
+static int is_valid_action(char *action_name)
+{
+	return 1;
+}
+
 #if 0
 static SR_BOOL is_special_interface(char *interface)
 {
@@ -650,16 +655,6 @@ static int is_valid_interface(char *interface)
 	if (is_special_interface(interface))
 		return 1;
 	return 0;
-}
-
-static int is_valid_action(char *action_name)
-{
-	if (!get_action(action_name)) { 
-		printf("invalid action: %s \n", action_name);
-		return 0;
-	}
-
-	return 1;
 }
 
 static int is_valid_dir(char *dir)
@@ -686,6 +681,7 @@ static int is_valid_port(char *port)
 
 	return 1;
 }
+#endif
 
 static int is_perm_valid(char *perm)
 {
@@ -693,13 +689,13 @@ static int is_perm_valid(char *perm)
 		return 0;
 
 	for(; *perm; perm++) {
-		if (*perm != 'r' && *perm != 'w' && *perm != 'x')
+		if (*perm != 'r' && *perm != 'w' && *perm != 'x') {
 			return 0;
+		}
 	}
 
 	return 1;
 }
-#endif
 
 static void msg_id_help(void)
 {
@@ -707,6 +703,12 @@ static void msg_id_help(void)
 }
 
 #if 0
+
+static void ip_proto_help(void)
+{
+	printf("tcp, udp, any\n");
+}
+
 static void can_interface_help(void)
 {
 	struct ifaddrs *addrs,*tmp;
@@ -725,6 +727,8 @@ static void can_interface_help(void)
 
 	freeifaddrs(addrs);
 }
+
+#endif 
 
 static int is_valid_program(char *program)
 {
@@ -774,12 +778,6 @@ static void file_perm_help(void)
 {
 	printf("r - read, w - write, x - executable\n");
 }
-
-static void ip_proto_help(void)
-{
-	printf("tcp, udp, any\n");
-}
-#endif
 
 /* fixme get (and verify) each mid
  * add to list */
@@ -1018,46 +1016,35 @@ static SR_32 handle_update_ip(redisContext *c, SR_BOOL is_wl, SR_U32 rule_id)
 
 static SR_32 handle_update_file(redisContext *c, SR_BOOL is_wl, SR_U32 rule_id)
 {
-	char  /**action_name = NULL,*/ new_action_name[ACTION_STR_SIZE];
+	char  *action_name = NULL, new_action_name[ACTION_STR_SIZE];
 	SR_32 ret;
-	SR_8 update;
+	SR_8 is_update;
+	char filename[FILE_NAME_SIZE];
+	char permission[4];
+ 	char user[USER_NAME_SIZE];
+	char program[PROG_NAME_SIZE];
+	SR_U8 file_op = 0;
 
 	// Check if the rule exists
+	ret = redis_mng_has_file_rule(c, rule_id);
 	if ((ret = redis_mng_has_file_rule(c, rule_id)) == SR_ERROR)
 		return SR_ERROR;
-#if 0
-	rule_info = get_rule_sorted(is_wl ? file_wl[rule_id].rule_info : file_rules[rule_id].rule_info, tuple_id);
-	action_name = is_wl ? file_wl[rule_id].action_name : file_rules[rule_id].action_name;
-#endif
-//	if (rule_info) {
+
 	if (ret) {
-//		update_rule = *rule_info;
-		update = 1;
-		printf("> updating an existing rule...\n");
+		is_update = 1;
+		printf("\n> updating an existing rule...\n");
 	} else {
-		update = 0;
+		is_update = 0;
 		printf("\n> adding a new rule...\n");
-//		action_name = NULL;
 	}
 
-	// fixme
-#if 0
-	strncpy(update_rule.file_rule.tuple.filename,
-		cli_get_string_user_input(rule_info != NULL, rule_info ? rule_info->file_rule.tuple.filename : NULL , "file", is_valid_file, NULL), FILE_NAME_SIZE);
-	strncpy(update_rule.file_rule.tuple.permission,
-		perm_cli_to_db(cli_get_string_user_input(rule_info != NULL, rule_info ? prem_db_to_cli(rule_info->file_rule.tuple.permission) : NULL , "perm", is_perm_valid,
-			 file_perm_help)), 4);
-	strncpy(update_rule.file_rule.tuple.program, cli_get_string_user_input(rule_info != NULL, rule_info ? rule_info->file_rule.tuple.program : "*" , "program", is_valid_program, NULL), PROG_NAME_SIZE);
-	strncpy(update_rule.file_rule.tuple.user, cli_get_string_user_input(rule_info != NULL, rule_info ? rule_info->file_rule.tuple.user : "*" , "user", is_valid_user, NULL), USER_NAME_SIZE);
-	strncpy(new_action_name, cli_get_string_user_input(rule_info != NULL, action_name, "action", is_valid_action, NULL), ACTION_STR_SIZE);
+	strncpy(filename,
+		cli_get_string_user_input(is_update, is_update ? filename : NULL , "file", is_valid_file, NULL), FILE_NAME_SIZE);
+	strncpy(permission, cli_get_string_user_input(is_update, is_update ? permission : NULL , "perm", is_perm_valid, file_perm_help), sizeof(permission));
+	strncpy(program, cli_get_string_user_input(is_update, is_update ? program : "*" , "program", is_valid_program, NULL), PROG_NAME_SIZE);
+	strncpy(user, cli_get_string_user_input(is_update, is_update ? user : "*" , "user", is_valid_user, NULL), USER_NAME_SIZE);
+	strncpy(new_action_name, cli_get_string_user_input(is_update, action_name, "action", is_valid_action, NULL), ACTION_STR_SIZE);
 
-	update_rule.tuple_id = update_rule.file_rule.tuple.id = tuple_id;
-	update_rule.file_rule.rulenum = rule_id;
-	update_rule.rule_type = RULE_TYPE_FILE;
-#endif
-
-	//notify_updated_file_rule(rule_id, &update_rule, new_action_name);
-	
 #if 0
 	strncpy(is_wl ? file_wl[rule_id].action_name : file_rules[rule_id].action_name, new_action_name, ACTION_STR_SIZE);
 	if (!rule_info) { 
@@ -1070,11 +1057,22 @@ static SR_32 handle_update_file(redisContext *c, SR_BOOL is_wl, SR_U32 rule_id)
 		*rule_info = update_rule;
 	}
 #endif
+	if (is_update)
+		ret = redis_mng_mod_file_rule(c, rule_id, NULL/*file_name*/, NULL/*exec*/, NULL/*user*/, new_action_name, file_op/*file_op*/);
+	else {
+		ret = redis_mng_add_file_rule(c, rule_id, filename, program, user, new_action_name, file_op);
+	}
+/*
+	  if ((rc = redis_mng_add_file_rule(c, i, strs.file, "NULL", "NULL", "drop",
+                                j ? (j == 1 ? SR_FILEOPS_READ : SR_FILEOPS_WRITE) : SR_FILEOPS_EXEC))) {
+                        printf("ERROR: redis_mng_add_file_rule %d failed, ret %d\n", i, rc);
+                        redis_mng_session_end(c);
+                        return -1;
+                }
 
-	if (update)
-		ret = redis_mng_mod_file_rule(c, rule_id, NULL/*file_name*/, NULL/*exec*/, NULL/*user*/, new_action_name, 0/*file_op*/);
-	else
-		ret = redis_mng_add_file_rule(c, rule_id, "help"/*file_name*/, "NULL"/*exec*/, "NULL"/*user*/, new_action_name, 0/*file_op*/);
+*/
+
+	//notify_updated_file_rule(rule_id, &update_rule, new_action_name);
 	return ret;
 }
 
@@ -1542,7 +1540,7 @@ static void handle_sr_ver(char *buf)
 
 static void rule_help(void)
 {
-        printf("[rule=X] [tuple=X]");
+        printf("[rule=X]");
 }
 
 static void update_list(void)
@@ -1591,30 +1589,21 @@ static void show(char *buf)
 	show_wl(buf);
 }
 
-#if 0
-static void get_rule_ids(char *buf, int *rule_id, int *tuple_id)
+static void get_rule_id(char *buf, int *rule_id)
 {
 	char *tmp = NULL, *ptr;
 
 	tmp = strdup(buf);
 
-	*rule_id = *tuple_id = -1;
+	*rule_id = -1;
 
 	for (ptr = strtok(tmp, " "); ptr && memcmp(ptr, "rule=", strlen("rule=")); ptr = strtok(NULL, " "));
-	if (ptr) {
+	if (ptr)
 		*rule_id = atoi(ptr+strlen("rule="));
-		ptr = strtok(NULL, " ");
-		if (ptr) {
-			if (!memcmp(ptr, "tuple=", strlen("tuple="))) {
-				*tuple_id = atoi(ptr+strlen("tuple="));
-			}
-		}
-	}
 
 	if (tmp)
 		free(tmp);
 }
-#endif
 
 static void show_rule_can(char *buf)
 {
@@ -1790,15 +1779,15 @@ static void update_wl_can(char *buf)
 
 static void update_rule_file(char *buf)
 {
-/*	int rule_id, tuple_id;
+	int rule_id;
 
-	get_rule_ids(buf, &rule_id, &tuple_id);
-	
-	if (rule_id == -1 || tuple_id == -1) {
+	get_rule_id(buf, &rule_id);
+	if (rule_id < 0) {
 		cli_error("\rRule id or Tuple is missing", SR_FALSE);
 		return;
-	}*/
-	handle_update_file(c, SR_FALSE, -1/*rule_id*/);
+	}
+
+	handle_update_file(c, SR_FALSE, rule_id);
 	is_dirty = SR_TRUE;
 }
 
@@ -1874,17 +1863,9 @@ static void delete_rule_ip(char *buf)
 	is_dirty = SR_TRUE;
 }
 
-#if 0
-static void handle_commit(char *buf)
-{
-	printf("\ncommitting...\n");
-	if (__handle_commit() != SR_SUCCESS) {
-		printf("commit failed !!!\n");
-	}
-}
-
 static void handle_exit(char *buf)
 {
+/*
 	char *ptr;
 	char help[128];
 
@@ -1894,8 +1875,19 @@ static void handle_exit(char *buf)
 		if (ptr && *help == 'n')
 			return;
 	}
+*/
 	cli_set_run(0);
 }
+
+#if 0
+static void handle_commit(char *buf)
+{
+	printf("\ncommitting...\n");
+	if (__handle_commit() != SR_SUCCESS) {
+		printf("commit failed !!!\n");
+	}
+}
+
 
 static void handle_load_cb(char *buf)
 {
@@ -2074,6 +2066,12 @@ SR_32 main(int argc, char **argv)
 		}
 	}*/
 
+	if (!(c = redis_mng_session_start(1))) {
+                printf("ERROR: redis_mng_session_start failed\n");
+                redis_mng_session_end(c);
+                return -1;
+        }
+
 	cli_init("(vsentry-cli"
 		  "(help)"
 		  "(show (rule (can)(ip)(file)) (wl (can)(ip)(file))(action))"
@@ -2179,7 +2177,7 @@ SR_32 main(int argc, char **argv)
         cli_register_operatios("commit", &commit_operations);
 
         exit_operations.help_cb = NULL;
-        exit_operations.run_cb = NULL/*handle_exit*/;
+        exit_operations.run_cb = handle_exit;
         cli_register_operatios("exit", &exit_operations);
 
         load_operations.help_cb = NULL;
