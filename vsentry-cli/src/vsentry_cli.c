@@ -95,21 +95,16 @@ SR_BOOL engine_state;
 
 static SR_BOOL is_dirty = SR_FALSE;
 
-#if 0
-static void notify_updated_can_rule(SR_U32 rule_id, rule_info_t *update_rule, char *action_name)
+static void notify_updated_can_rule(SR_U32 rule_id, char *mid, char *interface, char *exec, char *user, char *dir, char *action)
 {
 	char msg[256];
 
-	snprintf(msg, sizeof(msg), "can rule update:\n   rule:%d tuple:%d\n   mid :%x interface :%s direction :%s user:%s program:%s action:%s \n",
-		rule_id, update_rule->tuple_id, 
-		update_rule->can_rule.tuple.msg_id,
-		update_rule->can_rule.tuple.interface,
-		get_dir_desc(update_rule->can_rule.tuple.direction),
-		update_rule->can_rule.tuple.user, update_rule->can_rule.tuple.program,
-		action_name);
+	snprintf(msg, sizeof(msg), "can rule update:\n   rule:%u mid:%s interface:%s direction:%s user:%s program:%s action:%s \n",
+		rule_id, mid, interface, dir, user, exec, action);
 	cli_notify_info(msg);
 }
 
+#if 0
 static void notify_updated_ip_rule(SR_U32 rule_id, rule_info_t *update_rule, char *action_name)
 {
 	char src_addr[IPV4_STR_MAX_LEN], src_netmask[IPV4_STR_MAX_LEN], dst_addr[IPV4_STR_MAX_LEN], dst_netmask[IPV4_STR_MAX_LEN];
@@ -618,7 +613,7 @@ static void print_can_rules(redisContext *c, SR_BOOL is_wl, SR_32 rule_id)
 	printf("\r");
 }
 
-static int is_valid_msg_ig(char *str)
+static int is_valid_msg_id(char *str)
 {
 	if (!strcmp(str, "any"))
 		return 1;
@@ -634,7 +629,6 @@ static int is_valid_action(char *action_name)
 	return 1;
 }
 
-#if 0
 static SR_BOOL is_special_interface(char *interface)
 {
 	struct stat buf;
@@ -662,6 +656,7 @@ static int is_valid_dir(char *dir)
 	return get_dir_id(dir) != -1;
 }
 
+#if 0
 static int is_valid_ip_proto(char *ip_proto)
 {
 	return (!strcmp(ip_proto, "tcp") || !strcmp(ip_proto, "udp") || !strcmp(ip_proto, "any"));
@@ -702,12 +697,13 @@ static void msg_id_help(void)
 	printf("hex digits, for any mid - \"any\", default: \"any\" \n");
 }
 
-#if 0
 
+#if 0
 static void ip_proto_help(void)
 {
 	printf("tcp, udp, any\n");
 }
+#endif 
 
 static void can_interface_help(void)
 {
@@ -727,8 +723,6 @@ static void can_interface_help(void)
 
 	freeifaddrs(addrs);
 }
-
-#endif 
 
 static int is_valid_program(char *program)
 {
@@ -779,28 +773,13 @@ static void file_perm_help(void)
 	printf("r - read, w - write, x - executable\n");
 }
 
-/* fixme get (and verify) each mid
- * add to list */
-#if 0
-static char *handle_update_can(void)
-{
-	char msg_id_def[32];
-
-	strcpy(msg_id_def, "any"); // default
-
-	return cli_get_string_user_input(0, msg_id_def, "mid", is_valid_msg_ig, msg_id_help);
-}
-#endif
-
 static SR_32 handle_update_can(redisContext *c, SR_BOOL is_wl, SR_U32 rule_id)
 {
-	//rule_info_t *rule_info, update_rule, *new_rule;
-	char /**ptr,*/ *msg_id_input, msg_id_def[32]/*, *dir_input*/, dir_def[16];
-	char /**action_name = NULL,*/ new_action_name[ACTION_STR_SIZE];
+	char msg_id[32], msg_id_def[32], dir_input[16], dir_def[16], interface[64], def_interface[64];
+	char user[USER_NAME_SIZE], def_user[USER_NAME_SIZE], program[PROG_NAME_SIZE], def_program[PROG_NAME_SIZE];
+	char *action_name = NULL, new_action_name[ACTION_STR_SIZE];
 	SR_32 ret;
-	SR_8 update;
-
-	// todo need to know if this is a new rule or modifed, because if new and not all fields are given, need to use default vals
+	SR_8 is_update;
 
 	// Check if the rule exists
 	if ((ret = redis_mng_has_can_rule(c, rule_id)) == SR_ERROR)
@@ -808,7 +787,7 @@ static SR_32 handle_update_can(redisContext *c, SR_BOOL is_wl, SR_U32 rule_id)
 
 	if (ret) {
 		printf("\r\n> updating an existing rule...\n\r");
-		update = 1;
+		is_update = 1;
 /*		if (rule_info->can_rule.tuple.msg_id == MSGID_ANY)
 			strcpy(msg_id_def, "any");
 		else
@@ -817,106 +796,41 @@ static SR_32 handle_update_can(redisContext *c, SR_BOOL is_wl, SR_U32 rule_id)
 		action_name = is_wl ? can_wl[rule_id].action_name : can_rules[rule_id].action_name;*/
 	} else {
 		printf("\r\n> adding a new rule...\n\r");
-		update = 0;
+		is_update = 0;
 		// defaults if no mid list or dir given
 		strcpy(msg_id_def, "any");
 		strcpy(dir_def, "both");
 	}
 
 	// mid - should string or list name, if string verify valid val, else verify nothing (or that list exist ? list type ?)
-	msg_id_input = cli_get_string_user_input(update,
-			msg_id_def,
-			"mid",
-			is_valid_msg_ig,
-			msg_id_help);
-	// fixme
-#if 0
-	if (!strcmp(msg_id_input, "any"))
-		update_rule.can_rule.tuple.msg_id = MSGID_ANY;
-	else
-		update_rule.can_rule.tuple.msg_id = strtoul(msg_id_input, &ptr, 16);
-
-	strncpy(update_rule.can_rule.tuple.interface, 
-		cli_get_string_user_input(update,
-				rule_info ? rule_info->can_rule.tuple.interface : NULL,
-				"interface",
-				is_valid_interface,
-				can_interface_help), INTERFACE_SIZE);
-
-	dir_input = cli_get_string_user_input(update,
-			dir_def,
-			"direction (in, out, both)",
-			is_valid_dir,
-			NULL);
-	update_rule.can_rule.tuple.direction = get_dir_id(dir_input);
-
-	strncpy(update_rule.can_rule.tuple.program,
-			cli_get_string_user_input(update,
-					rule_info ? rule_info->can_rule.tuple.program : "*",
-					"program",
-					is_valid_program,
-					NULL), PROG_NAME_SIZE);
-	strncpy(update_rule.can_rule.tuple.user,
-			cli_get_string_user_input(update,
-					rule_info ? rule_info->can_rule.tuple.user : "*",
-					"user",
-					is_valid_user,
-					NULL), USER_NAME_SIZE);
-
-	strncpy(new_action_name,
-			cli_get_string_user_input(update,
-					action_name,
-					"action",
-					is_valid_action,
-					NULL), ACTION_STR_SIZE);
-
-	update_rule.tuple_id = update_rule.can_rule.tuple.id = tuple_id;
-	update_rule.can_rule.rulenum = rule_id;
-	update_rule.rule_type = RULE_TYPE_CAN;
-#endif
+	strncpy(msg_id, cli_get_string_user_input(is_update, msg_id_def, "mid", is_valid_msg_id, msg_id_help), sizeof(msg_id));
+	strncpy(interface, cli_get_string_user_input(is_update, is_update ? def_interface : NULL, "interface", is_valid_interface,
+		can_interface_help), INTERFACE_SIZE);
+	strncpy(dir_input, cli_get_string_user_input(is_update, dir_def, "direction (in, out, both)", is_valid_dir, NULL), sizeof(dir_input));
+	strncpy(program, cli_get_string_user_input(is_update, is_update ? def_program : "*", "program", is_valid_program, NULL), sizeof(program));
+	strncpy(user, cli_get_string_user_input(is_update, is_update ? def_user : "*", "user", is_valid_user,NULL),  sizeof(user));
+	strncpy(new_action_name, cli_get_string_user_input(is_update, action_name, "action", is_valid_action, NULL), sizeof(new_action_name));
 
 #ifdef CLI_DEBUG
-	printf("tuple id :%d \n", update_rule.tuple_id);
-	printf("mid :%x \n", update_rule.can_rule.tuple.msg_id);
-	printf("interface :%s \n", update_rule.can_rule.tuple.interface);
-	printf("direction :%s \n", get_dir_desc(update_rule.can_rule.tuple.direction));
-	printf("program :%s \n", update_rule.can_rule.tuple.program);
-	printf("user :%s \n", update_rule.can_rule.tuple.user);
-	printf("action :%s \n", new_action_name);
+	printf("\rmid :%s \n", msg_id);
+	printf("\rinterface :%s \n", interface);
+	printf("\rdirection :%s \n", dir_input);
+	printf("\rprogram :%s \n", program);
+	printf("\ruser :%s \n", user);
+	printf("\raction :%s \n", new_action_name);
 #endif
 	
-#if 0
-	//notify_updated_can_rule(rule_id, &update_rule, new_action_name);
-	snprintf(msg, sizeof(msg), "can rule update:\n   rule:%d tuple:%d\n   mid :%x interface :%s direction :%s user:%s program:%s action:%s \n",
-			rule_id, update_rule->tuple_id,
-			update_rule->can_rule.tuple.msg_id,
-			update_rule->can_rule.tuple.interface,
-			get_dir_desc(update_rule->can_rule.tuple.direction),
-			update_rule->can_rule.tuple.user, update_rule->can_rule.tuple.program,
-			action_name);
-	cli_notify_info(msg);
-#endif
-
-	// fixme
-	if (update)
-		ret = redis_mng_mod_can_rule(c, rule_id, msg_id_input, NULL/*interface*/, NULL/*exec*/, NULL/*user*/,
-				new_action_name, dir_def);
+	if (is_update)
+		ret = redis_mng_mod_can_rule(c, rule_id, msg_id, interface, program, user, new_action_name, dir_input);
 	else
-		ret = redis_mng_add_can_rule(c, rule_id, msg_id_input, "NULL"/*interface*/, "NULL"/*exec*/, "NULL"/*user*/,
-				new_action_name, dir_def);
+		ret = redis_mng_add_can_rule(c, rule_id, msg_id, interface, program, user, new_action_name, dir_input);
 
-#if 0
-	strncpy(is_wl ? can_wl[rule_id].action_name : can_rules[rule_id].action_name, new_action_name, ACTION_STR_SIZE);
-	if (!rule_info) { 
-		if (!(new_rule = malloc(sizeof(rule_info_t)))) {
-			return SR_ERROR;
-		}
-		*new_rule = update_rule;
-		insert_rule_sorted(is_wl ? &can_wl[rule_id].rule_info : &can_rules[rule_id].rule_info, new_rule, tuple_id);
-	} else {
-		*rule_info = update_rule;
+	if (ret != SR_SUCCESS) {
+		cli_error("update rule failed", SR_TRUE);
+		return ret;
 	}
-#endif
+				
+	notify_updated_can_rule(rule_id, msg_id, interface, program, user, dir_input, new_action_name);
 
 	return ret;
 }
@@ -1656,18 +1570,21 @@ static void show_wl_ip(char *buf)
 	print_ip_rules(c, SR_TRUE, -1/*rule_id*/);
 }
 
-#if 0
-static void update_rule_can(redisContext *c)
+static void update_rule_can(char *buf)
 {
-/*	get_rule_ids(buf, &rule_id, &tuple_id);
-	if (rule_id == -1 || tuple_id == -1) {
-		cli_error("\rRule id or Tuple is missing", SR_FALSE);
+	int rule_id;
+
+	get_rule_id(buf, &rule_id);
+	if (rule_id < 0) {
+		cli_error("\rRule id is missing", SR_FALSE);
 		return;
-	}*/
+	}
+
 	handle_update_can(c, SR_FALSE, rule_id);
 	is_dirty = SR_TRUE;
 }
 
+#if 0
 static void __update_action(char *buf, SR_BOOL is_delete)
 {
 	char *tmp = NULL, *ptr, *action_name, *action_type, *log, *log_facility;
@@ -1783,7 +1700,7 @@ static void update_rule_file(char *buf)
 
 	get_rule_id(buf, &rule_id);
 	if (rule_id < 0) {
-		cli_error("\rRule id or Tuple is missing", SR_FALSE);
+		cli_error("\rRule id is missing", SR_FALSE);
 		return;
 	}
 
@@ -2145,7 +2062,7 @@ SR_32 main(int argc, char **argv)
         cli_register_operatios("delete/action", &delete_action_operations);
 
         update_rule_can_operations.help_cb = rule_help;
-        update_rule_can_operations.run_cb = NULL/*update_rule_can*/;
+        update_rule_can_operations.run_cb = update_rule_can;
         cli_register_operatios("update/rule/can", &update_rule_can_operations);
 
         update_rule_file_operations.help_cb = rule_help;
