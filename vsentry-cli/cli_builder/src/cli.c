@@ -121,10 +121,6 @@ static void chop_nl(char *str)
 		str[len - 1] = '\0';
 }
 
-/* if there is a default, it is given
- * if the field has no default, NULL is given -> then this function will not return without user input
- * if the rule is being updated, prev value will be given
- */
 char *cli_get_string_user_input(int is_current, char *def_val, char *prompt, int (*is_valid_cb)(char *data), void (*help_cb)(void))
 {
 	char buf[512];
@@ -356,7 +352,7 @@ void handle_enter(char *buf)
 		goto out;
 	if (!rule_operation->run_cb)
 		goto out;
-	rule_operation->run_cb(NULL);
+	rule_operation->run_cb(buf);
 
 out:
 	if (tmp)
