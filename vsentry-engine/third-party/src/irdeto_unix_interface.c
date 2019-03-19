@@ -48,7 +48,7 @@ static SR_BOOL is_run_cb(void)
 	return is_run;
 }
 
-static SR_32 irdeto_interface_server(void *data)
+static SR_32 irdeto_unix_interface_server(void *data)
 {
 	SR_32 rc;
 
@@ -61,12 +61,12 @@ static SR_32 irdeto_interface_server(void *data)
 	return SR_SUCCESS;
 }
 
-SR_32 irdeto_interface_init(void)
+SR_32 irdeto_unix_interface_init(void)
 {
 	SR_32 ret;
 	memset(g_buffer_tail, 0, MAX_PAYLOAD);
 	is_run = SR_TRUE;
-	ret = sr_start_task(SR_IRDETO_SOCKET, irdeto_interface_server);
+	ret = sr_start_task(SR_IRDETO_SOCKET, irdeto_unix_interface_server);
 	if (ret != SR_SUCCESS) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 						"%s=failed to start irdeto unix socket",REASON);
@@ -76,7 +76,7 @@ SR_32 irdeto_interface_init(void)
 	return SR_SUCCESS;
 }
 
-void irdeto_interface_uninit(void)
+void irdeto_unix_interface_uninit(void)
 {
 	is_run = SR_FALSE;
 	sr_stop_task(SR_IRDETO_SOCKET);

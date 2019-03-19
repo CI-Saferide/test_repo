@@ -45,6 +45,8 @@
 #include "irdeto_unix_interface.h"
 #endif
 #include "sr_stat_system_policer.h"
+#include "irdeto_interface.h"
+#include "sr_engine_static_rules.h"
 
 #ifdef BIN_CLS_DB
 #include "sr_bin_cls_eng.h"
@@ -204,8 +206,9 @@ static void engine_shutdown(void)
 	sal_cli_interface_uninit();
 #endif
 
-#ifdef CONFIG_IRDETO_INTERFACE
 	irdeto_interface_uninit();
+#ifdef CONFIG_IRDETO_INTERFACE
+	irdeto_unix_interface_uninit();
 #endif /* CONFIG_IRDETO_INTERFACE */
 
 	if (config_params->remote_server_support_enable) {
@@ -400,9 +403,20 @@ SR_32 sr_engine_start(int argc, char *argv[])
 	}
 #endif
 
+ 	if (create_static_white_list()) {
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+			"%s=failed to create Irdeto static white list ",REASON);
+		return SR_ERROR;
+	}
 #ifdef CONFIG_IRDETO_INTERFACE
-	ret = irdeto_interface_init();
+	ret = irdeto_unix_interface_init();
 #endif /* CONFIG_IRDETO_INTERFACE */
+	ret = irdeto_interface_init();
+	if (ret != SR_SUCCESS){
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+			"%s=failed to init irdeto interface",REASON);
+		return SR_ERROR;
+	}
 
 #ifdef BIN_CLS_DB
 	bin_cls_init();

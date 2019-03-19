@@ -8,6 +8,7 @@ BUILD_DIR 	:= $(TOP_DIR)/build
 OBJDIR		:= $(BUILD_DIR)/objs
 LIBDIR		:= $(BUILD_DIR)/lib
 BINDIR 		:= $(BUILD_DIR)/bin
+MUTUAL_REPO_DIR := $(TOP_DIR)/../mutual-repo
 
 TARGET 		:= sr_engine
 
@@ -67,6 +68,8 @@ SRCS 		:=  main.c \
 				sr_canbus_common.c \
 				sr_stat_system_policer.c \
 				irdeto_unix_interface.c \
+				irdeto_interface.c \
+				sr_engine_static_rules.c
 				sr_bin_cls_eng.c \
 
 SRCS 		+= $(if $(SR_CLI),sal_cli_interface.c sr_engine_cli.c)
@@ -88,6 +91,8 @@ INCLUDES 	:=  -I../common/include \
 				-Iwhite_list/include \
 				-Ithird-party/include \
 				-Idb/include \
+				-I../mutual-repo/include \
+				-I../mutual-repo/client \
 				-I$(TOP_DIR)/../binary_cls \
 
 OBJS		:=  $(addprefix $(OBJDIR)/,$(SRCS:.c=.o))
@@ -95,12 +100,12 @@ DEPS		:=  $(OBJS:.o=.d)
 
 # libs to link with
 ifdef BIN_CLS_DB
-LIBS		:= -Wl,--start-group -l$(TARGET) -lsr_hash -lsr_log -lsysrepo_mng -ldb_tools -lbin_cls -Wl,--end-group -lpthread -ljsmn -lsentry -lsysrepo -lcurl -larchive -lcrypto
+LIBS		:= -Wl,--start-group -l$(TARGET) -lsr_hash -lsr_log -lsysrepo_mng -ldb_tools -lbin_cls -Wl,--end-group -lpthread -ljsmn -lsentry -lsysrepo -lcurl -larchive -lcrypto -lclient
 else
-LIBS 		:= -Wl,--start-group -l$(TARGET) -lsr_hash -lsr_log -lsysrepo_mng -ldb_tools -Wl,--end-group -lpthread -ljsmn -lsentry -lsysrepo -lcurl -larchive -lcrypto
+LIBS 		:= -Wl,--start-group -l$(TARGET) -lsr_hash -lsr_log -lsysrepo_mng -ldb_tools -Wl,--end-group -lpthread -ljsmn -lsentry -lsysrepo -lcurl -larchive -lcrypto -lclient
 endif
 # and where to search them 
-LIB_PATH 	:= -L$(LIBDIR)
+LIB_PATH 	:= -L$(LIBDIR) -L../mutual-repo/client/lib
 
 CFLAGS 		+= -MMD -Wall
 CFLAGS 		+= -DCONFIG_STAT_ANALYSIS
@@ -135,7 +140,15 @@ endif
 	@echo "linking $(notdir $@)"
 	@$(CC) $(LDFLAGS) -o $(BINDIR)/$(TARGET) $(LIB_PATH) $(LIBS)
 
-lib$(TARGET): build_ver OBJSDIR $(OBJS)
+$(MUTUAL_REPO_DIR):
+	cd .. && \
+	git clone -n git@github.com:saferide-tech/mutual-repo.git --depth 1 &&\
+	cd mutual-repo  &&\
+	git checkout HEAD client/lib/libclient.a && \
+	git checkout HEAD include/message.h && \
+	git checkout HEAD client/vproxy_client.h
+
+lib$(TARGET): build_ver OBJSDIR $(OBJS) 
 	@echo "linking $(notdir $@)"
 	@$(AR) rc $(LIBDIR)/$@.a $(OBJS)
 
@@ -162,8 +175,7 @@ libdb_tools:
 
 libbin_cls:
 	@$(MAKE) -s -C ../binary_cls TOP_DIR=$(TOP_DIR)
-
-$(OBJDIR)/%.o: %.c
+$(OBJDIR)/%.o: %.c $(MUTUAL_REPO_DIR)
 	@echo "compiling $(notdir $<)"
 	@$(CC) $(CFLAGS) $(INCLUDES) -c $< -o $@
 
