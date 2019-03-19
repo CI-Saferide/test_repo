@@ -45,7 +45,7 @@
 #include "irdeto_unix_interface.h"
 #endif
 #include "sr_stat_system_policer.h"
-//#define REDIS_TEST 1
+//#define REDIS_TEST
 #ifdef REDIS_TEST
 #include "redis_mng.h"
 #endif
@@ -501,12 +501,14 @@ static int sr_redis_test(int tcp, int clean_first, int clean_at_end)
 		char mid[16];
 	} strs;
 
+//	printf("1\n");fflush(stdout);
 	redisContext *c = redis_mng_session_start(tcp);
 	if (c == NULL) {
 		printf("ERROR: redis_mng_session_start failed\n");
 		redis_mng_session_end(c);
 		return -1;
 	}
+//	printf("2\n");fflush(stdout);
 
 	if (clean_first) { // clean DB
 		if (redis_mng_clean_db(c)) {
@@ -515,6 +517,7 @@ static int sr_redis_test(int tcp, int clean_first, int clean_at_end)
 			return -1;
 		}
 	}
+//	printf("3\n");fflush(stdout);
 
 	// add 1200 file rules
 	sprintf(strs.file, "a_file_path_of_50_chars_length_123456789_0AB____GH");
@@ -528,6 +531,7 @@ static int sr_redis_test(int tcp, int clean_first, int clean_at_end)
 			return -1;
 		}
 	}
+//	printf("4\n");fflush(stdout);
 	// add 1200 net rules
 	for (i = 0; i < 1200; i++) {
 		addr_lsb = i % 256;
@@ -537,10 +541,6 @@ static int sr_redis_test(int tcp, int clean_first, int clean_at_end)
 		sprintf(strs.addrs.proto, "%02d", addr_lsb);
 		sprintf(strs.addrs.s_port, "%04d", i);
 		sprintf(strs.addrs.d_port, "%04d", i + 3);
-//		if (i == 1) {
-//			printf("*** DBG *** ADD: d_port %s\n", strs.addrs.d_port);
-//			printf("*** DBG *** ADD: s_port %s\n", strs.addrs.s_port);
-//		}
 		if ((rc = redis_mng_add_net_rule(c, i, strs.addrs.sa, strs.addrs.da, strs.addrs.proto, strs.addrs.s_port,
 				strs.addrs.d_port, "NULL", "NULL", "drop_log"))) {
 			printf("ERROR: redis_mng_add_net_rule %d failed, ret %d\n", i, rc);
@@ -548,15 +548,17 @@ static int sr_redis_test(int tcp, int clean_first, int clean_at_end)
 			return -1;
 		}
 	}
+//	printf("5\n");fflush(stdout);
 	// add 1200 can rules
 	for (i = 0; i < 1200; i++) {
 		sprintf(strs.mid, "%d", i);
-		if ((rc = redis_mng_add_can_rule(c, i, strs.mid, "NULL", "NULL", "NULL", "log", 0))) {
+		if ((rc = redis_mng_add_can_rule(c, i, strs.mid, "NULL", "NULL", "NULL", "log", "in"))) {
 			printf("ERROR: redis_mng_add_can_rule %d failed, ret %d\n", i, rc);
 			redis_mng_session_end(c);
 			return -1;
 		}
 	}
+//	printf("6\n");fflush(stdout);
 
 	// update all the rules
 	for (i = 0; i < 1200; i++) {
@@ -582,6 +584,7 @@ static int sr_redis_test(int tcp, int clean_first, int clean_at_end)
 			return -1;
 		}
 	}
+//	printf("7\n");fflush(stdout);
 
 	// delete 1/10 of the rules
 	for (i = 0; i < 1200; i++) {
@@ -603,6 +606,14 @@ static int sr_redis_test(int tcp, int clean_first, int clean_at_end)
 			}
 		}
 	}
+//	printf("8\n");fflush(stdout);
+
+	/*if (redis_mng_print_db(c, RULE_TYPE_CAN, 0, 10)) {
+		printf("ERROR: redis_mng_print_db CAN failed\n");
+		redis_mng_session_end(c);
+		return -1;
+	}*/
+//	printf("9\n");fflush(stdout);
 
 	if (clean_at_end) { // clean DB
 		if (redis_mng_clean_db(c)) {
@@ -612,6 +623,7 @@ static int sr_redis_test(int tcp, int clean_first, int clean_at_end)
 		}
 	}
 	redis_mng_session_end(c);
+//	printf("10\n");fflush(stdout);
 	return 0;
 }
 #endif
