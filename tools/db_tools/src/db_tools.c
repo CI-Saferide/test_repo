@@ -205,7 +205,7 @@ char *perm_cli_to_db(char *perm_str)
 	if (strstr(perm_str, "x"))
 		perm |= FILE_PERM_X;
 
-	sprintf(db_perm, "77%d", perm);
+	sprintf(db_perm, "%d", perm);
 
 	return db_perm;
 }
