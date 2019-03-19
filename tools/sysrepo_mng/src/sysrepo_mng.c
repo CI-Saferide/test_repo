@@ -1201,6 +1201,7 @@ static void can_packet_convert(SR_32 msg_id,SR_U8 dir, char * msgid_str,char * d
 		sprintf(msgid_str, "%08x", msg_id);
 	else
 		strcpy(msgid_str, "any");
+
 	strcpy(dir_str, get_dir_desc(dir));
 }
 

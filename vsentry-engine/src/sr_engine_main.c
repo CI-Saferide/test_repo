@@ -48,6 +48,10 @@
 #include "irdeto_interface.h"
 #include "sr_engine_static_rules.h"
 
+#ifdef BIN_CLS_DB
+#include "sr_bin_cls_eng.h"
+#endif
+
 static SR_BOOL is_engine_on;
 
 SR_BOOL get_engine_state(void)
@@ -414,6 +418,9 @@ SR_32 sr_engine_start(int argc, char *argv[])
 		return SR_ERROR;
 	}
 
+#ifdef BIN_CLS_DB
+	bin_cls_init();
+#endif
 	sr_db_init();
 	sentry_init(sr_config_vsentry_db_cb);
 	
@@ -458,8 +465,15 @@ SR_32 sr_engine_start(int argc, char *argv[])
 		msg->msg_type = SR_MSG_TYPE_CONFIG;
 		msg->sub_msg.cef_max_rate = config_params->cef_max_rate; 
 		msg->sub_msg.def_file_action = config_params->default_file_action;
+#ifdef BIN_CLS_DB
+		/* when working with bin cls we need the date to be allowed so
+		 * it could get to the bin cls and not dropped by vsentry cls */
+		msg->sub_msg.def_can_action = SR_CLS_ACTION_ALLOW;
+		msg->sub_msg.def_net_action = SR_CLS_ACTION_ALLOW;
+#else
 		msg->sub_msg.def_can_action = config_params->default_can_action;
 		msg->sub_msg.def_net_action = config_params->default_net_action;
+#endif
 		msg->sub_msg.system_policer_interval = config_params->system_policer_interval;
 		sr_send_msg(ENG2MOD_BUF, (SR_32)sizeof(msg));
 	} else
@@ -527,6 +541,23 @@ SR_32 sr_engine_start(int argc, char *argv[])
 			case 'y':
 				printf("SYSTEM POLICER learn table:\n");
 				sr_stat_system_policer_learn_print();
+				break;
+#endif
+#ifdef BIN_CLS_DB
+			case 'P':
+				cls_print();
+				break;
+
+			case 'R':
+				bin_cls_reload();
+				break;
+
+			case 'E':
+				bin_cls_toggle_enable();
+				break;
+
+			case 'U':
+				bin_cls_update(true);
 				break;
 #endif
 		}

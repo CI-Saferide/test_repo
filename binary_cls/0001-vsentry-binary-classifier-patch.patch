@@ -1,0 +1,3169 @@
+From 407299797e54b14a378efbb1206acabe94ab620a Mon Sep 17 00:00:00 2001
+From: oshriy <oshriy@saferide.io>
+Date: Tue, 12 Mar 2019 15:10:41 +0200
+Subject: [PATCH] vsentry binary classifier patch
+
+Signed-off-by: oshriy <oshriy@saferide.io>
+---
+ include/linux/init.h                     |    5 +
+ include/uapi/linux/Kbuild                |    1 +
+ include/uapi/linux/vsentry/Kbuild        |    4 +
+ include/uapi/linux/vsentry/vsentry.h     |   99 ++
+ include/uapi/linux/vsentry/vsentry_drv.h |   57 +
+ init/main.c                              |    5 +
+ security/Kconfig                         |    1 +
+ security/Makefile                        |    2 +
+ security/vsentry/Kconfig                 |   11 +
+ security/vsentry/Makefile                |    3 +
+ security/vsentry/vsentry_drv.c           |  390 +++++++
+ security/vsentry/vsentry_hooks.c         | 1827 ++++++++++++++++++++++++++++++
+ security/vsentry/vsentry_internal.h      |   29 +
+ security/vsentry/vsentry_mod.c           |  584 ++++++++++
+ 14 files changed, 3018 insertions(+)
+ create mode 100644 include/uapi/linux/vsentry/Kbuild
+ create mode 100644 include/uapi/linux/vsentry/vsentry.h
+ create mode 100644 include/uapi/linux/vsentry/vsentry_drv.h
+ create mode 100644 security/vsentry/Kconfig
+ create mode 100644 security/vsentry/Makefile
+ create mode 100644 security/vsentry/vsentry_drv.c
+ create mode 100644 security/vsentry/vsentry_hooks.c
+ create mode 100644 security/vsentry/vsentry_internal.h
+ create mode 100644 security/vsentry/vsentry_mod.c
+
+diff --git a/include/linux/init.h b/include/linux/init.h
+index e30104c..a08162f 100644
+--- a/include/linux/init.h
++++ b/include/linux/init.h
+@@ -120,6 +120,11 @@
+ extern char *saved_command_line;
+ extern unsigned int reset_devices;
+ 
++#ifdef CONFIG_SECURITY_VSENTRY
++/* defined in security/vsentry/vsentry_mod.c */
++extern int vsentry_mod_init(void);
++#endif
++
+ /* used by init/main.c */
+ void setup_arch(char **);
+ void prepare_namespace(void);
+diff --git a/include/uapi/linux/Kbuild b/include/uapi/linux/Kbuild
+index cd2be1c..395a9d7 100644
+--- a/include/uapi/linux/Kbuild
++++ b/include/uapi/linux/Kbuild
+@@ -22,6 +22,7 @@ header-y += netfilter_ipv4/
+ header-y += netfilter_ipv6/
+ header-y += usb/
+ header-y += wimax/
++header-y += vsentry/
+ 
+ genhdr-y += version.h
+ 
+diff --git a/include/uapi/linux/vsentry/Kbuild b/include/uapi/linux/vsentry/Kbuild
+new file mode 100644
+index 0000000..6b63a03
+--- /dev/null
++++ b/include/uapi/linux/vsentry/Kbuild
+@@ -0,0 +1,4 @@
++# UAPI Header export list
++header-y += vsentry_drv.h
++header-y += vsentry.h
++
+diff --git a/include/uapi/linux/vsentry/vsentry.h b/include/uapi/linux/vsentry/vsentry.h
+new file mode 100644
+index 0000000..a60cf7c
+--- /dev/null
++++ b/include/uapi/linux/vsentry/vsentry.h
+@@ -0,0 +1,99 @@
++/* Copyright (C) 2018 SafeRide, Inc.
++ *
++ * This software is licensed under the terms of the GNU General Public
++ * License version 2, as published by the Free Software Foundation, and
++ * may be copied, distributed, and modified under those terms.
++ *
++ * This program is distributed WITHOUT ANY WARRANTY;
++ * without even the implied warranty of MERCHANTABILITY
++ * or FITNESS FOR A PARTICULAR PURPOSE.  See the
++ * GNU General Public License for more details.
++ */
++
++#ifndef __VSENTRY_H__
++#define __VSENTRY_H__
++
++#define VSENTRY_SUCCESS		0
++#define VSENTRY_ERROR 		-1
++#define VSENTRY_ALREADY_EXISTS 	-2
++#define VSENTRY_NONE_EXISTS 	-3
++#define VSENTRY_INVALID 	-4
++
++#define VSENTRY_ALLOW 		0
++#define VSENTRY_DROP		1
++
++/* the following should be used in act_bitmap. see vsentry_event_t */
++#define VSENTRY_ACTION_DROP 	(0)
++#define VSENTRY_ACTION_ALLOW 	(1<<0)
++#define VSENTRY_ACTION_LOG 	(1<<1)
++
++typedef enum {
++	VSENTRY_MODE_LEARN,
++	VSENTRY_MODE_PERMISSIVE,
++	VSENTRY_MODE_ENFOCE,
++	VSENTRY_MODE_TOTAL,
++} vsentry_mode_e;
++
++typedef enum {
++	VSENTRY_CLASIFFIER_INIT,
++	VSENTRY_REGISTER_PRINTF,
++	VSENTRY_CLASIFFIER_SET_MODE,
++	VSENTRY_PRINT_INFO,
++	VSENTRY_FILE_EVENT,
++	VSENTRY_IP_EVENT,
++	VSENTRY_CAN_EVENT,
++	VSENTRY_TOTAL_EVENT,
++} vsentry_ev_type_e;
++
++typedef enum {
++	DIR_IN,
++	DIR_OUT,
++	DIR_TOTAL,
++} dir_e;
++
++#define CAN_PAYLOAD_LEN 	64
++
++typedef struct __attribute__ ((packed, aligned(8))) {
++	unsigned int msg_id;
++	unsigned int if_index;
++} can_header_t;
++
++typedef struct __attribute__((packed, aligned(8))) {
++	can_header_t 		can_header;
++	unsigned char 		payload[CAN_PAYLOAD_LEN];
++	unsigned char 		payload_len;
++} can_event_t;
++
++typedef struct __attribute__((packed, aligned(8))) {
++	union {
++		unsigned int v4addr;
++	} saddr;
++
++	union {
++		unsigned int v4addr;
++	} daddr;
++
++	unsigned short 		dport;
++	unsigned short 		sport;
++	unsigned char 		ip_proto;
++	unsigned int 		len;
++} ip_event_t;
++
++typedef struct __attribute__((packed, aligned(8))) {
++	unsigned int uid;
++	unsigned int exec_ino;
++} id_event_t;
++
++typedef struct __attribute__((packed, aligned(8))) {
++	unsigned int	 	type;
++	unsigned int 		act_bitmap;
++	id_event_t 		event_id;
++	unsigned int 		dir;
++	unsigned long long 	ts;
++	union {
++		can_event_t 	can_event;
++		ip_event_t 	ip_event;
++	};
++} vsentry_event_t;
++
++#endif /* __VSENTRY_H__ */
+diff --git a/include/uapi/linux/vsentry/vsentry_drv.h b/include/uapi/linux/vsentry/vsentry_drv.h
+new file mode 100644
+index 0000000..39286a2
+--- /dev/null
++++ b/include/uapi/linux/vsentry/vsentry_drv.h
+@@ -0,0 +1,57 @@
++/* Copyright (C) 2018 SafeRide, Inc.
++ *
++ * This software is licensed under the terms of the GNU General Public
++ * License version 2, as published by the Free Software Foundation, and
++ * may be copied, distributed, and modified under those terms.
++ *
++ * This program is distributed WITHOUT ANY WARRANTY;
++ * without even the implied warranty of MERCHANTABILITY
++ * or FITNESS FOR A PARTICULAR PURPOSE.  See the
++ * GNU General Public License for more details.
++ */
++
++#ifndef __VSENTRY_DRV_H__
++#define __VSENTRY_DRV_H__
++
++#define VSENTRY_GENL_FAMILY_NAME 	"vsentry_event"
++#define VSENTRY_GENL_VERSION 		0x01
++#define VSENTRY_GENL_MCAST_GROUP_NAME 	"vsentry_mc_grp"
++
++enum {
++        VSENTRY_GENL_ATTR_UNSPEC,
++        VSENTRY_GENL_ATTR_EVENT,
++        VSENTRY_GENL_ATTR_LAST,
++};
++#define VSENTRY_GENL_ATTR_MAX (VSENTRY_GENL_ATTR_LAST - 1)
++
++enum {
++        VSENTRY_GENL_CMD_UNSPEC,
++        VSENTRY_GENL_CMD_EVENT,
++        VSENTRY_GENL_CMD_LAST,
++};
++#define VSENTRY_GENL_CMD_MAX (VSENTRY_GENL_CMD_LAST - 1)
++
++/* mmap address mapping 8MB sheard memory buffer */
++#define SHMEM_BUFFER_SIZE 	0x800000
++#define SHMEM_BUFFER_OFFSET 	0
++
++struct vsentry_state {
++	unsigned int enabled;
++	unsigned int cls_present;
++	unsigned int db_present;
++};
++
++struct vsentry_genl_info {
++	unsigned int family;
++	unsigned int mcgrp;
++};
++
++#define VSENTRY_IOCTL_SET_ENABLE 	_IOW('v', 0x01, unsigned int)
++#define VSENTRY_IOCTL_UPDATE_EXECFILE 	_IOW('v', 0x02, char *)
++#define VSENTRY_IOCTL_UPDATE_DBFILE 	_IOW('v', 0x03, char *)
++#define VSENTRY_IOCTL_SET_MODE 		_IOW('v', 0x04, unsigned int)
++#define VSENTRY_IOCTL_GET_STATE 	_IOR('v', 0x05, struct vsentry_state)
++#define VSENTRY_IOCTL_GET_GENL_INFO 	_IOR('v', 0x06, struct vsentry_genl_info)
++#define VSENTRY_IOCTL_PRINT_INFO 	_IO( 'v', 0x07)
++
++#endif /* __VSENTRY_DRV_H__ */
+diff --git a/init/main.c b/init/main.c
+index 2858be7..15d021a 100644
+--- a/init/main.c
++++ b/init/main.c
+@@ -952,6 +952,11 @@ static int __ref kernel_init(void *unused)
+ 
+ 	rcu_end_inkernel_boot();
+ 
++#ifdef CONFIG_SECURITY_VSENTRY
++	/* init vsentry security */
++	vsentry_mod_init();
++#endif
++
+ 	if (ramdisk_execute_command) {
+ 		ret = run_init_process(ramdisk_execute_command);
+ 		if (!ret)
+diff --git a/security/Kconfig b/security/Kconfig
+index 118f454..a833bbd 100644
+--- a/security/Kconfig
++++ b/security/Kconfig
+@@ -164,6 +164,7 @@ source security/tomoyo/Kconfig
+ source security/apparmor/Kconfig
+ source security/loadpin/Kconfig
+ source security/yama/Kconfig
++source security/vsentry/Kconfig
+ 
+ source security/integrity/Kconfig
+ 
+diff --git a/security/Makefile b/security/Makefile
+index f2d71cd..7e00b43 100644
+--- a/security/Makefile
++++ b/security/Makefile
+@@ -9,6 +9,7 @@ subdir-$(CONFIG_SECURITY_TOMOYO)        += tomoyo
+ subdir-$(CONFIG_SECURITY_APPARMOR)	+= apparmor
+ subdir-$(CONFIG_SECURITY_YAMA)		+= yama
+ subdir-$(CONFIG_SECURITY_LOADPIN)	+= loadpin
++subdir-$(CONFIG_SECURITY_VSENTRY)       += vsentry
+ 
+ # always enable default capabilities
+ obj-y					+= commoncap.o
+@@ -24,6 +25,7 @@ obj-$(CONFIG_SECURITY_TOMOYO)		+= tomoyo/
+ obj-$(CONFIG_SECURITY_APPARMOR)		+= apparmor/
+ obj-$(CONFIG_SECURITY_YAMA)		+= yama/
+ obj-$(CONFIG_SECURITY_LOADPIN)		+= loadpin/
++obj-$(CONFIG_SECURITY_VSENTRY)		+= vsentry/
+ obj-$(CONFIG_CGROUP_DEVICE)		+= device_cgroup.o
+ 
+ # Object integrity file lists
+diff --git a/security/vsentry/Kconfig b/security/vsentry/Kconfig
+new file mode 100644
+index 0000000..1cb60f4
+--- /dev/null
++++ b/security/vsentry/Kconfig
+@@ -0,0 +1,11 @@
++config SECURITY_VSENTRY
++	bool "SafeRide's vSentry security Kernel Support"
++	depends on SECURITY
++	select SECURITY_NETWORK
++	select SECURITY_NETWORK_XFRM
++	select SECURITY_PATH
++	select NETFILTER
++	default y
++	help
++	  This selects the SafeRide's vSentry security.
++
+diff --git a/security/vsentry/Makefile b/security/vsentry/Makefile
+new file mode 100644
+index 0000000..2154a7b
+--- /dev/null
++++ b/security/vsentry/Makefile
+@@ -0,0 +1,3 @@
++obj-$(CONFIG_SECURITY_VSENTRY) := vsentry.o
++
++vsentry-y := vsentry_drv.o vsentry_mod.o vsentry_hooks.o
+diff --git a/security/vsentry/vsentry_drv.c b/security/vsentry/vsentry_drv.c
+new file mode 100644
+index 0000000..930e265
+--- /dev/null
++++ b/security/vsentry/vsentry_drv.c
+@@ -0,0 +1,390 @@
++/* Copyright (C) 2018 SafeRide, Inc.
++ *
++ * This software is licensed under the terms of the GNU General Public
++ * License version 2, as published by the Free Software Foundation, and
++ * may be copied, distributed, and modified under those terms.
++ *
++ * This program is distributed WITHOUT ANY WARRANTY;
++ * without even the implied warranty of MERCHANTABILITY
++ * or FITNESS FOR A PARTICULAR PURPOSE.  See the
++ * GNU General Public License for more details.
++ */
++
++#include <linux/init.h>
++#include <linux/module.h>
++#include <linux/kernel.h>
++#include <linux/fs.h>
++#include <linux/cdev.h>
++#include <linux/sched.h>
++#include <linux/mm.h>
++#include <linux/slab.h>
++#include <linux/uaccess.h>
++#include <net/genetlink.h>
++#include <linux/vsentry/vsentry.h>
++#include <linux/vsentry/vsentry_drv.h>
++#include "vsentry_internal.h"
++
++static volatile bool used;
++static dev_t vsentry_dev;
++static struct cdev *cdev_p;
++
++static const struct genl_multicast_group vsentry_event_mcgrps[] = {
++	{ .name = VSENTRY_GENL_MCAST_GROUP_NAME, },
++};
++
++static struct genl_family vsentry_event_genl_family = {
++	.id = GENL_ID_GENERATE,
++	.name = VSENTRY_GENL_FAMILY_NAME,
++	.version = VSENTRY_GENL_VERSION,
++	.maxattr = VSENTRY_GENL_ATTR_MAX,
++	.mcgrps = vsentry_event_mcgrps,
++	.n_mcgrps = ARRAY_SIZE(vsentry_event_mcgrps),
++};
++
++#define VS_DRV_DEBUG
++#ifdef VS_DRV_DEBUG
++#define vs_drv_debug(fmt, ...) \
++	pr_debug("[DBG] %llu %s: " fmt, vsentry_get_curr_time_usec(), \
++		__func__, ##__VA_ARGS__)
++#else
++#define vs_drv_debug(...)
++#endif
++
++#define vs_drv_info(fmt, ...) \
++	pr_info("[INF] %llu %s: " fmt, vsentry_get_curr_time_usec(), \
++		__func__, ##__VA_ARGS__)
++
++#define vs_drv_err(fmt, ...) \
++	pr_err("[ERR] %llu %s: " fmt, vsentry_get_curr_time_usec(), \
++		__func__, ##__VA_ARGS__)
++
++/***********************************************************************
++ * function:    vsentry_drv_release
++ * description: close device
++ * in param:    struct inode *inode
++ *              struct file *file
++ * out param:   n/a.
++ * return:      0 on success.
++ **********************************************************************/
++static int vsentry_drv_release(struct inode *inode, struct file *file)
++{
++	vsentry_set_eng_tgid(0);
++	used = false;
++	vs_drv_debug("driver closed\n");
++	return 0;
++}
++
++/***********************************************************************
++ * function:    vsentry_drv_open
++ * description: open device
++ * in param:    struct inode *inode
++ *              struct file *file
++ * out param:   n/a.
++ * return:      0 on success, other on failure.
++ **********************************************************************/
++static int vsentry_drv_open(struct inode *inode, struct file *file)
++{
++	vs_drv_debug("\n");
++
++	if (!capable(CAP_SYS_ADMIN))
++		return -EACCES;
++
++	if (used) {
++		vs_drv_err("already in use\n");
++		return -EBUSY;
++	}
++
++	/* TODO: check if the opening process is authorized */
++
++	used = true;
++
++	/* register the engine pid */
++	if (vsentry_set_eng_tgid(current->tgid) != VSENTRY_SUCCESS) {
++		vs_drv_err("failed to set new tgid\n");
++		return -EPERM;
++	}
++
++	vs_drv_debug("used by tgid %d\n", vsentry_get_eng_tgid());
++
++	return 0;
++}
++
++/***********************************************************************
++ * function:    vsentry_drv_ioctl
++ * description: open device
++ * in param:    struct file *file
++ *              u32 cmd
++ *              unsigned long arg
++ * out param:   n/a.
++ * return:      0 on success, other on failure.
++ **********************************************************************/
++static long vsentry_drv_ioctl(struct file *file, u32 cmd, unsigned long arg)
++{
++	int ret = 0;
++	char *file_str;
++
++	switch (cmd) {
++	case VSENTRY_IOCTL_SET_ENABLE:
++	{
++		u32 enable;
++
++		vs_drv_debug("set enable\n");
++		if (get_user(enable, (u32 __user *) arg))
++			return -EFAULT;
++
++		if (enable != true && enable != false)
++			return -EINVAL;
++
++		ret = vsentry_set_enable(enable);
++		break;
++	}
++
++	case VSENTRY_IOCTL_UPDATE_EXECFILE:
++	{
++		vs_drv_debug("set execfile\n");
++		file_str = strndup_user((void __user *) arg, PAGE_SIZE);
++		if (IS_ERR(file_str)) {
++			ret = PTR_ERR(file_str);
++			break;
++		}
++
++		ret = vsentry_update_execmem(file_str);
++		kfree(file_str);
++
++		break;
++	}
++
++	case VSENTRY_IOCTL_UPDATE_DBFILE:
++	{
++		vs_drv_debug("update dbfile\n");
++		file_str = strndup_user((void __user *)arg, PAGE_SIZE);
++		if (IS_ERR(file_str)) {
++			ret = PTR_ERR(file_str);
++			break;
++		}
++
++		ret = vsentry_update_shmem(file_str);
++		kfree(file_str);
++
++		break;
++	}
++
++	case VSENTRY_IOCTL_SET_MODE:
++	{
++		u32 mode;
++
++		vs_drv_debug("set mode\n");
++		if (get_user(mode, (u32 __user *) arg))
++			return -EFAULT;
++
++		if (mode >= VSENTRY_MODE_TOTAL)
++			return -EINVAL;
++
++		ret = vsentry_set_mode(mode);
++		break;
++	}
++
++	case VSENTRY_IOCTL_GET_STATE:
++	{
++		struct vsentry_state state;
++		void __user *argp = (void __user *)arg;
++
++		vs_drv_debug("get state\n");
++		ret = vsentry_get_state(&state);
++		if (ret == VSENTRY_SUCCESS) {
++			if (copy_to_user(argp, &state, sizeof(struct vsentry_state)))
++				ret = -EFAULT;
++		}
++		break;
++	}
++
++	case VSENTRY_IOCTL_GET_GENL_INFO:
++	{
++		struct vsentry_genl_info info;
++		void __user *argp = (void __user *)arg;
++
++		vs_drv_debug("get genl info\n");
++		if (vsentry_event_genl_family.id == GENL_ID_GENERATE)
++			return -ENOENT;
++
++		info.family = vsentry_event_genl_family.id;
++		info.mcgrp = vsentry_event_genl_family.mcgrp_offset;
++
++		if (copy_to_user(argp, &info, sizeof(struct vsentry_genl_info)))
++			ret = -EFAULT;
++
++		break;
++	}
++
++	case VSENTRY_IOCTL_PRINT_INFO:
++		vsentry_print_info();
++		break;
++
++	default:
++		vs_drv_err("error\n");
++		ret = -EINVAL;
++	}
++
++	return ret;
++}
++
++static const struct file_operations vsentry_file_ops = {
++	.owner = THIS_MODULE,
++	.open = vsentry_drv_open,
++	.unlocked_ioctl = vsentry_drv_ioctl,
++	.release = vsentry_drv_release,
++};
++
++/***********************************************************************
++ * function:    vsentry_drv_file_ops_init
++ * description: initialize and register the file ops
++ * in param:    n/a.
++ * out param:   n/a.
++ * return:      0 on success, other on failure.
++ **********************************************************************/
++static int vsentry_drv_file_ops_init(void)
++{
++	int ret = 0;
++
++	vs_drv_debug("\n");
++
++	ret = alloc_chrdev_region(&vsentry_dev, 0, 1, "vs_drv");
++	if (ret < 0) {
++		vs_drv_err("couldn't allocate device number (%d).\n", ret);
++		goto out;
++	}
++
++	ret = -ENOMEM;
++	cdev_p = cdev_alloc();
++	if (!cdev_p) {
++		vs_drv_err("failed to alloc cdev\n");
++		goto out_unregister;
++	}
++
++	cdev_p->owner = THIS_MODULE;
++	cdev_p->ops = &vsentry_file_ops;
++	ret = cdev_add(cdev_p, vsentry_dev, 1);
++	if (ret) {
++		vs_drv_err("couldn't add character device (%d)\n", ret);
++		goto free_cdev;
++	}
++
++	return 0;
++
++free_cdev:
++	cdev_del(cdev_p);
++out_unregister:
++	unregister_chrdev_region(vsentry_dev, 1);
++out:
++	return ret;
++}
++
++/***********************************************************************
++ * function:    vsentry_drv_file_ops_deinit
++ * description: deinitialize and deregister the file ops
++ * in param:    n/a.
++ * out param:   n/a.
++ * return:      0 on success, other on failure.
++ **********************************************************************/
++static void vsentry_drv_file_ops_deinit(void)
++{
++	vs_drv_debug("\n");
++	cdev_del(cdev_p);
++	unregister_chrdev_region(vsentry_dev, 1);
++	cdev_p = NULL;
++}
++
++/***********************************************************************
++ * function:    vsentry_generate_netlink_event
++ * description: send vsentry event over netlink
++ * in param:    vsentry_event_t *ev
++ * out param:   n/a.
++ * return:      0 on success, other on failure.
++ **********************************************************************/
++int vsentry_generate_netlink_event(vsentry_event_t *ev)
++{
++	struct sk_buff *skb;
++	struct nlattr *attr;
++	void *msg_header;
++	struct vsentry_event_t *genl_ev;
++	int size;
++	static unsigned int event_seqnum;
++
++	if (!ev)
++		return -EINVAL;
++
++	size = nla_total_size(sizeof(vsentry_event_t)) + nla_total_size(0);
++	skb = genlmsg_new(size, GFP_ATOMIC);
++	if (!skb)
++		return -ENOMEM;
++
++	msg_header = genlmsg_put(skb, 0, event_seqnum++,
++			&vsentry_event_genl_family, 0, VSENTRY_GENL_CMD_EVENT);
++	if (!msg_header) {
++		nlmsg_free(skb);
++		return -ENOMEM;
++	}
++
++	/* fill the data */
++	attr = nla_reserve(skb, VSENTRY_GENL_ATTR_EVENT, sizeof(vsentry_event_t));
++	if (!attr) {
++		nlmsg_free(skb);
++		return -EINVAL;
++	}
++
++	genl_ev = nla_data(attr);
++	if (!genl_ev) {
++		nlmsg_free(skb);
++		return -EINVAL;
++	}
++
++	memcpy(genl_ev, ev, sizeof(vsentry_event_t));
++	genlmsg_end(skb, msg_header);
++	genlmsg_multicast(&vsentry_event_genl_family, skb, 0, 0, GFP_ATOMIC);
++
++	return 0;
++}
++
++/***********************************************************************
++ * function:    vsentry_drv_init
++ * description: driver registeration
++ * in param:    n/a.
++ * out param:   n/a.
++ * return:      0 on success, other on failure.
++ **********************************************************************/
++static int __init vsentry_drv_init(void)
++{
++	int ret;
++
++	ret = vsentry_drv_file_ops_init();
++	if (ret) {
++		vs_drv_err("failed\n");
++		return ret;
++	}
++
++	ret = genl_register_family(&vsentry_event_genl_family);
++	if (ret != 0) {
++		pr_err("genl_register_family failed\n");
++		return ret;
++	}
++
++	vs_drv_info("saferide's vsentry driver interface initialized\n");
++
++	return 0;
++}
++
++/***********************************************************************
++ * function:    vsentry_drv_exit
++ * description: driver rdeegisteration
++ * in param:    n/a.
++ * out param:   n/a.
++ * return:      0 on success, other on failure.
++ **********************************************************************/
++static void __exit vsentry_drv_exit(void)
++{
++	genl_unregister_family(&vsentry_event_genl_family);
++	vsentry_drv_file_ops_deinit();
++}
++
++device_initcall(vsentry_drv_init);
++__exitcall(vsentry_drv_exit);
+diff --git a/security/vsentry/vsentry_hooks.c b/security/vsentry/vsentry_hooks.c
+new file mode 100644
+index 0000000..ca1220c
+--- /dev/null
++++ b/security/vsentry/vsentry_hooks.c
+@@ -0,0 +1,1827 @@
++/* Copyright (C) 2018 SafeRide, Inc.
++ *
++ * This software is licensed under the terms of the GNU General Public
++ * License version 2, as published by the Free Software Foundation, and
++ * may be copied, distributed, and modified under those terms.
++ *
++ * This program is distributed WITHOUT ANY WARRANTY;
++ * without even the implied warranty of MERCHANTABILITY
++ * or FITNESS FOR A PARTICULAR PURPOSE.  See the
++ * GNU General Public License for more details.
++ */
++
++#include <linux/namei.h>
++#include <linux/mount.h>
++#include <linux/fsnotify_backend.h>
++#include <linux/lsm_hooks.h>
++#include <linux/netfilter.h>
++#include <linux/netfilter_ipv4.h>
++#include <linux/mutex.h>
++#include <linux/magic.h>
++#include <linux/ip.h>
++#include <linux/tcp.h>
++#include <linux/udp.h>
++#include <net/sock.h>
++#include <linux/can/core.h>
++#include <linux/can/skb.h>
++#include <linux/binfmts.h>
++
++#include <linux/vsentry/vsentry.h>
++#include <linux/vsentry/vsentry_drv.h>
++#include "vsentry_internal.h"
++
++#define VS_MOD_DEBUG
++#ifdef VS_MOD_DEBUG
++#define vs_hook_dbg(fmt, ...) \
++	pr_debug("[DBG] %llu %s: " fmt, vsentry_get_curr_time_usec(), \
++		__func__, ##__VA_ARGS__)
++#else
++#define vs_hook_dbg(...)
++#endif /* VS_MOD_DEBUG */
++
++#define vs_hook_err(fmt, ...) \
++	pr_err("[ERR] %llu %s: " fmt, vsentry_get_curr_time_usec(), \
++		__func__, ##__VA_ARGS__)
++#define vs_hook_warn(fmt, ...) \
++	pr_warn("[WRN] %llu %s: " fmt, vsentry_get_curr_time_usec(), \
++		__func__, ##__VA_ARGS__)
++#define vs_hook_info(fmt, ...) \
++	pr_info("[INF] %llu %s: " fmt, vsentry_get_curr_time_usec(), \
++		__func__, ##__VA_ARGS__)
++
++/***********************************************************************
++ * function:     vsentry_get_exec_inode
++ * description:  extract the executable inode of specific pid
++ * in param:     unsigned int pid - process pid
++ * out param:    n/a
++ * return:       unsigned int - inode
++ **********************************************************************/
++static unsigned int vsentry_get_exec_inode(unsigned int pid)
++{
++	struct task_struct *p;
++	struct mm_struct *mm;
++	struct file *exe_file;
++	unsigned int ret = 0;
++
++	if (!pid)
++		return 0;
++
++	read_lock(&tasklist_lock);
++
++	p = pid_task(find_vpid(pid), PIDTYPE_PID);
++	if (!p)
++		goto exit_err;
++
++	mm = p->mm;
++	if (!mm)
++		goto exit_err;
++
++	exe_file = mm->exe_file;
++	if (!exe_file)
++		goto exit_err;
++
++	ret = exe_file->f_path.dentry->d_inode->i_ino;
++
++exit_err:
++	read_unlock(&tasklist_lock);
++
++	return ret;
++}
++
++/***********************************************************************
++ * function:     vsentry_extract_current_info
++ * description:  get the current uid and exec_ino
++ * in param:     n/a
++ * out param:    id_event_t *id
++ * return:       n/a
++ **********************************************************************/
++static inline void vsentry_extract_current_info(id_event_t *id)
++{
++	id->exec_ino = vsentry_get_exec_inode(current->pid);
++	id->uid = current->real_cred->uid.val;
++}
++
++/***********************************************************************
++ * function:     vsentry_extract_ip_info
++ * description:  extract L3 (IP) info from skb
++ * in param:     struct sk_buff *skb
++ * out param:    ip_event_t *ip_event
++ * return:       n/a
++ **********************************************************************/
++static void vsentry_extract_ip_info(ip_event_t *ip_event, struct sk_buff *skb)
++{
++	struct iphdr *ip_header = (struct iphdr *)skb_network_header(skb);
++
++	ip_event->daddr.v4addr = ntohl(ip_header->daddr);
++	ip_event->saddr.v4addr = ntohl(ip_header->saddr);
++
++	if (ip_header->protocol == IPPROTO_TCP) {
++		struct tcphdr *tcphdr =
++			(struct tcphdr *)skb_transport_header(skb);
++
++		ip_event->sport = ntohs(tcphdr->source);
++		ip_event->dport = ntohs(tcphdr->dest);
++		ip_event->len = ntohs(ip_header->tot_len) -
++			(ip_header->ihl * 4) - (tcphdr->doff * 4);
++	} else {
++		struct udphdr *udp_header =
++			(struct udphdr *)skb_transport_header(skb);
++
++		ip_event->sport = ntohs(udp_header->source);
++		ip_event->dport = ntohs(udp_header->dest);
++		ip_event->len = ntohs(udp_header->len) - sizeof(struct udphdr);
++	}
++}
++
++/* the code below manage the mapping between socket and exec_inode.
++ * upon socket creation, a mapping is added between the creating process
++ * and the socket. upon socet deletion the mapping is removed.
++ */
++
++#define NUM_OF_BUCKETS_BITS	8
++#define MAP_SIZE		(1 << NUM_OF_BUCKETS_BITS)
++
++/* socket to process/uid mapping */
++static struct hlist_head socket_process_map[MAP_SIZE];
++static DEFINE_SPINLOCK(socket_process_map_lock);
++
++struct socket_to_id_t {
++	struct socket		*socket;
++	struct inode		*inode;
++	id_event_t		id;
++	struct hlist_node	node;
++};
++
++/***********************************************************************
++ * function:     map_process_to_socket
++ * description:  map is to socket
++ * in param:     struct socket *socket, id_event_t *id
++ * out param:    n/a
++ * return:       VSENTRY_ERROR/VSENTRY_SUCCESS
++ **********************************************************************/
++static int map_process_to_socket(struct socket *socket, id_event_t *id)
++{
++	struct socket_to_id_t *s2p;
++	unsigned char hash = hash_ptr(socket, NUM_OF_BUCKETS_BITS);
++
++	s2p = kzalloc(sizeof(struct socket_to_id_t), GFP_KERNEL);
++	if (!s2p) {
++		vs_hook_err("failed to alloc s2p\n");
++		return VSENTRY_ERROR;
++	}
++
++	memcpy(&s2p->id, id, sizeof(id_event_t));
++	s2p->inode = SOCK_INODE(socket);
++	s2p->socket = socket;
++
++	spin_lock(&socket_process_map_lock);
++
++	hlist_add_head(&s2p->node, &socket_process_map[hash]);
++
++	spin_unlock(&socket_process_map_lock);
++
++	vs_hook_dbg("mapped socket 0x%px to exec_ino %u uid %u\n",
++		socket, id->exec_ino, id->uid);
++
++	return VSENTRY_SUCCESS;
++}
++
++/***********************************************************************
++ * function:     get_id_by_socket
++ * description:  search is by socket
++ * in param:     struct socket *socket
++ * out param:    id_event_t *id
++ * return:       VSENTRY_ERROR/VSENTRY_SUCCESS
++ **********************************************************************/
++static int get_id_by_socket(struct socket *socket, id_event_t *id)
++{
++	struct socket_to_id_t *s2p = NULL;
++	struct hlist_node *n;
++	unsigned char hash = hash_ptr(socket, NUM_OF_BUCKETS_BITS);
++	int ret = VSENTRY_ERROR;
++
++	if (!spin_trylock(&socket_process_map_lock))
++		return VSENTRY_ERROR;
++
++	hlist_for_each_entry_safe(s2p, n, &socket_process_map[hash], node) {
++		if (s2p->socket == socket) {
++			vs_hook_dbg("found socket 0x%px exec_ino %u uid %u\n",
++				s2p->socket, s2p->id.exec_ino, s2p->id.uid);
++			memcpy(id, &s2p->id, sizeof(id_event_t));
++			ret = VSENTRY_SUCCESS;
++			break;
++		}
++	}
++
++	spin_unlock(&socket_process_map_lock);
++
++	return ret;
++}
++
++/***********************************************************************
++ * function:     unmap_socket_by_inode
++ * description:  delete mapping by inode.
++ * in param:     struct inode *inode
++ * out param:    n/a
++ * return:       VSENTRY_ERROR/VSENTRY_SUCCESS
++ **********************************************************************/
++static void unmap_socket_by_inode(struct inode *inode)
++{
++	struct socket_to_id_t *s2p = NULL;
++	struct hlist_node *n;
++	struct socket *socket = SOCKET_I(inode);
++	unsigned char hash = hash_ptr(socket, NUM_OF_BUCKETS_BITS);
++
++	spin_lock(&socket_process_map_lock);
++
++	hlist_for_each_entry_safe(s2p, n, &socket_process_map[hash], node) {
++		if (s2p->socket == socket) {
++			vs_hook_dbg("del socket 0x%px to exec_ino %u uid %u\n",
++				s2p->socket, s2p->id.exec_ino, s2p->id.uid);
++			hlist_del(&s2p->node);
++			kfree(s2p);
++			break;
++		}
++	}
++
++	spin_unlock(&socket_process_map_lock);
++}
++
++#if 0
++static int vsentry_binder_set_context_mgr(struct task_struct *mgr)
++{
++	return 0;
++}
++
++static int vsentry_binder_transaction(struct task_struct *from,
++	struct task_struct *to)
++{
++	return 0;
++}
++
++static int vsentry_binder_transfer_binder(struct task_struct *from,
++	struct task_struct *to)
++{
++	return 0;
++}
++
++static int vsentry_binder_transfer_file(struct task_struct *from,
++	struct task_struct *to, struct file *file)
++{
++	return 0;
++}
++
++static int vsentry_ptrace_access_check(struct task_struct *child,
++				unsigned int mode)
++{
++	return 0;
++}
++
++static int vsentry_ptrace_traceme(struct task_struct *parent)
++{
++	return 0;
++}
++
++static int vsentry_capget(struct task_struct *target, kernel_cap_t *effective,
++	kernel_cap_t *inheritable, kernel_cap_t *permitted)
++{
++	return 0;
++}
++
++static int vsentry_capset(struct cred *new, const struct cred *old,
++	const kernel_cap_t *effective, const kernel_cap_t *inheritable,
++	const kernel_cap_t *permitted)
++{
++	return 0;
++}
++
++static int vsentry_capable(const struct cred *cred, struct user_namespace *ns,
++		int cap, int audit)
++{
++	return 0;
++}
++
++static int vsentry_quotactl(int cmds, int type, int id, struct super_block *sb)
++{
++	return 0;
++}
++
++static int vsentry_quota_on(struct dentry *dentry)
++{
++	return 0;
++}
++
++static int vsentry_syslog(int type)
++{
++	return 0;
++}
++
++static int vsentry_settime(const struct timespec64 *ts,
++	const struct timezone *tz)
++{
++	return 0;
++}
++
++static int vsentry_vm_enough_memory(struct mm_struct *mm, long pages)
++{
++	return 0;
++}
++
++static int vsentry_bprm_set_creds(struct linux_binprm *bprm)
++{
++	return 0;
++}
++
++static int vsentry_bprm_check_security(struct linux_binprm *bprm)
++{
++	return 0;
++}
++
++static void vsentry_bprm_committing_creds(struct linux_binprm *bprm)
++{
++}
++
++static void vsentry_bprm_committed_creds(struct linux_binprm *bprm)
++{
++}
++
++static int vsentry_sb_alloc_security(struct super_block *sb)
++{
++	return 0;
++}
++
++static void vsentry_sb_free_security(struct super_block *sb)
++{
++}
++
++static int vsentry_sb_copy_data(char *orig, char *copy)
++{
++	return 0;
++}
++
++static int vsentry_sb_remount(struct super_block *sb, void *data)
++{
++	return 0;
++}
++
++static int vsentry_sb_kern_mount(struct super_block *sb, int flags, void *data)
++{
++	return 0;
++}
++
++static int vsentry_sb_show_options(struct seq_file *m, struct super_block *sb)
++{
++	return 0;
++}
++
++static int vsentry_sb_statfs(struct dentry *dentry)
++{
++	return 0;
++}
++
++static int vsentry_sb_mount(const char *dev_name, const struct path *path,
++	const char *type, unsigned long flags, void *data)
++{
++	return 0;
++}
++
++static int vsentry_sb_umount(struct vfsmount *mnt, int flags)
++{
++	return 0;
++}
++
++static int vsentry_sb_pivotroot(const struct path *old_path,
++	const struct path *new_path)
++{
++	return 0;
++}
++
++static int vsentry_sb_set_mnt_opts(struct super_block *sb,
++	struct security_mnt_opts *opts, unsigned long kern_flags,
++	unsigned long *set_kern_flags)
++{
++	return 0;
++}
++
++static int vsentry_sb_clone_mnt_opts(const struct super_block *oldsb,
++	struct super_block *newsb, unsigned long kern_flags,
++	unsigned long *set_kern_flags)
++{
++	return 0;
++}
++
++static int vsentry_sb_parse_opts_str(char *options,
++	struct security_mnt_opts *opts)
++{
++	return 0;
++}
++
++static int vsentry_dentry_init_security(struct dentry *dentry, int mode,
++	const struct qstr *name, void **ctx, u32 *ctxlen)
++{
++	return 0;
++}
++
++static int vsentry_dentry_create_files_as(struct dentry *dentry, int mode,
++	struct qstr *name, const struct cred *old, struct cred *new)
++{
++	return 0;
++}
++
++#endif
++
++#ifdef CONFIG_SECURITY_PATH
++
++#if 0
++
++static int vsentry_path_unlink(const struct path *dir, struct dentry *dentry)
++{
++	return 0;
++}
++
++static int vsentry_path_mkdir(const struct path *dir, struct dentry *dentry,
++			umode_t mode)
++{
++	return 0;
++}
++
++static int vsentry_path_rmdir(const struct path *dir, struct dentry *dentry)
++{
++	return 0;
++}
++
++static int vsentry_path_mknod(const struct path *dir, struct dentry *dentry,
++	umode_t mode, unsigned int dev)
++{
++	return 0;
++}
++
++static int vsentry_path_truncate(const struct path *path)
++{
++	return 0;
++}
++
++static int vsentry_path_symlink(const struct path *dir, struct dentry *dentry,
++	const char *old_name)
++{
++	return 0;
++}
++
++static int vsentry_path_link(struct dentry *old_dentry,
++	const struct path *new_dir, struct dentry *new_dentry)
++{
++	return 0;
++}
++
++static int vsentry_path_rename(const struct path *old_dir,
++	struct dentry *old_dentry, const struct path *new_dir,
++	struct dentry *new_dentry)
++{
++	return 0;
++}
++
++static int vsentry_path_chmod(const struct path *path, umode_t mode)
++{
++	return 0;
++}
++
++static int vsentry_path_chown(const struct path *path, kuid_t uid, kgid_t gid)
++{
++	return 0;
++}
++
++static int vsentry_path_chroot(const struct path *path)
++{
++	return 0;
++}
++
++#endif
++
++#endif /* CONFIG_SECURITY_PATH */
++
++#if 0
++
++static int vsentry_inode_alloc_security(struct inode *inode)
++{
++	return 0;
++}
++
++#endif
++
++/***********************************************************************
++ * function:     vsentry_inode_free_security
++ * description:  the hook is used to remove a socket from the socket to
++ *               exec_inode mapping.
++ * in param:     struct inode *inode
++ * out param:    n/a
++ * return:       n/a
++ **********************************************************************/
++static void vsentry_inode_free_security(struct inode *inode)
++{
++	if (!S_ISSOCK(inode->i_mode))
++		return;
++
++	unmap_socket_by_inode(inode);
++}
++
++#if 0
++
++static int vsentry_inode_init_security(struct inode *inode, struct inode *dir,
++	const struct qstr *qstr, const char **name, void **value, size_t *len)
++{
++	return 0;
++}
++
++static int vsentry_inode_create(struct inode *dir, struct dentry *dentry,
++	umode_t mode)
++{
++	return 0;
++}
++
++static int vsentry_inode_link(struct dentry *old_dentry, struct inode *dir,
++	struct dentry *new_dentry)
++{
++	return 0;
++}
++
++static int vsentry_inode_unlink(struct inode *dir, struct dentry *dentry)
++{
++	return 0;
++}
++
++static int vsentry_inode_symlink(struct inode *dir, struct dentry *dentry,
++	const char *old_name)
++{
++	return 0;
++}
++
++static int vsentry_inode_mkdir(struct inode *dir, struct dentry *dentry,
++	umode_t mode)
++{
++	return 0;
++}
++
++static int vsentry_inode_rmdir(struct inode *dir, struct dentry *dentry)
++{
++	return 0;
++}
++
++static int vsentry_inode_mknod(struct inode *dir, struct dentry *dentry,
++	umode_t mode, dev_t dev)
++{
++	return 0;
++}
++
++static int vsentry_inode_rename(struct inode *old_dir,
++	struct dentry *old_dentry, struct inode *new_dir,
++	struct dentry *new_dentry)
++{
++	return 0;
++}
++
++static int vsentry_inode_readlink(struct dentry *dentry)
++{
++	return 0;
++}
++
++static int vsentry_inode_follow_link(struct dentry *dentry,
++	struct inode *inode, bool rcu)
++{
++	return 0;
++}
++
++static int vsentry_inode_permission(struct inode *inode, int mask)
++{
++	return 0;
++}
++
++static int vsentry_inode_setattr(struct dentry *dentry, struct iattr *attr)
++{
++	return 0;
++}
++
++static int vsentry_inode_getattr(const struct path *path)
++{
++	return 0;
++}
++
++static int vsentry_inode_setxattr(struct dentry *dentry, const char *name,
++			const void *value, size_t size, int flags)
++{
++	return 0;
++}
++
++static void vsentry_inode_post_setxattr(struct dentry *dentry,
++	const char *name, const void *value, size_t size, int flags)
++{
++}
++
++static int vsentry_inode_getxattr(struct dentry *dentry, const char *name)
++{
++	return 0;
++}
++
++static int vsentry_inode_listxattr(struct dentry *dentry)
++{
++	return 0;
++}
++
++static int vsentry_inode_removexattr(struct dentry *dentry, const char *name)
++{
++	return 0;
++}
++
++static int vsentry_inode_need_killpriv(struct dentry *dentry)
++{
++	return 0;
++}
++
++static int vsentry_inode_killpriv(struct dentry *dentry)
++{
++	return 0;
++}
++
++static int vsentry_inode_getsecurity(struct inode *inode, const char *name,
++				void **buffer, bool alloc)
++{
++	return 0;
++}
++
++static int vsentry_inode_setsecurity(struct inode *inode, const char *name,
++				const void *value, size_t size,
++				int flags)
++{
++	return 0;
++}
++
++static int vsentry_inode_listsecurity(struct inode *inode, char *buffer,
++				size_t buffer_size)
++{
++	return 0;
++}
++
++static void vsentry_inode_getsecid(struct inode *inode, u32 *secid)
++{
++	return 0;
++}
++
++static int vsentry_inode_copy_up(struct dentry *src, struct cred **new)
++{
++	return 0;
++}
++
++static int vsentry_inode_copy_up_xattr(const char *name)
++{
++	return 0;
++}
++
++static int vsentry_file_permission(struct file *file, int mask)
++{
++	return 0;
++}
++
++static int vsentry_file_alloc_security(struct file *file)
++{
++	return 0;
++}
++
++static void vsentry_file_free_security(struct file *file)
++{
++}
++
++static int vsentry_file_ioctl(struct file *file, unsigned int cmd,
++			unsigned long arg)
++{
++	return 0;
++}
++
++static int vsentry_mmap_addr(unsigned long addr)
++{
++	return 0;
++}
++
++static int vsentry_mmap_file(struct file *file, unsigned long reqprot,
++			unsigned long prot, unsigned long flags)
++{
++	return 0;
++}
++
++static int vsentry_file_mprotect(struct vm_area_struct *vma,
++	unsigned long reqprot, unsigned long prot)
++{
++	return 0;
++}
++
++static int vsentry_file_lock(struct file *file, unsigned int cmd)
++{
++	return 0;
++}
++
++static int vsentry_file_fcntl(struct file *file, unsigned int cmd,
++			unsigned long arg)
++{
++	return 0;
++}
++
++static void vsentry_file_set_fowner(struct file *file)
++{
++}
++
++static int vsentry_file_send_sigiotask(struct task_struct *tsk,
++				struct fown_struct *fown, int sig)
++{
++	return 0;
++}
++
++static int vsentry_file_receive(struct file *file)
++{
++	return 0;
++}
++
++static int vsentry_file_open(struct file *file, const struct cred *cred)
++{
++	return 0;
++}
++
++static int vsentry_task_create(unsigned long clone_flags)
++{
++	return 0;
++}
++
++static void vsentry_task_free(struct task_struct *task)
++{
++}
++
++static int vsentry_cred_alloc_blank(struct cred *cred, gfp_t gfp)
++{
++	return 0;
++}
++
++static void vsentry_cred_free(struct cred *cred)
++{
++}
++
++static int vsentry_cred_prepare(struct cred *new, const struct cred *old,
++			gfp_t gfp)
++{
++	return 0;
++}
++
++static void vsentry_cred_transfer(struct cred *new, const struct cred *old)
++{
++}
++
++static int vsentry_kernel_act_as(struct cred *new, u32 secid)
++{
++	return 0;
++}
++
++static int vsentry_kernel_create_files_as(struct cred *new,
++	struct inode *inode)
++{
++	return 0;
++}
++
++static int vsentry_kernel_module_request(char *kmod_name)
++{
++	return 0;
++}
++
++static int vsentry_kernel_read_file(struct file *file,
++	enum kernel_read_file_id id)
++{
++	return 0;
++}
++
++static int vsentry_kernel_post_read_file(struct file *file, char *buf,
++	loff_t size, enum kernel_read_file_id id)
++{
++	return 0;
++}
++
++static int vsentry_task_fix_setuid(struct cred *new, const struct cred *old,
++			int flags)
++{
++	return 0;
++}
++
++static int vsentry_task_setpgid(struct task_struct *p, pid_t pgid)
++{
++	return 0;
++}
++
++static int vsentry_task_getpgid(struct task_struct *p)
++{
++	return 0;
++}
++
++static int vsentry_task_getsid(struct task_struct *p)
++{
++	return 0;
++}
++
++static void vsentry_task_getsecid(struct task_struct *p, u32 *secid)
++{
++}
++
++static int vsentry_task_setnice(struct task_struct *p, int nice)
++{
++	return 0;
++}
++
++static int vsentry_task_setioprio(struct task_struct *p, int ioprio)
++{
++	return 0;
++}
++
++static int vsentry_task_getioprio(struct task_struct *p)
++{
++	return 0;
++}
++
++static int vsentry_task_setrlimit(struct task_struct *p,
++	unsigned int resource, struct rlimit *new_rlim)
++{
++	return 0;
++}
++
++static int vsentry_task_setscheduler(struct task_struct *p)
++{
++	return 0;
++}
++
++static int vsentry_task_getscheduler(struct task_struct *p)
++{
++	return 0;
++}
++
++static int vsentry_task_movememory(struct task_struct *p)
++{
++	return 0;
++}
++
++static int vsentry_task_kill(struct task_struct *p, struct siginfo *info,
++	int sig, u32 secid)
++{
++	return 0;
++}
++
++static int vsentry_task_prctl(int option, unsigned long arg2,
++	unsigned long arg3, unsigned long arg4, unsigned long arg5)
++{
++	return 0;
++}
++
++static void vsentry_task_to_inode(struct task_struct *p, struct inode *inode)
++{
++	struct vs_hook_t *hook = &vsentry_lsm_hooks[VSENTRY_LHT_TASK_TO_INODE];
++
++	call_lsm_hook(hook, p, inode);
++}
++
++
++static int vsentry_ipc_permission(struct kern_ipc_perm *ipcp, short flag)
++{
++	return 0;
++}
++
++static void vsentry_ipc_getsecid(struct kern_ipc_perm *ipcp, u32 *secid)
++{
++}
++
++static int vsentry_msg_msg_alloc_security(struct msg_msg *msg)
++{
++	return 0;
++}
++
++static void vsentry_msg_msg_free_security(struct msg_msg *msg)
++{
++}
++
++static int vsentry_msg_queue_alloc_security(struct msg_queue *msq)
++{
++	return 0;
++}
++
++static void vsentry_msg_queue_free_security(struct msg_queue *msq)
++{
++}
++
++static int vsentry_msg_queue_associate(struct msg_queue *msq, int msqflg)
++{
++	return 0;
++}
++
++static int vsentry_msg_queue_msgctl(struct msg_queue *msq, int cmd)
++{
++	return 0;
++}
++
++static int vsentry_msg_queue_msgsnd(struct msg_queue *msq, struct msg_msg *msg,
++			int msqflg)
++{
++	return 0;
++}
++
++static int vsentry_msg_queue_msgrcv(struct msg_queue *msq, struct msg_msg *msg,
++			struct task_struct *target, long type,
++			int mode)
++{
++	return 0;
++}
++
++static int vsentry_shm_alloc_security(struct shmid_kernel *shp)
++{
++	return 0;
++}
++
++static void vsentry_shm_free_security(struct shmid_kernel *shp)
++{
++}
++
++static int vsentry_shm_associate(struct shmid_kernel *shp, int shmflg)
++{
++	return 0;
++}
++
++static int vsentry_shm_shmctl(struct shmid_kernel *shp, int cmd)
++{
++	return 0;
++}
++
++static int vsentry_shm_shmat(struct shmid_kernel *shp, char __user *shmaddr,
++			int shmflg)
++{
++	return 0;
++}
++
++static int vsentry_sem_alloc_security(struct sem_array *sma)
++{
++	return 0;
++}
++
++static void vsentry_sem_free_security(struct sem_array *sma)
++{
++}
++
++static int vsentry_sem_associate(struct sem_array *sma, int semflg)
++{
++	return 0;
++}
++
++static int vsentry_sem_semctl(struct sem_array *sma, int cmd)
++{
++	return 0;
++}
++
++static int vsentry_sem_semop(struct sem_array *sma, struct sembuf *sops,
++	unsigned nsops, int alter)
++{
++	return 0;
++}
++
++static int vsentry_netlink_send(struct sock *sk, struct sk_buff *skb)
++{
++	return 0;
++}
++
++static void vsentry_d_instantiate(struct dentry *dentry, struct inode *inode)
++{
++}
++
++static int vsentry_getprocattr(struct task_struct *p, char *name, char **value)
++{
++	return 0;
++}
++
++static int vsentry_setprocattr(const char *name, void *value, size_t size)
++{
++	return 0;
++}
++
++static int vsentry_ismaclabel(const char *name)
++{
++	return 0;
++}
++
++static int vsentry_secid_to_secctx(u32 secid, char **secdata, u32 *seclen)
++{
++	return 0;
++}
++
++static int vsentry_secctx_to_secid(const char *secdata, u32 seclen, u32 *secid)
++{
++	return 0;
++}
++
++static void vsentry_release_secctx(char *secdata, u32 seclen)
++{
++}
++
++static void vsentry_inode_invalidate_secctx(struct inode *inode)
++{
++}
++
++static int vsentry_inode_notifysecctx(struct inode *inode, void *ctx,
++	u32 ctxlen)
++{
++	return 0;
++}
++
++static int vsentry_inode_setsecctx(struct dentry *dentry, void *ctx,
++	u32 ctxlen)
++{
++	return 0;
++}
++
++static int vsentry_inode_getsecctx(struct inode *inode, void **ctx,
++	u32 *ctxlen)
++{
++	return 0;
++}
++
++#endif
++
++#ifdef CONFIG_SECURITY_NETWORK
++
++#if 0
++
++static int vsentry_unix_stream_connect(struct sock *sock, struct sock *other,
++				struct sock *newsk)
++{
++	return 0;
++}
++
++static int vsentry_unix_may_send(struct socket *sock, struct socket *other)
++{
++	return 0;
++}
++
++static int vsentry_socket_create(int family, int type, int protocol, int kern)
++{
++	return 0;
++}
++
++#endif
++
++/***********************************************************************
++ * function:    vsentry_socket_post_create
++ * description: we use this hook to register the new socket and assigned it
++ *              with the calling executable/user.
++ * in param:    struct socket *sock
++ *              int family
++ *              int type
++ *              int protocol
++ *              int kern
++ * out param:   n/a
++ * return:      0
++ **********************************************************************/
++static int vsentry_socket_post_create(struct socket *sock, int family,
++	int type, int protocol, int kern)
++{
++	id_event_t id;
++
++	if (family != AF_INET && family != AF_CAN)
++		return 0;
++
++	vs_hook_dbg("%s socket created 0x%px\n",
++		(family == AF_INET)?"net":"can", sock);
++
++	vsentry_extract_current_info(&id);
++
++	map_process_to_socket(sock, &id);
++
++	return 0;
++}
++
++#if 0
++
++static int vsentry_socket_bind(struct socket *sock, struct sockaddr *address,
++			int addrlen)
++{
++	return 0;
++}
++
++static int vsentry_socket_connect(struct socket *sock,
++	struct sockaddr *address, int addrlen)
++{
++	return 0;
++}
++
++static int vsentry_socket_listen(struct socket *sock, int backlog)
++{
++	return 0;
++}
++#endif
++
++/***********************************************************************
++ * function:    vsentry_socket_accept
++ * description: we use this hook to register the new socket and assigned it
++ *              with the calling executable/user. not sure if it is relevant
++ *              to CAN.
++ * in param:    struct socket *sock
++ *              struct socket *newsock
++ * out param:   n/a
++ * return:      0
++ **********************************************************************/
++static int vsentry_socket_accept(struct socket *sock, struct socket *newsock)
++{
++	id_event_t id;
++
++	if (sock->sk->sk_family != AF_INET && sock->sk->sk_family != AF_CAN)
++		return 0;
++
++	vs_hook_dbg("%s socket created 0x%px\n",
++		(sock->sk->sk_family == AF_INET)?"net":"can", sock);
++
++	vsentry_extract_current_info(&id);
++
++	map_process_to_socket(newsock, &id);
++
++	return 0;
++}
++
++/***********************************************************************
++ * function:     vsentry_socket_sendmsg
++ * description:  we use this hook to classify all outgoing CAN traffic.
++ *               IP traffic will be classify by netfilter hook.
++ * in param:     struct socket *sock
++ *               struct msghdr *msg_hdr,
++ *		int size
++ * out param:    n/a
++ * return:       0/-EACCES
++ ***********************************************************************/
++static int vsentry_socket_sendmsg(struct socket *sock, struct msghdr *msg_hdr,
++	int size)
++{
++	vsentry_event_t ev;
++	struct sock *sk = sock->sk;
++	int ret = -EACCES;
++	struct sk_buff *skb;
++	struct sockaddr_can addr;
++	int addrlen, err;
++	u32 if_index = 0;
++	struct msghdr msg_tmp;
++
++	if (!vsentry_get_enable() || sk->sk_family != AF_CAN)
++		return 0;
++
++	if (sock->ops->getname(sock,
++			(struct sockaddr *)&addr, &addrlen, 0) == 0)
++		if_index = addr.can_ifindex;
++
++	skb = alloc_skb(sizeof(struct can_skb_priv) +
++		sizeof(struct can_frame), GFP_KERNEL);
++	if (!skb) {
++		pr_err("failed to alloc can skb\n");
++		return -EACCES;
++	}
++
++	msg_tmp = *msg_hdr;
++	can_skb_reserve(skb);
++	err = memcpy_from_msg(skb_put(skb, size), &msg_tmp, size);
++	if (err >= 0) {
++		struct canfd_frame *cfd = (struct canfd_frame *)skb->data;
++
++		vs_hook_dbg("\n");
++
++		memset(&ev, 0, sizeof(vsentry_event_t));
++
++		vsentry_extract_current_info(&ev.event_id);
++
++		ev.ts = vsentry_get_curr_time_usec();
++		ev.can_event.can_header.msg_id = (CAN_EFF_MASK & cfd->can_id);
++		ev.can_event.can_header.if_index = if_index;
++		ev.dir = DIR_OUT;
++		ev.can_event.payload_len = cfd->len;
++		memcpy(&ev.can_event.payload, cfd->data, cfd->len);
++
++		if (vsentry_check_event(VSENTRY_CAN_EVENT, &ev, false) ==
++				VSENTRY_ALLOW)
++			ret = 0;
++	}
++
++	kfree_skb(skb);
++
++	return ret;
++}
++
++#if 0
++
++static int vsentry_socket_recvmsg(struct socket *sock, struct msghdr *msg_hdr,
++			int size, int flags)
++{
++	return 0;
++}
++
++static int vsentry_socket_getsockname(struct socket *sock)
++{
++	return 0;
++}
++
++static int vsentry_socket_getpeername(struct socket *sock)
++{
++	return 0;
++}
++
++static int vsentry_socket_getsockopt(struct socket *sock, int level,
++	int optname)
++{
++	return 0;
++}
++
++static int vsentry_socket_setsockopt(struct socket *sock, int level,
++	int optname)
++{
++	return 0;
++}
++
++static int vsentry_socket_shutdown(struct socket *sock, int how)
++{
++	return 0;
++}
++
++#endif
++
++/***********************************************************************
++ * function:    vsentry_socket_sock_rcv_skb
++ * description: we use this hook to classify all incomming CAN/IP(TCP/UDP)
++ *              traffic. for IP we use this hook and not the netfilter since
++ *              for incomming traffic, this is the first place in the kernel
++ *              where the buffer is assigned with the socket.
++ * in param:    struct sock *sk - the sock will allow us to find the exec_inode
++ *              struct sk_buff *skb - the buffer
++ * out param:   n/a
++ * return:      0/-EACCES
++ ***********************************************************************/
++static int vsentry_socket_sock_rcv_skb(struct sock *sk, struct sk_buff *skb)
++{
++	vsentry_event_t ev;
++	vsentry_ev_type_e type = VSENTRY_TOTAL_EVENT;
++
++	if (!vsentry_get_enable())
++		return 0;
++
++	memset(&ev, 0, sizeof(vsentry_event_t));
++
++	ev.ts = vsentry_get_curr_time_usec();
++	ev.dir = DIR_IN;
++
++	/* try to extract the recv executable/user */
++	if (sk->sk_socket)
++		get_id_by_socket(sk->sk_socket, &ev.event_id);
++
++	switch (sk->sk_family) {
++	case AF_CAN:
++	{
++		struct canfd_frame *cfd = (struct canfd_frame *)skb->data;
++		struct socket *sock = sk->sk_socket;
++		struct sockaddr_can addr;
++		int addrlen;
++
++		vs_hook_dbg("classify rx can\n");
++
++		/* extract CAN evetn data */
++		if (sock->ops->getname(sock,
++				(struct sockaddr *)&addr, &addrlen, 0) == 0)
++			ev.can_event.can_header.if_index = addr.can_ifindex;
++		ev.can_event.can_header.msg_id = CAN_EFF_MASK & cfd->can_id;
++		ev.can_event.payload_len = cfd->len;
++		memcpy(&ev.can_event.payload, cfd->data, cfd->len);
++
++		type = VSENTRY_CAN_EVENT;
++
++		break;
++	}
++
++	case AF_INET:
++	{
++		struct iphdr *ip_header =
++			(struct iphdr *)skb_network_header(skb);
++
++		/* classify only TCP/UDP */
++		if (ip_header->protocol != IPPROTO_TCP &&
++				ip_header->protocol != IPPROTO_UDP)
++			return 0;
++
++		vs_hook_dbg("classify rx net\n");
++
++		ev.ip_event.ip_proto = ip_header->protocol;
++		vsentry_extract_ip_info(&ev.ip_event, skb);
++
++		type = VSENTRY_IP_EVENT;
++
++		break;
++	}
++
++	default:
++		return 0;
++	}
++
++	if (vsentry_check_event(type, &ev, true) != VSENTRY_ALLOW)
++		return -EACCES;
++
++	return 0;
++}
++
++#if 0
++
++static int vsentry_socket_getpeersec_stream(struct socket *sock,
++				char __user *optval,
++				int __user *optlen, unsigned len)
++{
++	return 0;
++}
++
++static int vsentry_socket_getpeersec_dgram(struct socket *sock,
++				struct sk_buff *skb, u32 *secid)
++{
++	return 0;
++}
++
++static int vsentry_sk_alloc_security(struct sock *sk, int family,
++	gfp_t priority)
++{
++	return 0;
++}
++
++static void vsentry_sk_free_security(struct sock *sk)
++{
++}
++
++static void vsentry_sk_clone_security(const struct sock *sk,
++	struct sock *newsk)
++{
++}
++
++static void vsentry_sk_getsecid(struct sock *sk, u32 *secid)
++{
++}
++
++static void vsentry_sock_graft(struct sock *sk, struct socket *parent)
++{
++}
++
++static int vsentry_inet_conn_request(struct sock *sk, struct sk_buff *skb,
++				struct request_sock *req)
++{
++	return 0;
++}
++
++static void vsentry_inet_csk_clone(struct sock *newsk,
++			const struct request_sock *req)
++{
++}
++
++static void vsentry_inet_conn_established(struct sock *sk, struct sk_buff *skb)
++{
++}
++
++static int vsentry_secmark_relabel_packet(u32 secid)
++{
++	return 0;
++}
++
++static void vsentry_secmark_refcount_inc(void)
++{
++}
++
++static void vsentry_secmark_refcount_dec(void)
++{
++}
++
++static void vsentry_req_classify_flow(const struct request_sock *req,
++				struct flowi *fl)
++{
++}
++
++static int vsentry_tun_dev_alloc_security(void **security)
++{
++	return 0;
++}
++
++static void vsentry_tun_dev_free_security(void *security)
++{
++}
++
++static int vsentry_tun_dev_create(void)
++{
++	return 0;
++}
++
++static int vsentry_tun_dev_attach_queue(void *security)
++{
++	return 0;
++}
++
++static int vsentry_tun_dev_attach(struct sock *sk, void *security)
++{
++	return 0;
++}
++
++static int vsentry_tun_dev_open(void *security)
++{
++	return 0;
++}
++
++#endif
++
++#endif  /* CONFIG_SECURITY_NETWORK */
++
++#ifdef CONFIG_SECURITY_NETWORK_XFRM
++
++#if 0
++
++static int vsentry_xfrm_policy_alloc_security(struct xfrm_sec_ctx **ctxp,
++	struct xfrm_user_sec_ctx *sec_ctx, gfp_t gfp)
++{
++	return 0;
++}
++
++static int vsentry_xfrm_policy_clone_security(struct xfrm_sec_ctx *old_ctx,
++					struct xfrm_sec_ctx **new_ctx)
++{
++	return 0;
++}
++
++static void vsentry_xfrm_policy_free_security(struct xfrm_sec_ctx *ctx)
++{
++}
++
++static int vsentry_xfrm_policy_delete_security(struct xfrm_sec_ctx *ctx)
++{
++	return 0;
++}
++
++static int vsentry_xfrm_state_alloc(struct xfrm_state *x,
++			struct xfrm_user_sec_ctx *sec_ctx)
++{
++	return 0;
++}
++
++static int vsentry_xfrm_state_alloc_acquire(struct xfrm_state *x,
++				struct xfrm_sec_ctx *polsec,
++				u32 secid)
++{
++	return 0;
++}
++
++static void vsentry_xfrm_state_free_security(struct xfrm_state *x)
++{
++}
++
++static int vsentry_xfrm_state_delete_security(struct xfrm_state *x)
++{
++	return 0;
++}
++
++static int vsentry_xfrm_policy_lookup(struct xfrm_sec_ctx *ctx, u32 fl_secid,
++	u8 dir)
++{
++	return 0;
++}
++
++static int vsentry_xfrm_state_pol_flow_match(struct xfrm_state *x,
++					struct xfrm_policy *xp,
++					const struct flowi *fl)
++{
++	return 0;
++}
++
++static int vsentry_xfrm_decode_session(struct sk_buff *skb, u32 *secid,
++	int ckall)
++{
++	return 0;
++}
++
++#endif
++
++#endif /* CONFIG_SECURITY_NETWORK_XFRM */
++
++static struct security_hook_list vsentry_default_lsm_hooks[] = {
++#if 0
++	LSM_HOOK_INIT(binder_set_context_mgr, vsentry_binder_set_context_mgr),
++	LSM_HOOK_INIT(binder_transaction, vsentry_binder_transaction),
++	LSM_HOOK_INIT(binder_transfer_binder, vsentry_binder_transfer_binder),
++	LSM_HOOK_INIT(binder_transfer_file, vsentry_binder_transfer_file),
++	LSM_HOOK_INIT(ptrace_access_check, vsentry_ptrace_access_check),
++	LSM_HOOK_INIT(ptrace_traceme, vsentry_ptrace_traceme),
++	LSM_HOOK_INIT(capget, vsentry_capget),
++	LSM_HOOK_INIT(capset, vsentry_capset),
++	LSM_HOOK_INIT(capable, vsentry_capable),
++	LSM_HOOK_INIT(quotactl, vsentry_quotactl),
++	LSM_HOOK_INIT(quota_on, vsentry_quota_on),
++	LSM_HOOK_INIT(syslog, vsentry_syslog),
++	LSM_HOOK_INIT(settime, vsentry_settime),
++	LSM_HOOK_INIT(vm_enough_memory, vsentry_vm_enough_memory),
++	LSM_HOOK_INIT(bprm_set_creds, vsentry_bprm_set_creds),
++	LSM_HOOK_INIT(bprm_check_security, vsentry_bprm_check_security),
++	LSM_HOOK_INIT(bprm_committing_creds, vsentry_bprm_committing_creds),
++	LSM_HOOK_INIT(bprm_committed_creds, vsentry_bprm_committed_creds),
++	LSM_HOOK_INIT(sb_alloc_security, vsentry_sb_alloc_security),
++	LSM_HOOK_INIT(sb_free_security, vsentry_sb_free_security),
++	LSM_HOOK_INIT(sb_copy_data, vsentry_sb_copy_data),
++	LSM_HOOK_INIT(sb_remount, vsentry_sb_remount),
++	LSM_HOOK_INIT(sb_kern_mount, vsentry_sb_kern_mount),
++	LSM_HOOK_INIT(sb_show_options, vsentry_sb_show_options),
++	LSM_HOOK_INIT(sb_statfs, vsentry_sb_statfs),
++	LSM_HOOK_INIT(sb_mount, vsentry_sb_mount),
++	LSM_HOOK_INIT(sb_umount, vsentry_sb_umount),
++	LSM_HOOK_INIT(sb_pivotroot, vsentry_sb_pivotroot),
++	LSM_HOOK_INIT(sb_set_mnt_opts, vsentry_sb_set_mnt_opts),
++	LSM_HOOK_INIT(sb_clone_mnt_opts, vsentry_sb_clone_mnt_opts),
++	LSM_HOOK_INIT(sb_parse_opts_str, vsentry_sb_parse_opts_str),
++	LSM_HOOK_INIT(dentry_init_security, vsentry_dentry_init_security),
++	LSM_HOOK_INIT(dentry_create_files_as, vsentry_dentry_create_files_as),
++#endif
++#ifdef CONFIG_SECURITY_PATH
++#if 0
++	LSM_HOOK_INIT(path_unlink, vsentry_path_unlink),
++	LSM_HOOK_INIT(path_mkdir, vsentry_path_mkdir),
++	LSM_HOOK_INIT(path_rmdir, vsentry_path_rmdir),
++	LSM_HOOK_INIT(path_mknod, vsentry_path_mknod),
++	LSM_HOOK_INIT(path_truncate, vsentry_path_truncate),
++	LSM_HOOK_INIT(path_symlink, vsentry_path_symlink),
++	LSM_HOOK_INIT(path_link, vsentry_path_link),
++	LSM_HOOK_INIT(path_rename, vsentry_path_rename),
++	LSM_HOOK_INIT(path_chmod, vsentry_path_chmod),
++	LSM_HOOK_INIT(path_chown, vsentry_path_chown),
++	LSM_HOOK_INIT(path_chroot, vsentry_path_chroot),
++#endif
++#endif /* CONFIG_SECURITY_PATH */
++#if 0
++	LSM_HOOK_INIT(inode_alloc_security, vsentry_inode_alloc_security),
++#endif
++	LSM_HOOK_INIT(inode_free_security, vsentry_inode_free_security),
++#if 0
++	LSM_HOOK_INIT(inode_init_security, vsentry_inode_init_security),
++	LSM_HOOK_INIT(inode_create, vsentry_inode_create),
++	LSM_HOOK_INIT(inode_link, vsentry_inode_link),
++	LSM_HOOK_INIT(inode_unlink, vsentry_inode_unlink),
++	LSM_HOOK_INIT(inode_symlink, vsentry_inode_symlink),
++	LSM_HOOK_INIT(inode_mkdir, vsentry_inode_mkdir),
++	LSM_HOOK_INIT(inode_rmdir, vsentry_inode_rmdir),
++	LSM_HOOK_INIT(inode_mknod, vsentry_inode_mknod),
++	LSM_HOOK_INIT(inode_rename, vsentry_inode_rename),
++	LSM_HOOK_INIT(inode_readlink, vsentry_inode_readlink),
++	LSM_HOOK_INIT(inode_follow_link, vsentry_inode_follow_link),
++	LSM_HOOK_INIT(inode_permission, vsentry_inode_permission),
++	LSM_HOOK_INIT(inode_setattr, vsentry_inode_setattr),
++	LSM_HOOK_INIT(inode_getattr, vsentry_inode_getattr),
++	LSM_HOOK_INIT(inode_setxattr, vsentry_inode_setxattr),
++	LSM_HOOK_INIT(inode_post_setxattr, vsentry_inode_post_setxattr),
++	LSM_HOOK_INIT(inode_getxattr, vsentry_inode_getxattr),
++	LSM_HOOK_INIT(inode_listxattr, vsentry_inode_listxattr),
++	LSM_HOOK_INIT(inode_removexattr, vsentry_inode_removexattr),
++	LSM_HOOK_INIT(inode_need_killpriv, vsentry_inode_need_killpriv),
++	LSM_HOOK_INIT(inode_killpriv, vsentry_inode_killpriv),
++	LSM_HOOK_INIT(inode_getsecurity, vsentry_inode_getsecurity),
++	LSM_HOOK_INIT(inode_setsecurity, vsentry_inode_setsecurity),
++	LSM_HOOK_INIT(inode_listsecurity, vsentry_inode_listsecurity),
++	LSM_HOOK_INIT(inode_getsecid, vsentry_inode_getsecid),
++	LSM_HOOK_INIT(inode_copy_up, vsentry_inode_copy_up),
++	LSM_HOOK_INIT(inode_copy_up_xattr, vsentry_inode_copy_up_xattr),
++	LSM_HOOK_INIT(file_permission, vsentry_file_permission),
++	LSM_HOOK_INIT(file_alloc_security, vsentry_file_alloc_security),
++	LSM_HOOK_INIT(file_free_security, vsentry_file_free_security),
++	LSM_HOOK_INIT(file_ioctl, vsentry_file_ioctl),
++	LSM_HOOK_INIT(mmap_addr, vsentry_mmap_addr),
++	LSM_HOOK_INIT(mmap_file, vsentry_mmap_file),
++	LSM_HOOK_INIT(file_mprotect, vsentry_file_mprotect),
++	LSM_HOOK_INIT(file_lock, vsentry_file_lock),
++	LSM_HOOK_INIT(file_fcntl, vsentry_file_fcntl),
++	LSM_HOOK_INIT(file_set_fowner, vsentry_file_set_fowner),
++	LSM_HOOK_INIT(file_send_sigiotask, vsentry_file_send_sigiotask),
++	LSM_HOOK_INIT(file_receive, vsentry_file_receive),
++	LSM_HOOK_INIT(file_open, vsentry_file_open),
++	LSM_HOOK_INIT(task_create, vsentry_task_create),
++	LSM_HOOK_INIT(task_free, vsentry_task_free),
++	LSM_HOOK_INIT(cred_alloc_blank, vsentry_cred_alloc_blank),
++	LSM_HOOK_INIT(cred_free, vsentry_cred_free),
++	LSM_HOOK_INIT(cred_prepare, vsentry_cred_prepare),
++	LSM_HOOK_INIT(cred_transfer, vsentry_cred_transfer),
++	LSM_HOOK_INIT(kernel_act_as, vsentry_kernel_act_as),
++	LSM_HOOK_INIT(kernel_create_files_as, vsentry_kernel_create_files_as),
++	LSM_HOOK_INIT(kernel_module_request, vsentry_kernel_module_request),
++	LSM_HOOK_INIT(kernel_read_file, vsentry_kernel_read_file),
++	LSM_HOOK_INIT(kernel_post_read_file, vsentry_kernel_post_read_file),
++	LSM_HOOK_INIT(task_fix_setuid, vsentry_task_fix_setuid),
++	LSM_HOOK_INIT(task_setpgid, vsentry_task_setpgid),
++	LSM_HOOK_INIT(task_getpgid, vsentry_task_getpgid),
++	LSM_HOOK_INIT(task_getsid, vsentry_task_getsid),
++	LSM_HOOK_INIT(task_getsecid, vsentry_task_getsecid),
++	LSM_HOOK_INIT(task_setnice, vsentry_task_setnice),
++	LSM_HOOK_INIT(task_setioprio, vsentry_task_setioprio),
++	LSM_HOOK_INIT(task_getioprio, vsentry_task_getioprio),
++	LSM_HOOK_INIT(task_setrlimit, vsentry_task_setrlimit),
++	LSM_HOOK_INIT(task_setscheduler, vsentry_task_setscheduler),
++	LSM_HOOK_INIT(task_getscheduler, vsentry_task_getscheduler),
++	LSM_HOOK_INIT(task_movememory, vsentry_task_movememory),
++	LSM_HOOK_INIT(task_kill, vsentry_task_kill),
++	LSM_HOOK_INIT(task_prctl, vsentry_task_prctl),
++	LSM_HOOK_INIT(task_to_inode, vsentry_task_to_inode),
++	LSM_HOOK_INIT(ipc_permission, vsentry_ipc_permission),
++	LSM_HOOK_INIT(ipc_getsecid, vsentry_ipc_getsecid),
++	LSM_HOOK_INIT(msg_msg_alloc_security, vsentry_msg_msg_alloc_security),
++	LSM_HOOK_INIT(msg_msg_free_security, vsentry_msg_msg_free_security),
++	LSM_HOOK_INIT(msg_queue_alloc_security,
++		vsentry_msg_queue_alloc_security),
++	LSM_HOOK_INIT(msg_queue_free_security,
++		vsentry_msg_queue_free_security),
++	LSM_HOOK_INIT(msg_queue_associate, vsentry_msg_queue_associate),
++	LSM_HOOK_INIT(msg_queue_msgctl, vsentry_msg_queue_msgctl),
++	LSM_HOOK_INIT(msg_queue_msgsnd, vsentry_msg_queue_msgsnd),
++	LSM_HOOK_INIT(msg_queue_msgrcv, vsentry_msg_queue_msgrcv),
++	LSM_HOOK_INIT(shm_alloc_security, vsentry_shm_alloc_security),
++	LSM_HOOK_INIT(shm_free_security, vsentry_shm_free_security),
++	LSM_HOOK_INIT(shm_associate, vsentry_shm_associate),
++	LSM_HOOK_INIT(shm_shmctl, vsentry_shm_shmctl),
++	LSM_HOOK_INIT(shm_shmat, vsentry_shm_shmat),
++	LSM_HOOK_INIT(sem_alloc_security, vsentry_sem_alloc_security),
++	LSM_HOOK_INIT(sem_free_security, vsentry_sem_free_security),
++	LSM_HOOK_INIT(sem_associate, vsentry_sem_associate),
++	LSM_HOOK_INIT(sem_semctl, vsentry_sem_semctl),
++	LSM_HOOK_INIT(sem_semop, vsentry_sem_semop),
++	LSM_HOOK_INIT(netlink_send, vsentry_netlink_send),
++	LSM_HOOK_INIT(d_instantiate, vsentry_d_instantiate),
++	LSM_HOOK_INIT(getprocattr, vsentry_getprocattr),
++	LSM_HOOK_INIT(setprocattr, vsentry_setprocattr),
++	LSM_HOOK_INIT(ismaclabel, vsentry_ismaclabel),
++	LSM_HOOK_INIT(secid_to_secctx, vsentry_secid_to_secctx),
++	LSM_HOOK_INIT(secctx_to_secid, vsentry_secctx_to_secid),
++	LSM_HOOK_INIT(release_secctx, vsentry_release_secctx),
++	LSM_HOOK_INIT(inode_invalidate_secctx,
++		vsentry_inode_invalidate_secctx),
++	LSM_HOOK_INIT(inode_notifysecctx, vsentry_inode_notifysecctx),
++	LSM_HOOK_INIT(inode_setsecctx, vsentry_inode_setsecctx),
++	LSM_HOOK_INIT(inode_getsecctx, vsentry_inode_getsecctx),
++#endif
++#ifdef CONFIG_SECURITY_NETWORK
++#if 0
++	LSM_HOOK_INIT(unix_stream_connect, vsentry_unix_stream_connect),
++	LSM_HOOK_INIT(unix_may_send, vsentry_unix_may_send),
++	LSM_HOOK_INIT(socket_create, vsentry_socket_create),
++#endif
++	LSM_HOOK_INIT(socket_post_create, vsentry_socket_post_create),
++#if 0
++	LSM_HOOK_INIT(socket_bind, vsentry_socket_bind),
++	LSM_HOOK_INIT(socket_connect, vsentry_socket_connect),
++	LSM_HOOK_INIT(socket_listen, vsentry_socket_listen),
++#endif
++	LSM_HOOK_INIT(socket_accept, vsentry_socket_accept),
++	LSM_HOOK_INIT(socket_sendmsg, vsentry_socket_sendmsg),
++#if 0
++	LSM_HOOK_INIT(socket_recvmsg, vsentry_socket_recvmsg),
++	LSM_HOOK_INIT(socket_getsockname, vsentry_socket_getsockname),
++	LSM_HOOK_INIT(socket_getpeername, vsentry_socket_getpeername),
++	LSM_HOOK_INIT(socket_getsockopt, vsentry_socket_getsockopt),
++	LSM_HOOK_INIT(socket_setsockopt, vsentry_socket_setsockopt),
++	LSM_HOOK_INIT(socket_shutdown, vsentry_socket_shutdown),
++#endif
++	LSM_HOOK_INIT(socket_sock_rcv_skb, vsentry_socket_sock_rcv_skb),
++#if 0
++	LSM_HOOK_INIT(socket_getpeersec_stream,
++		vsentry_socket_getpeersec_stream),
++	LSM_HOOK_INIT(socket_getpeersec_dgram,
++		vsentry_socket_getpeersec_dgram),
++	LSM_HOOK_INIT(sk_alloc_security, vsentry_sk_alloc_security),
++	LSM_HOOK_INIT(sk_free_security, vsentry_sk_free_security),
++	LSM_HOOK_INIT(sk_clone_security, vsentry_sk_clone_security),
++	LSM_HOOK_INIT(sk_getsecid, vsentry_sk_getsecid),
++	LSM_HOOK_INIT(sock_graft, vsentry_sock_graft),
++	LSM_HOOK_INIT(inet_conn_request, vsentry_inet_conn_request),
++	LSM_HOOK_INIT(inet_csk_clone, vsentry_inet_csk_clone),
++	LSM_HOOK_INIT(inet_conn_established, vsentry_inet_conn_established),
++	LSM_HOOK_INIT(secmark_relabel_packet, vsentry_secmark_relabel_packet),
++	LSM_HOOK_INIT(secmark_refcount_inc, vsentry_secmark_refcount_inc),
++	LSM_HOOK_INIT(secmark_refcount_dec, vsentry_secmark_refcount_dec),
++	LSM_HOOK_INIT(req_classify_flow, vsentry_req_classify_flow),
++	LSM_HOOK_INIT(tun_dev_alloc_security, vsentry_tun_dev_alloc_security),
++	LSM_HOOK_INIT(tun_dev_free_security, vsentry_tun_dev_free_security),
++	LSM_HOOK_INIT(tun_dev_create, vsentry_tun_dev_create),
++	LSM_HOOK_INIT(tun_dev_attach_queue, vsentry_tun_dev_attach_queue),
++	LSM_HOOK_INIT(tun_dev_attach, vsentry_tun_dev_attach),
++	LSM_HOOK_INIT(tun_dev_open, vsentry_tun_dev_open),
++#endif
++#endif  /* CONFIG_SECURITY_NETWORK */
++#ifdef CONFIG_SECURITY_NETWORK_XFRM
++#if 0
++	LSM_HOOK_INIT(xfrm_policy_alloc_security,
++		vsentry_xfrm_policy_alloc_security),
++	LSM_HOOK_INIT(xfrm_policy_clone_security,
++		vsentry_xfrm_policy_clone_security),
++	LSM_HOOK_INIT(xfrm_policy_free_security,
++		vsentry_xfrm_policy_free_security),
++	LSM_HOOK_INIT(xfrm_policy_delete_security,
++		vsentry_xfrm_policy_delete_security),
++	LSM_HOOK_INIT(xfrm_state_alloc, vsentry_xfrm_state_alloc),
++	LSM_HOOK_INIT(xfrm_state_alloc_acquire,
++		vsentry_xfrm_state_alloc_acquire),
++	LSM_HOOK_INIT(xfrm_state_free_security,
++		vsentry_xfrm_state_free_security),
++	LSM_HOOK_INIT(xfrm_state_delete_security,
++		vsentry_xfrm_state_delete_security),
++	LSM_HOOK_INIT(xfrm_policy_lookup, vsentry_xfrm_policy_lookup),
++	LSM_HOOK_INIT(xfrm_state_pol_flow_match,
++		vsentry_xfrm_state_pol_flow_match),
++	LSM_HOOK_INIT(xfrm_decode_session, vsentry_xfrm_decode_session),
++#endif
++#endif
++};
++
++static int __init vsentry_lsm_init(void)
++{
++	int i;
++
++	for (i = 0; i < MAP_SIZE; i++)
++		INIT_HLIST_HEAD(&socket_process_map[i]);
++
++	security_add_hooks(vsentry_default_lsm_hooks,
++		ARRAY_SIZE(vsentry_default_lsm_hooks));
++
++	vs_hook_info("vSentry security module initialized\n");
++
++	return 0;
++}
++
++security_initcall(vsentry_lsm_init);
++
++/***********************************************************************
++ * function:     vsentry_ipv4_hook_post_routing
++ * description:  we use this hook to classify all outgoing tcp/ip traffic.
++ * in param:     struct sk_buff *skb - outgoing buffer
++ * out param:    n/a
++ * return:       NF_ACCEPT/NF_DROP
++ **********************************************************************/
++static unsigned int vsentry_ipv4_hook_post_routing(void *priv,
++	struct sk_buff *skb, const struct nf_hook_state *state)
++{
++	vsentry_event_t ev;
++	struct iphdr *ip_header = (struct iphdr *)skb_network_header(skb);
++
++	if (!vsentry_get_enable())
++		return NF_ACCEPT;
++
++	/* classify only TCP/UDP */
++	if (ip_header->protocol != IPPROTO_TCP &&
++			ip_header->protocol != IPPROTO_UDP)
++		return NF_ACCEPT;
++
++	vs_hook_dbg("\n");
++
++	memset(&ev, 0, sizeof(vsentry_event_t));
++
++	ev.ip_event.ip_proto = ip_header->protocol;
++	ev.dir = DIR_OUT;
++	ev.ts = vsentry_get_curr_time_usec();
++
++	vsentry_extract_ip_info(&ev.ip_event, skb);
++
++	if (skb->sk && skb->sk->sk_socket)
++		get_id_by_socket(skb->sk->sk_socket, &ev.event_id);
++
++	if (vsentry_check_event(VSENTRY_IP_EVENT, &ev, true) == VSENTRY_ALLOW)
++		return NF_ACCEPT;
++
++	return NF_DROP;
++}
++
++static const struct nf_hook_ops vsentry_nf_ops[] = {
++	{
++		.hook =		vsentry_ipv4_hook_post_routing,
++		.pf =		NFPROTO_IPV4,
++		.hooknum =	NF_INET_POST_ROUTING,
++		.priority =	NF_IP_PRI_FIRST,
++	},
++};
++
++static int __net_init vsentry_nf_register(struct net *net)
++{
++	return nf_register_net_hooks(net, vsentry_nf_ops,
++				     ARRAY_SIZE(vsentry_nf_ops));
++}
++
++static void __net_exit vsentry_nf_unregister(struct net *net)
++{
++	nf_unregister_net_hooks(net, vsentry_nf_ops,
++				ARRAY_SIZE(vsentry_nf_ops));
++}
++
++static struct pernet_operations vsentry_net_ops = {
++	.init = vsentry_nf_register,
++	.exit = vsentry_nf_unregister,
++};
++
++static int __init vsentry_nf_init(void)
++{
++	int err;
++
++	err = register_pernet_subsys(&vsentry_net_ops);
++	if (err)
++		panic("register_pernet_subsys: error %d\n", err);
++
++	vs_hook_info("Registered vSentry netfilter hooks\n");
++
++	return 0;
++}
++__initcall(vsentry_nf_init);
+diff --git a/security/vsentry/vsentry_internal.h b/security/vsentry/vsentry_internal.h
+new file mode 100644
+index 0000000..bfa63a8
+--- /dev/null
++++ b/security/vsentry/vsentry_internal.h
+@@ -0,0 +1,29 @@
++/* Copyright (C) 2018 SafeRide, Inc.
++ *
++ * This software is licensed under the terms of the GNU General Public
++ * License version 2, as published by the Free Software Foundation, and
++ * may be copied, distributed, and modified under those terms.
++ *
++ * This program is distributed WITHOUT ANY WARRANTY;
++ * without even the implied warranty of MERCHANTABILITY
++ * or FITNESS FOR A PARTICULAR PURPOSE.  See the
++ * GNU General Public License for more details.
++ */
++
++#ifndef __VSENTRY_INTERNAL_H__
++#define __VSENTRY_INTERNAL_H__
++
++int   vsentry_set_eng_tgid(unsigned int pid);
++int   vsentry_get_eng_tgid(void);
++int   vsentry_update_shmem(char *dbfile);
++int   vsentry_update_execmem(char *execfile);
++bool  vsentry_get_enable(void);
++int   vsentry_set_enable(bool enable);
++int   vsentry_set_mode(unsigned int mode);
++int   vsentry_get_state(struct vsentry_state *state);
++void  vsentry_print_info(void);
++int   vsentry_check_event(vsentry_ev_type_e type, vsentry_event_t *ev, bool atomic);
++int   vsentry_generate_netlink_event(vsentry_event_t *ev);
++unsigned long long vsentry_get_curr_time_usec(void);
++
++#endif /* __VSENTRY_INTERNAL_H__ */
+diff --git a/security/vsentry/vsentry_mod.c b/security/vsentry/vsentry_mod.c
+new file mode 100644
+index 0000000..2623da1
+--- /dev/null
++++ b/security/vsentry/vsentry_mod.c
+@@ -0,0 +1,584 @@
++/* Copyright (C) 2018 SafeRide, Inc.
++ *
++ * This software is licensed under the terms of the GNU General Public
++ * License version 2, as published by the Free Software Foundation, and
++ * may be copied, distributed, and modified under those terms.
++ *
++ * This program is distributed WITHOUT ANY WARRANTY;
++ * without even the implied warranty of MERCHANTABILITY
++ * or FITNESS FOR A PARTICULAR PURPOSE.  See the
++ * GNU General Public License for more details.
++ */
++
++#include <linux/mm.h>
++#include <linux/sched.h>
++#include <linux/cpumask.h>
++#include <linux/kernel_stat.h>
++#include <linux/tick.h>
++#include <linux/delay.h>
++#include <linux/kthread.h>
++#include <linux/fs.h>
++#include <linux/namei.h>
++#include <linux/spinlock.h>
++#include <linux/uaccess.h>
++#include <linux/vmalloc.h>
++#include <linux/vsentry/vsentry.h>
++#include <linux/vsentry/vsentry_drv.h>
++#include "vsentry_internal.h"
++
++#define CLS_BIN_FILE 	"/etc/vsentry/cls.bin"
++#define CLS_DB_FILE 	"/etc/vsentry/db.mem"
++
++#define VS_MOD_DEBUG
++#ifdef VS_MOD_DEBUG
++#define vs_dbg(fmt, ...) \
++	pr_debug("[DBG] %llu %s: " fmt, vsentry_get_curr_time_usec(), \
++		__func__, ##__VA_ARGS__)
++#else
++#define vs_dbg(...)
++#endif /* VS_MOD_DEBUG */
++
++#define vs_err(fmt, ...) \
++	pr_err("[ERR] %llu %s: " fmt, vsentry_get_curr_time_usec(), \
++		__func__, ##__VA_ARGS__)
++#define vs_warn(fmt, ...) \
++	pr_warn("[WRN] %llu %s: " fmt, vsentry_get_curr_time_usec(), \
++		__func__, ##__VA_ARGS__)
++#define vs_info(fmt, ...) \
++	pr_info("[INF] %llu %s: " fmt, vsentry_get_curr_time_usec(), \
++		__func__, ##__VA_ARGS__)
++
++static int vsentry_eng_tgid;
++static volatile bool vsentry_enabled;
++static void *shmem, *execmem;
++static volatile bool db_update;
++static volatile unsigned int usage;
++static int (* volatile cls_func)(vsentry_ev_type_e ev_type,
++	vsentry_event_t *event, bool atomic);
++
++static DEFINE_SPINLOCK(vsentry_lock);
++
++/***********************************************************************
++ * function:    vsentry_get_curr_time_usec
++ * description: aux function. get the current time in usecs
++ * in param:    n/a
++ * out param:   n/a.
++ * return:      unsigned long long time in usecs
++ **********************************************************************/
++unsigned long long vsentry_get_curr_time_usec(void)
++{
++	struct timeval tv;
++
++	do_gettimeofday(&tv);
++
++	return ((tv.tv_sec * 1000000) + tv.tv_usec);
++}
++
++/***********************************************************************
++ * function:    vsentry_set_eng_pid
++ * description: register the vsentry engine pid. this will help us skip
++ *              security checks on operations made by the engine.
++ * in param:    unsigned int pid
++ * out param:   n/a.
++ * return:      0 on success, other on failure.
++ **********************************************************************/
++int vsentry_set_eng_tgid(unsigned int pid)
++{
++	if (vsentry_eng_tgid && pid) {
++		vs_err("another engine already registered\n");
++		return VSENTRY_ALREADY_EXISTS;
++	}
++
++	vsentry_eng_tgid = pid;
++
++	vs_dbg("set eng pid %u\n", vsentry_eng_tgid);
++
++	return VSENTRY_SUCCESS;
++}
++
++/***********************************************************************
++ * function:    vsentry_get_eng_pid
++ * description: return the current engine pid.
++ * in param:    n/a.
++ * out param:   n/a.
++ * return:      int - engine pid.
++ **********************************************************************/
++int vsentry_get_eng_tgid(void)
++{
++	return vsentry_eng_tgid;
++}
++
++/***********************************************************************
++ * function:    update_mem_from_file
++ * description: copy file content to memory area.
++ * in param:    char *filename - file to copy
++ *              bool executable - is memory should be executable
++ * out param:   n/a.
++ * return:      void* (memory pointer or error)
++ **********************************************************************/
++void* update_mem_from_file(char *filename, bool executable)
++{
++	struct file *f = NULL;
++	loff_t offset = 0, f_size, m_size;
++	int ret = VSENTRY_SUCCESS;
++	void *tmp;
++
++	vs_dbg("updating %s from file %s\n", executable?"EXEC":"DB", filename);
++
++	/* open the file */
++	f = filp_open(filename, O_RDONLY, 0644);
++	if (IS_ERR(f)) {
++		vs_err("failed to open %s\n", filename);
++		return ERR_PTR(-ENOENT);
++	}
++
++	/* get the file size */
++	f_size = i_size_read(f->f_inode);
++	if (f_size <= 0) {
++		vs_err("invalid file size %llu\n", f_size);
++		ret = -EINVAL;
++		goto update_err;
++	}
++
++	/* align to page size */
++	m_size = f_size;
++	if (m_size % PAGE_SIZE)
++		m_size = ((m_size & PAGE_MASK) + PAGE_SIZE);
++
++	vs_dbg("aligned memory size 0x%llx\n", m_size);
++
++	if (executable)
++		tmp = vmalloc_exec(m_size);
++	else
++		tmp = __vmalloc(m_size, GFP_USER | __GFP_ZERO, PAGE_KERNEL);
++
++	/* TODO: modify the pages to R/X. see exmaple in
++	 * module_enable_ro(mod, false);
++	 * module_enable_nx(mod);
++	 */
++
++	if (!tmp) {
++		vs_err("failed to alloc pages\n");
++		ret = -ENOMEM;
++		goto update_err;
++	}
++
++	vs_dbg("allocated %s mem 0x%px length 0x%llx\n",
++			executable?"EXEC":"DB", tmp, m_size);
++
++	/* read file content to memory */
++	ret = kernel_read(f, offset, tmp, f_size);
++	if (ret != f_size) {
++		vs_err("failed to read %s. expected %d actual %d\n",
++				filename, (int)f_size, ret);
++		ret = -EIO;
++		goto update_err;
++	}
++
++	filp_close(f, NULL);
++
++	/* memory is ready */
++	return tmp;
++
++update_err:
++	if (f)
++		filp_close(f, NULL);
++
++	if (tmp)
++		vfree(tmp);
++
++	return ERR_PTR(ret);
++}
++
++
++/***********************************************************************
++ * function:    vsentry_mod_init
++ * description: init function. called by kernel init after root file-system
++ *              is up.
++ * in param:    n/a
++ * out param:   n/a
++ * return:      VSENTRY_SUCCESS/error
++ **********************************************************************/
++int vsentry_mod_init(void)
++{
++	execmem = update_mem_from_file(CLS_BIN_FILE, true);
++	if (IS_ERR(execmem)) {
++		vs_err("failed to initialize EXEC\n");
++		execmem = NULL;
++		return PTR_ERR(execmem);
++	}
++
++	shmem = update_mem_from_file(CLS_DB_FILE, false);
++	if (IS_ERR(shmem)) {
++		shmem = __vmalloc(SHMEM_BUFFER_SIZE, GFP_USER |
++				__GFP_ZERO, PAGE_KERNEL);
++		/* if we don't have DB yet, we can start with empty DB */
++		if (!shmem) {
++			vs_err("failed to initialize DB\n");
++			return PTR_ERR(shmem);
++		}
++	}
++
++	vsentry_set_enable(true);
++
++	vs_info("vsentry initialized\n");
++
++	return VSENTRY_SUCCESS;
++}
++
++/***********************************************************************
++ * function:    vsentry_update_shmem
++ * description: this function will update the DB with a new content
++ *              from a file.
++ * in param:    char *dbfile
++ * out param:   n/a
++ * return:      VSENTRY_SUCCESS/error
++ **********************************************************************/
++int vsentry_update_shmem(char *dbfile)
++{
++	unsigned long flags;
++	void *tmp_shmem = update_mem_from_file(dbfile, false);
++
++	if (IS_ERR(tmp_shmem)) {
++		vs_err("failed to update new DB\n");
++		return PTR_ERR(tmp_shmem);
++	}
++
++	/* disable interrupts on this cpu */
++	spin_lock_irqsave(&vsentry_lock, flags);
++
++	/* signal update is on the way */
++	db_update = true;
++
++	/* wait till all ongoing checks will complete */
++	while (usage)
++		;
++
++	if (vsentry_enabled) {
++		BUG_ON(!cls_func);
++		/* init the classifier with the new DB */
++		if (cls_func(VSENTRY_CLASIFFIER_INIT, tmp_shmem, false) !=
++				VSENTRY_SUCCESS) {
++			vs_err("failed to init cls with DB, restoring old DB\n");
++
++			/* free the newly allocated DB */
++			vfree(tmp_shmem);
++			tmp_shmem = NULL;
++
++			/* restore the old DB */
++			if (cls_func(VSENTRY_CLASIFFIER_INIT, shmem, false) !=
++					VSENTRY_SUCCESS) {
++				vs_err("restore old DB failed. disabling\n");
++				vsentry_enabled = false;
++				cls_func = NULL;
++				vfree(execmem);
++				vfree(shmem);
++				shmem = execmem = NULL;
++			}
++		}
++	}
++
++	db_update = false;
++
++	/* enable interrupts on this cpu */
++	spin_unlock_irqrestore(&vsentry_lock, flags);
++
++	if (tmp_shmem) {
++		/* cls was updated, free old DB */
++		vfree(shmem);
++		shmem = tmp_shmem;
++	}
++
++	vs_dbg("DB update was completed successfully\n");
++
++	return VSENTRY_SUCCESS;
++}
++
++/***********************************************************************
++ * function:    vsentry_update_execmem
++ * description: this function will update the EXEC with a new content
++ *              from a file.
++ * in param:    char *execfile
++ * out param:   n/a
++ * return:      VSENTRY_SUCCESS/error
++ **********************************************************************/
++int vsentry_update_execmem(char *execfile)
++{
++	unsigned long flags;
++	void *tmp_execmem = update_mem_from_file(execfile, true);
++
++	if (IS_ERR(tmp_execmem)) {
++		vs_err("failed to update new EXEC\n");
++		return PTR_ERR(tmp_execmem);
++	}
++
++	/* disable interrupts on this cpu */
++	spin_lock_irqsave(&vsentry_lock, flags);
++
++	/* signal update is on the way */
++	db_update = true;
++
++	/* wait until all ongoing checks will complete */
++	while (usage)
++		;
++
++	if (vsentry_enabled) {
++		BUG_ON(!shmem);
++
++		/* point to the new EXEC */
++		cls_func = (int (*)(vsentry_ev_type_e ev_type,
++				vsentry_event_t *event, bool atomic))
++						tmp_execmem;
++
++		cls_func(VSENTRY_REGISTER_PRINTF, (void *)printk, false);
++
++		/* initialize the new classifier with DB */
++		if (cls_func(VSENTRY_CLASIFFIER_INIT, shmem, false) !=
++				VSENTRY_SUCCESS) {
++			vs_err("initialize EXEC failed, restoring old EXEC\n");
++
++			/* point to the previous EXEC */
++			cls_func = (int (*)(vsentry_ev_type_e ev_type,
++					vsentry_event_t *event, bool atomic))
++							execmem;
++			/* free the newly allocated EXEC */
++			vfree(tmp_execmem);
++			tmp_execmem = NULL;
++		}
++	}
++
++	db_update = false;
++
++	/* enable interrupts on this cpu */
++	spin_unlock_irqrestore(&vsentry_lock, flags);
++
++	if (tmp_execmem) {
++		/* EXEC was updated, free previous EXEC */
++		vfree(execmem);
++		execmem = tmp_execmem;
++	}
++
++	vs_dbg("EXEC update was completed successfully\n");
++
++	return VSENTRY_SUCCESS;
++}
++
++/***********************************************************************
++ * function:    vsentry_get_enable
++ * description: get the vsentry module state
++ * in param:    n/a.
++ * out param:   n/a.
++ * return:      true/false.
++ **********************************************************************/
++bool vsentry_get_enable(void)
++{
++	return vsentry_enabled;
++}
++
++/***********************************************************************
++ * function:    vsentry_set_enable
++ * description: senble/disable vsentry module
++ * in param:    bool enable.
++ * out param:   n/a.
++ * return:      0 on success.
++ **********************************************************************/
++int vsentry_set_enable(bool enable)
++{
++	if (vsentry_enabled == enable) {
++		vs_dbg("vsentry already %s\n",
++			vsentry_enabled?"enabled":"disabled");
++		return VSENTRY_SUCCESS;
++	}
++
++	if (enable) {
++		if (!shmem) {
++			vs_err("DB is not initialized\n");
++			return -EPERM;
++		}
++
++		if (!execmem) {
++			vs_err("EXEC is not initialized\n");
++			return -EPERM;
++		}
++
++		cls_func = (int (*)(vsentry_ev_type_e ev_type,
++			vsentry_event_t *event, bool atomic))execmem;
++
++		cls_func(VSENTRY_REGISTER_PRINTF, (void *)printk, false);
++
++		if (cls_func(VSENTRY_CLASIFFIER_INIT, shmem, false) !=
++				VSENTRY_SUCCESS) {
++			vs_err("failed to init classifier\n");
++			return -EIO;
++		}
++
++		vsentry_enabled = true;
++	} else {
++		vsentry_enabled = false;
++
++		/* wait until all ongoing checks will complete */
++		while (usage)
++			;
++
++		cls_func = NULL;
++	}
++
++	vs_dbg("vsentry is %s\n", vsentry_enabled?"enabled":"disabled");
++
++	return VSENTRY_SUCCESS;
++}
++
++/***********************************************************************
++ * function:    vsentry_set_mode
++ * description: set the classifier mode (learn/permissive/enforce)
++ * in param:    unsigned int mode
++ * out param:   n/a
++ * return:      VSENTRY_SUCCESS/ negtive on error
++ **********************************************************************/
++int vsentry_set_mode(unsigned int mode)
++{
++	int ret;
++
++	if (!vsentry_enabled) {
++		vs_err("vsentry is not enabled\n");
++		return -EPERM;
++	}
++
++	vs_dbg("vsentry mode %d\n", mode);
++
++	ret = cls_func(VSENTRY_CLASIFFIER_SET_MODE, (void *)&mode, false);
++	if (ret != VSENTRY_SUCCESS && ret != VSENTRY_ALREADY_EXISTS) {
++		vs_err("failed to set classifier mode to %u\n", mode);
++		return -EIO;
++	}
++
++	return VSENTRY_SUCCESS;
++}
++
++int vsentry_get_state(struct vsentry_state *state)
++{
++	if (!state)
++		return -EIO;
++
++	state->enabled = vsentry_enabled;
++	state->cls_present = (execmem?true:false);
++	state->db_present = (shmem?true:false);
++
++	return VSENTRY_SUCCESS;
++}
++
++void vsentry_print_info(void)
++{
++	if (!vsentry_enabled) {
++		vs_err("vsentry is disabled\n");
++		return;
++	}
++
++	cls_func(VSENTRY_PRINT_INFO, NULL, false);
++}
++
++#ifdef VS_MOD_DEBUG
++
++void vsentry_print_ip_event(vsentry_event_t *ip_event)
++{
++	vs_dbg("uid %d, exec_ino %d dir %s src %d.%d.%d.%d sport %d dst %d.%d.%d.%d dport %d proto %d\n",
++		ip_event->event_id.uid, ip_event->event_id.exec_ino,
++		(ip_event->dir == DIR_IN)?"in":"out",
++		(ip_event->ip_event.saddr.v4addr & 0xFF000000)>>24,
++		(ip_event->ip_event.saddr.v4addr & 0xFF0000)>>16,
++		(ip_event->ip_event.saddr.v4addr & 0xFF00)>>8,
++		(ip_event->ip_event.saddr.v4addr & 0xFF),
++		ip_event->ip_event.sport,
++		(ip_event->ip_event.daddr.v4addr & 0xFF000000)>>24,
++		(ip_event->ip_event.daddr.v4addr & 0xFF0000)>>16,
++		(ip_event->ip_event.daddr.v4addr & 0xFF00)>>8,
++		(ip_event->ip_event.daddr.v4addr & 0xFF),
++		ip_event->ip_event.dport, ip_event->ip_event.ip_proto);
++}
++
++void vsentry_print_can_event(vsentry_event_t *can_event)
++{
++	vs_dbg("uid %d, exec_ino %d msgid 0x%x dir %s if %u\n",
++		can_event->event_id.uid, can_event->event_id.exec_ino,
++		can_event->can_event.can_header.msg_id,
++		(can_event->dir == DIR_IN)?"in":"out",
++		can_event->can_event.can_header.if_index);
++}
++
++static void cls_print_action(unsigned int action_bitmap)
++{
++	bool log = false;
++	bool drop = true;
++
++	if (action_bitmap & VSENTRY_ACTION_ALLOW)
++		drop = false;
++
++	if (action_bitmap & VSENTRY_ACTION_LOG)
++		log = true;
++
++	vs_dbg("cls_func return %s%s\n", drop?"drop":"allow", log?",log":"");
++}
++
++#endif
++
++/***********************************************************************
++ * function:    vsentry_check_event
++ * description: security check the event.
++ * in param:    vsentry_ev_type_e type - event type
++ *              vsentry_event_t *ev - the event info
++ *              bool atomic - is this atomic/interrupt context
++ * out param:   n/a
++ * return:      VSENTRY_ALLOW/VSENTRY_DROP
++ **********************************************************************/
++int vsentry_check_event(vsentry_ev_type_e type, vsentry_event_t *ev,
++	bool atomic)
++{
++	int ret;
++
++	if (!vsentry_enabled || !cls_func)
++		return VSENTRY_ALLOW;
++
++#ifdef VS_MOD_DEBUG
++	switch (type) {
++	case VSENTRY_IP_EVENT:
++		vsentry_print_ip_event(ev);
++		break;
++	case VSENTRY_CAN_EVENT:
++		vsentry_print_can_event(ev);
++		break;
++	default:
++		break;
++	}
++#endif
++
++	__sync_add_and_fetch(&usage, 1);
++
++	/* wait until update finish */
++	while (db_update) {
++		__sync_sub_and_fetch(&usage, 1);
++		udelay(1);
++		__sync_add_and_fetch(&usage, 1);
++	}
++
++	if (cls_func)
++		ret = cls_func(type, ev, atomic);
++
++	__sync_sub_and_fetch(&usage, 1);
++
++	if (ret != VSENTRY_SUCCESS) {
++		vs_err("failed to classify event\n");
++		return VSENTRY_DROP;
++	}
++
++#ifdef VS_MOD_DEBUG
++	cls_print_action(ev->act_bitmap);
++#endif
++
++	if (ev->act_bitmap & VSENTRY_ACTION_LOG)
++		vsentry_generate_netlink_event(ev);
++
++	if (ev->act_bitmap & VSENTRY_ACTION_ALLOW)
++		return VSENTRY_ALLOW;
++
++	return VSENTRY_DROP;
++}
+-- 
+1.9.1
+
