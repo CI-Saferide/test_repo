@@ -1126,7 +1126,7 @@ void file_op_convert(SR_U8 file_op, char *perms)
                 return SR_ERROR; \
         }
 
-SR_32 redis_mng_print_db(redisContext *c, rule_type_t type, SR_32 rule_id, SR_8 is_wl)
+SR_32 redis_mng_print_db(redisContext *c, rule_type_t type, SR_32 rule_id_start, SR_32 rule_id_end)
 {
 	int i, j, num;
 	redisReply *reply;
@@ -1176,9 +1176,7 @@ SR_32 redis_mng_print_db(redisContext *c, rule_type_t type, SR_32 rule_id, SR_8 
 			}
 
 			sscanf(reply->element[i]->str, ":%d", &num);
-			if (/*(num >= SR_FILE_START_STATIC_RULE_NO) && */((rule_id == -1) || (num == rule_id))) {
-				if ((is_wl && (num >= SR_FILE_WL_START_RULE_NO)) ||
-						(!is_wl && (num < SR_FILE_WL_START_RULE_NO))) {
+			if (((rule_id_start == -1) && (rule_id_end == -1)) || ((num >= rule_id_start) && (num <= rule_id_end))) {
 					printf("\r%-6d %-8s %-10.10s %-10.10s %-24.24s %-10.10s %-10.10s\n",
 							num,
 							replies[i]->element[3]->str, /* msg_id */
@@ -1187,7 +1185,6 @@ SR_32 redis_mng_print_db(redisContext *c, rule_type_t type, SR_32 rule_id, SR_8 
 							replies[i]->element[9]->str, /* program */
 							replies[i]->element[11]->str, /* user */
 							replies[i]->element[1]->str /* action */);
-				}
 			}
 
 		} else if ((type == RULE_TYPE_IP) && strstr(reply->element[i]->str, NET_PREFIX)) { // net rule
@@ -1202,9 +1199,7 @@ SR_32 redis_mng_print_db(redisContext *c, rule_type_t type, SR_32 rule_id, SR_8 
 			}
 
 			sscanf(reply->element[i]->str, ":%d", &num);
-			if (/*(num >= SR_FILE_START_STATIC_RULE_NO) && */((rule_id == -1) || (num == rule_id))) {
-				if ((is_wl && (num >= SR_FILE_WL_START_RULE_NO)) ||
-						(!is_wl && (num < SR_FILE_WL_START_RULE_NO))) {
+			if (((rule_id_start == -1) && (rule_id_end == -1)) || ((num >= rule_id_start) && (num <= rule_id_end))) {
 					printf("%-6d %-32s %-32s %s %s %s %-24.24s %-10.10s %-10.10s\n",
 							num,
 							replies[i]->element[3]->str, /* src_addr | src_netmask */
@@ -1215,7 +1210,6 @@ SR_32 redis_mng_print_db(redisContext *c, rule_type_t type, SR_32 rule_id, SR_8 
 							replies[i]->element[7]->str, /*program */
 							replies[i]->element[9]->str, /* user */
 							replies[i]->element[1]->str /* action */);
-				}
 			}
 
 		} else if ((type == RULE_TYPE_FILE) && strstr(reply->element[i]->str, FILE_PREFIX)) { // file rule
@@ -1230,9 +1224,7 @@ SR_32 redis_mng_print_db(redisContext *c, rule_type_t type, SR_32 rule_id, SR_8 
 			}
 
 			sscanf(reply->element[i]->str, ":%d", &num);
-			if (/*(num >= SR_FILE_START_STATIC_RULE_NO) && */((rule_id == -1) || (num == rule_id))) {
-				if ((is_wl && (num >= SR_FILE_WL_START_RULE_NO)) ||
-						(!is_wl && (num < SR_FILE_WL_START_RULE_NO))) {
+			if (((rule_id_start == -1) && (rule_id_end == -1)) || ((num >= rule_id_start) && (num <= rule_id_end))) {
 					printf("%-6d %-88.88s %-4s %-24.24s %-10.10s %-10.10s\n",
 							num,
 							replies[i]->element[3]->str, /* filename */
@@ -1240,7 +1232,6 @@ SR_32 redis_mng_print_db(redisContext *c, rule_type_t type, SR_32 rule_id, SR_8 
 							replies[i]->element[7]->str, /* program */
 							replies[i]->element[9]->str, /* user */
 							replies[i]->element[1]->str /* action */);
-				}
 			}
 
 		} else if ((type == -1) && strstr(reply->element[i]->str, ACTION_PREFIX)) { // action
