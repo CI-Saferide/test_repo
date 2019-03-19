@@ -1128,7 +1128,72 @@ void file_op_convert(SR_U8 file_op, char *perms)
                 return SR_ERROR; \
         }
 
-SR_32 redis_mng_print_db(redisContext *c, rule_type_t type, SR_32 rule_id_start, SR_32 rule_id_end)
+SR_32 redis_mng_print_actions(redisContext *c)
+{
+	int i, j;
+	redisReply *reply;
+	redisReply **replies;
+
+	// get all keys
+	reply = redisCommand(c,"KEYS *");
+	if (reply == NULL || reply->type != REDIS_REPLY_ARRAY) {
+		printf("ERROR: redis_mng_load_db failed, %d\n", reply ? reply->type : -1);
+		freeReplyObject(reply);
+		return SR_ERROR;
+	}
+	printf("Redis has %d keys\n", (int)reply->elements);
+
+	replies = malloc(sizeof(redisReply*) * reply->elements);
+
+	for (i = 0; i < reply->elements; i++)
+		redisAppendCommand(c,"HGETALL %s", reply->element[i]->str);
+
+	for (i = 0; i < (int)reply->elements; i++) {
+		if (redisGetReply(c, (void*)&replies[i]) != REDIS_OK) {
+			printf("ERROR: redisGetReply %d failed\n", i);
+			for (j = 0; j < i; j++)
+				freeReplyObject(replies[j]);
+			free(replies);
+			freeReplyObject(reply);
+			return SR_ERROR;
+		}
+		if (replies[i]->type != REDIS_REPLY_ARRAY) {
+			printf("ERROR: redisGetReply %d type is wrong %d\n", i, replies[i]->type);
+			for (j = 0; j < i; j++)
+				freeReplyObject(replies[j]);
+			free(replies);
+			freeReplyObject(reply);
+			return SR_ERROR;
+		}
+
+		if (strstr(reply->element[i]->str, ACTION_PREFIX)) { // action
+
+			if (replies[i]->elements != 8) {
+				printf("ERROR: redisGetReply %d length is wrong %d instead of 8\n", i, (int)replies[i]->elements);
+				for (j = 0; j < i; j++)
+					freeReplyObject(replies[j]);
+				free(replies);
+				freeReplyObject(reply);
+				return SR_ERROR;
+			}
+
+			// action has no number so all are printed
+			printf("%-10s %-6s %-6s \n",
+					reply->element[i]->str + strlen(ACTION_PREFIX), /* name */
+					replies[i]->element[1]->str, /* bm */
+					strcmp(replies[i]->element[3]->str, "none") != 0 ? "1" : "0" /* log */);
+		}
+	}
+
+	// free replies
+	for (i = 0; i < reply->elements; i++)
+		freeReplyObject(replies[i]);
+	free(replies);
+	freeReplyObject(reply);
+	return SR_SUCCESS;
+}
+
+SR_32 redis_mng_print_rules(redisContext *c, rule_type_t type, SR_32 rule_id_start, SR_32 rule_id_end)
 {
 	int i, j, num;
 	redisReply *reply;
@@ -1236,22 +1301,6 @@ SR_32 redis_mng_print_db(redisContext *c, rule_type_t type, SR_32 rule_id_start,
 							replies[i]->element[1]->str /* action */);
 			}
 
-		} else if ((type == -1) && strstr(reply->element[i]->str, ACTION_PREFIX)) { // action
-
-			if (replies[i]->elements != 8) {
-				printf("ERROR: redisGetReply %d length is wrong %d instead of 8\n", i, (int)replies[i]->elements);
-				for (j = 0; j < i; j++)
-					freeReplyObject(replies[j]);
-				free(replies);
-				freeReplyObject(reply);
-				return SR_ERROR;
-			}
-
-			// action has no number so all are printed
-			printf("%-10s %-6s %-6s \n",
-					reply->element[i]->str + strlen(ACTION_PREFIX), /* name */
-					/*get_action_string(*/replies[i]->element[1]->str/*)*/, /* bm */
-					strcmp(replies[i]->element[3]->str, "none") != 0 ? "1" : "0" /* log */);
 		}
 	}
 
