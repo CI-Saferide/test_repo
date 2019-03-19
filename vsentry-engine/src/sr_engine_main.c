@@ -608,8 +608,8 @@ static int sr_redis_test(int tcp, int clean_first, int clean_at_end)
 	}
 //	printf("8\n");fflush(stdout);
 
-	/*if (redis_mng_print_db(c, RULE_TYPE_CAN, 0, 10)) {
-		printf("ERROR: redis_mng_print_db CAN failed\n");
+	/*if (redis_mng_print_rules(c, RULE_TYPE_CAN, 0, 10)) {
+		printf("ERROR: redis_mng_print_rules CAN failed\n");
 		redis_mng_session_end(c);
 		return -1;
 	}*/
