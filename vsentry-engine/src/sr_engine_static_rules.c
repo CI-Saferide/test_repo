@@ -42,7 +42,6 @@ SR_32 create_static_white_list(void)
                 if (strstr(static_wl[i].permission, "x"))
                         perm |= SR_FILEOPS_EXEC;
 
-printf("XCXXXXX add rule %d filename:%s \n", static_wl[i].rule_id, static_wl[i].filename);
                 rc = sr_cls_file_add_rule(static_wl[i].filename, static_wl[i].program, static_wl[i].user, static_wl[i].rule_id, (SR_U8)1);
                 if (rc != SR_SUCCESS) {
                         CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
