@@ -529,7 +529,7 @@ static void print_actions(redisContext *c)
 	printf("\nactions \n");
 	printf("%-10s %-6s %-6s\n", ACTION_OBJ, ACTION, LOG);
 	printf("----------------------------------------\n");
-	redis_mng_print_db(c, -1, -1);
+	redis_mng_print_db(c, -1, -1, 0);
 	/*for (i = 0 ;i < num_of_actions; i++) {
 		printf("%-10s %-6s %-6s \n", actions[i].action_name, get_action_string(actions[i].action), 
 				strcmp(get_action_log_facility_string(actions[i].log_facility), "none") != 0 ? "1" : "0");
@@ -545,7 +545,7 @@ static void print_file_rules(redisContext *c, SR_BOOL is_wl, SR_32 rule_id)
 	printf("%-6s %-88s %-4s %-24s %-10s %s\n",
 		RULE, FILENAME, PERM, PROGRAM, USER, ACTION);
 	printf("----------------------------------------------------------------------------------------------------------------------------------------------------------\n");
-	redis_mng_print_db(c, RULE_TYPE_FILE, rule_id);
+	redis_mng_print_db(c, RULE_TYPE_FILE, rule_id, is_wl);
 #if 0
 	for (i = 0; i < NUM_OF_RULES; i++) {
 		for (iter = table[i].rule_info; iter; iter = iter->next) {
@@ -570,7 +570,7 @@ static void print_ip_rules(redisContext *c, SR_BOOL is_wl, SR_32 rule_id)
 	printf("%-6s %-16s %-16s %-16s %-16s %-5s %-8s %-8s %-24.24s %-10.10s %-10.10s\n",
 		RULE, SRC_IP, SRC_NETMASK, DST_IP, DST_NETMASK, IP_PROTO, SRC_PORT, SDT_PORT, PROGRAM, USER, ACTION);
 	printf("---------------------------------------------------------------------------------------------------------------------------------------------------------\n");
-	redis_mng_print_db(c, RULE_TYPE_IP, rule_id);
+	redis_mng_print_db(c, RULE_TYPE_IP, rule_id, is_wl);
 #if 0
 	for (i = 0; i < NUM_OF_RULES; i++) {
 		for (iter = table[i].rule_info; iter; iter = iter->next) {
@@ -599,7 +599,7 @@ static void print_can_rules(redisContext *c, SR_BOOL is_wl, SR_32 rule_id)
 	printf("\r%-6s %-8s %-10s %-10s %-24.24s %-10.10s %-10.10s\n",
 		RULE, CAN_MSG, DIRECTION, INTERFACE, PROGRAM, USER, ACTION);
 	printf("\r--------------------------------------------------------------------------------------------------------------------------------\n");
-	redis_mng_print_db(c, RULE_TYPE_CAN, rule_id);
+	redis_mng_print_db(c, RULE_TYPE_CAN, rule_id, is_wl);
 #if 0
 	for (i = 0; i < NUM_OF_RULES; i++) {
 		for (iter = table[i].rule_info; iter; iter = iter->next) {

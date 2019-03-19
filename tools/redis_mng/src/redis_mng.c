@@ -1126,7 +1126,7 @@ void file_op_convert(SR_U8 file_op, char *perms)
                 return SR_ERROR; \
         }
 
-SR_32 redis_mng_print_db(redisContext *c, rule_type_t type, SR_32 rule_id)
+SR_32 redis_mng_print_db(redisContext *c, rule_type_t type, SR_32 rule_id, SR_8 is_wl)
 {
 	int i, j, num;
 	redisReply *reply;
@@ -1176,15 +1176,18 @@ SR_32 redis_mng_print_db(redisContext *c, rule_type_t type, SR_32 rule_id)
 			}
 
 			sscanf(reply->element[i]->str, ":%d", &num);
-			if ((rule_id == -1) || (num == rule_id)) {
-				printf("\r%-6d %-8s %-10.10s %-10.10s %-24.24s %-10.10s %-10.10s\n",
-						num,
-						replies[i]->element[3]->str, /* msg_id */
-						replies[i]->element[5]->str, /* direction */
-						replies[i]->element[7]->str, /* interface */
-						replies[i]->element[9]->str, /* program */
-						replies[i]->element[11]->str, /* user */
-						replies[i]->element[1]->str /* action */);
+			if (/*(num >= SR_FILE_START_STATIC_RULE_NO) && */((rule_id == -1) || (num == rule_id))) {
+				if ((is_wl && (num >= SR_FILE_WL_START_RULE_NO)) ||
+						(!is_wl && (num < SR_FILE_WL_START_RULE_NO))) {
+					printf("\r%-6d %-8s %-10.10s %-10.10s %-24.24s %-10.10s %-10.10s\n",
+							num,
+							replies[i]->element[3]->str, /* msg_id */
+							replies[i]->element[5]->str, /* direction */
+							replies[i]->element[7]->str, /* interface */
+							replies[i]->element[9]->str, /* program */
+							replies[i]->element[11]->str, /* user */
+							replies[i]->element[1]->str /* action */);
+				}
 			}
 
 		} else if ((type == RULE_TYPE_IP) && strstr(reply->element[i]->str, NET_PREFIX)) { // net rule
@@ -1199,17 +1202,20 @@ SR_32 redis_mng_print_db(redisContext *c, rule_type_t type, SR_32 rule_id)
 			}
 
 			sscanf(reply->element[i]->str, ":%d", &num);
-			if ((rule_id == -1) || (num == rule_id)) {
-				printf("%-6d %-32s %-32s %s %s %s %-24.24s %-10.10s %-10.10s\n",
-						num,
-						replies[i]->element[3]->str, /* src_addr | src_netmask */
-						replies[i]->element[5]->str, /* dst_addr | dst_netmask */
-						replies[i]->element[11]->str, /* proto */
-						replies[i]->element[13]->str, /* srcport */
-						replies[i]->element[15]->str, /* dstport */
-						replies[i]->element[7]->str, /*program */
-						replies[i]->element[9]->str, /* user */
-						replies[i]->element[1]->str /* action */);
+			if (/*(num >= SR_FILE_START_STATIC_RULE_NO) && */((rule_id == -1) || (num == rule_id))) {
+				if ((is_wl && (num >= SR_FILE_WL_START_RULE_NO)) ||
+						(!is_wl && (num < SR_FILE_WL_START_RULE_NO))) {
+					printf("%-6d %-32s %-32s %s %s %s %-24.24s %-10.10s %-10.10s\n",
+							num,
+							replies[i]->element[3]->str, /* src_addr | src_netmask */
+							replies[i]->element[5]->str, /* dst_addr | dst_netmask */
+							replies[i]->element[11]->str, /* proto */
+							replies[i]->element[13]->str, /* srcport */
+							replies[i]->element[15]->str, /* dstport */
+							replies[i]->element[7]->str, /*program */
+							replies[i]->element[9]->str, /* user */
+							replies[i]->element[1]->str /* action */);
+				}
 			}
 
 		} else if ((type == RULE_TYPE_FILE) && strstr(reply->element[i]->str, FILE_PREFIX)) { // file rule
@@ -1224,14 +1230,17 @@ SR_32 redis_mng_print_db(redisContext *c, rule_type_t type, SR_32 rule_id)
 			}
 
 			sscanf(reply->element[i]->str, ":%d", &num);
-			if ((rule_id == -1) || (num == rule_id)) {
-				printf("%-6d %-88.88s %-4s %-24.24s %-10.10s %-10.10s\n",
-						num,
-						replies[i]->element[3]->str, /* filename */
-						replies[i]->element[5]->str, /* permission */
-						replies[i]->element[7]->str, /* program */
-						replies[i]->element[9]->str, /* user */
-						replies[i]->element[1]->str /* action */);
+			if (/*(num >= SR_FILE_START_STATIC_RULE_NO) && */((rule_id == -1) || (num == rule_id))) {
+				if ((is_wl && (num >= SR_FILE_WL_START_RULE_NO)) ||
+						(!is_wl && (num < SR_FILE_WL_START_RULE_NO))) {
+					printf("%-6d %-88.88s %-4s %-24.24s %-10.10s %-10.10s\n",
+							num,
+							replies[i]->element[3]->str, /* filename */
+							replies[i]->element[5]->str, /* permission */
+							replies[i]->element[7]->str, /* program */
+							replies[i]->element[9]->str, /* user */
+							replies[i]->element[1]->str /* action */);
+				}
 			}
 
 		} else if ((type == -1) && strstr(reply->element[i]->str, ACTION_PREFIX)) { // action
