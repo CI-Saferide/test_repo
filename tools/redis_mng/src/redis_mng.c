@@ -1175,7 +1175,7 @@ SR_32 redis_mng_print_db(redisContext *c, rule_type_t type, SR_32 rule_id_start,
 				return SR_ERROR;
 			}
 
-			sscanf(reply->element[i]->str, ":%d", &num);
+			num = atoi(reply->element[i]->str + strlen(CAN_PREFIX));
 			if (((rule_id_start == -1) && (rule_id_end == -1)) || ((num >= rule_id_start) && (num <= rule_id_end))) {
 					printf("\r%-6d %-8s %-10.10s %-10.10s %-24.24s %-10.10s %-10.10s\n",
 							num,
@@ -1198,7 +1198,7 @@ SR_32 redis_mng_print_db(redisContext *c, rule_type_t type, SR_32 rule_id_start,
 				return SR_ERROR;
 			}
 
-			sscanf(reply->element[i]->str, ":%d", &num);
+			num = atoi(reply->element[i]->str + strlen(NET_PREFIX));
 			if (((rule_id_start == -1) && (rule_id_end == -1)) || ((num >= rule_id_start) && (num <= rule_id_end))) {
 					printf("%-6d %-32s %-32s %s %s %s %-24.24s %-10.10s %-10.10s\n",
 							num,
@@ -1223,7 +1223,7 @@ SR_32 redis_mng_print_db(redisContext *c, rule_type_t type, SR_32 rule_id_start,
 				return SR_ERROR;
 			}
 
-			sscanf(reply->element[i]->str, ":%d", &num);
+			num = atoi(reply->element[i]->str + strlen(FILE_PREFIX));
 			if (((rule_id_start == -1) && (rule_id_end == -1)) || ((num >= rule_id_start) && (num <= rule_id_end))) {
 					printf("%-6d %-88.88s %-4s %-24.24s %-10.10s %-10.10s\n",
 							num,
