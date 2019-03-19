@@ -21,6 +21,7 @@
 #include <sys/stat.h>
 #include <pwd.h>
 #include <unistd.h>
+#include "sr_cls_wl_common.h"
 
 #define MAX_LIST_NAME 64
 #define IP_ADDR_SIZE 32
@@ -40,11 +41,34 @@ static void print_usage(char *prog)
 	printf("usgae: %s\n", prog);
 }
 
-static SR_BOOL is_valid_rule_id(char *rule_str)
+static SR_BOOL is_valid_rule_id(char *type, char *section, char *rule_str)
 {
-	for (; *rule_str; rule_str++) {
-		if (!isdigit(*rule_str))
+	SR_U32 rule;
+	char *p;
+
+	for (p = rule_str; *p; p++) {
+		if (!isdigit(*p))
 			return SR_FALSE;
+	}
+	rule = atoi(rule_str);
+
+	if (!strcmp(section, "can")) {
+		if (!strcmp(type, "wl")) {
+			return (rule >= SR_CAN_WL_START_RULE_NO && rule <= SR_CAN_WL_END_RULE_NO);
+		}
+		return (rule < SR_CAN_WL_START_RULE_NO);
+	}
+	if (!strcmp(section, "file")) {
+		if (!strcmp(type, "wl")) {
+			return (rule >= SR_FILE_WL_START_RULE_NO && rule <= SR_FILE_WL_END_RULE_NO);
+		}
+		return (rule < SR_FILE_WL_START_RULE_NO);
+	}
+	if (!strcmp(section, "ip")) {
+		if (!strcmp(type, "wl")) {
+			return (rule >= SR_IP_WL_START_RULE_NO && rule <= SR_IP_WL_END_RULE_NO);
+		}
+		return (rule < SR_IP_WL_START_RULE_NO);
 	}
 
 	return SR_TRUE;
@@ -393,7 +417,7 @@ static SR_32 handle_update(int argc, char **argv)
 		printf("Rule id is missing\n");
 		return SR_ERROR;
 	}
-	if (!is_valid_rule_id(argv[3])) {
+	if (!is_valid_rule_id(type, section, argv[3])) {
 		printf("Invalid rule id\n");
 		return SR_ERROR;
 	}
