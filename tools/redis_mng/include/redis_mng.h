@@ -56,7 +56,7 @@ void redis_mng_session_end(redisContext *c);
 SR_32 redis_mng_clean_db(redisContext *c); // for test only
 SR_32 redis_mng_load_db(redisContext *c, int pipelined, handle_rule_f_t cb_func);
 
-SR_32 redis_mng_print_db(redisContext *c, rule_type_t type, SR_32 rule_id);
+SR_32 redis_mng_print_db(redisContext *c, rule_type_t type, SR_32 rule_id, SR_8 is_wl);
 
 /* add / modify / delete rules and verify reply */
 SR_32 redis_mng_add_file_rule(redisContext *c, SR_32 rule_id, char *file_name, char *exec, char *user, char *action, char *file_op);
