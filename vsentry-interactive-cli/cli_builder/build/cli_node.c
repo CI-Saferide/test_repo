@@ -1,1 +1,0 @@
-/home/arik/git/new_db/vsentry/vsentry-cli/cli_builder/src/cli_node.c

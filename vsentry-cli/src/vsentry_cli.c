@@ -267,11 +267,12 @@ static SR_32 handle_update_can(SR_U32 rule_id, SR_BOOL is_wl, int argc, char **a
 	}
 	CHECK_MISSING_PARAM(interface, "interface")
 
-	ret = redis_mng_add_can_rule(c, rule_id, mid, interface, program, user, action, dir);
-        if (ret != SR_SUCCESS) {
-                printf("update rule failed");
-                return ret;
-        }
+	ret = redis_mng_update_can_rule(c, rule_id, EMPTY2NULL(mid), EMPTY2NULL(interface), EMPTY2NULL(program), EMPTY2NULL(user),
+		EMPTY2NULL(action), EMPTY2NULL(dir));
+	if (ret != SR_SUCCESS) {
+		printf("update rule failed");
+		return ret;
+	}
 #ifdef DEBUG
 	printf("handle can %d %d mid:%s interface:%s program:%s user:%s ret:%d \n", rule_id, is_wl, mid, interface, program, user, ret); 
 #endif
@@ -310,11 +311,11 @@ static SR_32 handle_update_file(SR_U32 rule_id, SR_BOOL is_wl, int argc, char **
 	CHECK_MISSING_PARAM(filename, "filename")
 	CHECK_MISSING_PARAM(perm, "perm")
 
-	ret = redis_mng_add_file_rule(c, rule_id, filename, program, user, action, perm_cli_to_db(perm));
-        if (ret != SR_SUCCESS) {
-                printf("update rule failed");
-                return ret;
-        }
+	ret = redis_mng_update_file_rule(c, rule_id, EMPTY2NULL(filename), EMPTY2NULL(program), EMPTY2NULL(user), EMPTY2NULL(action), *perm ? perm_cli_to_db(perm) : NULL);
+	if (ret != SR_SUCCESS) {
+		printf("update rule failed");
+		return ret;
+	}
 #ifdef DEBUG
 	printf("handle file rule %d %d filename:%s perm:%s program:%s user:%s action:%s ret:%d \n", rule_id, is_wl, filename, perm_cli_to_db(perm), program, user, action, ret); 
 #endif
@@ -361,12 +362,12 @@ static SR_32 handle_update_ip(SR_U32 rule_id, SR_BOOL is_wl, int argc, char **ar
 		CHECK_MISSING_PARAM(action, "action")
 	}
 
-	ret = redis_mng_add_net_rule(c, rule_id, EMPTY2NULL(src_addr), EMPTY2NULL(dst_addr), EMPTY2NULL(proto),
+	ret = redis_mng_update_net_rule(c, rule_id, EMPTY2NULL(src_addr), EMPTY2NULL(dst_addr), EMPTY2NULL(proto),
 		EMPTY2NULL(src_port), EMPTY2NULL(dst_port), EMPTY2NULL(program), EMPTY2NULL(user), EMPTY2NULL(action));
-        if (ret != SR_SUCCESS) {
-                printf("update rule failed");
-                return ret;
-        }
+ 	if (ret != SR_SUCCESS) {
+		printf("update rule failed");
+		return ret;
+	}
 #ifdef DEBUG
 	printf("handle ip rule %d %d src_addr:%s dst_addr:%s proto:%s sport:%s dport:%s program:%s user:%s action:%s ret:%d \n",
 		rule_id, is_wl, src_addr, dst_addr, proto, src_port, dst_port, program, user, action, ret); 
@@ -410,17 +411,17 @@ static SR_32 handle_update(int argc, char **argv)
 
 static void print_can_rules(redisContext *c, SR_BOOL is_wl, SR_32 rule_id)
 {
-        redis_mng_print_db(c, RULE_TYPE_CAN, rule_id);
+	redis_mng_print_rules(c, RULE_TYPE_CAN, -1, -1);
 }
 
 static void print_net_rules(redisContext *c, SR_BOOL is_wl, SR_32 rule_id)
 {
-        redis_mng_print_db(c, RULE_TYPE_IP, rule_id);
+	redis_mng_print_rules(c, RULE_TYPE_IP, -1, -1);
 }
 
 static void print_file_rules(redisContext *c, SR_BOOL is_wl, SR_32 rule_id)
 {
-        redis_mng_print_db(c, RULE_TYPE_FILE, rule_id);
+	redis_mng_print_rules(c, RULE_TYPE_FILE, -1, -1);
 }
 
 static SR_32 handle_show(int argc, char **argv)
