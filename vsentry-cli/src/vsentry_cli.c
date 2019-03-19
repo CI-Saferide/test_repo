@@ -820,9 +820,9 @@ static SR_32 handle_update_can(redisContext *c, SR_BOOL is_wl, SR_U32 rule_id)
 #endif
 	
 	if (is_update)
-		ret = redis_mng_mod_can_rule(c, rule_id, msg_id, interface, program, user, new_action_name, dir_input);
+		ret = redis_mng_update_can_rule(c, rule_id, msg_id, interface, program, user, new_action_name, dir_input);
 	else
-		ret = redis_mng_add_can_rule(c, rule_id, msg_id, interface, program, user, new_action_name, dir_input);
+		ret = redis_mng_update_can_rule(c, rule_id, msg_id, interface, program, user, new_action_name, dir_input);
 
 	if (ret != SR_SUCCESS) {
 		cli_error("update rule failed", SR_TRUE);
@@ -919,10 +919,10 @@ static SR_32 handle_update_ip(redisContext *c, SR_BOOL is_wl, SR_U32 rule_id)
 	}
 #endif
 	if (update)
-		ret = redis_mng_mod_net_rule(c, rule_id, src_ip_address_def, dst_ip_address_def, ip_proto_def,
+		ret = redis_mng_update_net_rule(c, rule_id, src_ip_address_def, dst_ip_address_def, ip_proto_def,
 				src_port_def, dst_port_def, NULL/*exec*/, NULL/*user*/, new_action_name);
 	else
-		ret = redis_mng_add_net_rule(c, rule_id, src_ip_address_def, dst_ip_address_def, ip_proto_def,
+		ret = redis_mng_update_net_rule(c, rule_id, src_ip_address_def, dst_ip_address_def, ip_proto_def,
 				src_port_def, dst_port_def, "NULL"/*exec*/, "NULL"/*user*/, new_action_name);
 	return ret;
 }
@@ -969,14 +969,14 @@ static SR_32 handle_update_file(redisContext *c, SR_BOOL is_wl, SR_U32 rule_id)
 	}
 #endif
 	if (is_update)
-		ret = redis_mng_mod_file_rule(c, rule_id, filename, program, user, action_name, perm_cli_to_db(permission));
+		ret = redis_mng_update_file_rule(c, rule_id, filename, program, user, action_name, perm_cli_to_db(permission));
 	else {
-		ret = redis_mng_add_file_rule(c, rule_id, filename, program, user, action_name, perm_cli_to_db(permission));
+		ret = redis_mng_update_file_rule(c, rule_id, filename, program, user, action_name, perm_cli_to_db(permission));
 	}
 /*
-	  if ((rc = redis_mng_add_file_rule(c, i, strs.file, "NULL", "NULL", "drop",
+	  if ((rc = redis_mng_update_file_rule(c, i, strs.file, "NULL", "NULL", "drop",
                                 j ? (j == 1 ? SR_FILEOPS_READ : SR_FILEOPS_WRITE) : SR_FILEOPS_EXEC))) {
-                        printf("ERROR: redis_mng_add_file_rule %d failed, ret %d\n", i, rc);
+                        printf("ERROR: redis_mng_update_file_rule %d failed, ret %d\n", i, rc);
                         redis_mng_session_end(c);
                         return -1;
                 }

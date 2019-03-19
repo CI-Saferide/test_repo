@@ -1077,6 +1077,7 @@ void redis_mng_session_end(redisContext *c)
 	redisFree(c);
 }
 
+#if 0
 SR_U8 redis_mng_perm_get_code(char *perms)
 {
 	SR_8 help;
@@ -1095,6 +1096,7 @@ SR_U8 redis_mng_perm_get_code(char *perms)
 
 	return res;
 }
+#endif
 
 void file_op_convert(SR_U8 file_op, char *perms)
 {
@@ -1608,48 +1610,99 @@ SR_32 redis_mng_del_action(redisContext *c, char *name)
 	return SR_SUCCESS;
 }
 
-SR_32 redis_mng_add_file_rule(redisContext *c, SR_32 rule_id, char *file_name, char *exec, char *user, char *action, char *file_op)
+SR_32 redis_mng_add_list(redisContext *c, char *name, SR_U32 length, char **values)
 {
-//	char perms[4];
-    redisReply *reply;
+	redisReply *reply;
+	int i, len = 0;
+	char *cmd;
 
-//	file_op_convert(file_op, perms);
-	reply = redisCommand(c,"HMSET %s%d %s %s %s %s %s %s %s %s %s %s", FILE_PREFIX, rule_id, ACTION, action,
-							FILENAME, file_name, PERMISSION, file_op, PROGRAM_ID, exec, USER_ID, user);
-	if (reply == NULL || reply->type != REDIS_REPLY_STATUS) {
-		printf("ERROR: redis_mng_add_file_rule failed, %d\n", reply ? reply->type : -1);
+	if (length < 1) {
+		printf("ERROR: redis_mng_add_list failed, invalid length %d\n", length);
+		return SR_ERROR;
+	}
+	cmd = malloc(length * MAX_LIST_VAL_LEN);
+	if (!cmd) {
+		printf("ERROR: redis_mng_add_list failed, allocation failed\n");
+		return SR_ERROR;
+	}
+	for (i = 0; i < length; i++)
+		len += sprintf(cmd + len, " %s", values[i]);
+
+	reply = redisCommand(c,"LPUSH %s %s", name, cmd);
+	free(cmd);
+	if (reply == NULL || reply->type != REDIS_REPLY_INTEGER || reply->integer != 1) {
+		printf("ERROR: redis_mng_add_list failed, type %d, i %d\n", reply ? reply->type : -1, reply ? (int)reply->integer : 0);
 		freeReplyObject(reply);
 		return SR_ERROR;
 	}
-	//printf("*** DBG *** redis_mng_add_file_rule reply: %s\n", reply->str); // OK
 	freeReplyObject(reply);
 	return SR_SUCCESS;
 }
 
-SR_32 redis_mng_mod_file_rule(redisContext *c, SR_32 rule_id, char *file_name, char *exec, char *user, char *action, char *file_op)
+SR_32 redis_mng_del_list(redisContext *c, char *name, SR_U32 length, char **values)
 {
 	redisReply *reply;
-	char rule[512];
+	int i;
+
+	if (length < 1) {
+		printf("ERROR: redis_mng_del_list failed, invalid length %d\n", length);
+		return SR_ERROR;
+	}
+	for (i = 0; i < length; i++) {
+		reply = redisCommand(c,"LREM %s 0 %s", name, values[i]);
+		if (reply == NULL || reply->type != REDIS_REPLY_INTEGER || reply->integer != 1) {
+			printf("ERROR: redis_mng_del_list % d failed, type %d, i %d\n", i,
+					reply ? reply->type : -1, reply ? (int)reply->integer : 0);
+			freeReplyObject(reply);
+			return SR_ERROR;
+		}
+		freeReplyObject(reply);
+	}
+	return SR_SUCCESS;
+}
+
+SR_32 redis_mng_destroy_list(redisContext *c, char *name)
+{
+	redisReply *reply;
+
+	reply = redisCommand(c,"DEL %s", name);
+	if (reply == NULL || reply->type != REDIS_REPLY_INTEGER || reply->integer != 1) {
+		printf("ERROR: redis_mng_destroy_list failed, type %d, i %d\n", reply ? reply->type : -1, reply ? (int)reply->integer : 0);
+		freeReplyObject(reply);
+		return SR_ERROR;
+	}
+	freeReplyObject(reply);
+	return SR_SUCCESS;
+}
+
+SR_32 redis_mng_update_file_rule(redisContext *c, SR_32 rule_id, char *file_name, char *exec, char *user, char *action, char *file_op)
+{
+	redisReply *reply;
+	char *rule;
 	int len;
-//	char perms[4];
+
+	rule = malloc(FILE_RULE_FIELDS * MAX_LIST_NAME_LEN);
+	if (!rule) {
+		printf("ERROR: redis_mng_update_file_rule allocation failed\n");
+		return SR_ERROR;
+	}
 
 	len = sprintf(rule, "HMSET %s%d", FILE_PREFIX, rule_id);
 	if (action)
 		len += sprintf(rule + len, " %s %s", ACTION, action);
 	if (file_name)
 		len += sprintf(rule + len, " %s %s", FILENAME, file_name);
-	if (file_op/* != -1*/) {
-//		file_op_convert(file_op, perms);
+	if (file_op)
 		len += sprintf(rule + len, " %s %s", PERMISSION, file_op);
-	}
 	if (exec)
 		len += sprintf(rule + len, " %s %s", PROGRAM_ID, exec);
 	if (user)
 		len += sprintf(rule + len, " %s %s", USER_ID, user);
 
 	reply = redisCommand(c, rule);
+	free(rule);
 	if (reply == NULL || reply->type != REDIS_REPLY_STATUS) {
-		printf("ERROR: redis_mng_modify_file_rule failed, %d\n", reply ? reply->type : -1);
+		printf("ERROR: redis_mng_update_file_rule failed, %d\n", reply ? reply->type : -1);
 		freeReplyObject(reply);
 		return SR_ERROR;
 	}
@@ -1671,6 +1724,7 @@ SR_32 redis_mng_del_file_rule(redisContext *c, SR_32 rule_id)
 	return SR_SUCCESS;
 }
 
+#if 0
 SR_32 redis_mng_get_file_rule(redisContext *c, SR_32 rule_id, redis_mng_reply_t *my_reply)
 {
 	int i;
@@ -1694,7 +1748,9 @@ SR_32 redis_mng_get_file_rule(redisContext *c, SR_32 rule_id, redis_mng_reply_t 
 	freeReplyObject(reply);
 	return SR_SUCCESS;
 }
+#endif
 
+#if 0
 SR_32 redis_mng_create_file_rule(redisContext *c, SR_32 rule_id, char *file_name, char *exec, char *user, char *action, SR_U8 file_op)
 {
 	char perms[4];
@@ -1705,33 +1761,20 @@ SR_32 redis_mng_create_file_rule(redisContext *c, SR_32 rule_id, char *file_name
 	redis_changes++;
 	return SR_SUCCESS;
 }
+#endif
 
-/* each protocol is u8
- * each port is u16
- */
-SR_32 redis_mng_add_net_rule(redisContext *c, SR_32 rule_id, char *src_addr_netmask, char *dst_addr_netmask,
-		char *proto, char *src_port, char *dst_port, char *exec, char *user, char *action)
-{
-    redisReply *reply;
-
-	reply = redisCommand(c,"HMSET %s%d %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s %s", NET_PREFIX, rule_id,
-			ACTION, action, SRC_ADDR, src_addr_netmask, DST_ADDR, dst_addr_netmask, PROGRAM_ID, exec, USER_ID, user,
-			PROTOCOL, proto, SRC_PORT, src_port, DST_PORT, dst_port);
-	if (reply == NULL || reply->type != REDIS_REPLY_STATUS) {
-		printf("ERROR: redis_mng_add_net_rule failed, %d\n", reply ? reply->type : -1);
-		freeReplyObject(reply);
-		return SR_ERROR;
-	}
-	freeReplyObject(reply);
-	return SR_SUCCESS;
-}
-
-SR_32 redis_mng_mod_net_rule(redisContext *c, SR_32 rule_id, char *src_addr_netmask, char *dst_addr_netmask,
+SR_32 redis_mng_update_net_rule(redisContext *c, SR_32 rule_id, char *src_addr_netmask, char *dst_addr_netmask,
 		char *proto, char *src_port, char *dst_port, char *exec, char *user, char *action)
 {
 	redisReply *reply;
-	char rule[512];
+	char *rule;
 	int len;
+
+	rule = malloc(NET_RULE_FIELDS * MAX_LIST_NAME_LEN);
+	if (!rule) {
+		printf("ERROR: redis_mng_update_net_rule allocation failed\n");
+		return SR_ERROR;
+	}
 
 	len = sprintf(rule, "HMSET %s%d", NET_PREFIX, rule_id);
 	if (action)
@@ -1748,15 +1791,13 @@ SR_32 redis_mng_mod_net_rule(redisContext *c, SR_32 rule_id, char *src_addr_netm
 		len += sprintf(rule + len, " %s %s", PROTOCOL, proto);
 	if (src_port)
 		len += sprintf(rule + len, " %s %s", SRC_PORT, src_port);
-	if (dst_port) {
-//		if (rule_id == 1)
-//			printf("*** DBG *** MOD: d_port %s\n", dst_port);
+	if (dst_port)
 		len += sprintf(rule + len, " %s %s", DST_PORT, dst_port);
-	}
 
 	reply = redisCommand(c, rule);
+	free(rule);
 	if (reply == NULL || reply->type != REDIS_REPLY_STATUS) {
-		printf("ERROR: redis_mng_modify_net_rule failed, %d\n", reply ? reply->type : -1);
+		printf("ERROR: redis_mng_update_net_rule failed, %d\n", reply ? reply->type : -1);
 		freeReplyObject(reply);
 		return SR_ERROR;
 	}
@@ -1778,6 +1819,7 @@ SR_32 redis_mng_del_net_rule(redisContext *c, SR_32 rule_id)
 	return SR_SUCCESS;
 }
 
+#if 0
 SR_32 redis_mng_create_net_rule(redisContext *c, SR_32 rule_id, char *src_addr, char *src_netmask,
 	char *dst_addr, char *dst_netmask, SR_U8 ip_proto, SR_U16 src_port, SR_U16 dst_port, char *exec, char *user, char *action)
 {
@@ -1787,42 +1829,28 @@ SR_32 redis_mng_create_net_rule(redisContext *c, SR_32 rule_id, char *src_addr, 
 	redis_changes++;
 	return SR_SUCCESS;
 }
+#endif
 
-SR_32 redis_mng_add_can_rule(redisContext *c, SR_32 rule_id, char *mid, char *interface, char *exec, char *user,
+SR_32 redis_mng_update_can_rule(redisContext *c, SR_32 rule_id, char *mid, char *interface, char *exec, char *user,
 		char *action, char *dir)
 {
 	redisReply *reply;
-//	char dir_str[4];
+	char *rule;
+	int len;
 
-//	strcpy(dir_str, get_dir_desc(dir));
-	reply = redisCommand(c,"HMSET %s%d %s %s %s %s %s %s %s %s %s %s %s %s", CAN_PREFIX, rule_id, ACTION, action,
-			MID, mid, IN_INTERFACE, dir/*_str*/, OUT_INTERFACE, interface, PROGRAM_ID, exec, USER_ID, user);
-	if (reply == NULL || reply->type != REDIS_REPLY_STATUS) {
-		printf("ERROR: redis_mng_add_canbus_rule failed, %d\n", reply ? reply->type : -1);
-		freeReplyObject(reply);
+	rule = malloc(CAN_RULE_FIELDS * MAX_LIST_NAME_LEN);
+	if (!rule) {
+		printf("ERROR: redis_mng_update_can_rule allocation failed\n");
 		return SR_ERROR;
 	}
-	freeReplyObject(reply);
-	return SR_SUCCESS;
-}
-
-SR_32 redis_mng_mod_can_rule(redisContext *c, SR_32 rule_id, char *mid, char *interface, char *exec, char *user,
-		char *action, char *dir)
-{
-	redisReply *reply;
-//	char dir_str[4];
-	char rule[512];
-	int len;
 
 	len = sprintf(rule, "HMSET %s%d", CAN_PREFIX, rule_id);
 	if (action)
 		len += sprintf(rule + len, " %s %s", ACTION, action);
 	if (mid)
 		len += sprintf(rule + len, " %s %s", MID, mid);
-	if (dir/* != -1*/) {
-		//strcpy(dir_str, get_dir_desc(dir));
-		len += sprintf(rule + len, " %s %s", IN_INTERFACE, dir/*_str*/);
-	}
+	if (dir)
+		len += sprintf(rule + len, " %s %s", IN_INTERFACE, dir);
 	if (interface)
 		len += sprintf(rule + len, " %s %s", OUT_INTERFACE, interface);
 	if (exec)
@@ -1831,8 +1859,9 @@ SR_32 redis_mng_mod_can_rule(redisContext *c, SR_32 rule_id, char *mid, char *in
 		len += sprintf(rule + len, " %s %s", USER_ID, user);
 
 	reply = redisCommand(c, rule);
+	free(rule);
 	if (reply == NULL || reply->type != REDIS_REPLY_STATUS) {
-		printf("ERROR: redis_mng_modify_can_rule failed, %d\n", reply ? reply->type : -1);
+		printf("ERROR: redis_mng_update_can_rule failed, %d\n", reply ? reply->type : -1);
 		freeReplyObject(reply);
 		return SR_ERROR;
 	}
@@ -1902,6 +1931,7 @@ SR_32 redis_mng_has_can_rule(redisContext *c, SR_32 rule_id)
 	return ret;
 }
 
+#if 0
 SR_32 redis_mng_create_canbus_rule(redisContext *c, SR_32 rule_id, SR_U32 msg_id, char *interface, char *exec, char *user, char *action, SR_U8 dir)
 {
 	char msgid_str[9];
@@ -1915,7 +1945,9 @@ SR_32 redis_mng_create_canbus_rule(redisContext *c, SR_32 rule_id, SR_U32 msg_id
 	redis_changes++;
 	return SR_SUCCESS;
 }
+#endif
 
+#if 0
 SR_32 redis_mng_commit(redisContext *c)
 {
 	int rc, i, j;
@@ -1943,6 +1975,7 @@ SR_32 redis_mng_commit(redisContext *c)
 	redis_changes = 0; // reset for next time
 	return SR_SUCCESS;
 }
+#endif
 
 SR_32 redis_mng_update_engine_state(redisContext *c, SR_BOOL is_on)
 {
@@ -1952,6 +1985,7 @@ SR_32 redis_mng_update_engine_state(redisContext *c, SR_BOOL is_on)
 	return SR_SUCCESS;
 }
 
+#if 0
 SR_32 redis_mng_create_action(redisContext *c, char *action_name, SR_BOOL is_allow, SR_BOOL is_log)
 {
 	redisAppendCommand(c,"HMSET %s%s %s %s %s %s %s %s %s %s", ACTION_PREFIX, action_name,
@@ -1959,4 +1993,5 @@ SR_32 redis_mng_create_action(redisContext *c, char *action_name, SR_BOOL is_all
 	redis_changes++;
 	return SR_SUCCESS;
 }
+#endif
 

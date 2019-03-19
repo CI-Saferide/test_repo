@@ -524,9 +524,9 @@ static int sr_redis_test(int tcp, int clean_first, int clean_at_end)
 	for (i = 0; i < 1200; i++) {
 		sprintf(strs.file + 44, "%04d", i);
 		j = i % 3;
-		if ((rc = redis_mng_add_file_rule(c, i, strs.file, "NULL", "NULL", "drop",
+		if ((rc = redis_mng_update_file_rule(c, i, strs.file, "NULL", "NULL", "drop",
 				j ? (j == 1 ? "R"/*SR_FILEOPS_READ*/ : "W"/*SR_FILEOPS_WRITE*/) : "X"/*SR_FILEOPS_EXEC*/))) {
-			printf("ERROR: redis_mng_add_file_rule %d failed, ret %d\n", i, rc);
+			printf("ERROR: redis_mng_update_file_rule %d failed, ret %d\n", i, rc);
 			redis_mng_session_end(c);
 			return -1;
 		}
@@ -541,9 +541,9 @@ static int sr_redis_test(int tcp, int clean_first, int clean_at_end)
 		sprintf(strs.addrs.proto, "%02d", addr_lsb);
 		sprintf(strs.addrs.s_port, "%04d", i);
 		sprintf(strs.addrs.d_port, "%04d", i + 3);
-		if ((rc = redis_mng_add_net_rule(c, i, strs.addrs.sa, strs.addrs.da, strs.addrs.proto, strs.addrs.s_port,
+		if ((rc = redis_mng_update_net_rule(c, i, strs.addrs.sa, strs.addrs.da, strs.addrs.proto, strs.addrs.s_port,
 				strs.addrs.d_port, "NULL", "NULL", "drop_log"))) {
-			printf("ERROR: redis_mng_add_net_rule %d failed, ret %d\n", i, rc);
+			printf("ERROR: redis_mng_update_net_rule %d failed, ret %d\n", i, rc);
 			redis_mng_session_end(c);
 			return -1;
 		}
@@ -552,8 +552,8 @@ static int sr_redis_test(int tcp, int clean_first, int clean_at_end)
 	// add 1200 can rules
 	for (i = 0; i < 1200; i++) {
 		sprintf(strs.mid, "%d", i);
-		if ((rc = redis_mng_add_can_rule(c, i, strs.mid, "NULL", "NULL", "NULL", "log", "in"))) {
-			printf("ERROR: redis_mng_add_can_rule %d failed, ret %d\n", i, rc);
+		if ((rc = redis_mng_update_can_rule(c, i, strs.mid, "NULL", "NULL", "NULL", "log", "in"))) {
+			printf("ERROR: redis_mng_update_can_rule %d failed, ret %d\n", i, rc);
 			redis_mng_session_end(c);
 			return -1;
 		}
@@ -563,23 +563,23 @@ static int sr_redis_test(int tcp, int clean_first, int clean_at_end)
 	// update all the rules
 	for (i = 0; i < 1200; i++) {
 		j = i % 3;
-		if ((rc = redis_mng_mod_file_rule(c, i, NULL, NULL, NULL, NULL,
+		if ((rc = redis_mng_update_file_rule(c, i, NULL, NULL, NULL, NULL,
 				j ? (j == 1 ? "X"/*SR_FILEOPS_EXEC*/ : "R"/*SR_FILEOPS_READ*/) : "W"/*SR_FILEOPS_WRITE*/))) {
-			printf("ERROR: redis_mng_modify_file_rule %d failed, ret %d\n", i, rc);
+			printf("ERROR: redis_mng_updateify_file_rule %d failed, ret %d\n", i, rc);
 			redis_mng_session_end(c);
 			return -1;
 		}
 		addr_lsb = i % 256;
 		mask = (i / 256) * 8;
 		sprintf(strs.addrs.s_port, "%04d", i + 1);
-		if ((rc = redis_mng_mod_net_rule(c, i, NULL, NULL, NULL, strs.addrs.s_port, NULL, NULL, NULL, NULL))) {
-			printf("ERROR: redis_mng_modify_net_rule %d failed, ret %d\n", i, rc);
+		if ((rc = redis_mng_update_net_rule(c, i, NULL, NULL, NULL, strs.addrs.s_port, NULL, NULL, NULL, NULL))) {
+			printf("ERROR: redis_mng_updateify_net_rule %d failed, ret %d\n", i, rc);
 			redis_mng_session_end(c);
 			return -1;
 		}
 		sprintf(strs.mid, "%d", i + 2);
-		if ((rc = redis_mng_mod_can_rule(c, i, strs.mid, NULL, NULL, NULL, NULL, "both"))) {
-			printf("ERROR: redis_mng_modify_can_rule %d failed, ret %d\n", i, rc);
+		if ((rc = redis_mng_update_can_rule(c, i, strs.mid, NULL, NULL, NULL, NULL, "both"))) {
+			printf("ERROR: redis_mng_updateify_can_rule %d failed, ret %d\n", i, rc);
 			redis_mng_session_end(c);
 			return -1;
 		}
