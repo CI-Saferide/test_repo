@@ -1,5 +1,7 @@
-#ifndef __IRDETO_STATIC_WL_RULES_H
-#define  __IRDETO_STATIC_WL_RULES_H
+#ifndef __STATIC_RULES_INTERNAL_H
+#define __STATIC_RULES_INTERNAL_H
+
+#include "file_rule.h"
 
 typedef struct {
 	SR_U32  rule_id;
@@ -9,7 +11,7 @@ typedef struct {
 	char	program[PROG_NAME_SIZE]; 
 } static_file_rule_t;
 
-static static_file_rule_t irdeto_static_wl [] = {
+static static_file_rule_t static_wl [] = {
 	/* Rule id,  File path, permission, user,  program}, */
 	{0, "/customer_persistent/YAS", "rw", "*", "/usr/bin/cmb_drvc"},
 	{0, "/customer_persistent/YAS", "rw", "*", "/usr/bin/cmb_main"},

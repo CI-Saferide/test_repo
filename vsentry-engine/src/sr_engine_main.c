@@ -46,6 +46,7 @@
 #endif
 #include "sr_stat_system_policer.h"
 #include "irdeto_interface.h"
+#include "sr_engine_static_rules.h"
 
 static SR_BOOL is_engine_on;
 
@@ -398,6 +399,11 @@ SR_32 sr_engine_start(int argc, char *argv[])
 	}
 #endif
 
+ 	if (create_static_white_list()) {
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+			"%s=failed to create Irdeto static white list ",REASON);
+		return SR_ERROR;
+	}
 #ifdef CONFIG_IRDETO_INTERFACE
 	ret = irdeto_unix_interface_init();
 #endif /* CONFIG_IRDETO_INTERFACE */

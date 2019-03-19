@@ -1,20 +1,7 @@
 #include "sr_log.h"
 #include "sr_types.h"
 #include "sr_tasks.h"
-#include <stdio.h>
-#include <errno.h>
-#include <stdlib.h>
-#include <stdint.h>
-#include <unistd.h>
-#include <stdbool.h>
-#include <sys/socket.h>
-#include <poll.h>
-#include <sys/un.h>
-#include <pthread.h>
-#include <string.h>
-#include <signal.h>
-#include <sys/select.h>
-#include <sys/inotify.h>
+#include "sal_linux.h"
 
 #include "vproxy_client.h"
 #include "message.h"
@@ -65,7 +52,8 @@ static SR_32 start_client(void)
 	/* create socket and connect to server */
 	fd = socket(AF_UNIX, SOCK_SEQPACKET,0);
 	if (fd < 0) {
-		msg_err("socket failed\n");
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+     				"%s=socket failed ", REASON);
 		return SR_ERROR;
 	}
 
@@ -74,7 +62,8 @@ static SR_32 start_client(void)
 	len = strlen(remote.sun_path) + sizeof(remote.sun_family);
 
 	if (connect(fd, remote_saddr, len) < 0) {
-		msg_err("connect failed\n");
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+     				"%s=connect failed ", REASON);
 		goto exit_err;
 	}
 
@@ -99,14 +88,15 @@ static SR_32 start_client(void)
 			/* read the message header from socket */
 			ret = read(fd, &raw_msg, TOTAL_MSG_SIZE);
 			if (ret != TOTAL_MSG_SIZE) {
-				msg_err("read failed\n");
+				CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+     					"%s=read failed ", REASON);
 				break;
 			}
 
 			/* handle request */
 			if (vproxy_client_handle_recv_msg(fd, &raw_msg, &type, msg) != MSG_SUCCESS) {
 				CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-     				"%s=client handle failed ", REASON);
+     					"%s=client handle failed ", REASON);
 				continue;
 			}
 			handle_msg(type, msg);
@@ -148,7 +138,8 @@ static SR_32 irdeto_policy_server(void *data)
 	policy_fd = inotify_init1(IN_NONBLOCK);
 	ret = inotify_add_watch(policy_fd, config_params->policy_dir, notify_mask);
 	if (ret < 0) {
-		perror("inotify_add_watch");
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+     					"%s=inotify_add_watch failed rc:%d", REASON, ret);
 		return SR_ERROR;
 	}
 
@@ -159,7 +150,8 @@ static SR_32 irdeto_policy_server(void *data)
 
 		ret = select(policy_fd + 1, &rfds, NULL, NULL, &tv);
 		if (ret < 0) {
-			perror("select");
+			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+     					"%s=select failed rc:%d", REASON, ret);
 			continue;
 		}
 		if (!ret)
@@ -169,7 +161,6 @@ static SR_32 irdeto_policy_server(void *data)
 		for (p = buf; p < buf + n; ) {
 			event = (struct inotify_event *) p;
 			if (event->mask & IN_CLOSE_WRITE) {
-				printf("IN_CLOSE_WRITE !!!!\n");
 				if (fd > -1)
 					vproxy_client_send_new_policy_msg(fd);
 				break;
@@ -177,54 +168,6 @@ static SR_32 irdeto_policy_server(void *data)
 			p += sizeof(struct inotify_event) + event->len;
 		}
 	}
-
-	return SR_SUCCESS;
-}
-
-#include "irdeto_static_wl_rules.h"
-
-static SR_BOOL is_valid_rules(static_file_rule_t rules[])
-{
-	SR_U32 i;
-
-	for (i = 0; *rules[i].filename; i++) {
-		if (rules[i].rule_id >= SR_FILE_START_STATIC_RULE_NO) {
-                	CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-                       	                         "%s=Rule id is not in the range:%d ", REASON, rules[i].rule_id);
-			return SR_FALSE;
-		}
-	}
-
-	return SR_TRUE;
-}
-
-SR_32 create_irdeto_static_white_list(void)
-{
-	SR_U32 i;
-	SR_32 rc;
-	SR_U8 perm;
-	SR_U16 actions_bitmap = SR_CLS_ACTION_ALLOW;
-
-	if (!is_valid_rules(irdeto_static_wl)) {
-		return SR_ERROR;
-	}
-
-	for (i = 0; *irdeto_static_wl[i].filename; i++) {
-		perm = 0;
-		if (strstr(irdeto_static_wl[i].permission, "r"))
-			perm |= SR_FILEOPS_READ;
-		if (strstr(irdeto_static_wl[i].permission, "w"))
-			perm |= SR_FILEOPS_WRITE;
-		if (strstr(irdeto_static_wl[i].permission, "x"))
-			perm |= SR_FILEOPS_EXEC;
-
-		rc = sr_cls_file_add_rule(irdeto_static_wl[i].filename, irdeto_static_wl[i].program, irdeto_static_wl[i].user, irdeto_static_wl[i].rule_id, (SR_U8)1);
-		if (rc != SR_SUCCESS) {
-			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-       				"%s=Irdeto static WL, Failed add file rule:%d ", REASON, irdeto_static_wl[i].rule_id);
-		}
-		sr_cls_rule_add(SR_FILE_RULES, irdeto_static_wl[i].rule_id, actions_bitmap, perm, SR_RATE_TYPE_BYTES, 0, 0 ,0, 0, 0, 0);
-	}                   
 
 	return SR_SUCCESS;
 }
@@ -239,11 +182,6 @@ SR_32 irdeto_interface_init(void)
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 					"%s=failed to start irdeto unix socket",REASON);
 		return SR_ERROR;
-	}
-	if (create_irdeto_static_white_list()) {
-                CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-                                                "%s=failed to create Irdeto static white list ",REASON);
-                return SR_ERROR;
 	}
 	ret = sr_start_task(SR_IRDETO_POLICY, irdeto_policy_server);
 	if (ret != SR_SUCCESS) {
