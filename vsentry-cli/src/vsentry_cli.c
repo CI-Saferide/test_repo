@@ -409,26 +409,38 @@ static SR_32 handle_update(int argc, char **argv)
 	return SR_SUCCESS;
 }
 
-static void print_can_rules(redisContext *c, SR_BOOL is_wl, SR_32 rule_id)
-{
-	redis_mng_print_rules(c, RULE_TYPE_CAN, -1, -1);
-}
-
-static void print_net_rules(redisContext *c, SR_BOOL is_wl, SR_32 rule_id)
-{
-	redis_mng_print_rules(c, RULE_TYPE_IP, -1, -1);
-}
-
-static void print_file_rules(redisContext *c, SR_BOOL is_wl, SR_32 rule_id)
-{
-	redis_mng_print_rules(c, RULE_TYPE_FILE, -1, -1);
-}
-
 static SR_32 handle_show(int argc, char **argv)
 {
-	print_can_rules(c, SR_FALSE, -1);
-	print_net_rules(c, SR_FALSE, -1);
-	print_file_rules(c, SR_FALSE, -1);
+	SR_BOOL is_can = SR_FALSE, is_file = SR_FALSE, is_ip = SR_FALSE;
+	SR_32 from = -1, to = -1;
+
+	if (argc == 0) {
+		is_can = is_file = is_ip = SR_TRUE;
+		goto print;
+	}
+	if (!strcmp(argv[0], "can"))
+		is_can = SR_TRUE;
+	if (!strcmp(argv[0], "ip"))
+		is_ip = SR_TRUE;
+	if (!strcmp(argv[0], "file"))
+		is_file = SR_TRUE;
+	
+	if (argc > 1)
+		from = to = atoi(argv[1]);
+
+print:
+	if (is_can) {
+		printf("Can rules :\n");
+		redis_mng_print_rules(c, RULE_TYPE_CAN, from, to);
+	}
+	if (is_file) {
+		printf("File rules :\n");
+		redis_mng_print_rules(c, RULE_TYPE_FILE, from, to);
+	}
+	if (is_ip) {
+		printf("IP rules :\n");
+		redis_mng_print_rules(c, RULE_TYPE_IP, from, to);
+	}
 
 	return SR_SUCCESS;
 }
