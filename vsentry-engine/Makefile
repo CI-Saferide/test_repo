@@ -69,8 +69,8 @@ SRCS 		:=  main.c \
 				sr_stat_system_policer.c \
 				irdeto_unix_interface.c \
 				irdeto_interface.c \
-				sr_engine_static_rules.c
-				sr_bin_cls_eng.c \
+				sr_engine_static_rules.c \
+				sr_bin_cls_eng.c
 
 SRCS 		+= $(if $(SR_CLI),sal_cli_interface.c sr_engine_cli.c)
 
