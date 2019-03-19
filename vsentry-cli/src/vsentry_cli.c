@@ -836,7 +836,7 @@ static SR_32 handle_update_ip(SR_BOOL is_wl, SR_U32 rule_id, SR_U32 tuple_id)
 		action_name = NULL;
 	if (rule_info) {
 		update_rule = *rule_info;
-		printf("> updating an existing rule...\n");
+		printf("\r\n> updating an existing rule...\n");
 		inet_ntop(AF_INET, &(rule_info->ip_rule.tuple.srcaddr.s_addr), src_ip_address_def, IPV4_STR_MAX_LEN);
 		inet_ntop(AF_INET, &(rule_info->ip_rule.tuple.dstaddr.s_addr), dst_ip_address_def, IPV4_STR_MAX_LEN);
 		inet_ntop(AF_INET, &(rule_info->ip_rule.tuple.srcnetmask.s_addr), src_netmask_def, IPV4_STR_MAX_LEN);
@@ -905,7 +905,7 @@ static SR_32 handle_update_file(SR_BOOL is_wl, SR_U32 rule_id, SR_U32 tuple_id)
 	action_name = is_wl ? file_wl[rule_id].action_name : file_rules[rule_id].action_name;
 	if (rule_info) {
 		update_rule = *rule_info;
-		printf("> updating an existing rule...\n");
+		printf("\r\n> updating an existing rule...\n");
 	} else {
 		printf("\n> adding a new rule...\n");
 		action_name = NULL;
