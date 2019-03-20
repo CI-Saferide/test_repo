@@ -589,17 +589,17 @@ static int sr_redis_test(int tcp, int clean_first, int clean_at_end)
 	// delete 1/10 of the rules
 	for (i = 0; i < 1200; i++) {
 		if (i % 10 == 0) {
-			if ((rc = redis_mng_del_file_rule(c, i))) {
+			if ((rc = redis_mng_del_file_rule(c, i, i))) {
 				printf("ERROR: redis_mng_del_file_rule %d failed, ret %d\n", i, rc);
 				redis_mng_session_end(c);
 				return -1;
 			}
-			if ((rc = redis_mng_del_net_rule(c, i))) {
+			if ((rc = redis_mng_del_net_rule(c, i, i))) {
 				printf("ERROR: redis_mng_del_net_rule %d failed, ret %d\n", i, rc);
 				redis_mng_session_end(c);
 				return -1;
 			}
-			if ((rc = redis_mng_del_can_rule(c, i))) {
+			if ((rc = redis_mng_del_can_rule(c, i, i))) {
 				printf("ERROR: redis_mng_del_can_rule %d failed, ret %d\n", i, rc);
 				redis_mng_session_end(c);
 				return -1;
