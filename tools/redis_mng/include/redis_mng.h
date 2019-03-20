@@ -42,14 +42,14 @@ SR_32 redis_mng_print_list(redisContext *c, char *name);
 
 /* update / delete rules and verify reply */
 SR_32 redis_mng_update_file_rule(redisContext *c, SR_32 rule_id, char *file_name, char *exec, char *user, char *action, char *file_op);
-SR_32 redis_mng_del_file_rule(redisContext *c, SR_32 rule_id);
+SR_32 redis_mng_del_file_rule(redisContext *c, SR_32 rule_id_start, SR_32 rule_id_end);
 //SR_32 redis_mng_get_file_rule(redisContext *c, SR_32 rule_id, redis_mng_reply_t *reply);
 
 SR_32 redis_mng_update_net_rule(redisContext *c, SR_32 rule_id, char *src_addr_netmask, char *dst_addr_netmask, char *proto, char *src_port, char *dst_port, char *exec, char *user, char *action);
-SR_32 redis_mng_del_net_rule(redisContext *c, SR_32 rule_id);
+SR_32 redis_mng_del_net_rule(redisContext *c, SR_32 rule_id_start, SR_32 rule_id_end);
 
 SR_32 redis_mng_update_can_rule(redisContext *c, SR_32 rule_id, char *msg_id, char *interface, char *exec, char *user, char *action, char *dir);
-SR_32 redis_mng_del_can_rule(redisContext *c, SR_32 rule_id);
+SR_32 redis_mng_del_can_rule(redisContext *c, SR_32 rule_id_start, SR_32 rule_id_end);
 
 SR_32 redis_mng_add_action(redisContext *c, char *name, SR_U8 bm, char *log, char *sms, char *mail);
 SR_32 redis_mng_del_action(redisContext *c, char *name);
