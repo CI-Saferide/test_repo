@@ -1299,74 +1299,73 @@ SR_32 redis_mng_print_rules(redisContext *c, rule_type_t type, SR_32 rule_id_sta
 
 		if ((type == RULE_TYPE_CAN) && strstr(reply->element[i]->str, CAN_PREFIX)) { // can rule
 
-			if (replies[i]->elements != 12) {
-				printf("ERROR: redisGetReply %d length is wrong %d instead of 12\n", i, (int)replies[i]->elements);
+			/*if (replies[i]->elements != CAN_RULE_FIELDS) {
+				printf("ERROR: redisGetReply %d length is wrong %d instead of %d\n", i, (int)replies[i]->elements, CAN_RULE_FIELDS);
 				for (j = 0; j < i; j++)
 					freeReplyObject(replies[j]);
 				free(replies);
 				freeReplyObject(reply);
 				return SR_ERROR;
-			}
+			}*/
 
 			num = atoi(reply->element[i]->str + strlen(CAN_PREFIX));
 			if (((rule_id_start == -1) && (rule_id_end == -1)) || ((num >= rule_id_start) && (num <= rule_id_end))) {
 					printf("\r%-6d %-8s %-10.10s %-10.10s %-24.24s %-10.10s %-10.10s\n",
 							num,
-							replies[i]->element[3]->str, /* msg_id */
-							replies[i]->element[5]->str, /* direction */
-							replies[i]->element[7]->str, /* interface */
-							replies[i]->element[9]->str, /* program */
-							replies[i]->element[11]->str, /* user */
-							replies[i]->element[1]->str /* action */);
+							replies[i]->elements > 3 ? replies[i]->element[3]->str : "NA", /* msg_id */
+							replies[i]->elements > 5 ? replies[i]->element[5]->str : "NA", /* direction */
+							replies[i]->elements > 7 ? replies[i]->element[7]->str : "NA", /* interface */
+							replies[i]->elements > 9 ? replies[i]->element[9]->str : "NA", /* program */
+							replies[i]->elements > 11 ? replies[i]->element[11]->str : "NA", /* user */
+							replies[i]->elements > 1 ? replies[i]->element[1]->str : "NA" /* action */);
 			}
 
 		} else if ((type == RULE_TYPE_IP) && strstr(reply->element[i]->str, NET_PREFIX)) { // net rule
 
-			if (replies[i]->elements != 16) {
-				printf("ERROR: redisGetReply %d length is wrong %d instead of 16\n", i, (int)replies[i]->elements);
+			/*if (replies[i]->elements != NET_RULE_FIELDS) {
+				printf("ERROR: redisGetReply %d length is wrong %d instead of %d\n", i, (int)replies[i]->elements, NET_RULE_FIELDS);
 				for (j = 0; j < i; j++)
 					freeReplyObject(replies[j]);
 				free(replies);
 				freeReplyObject(reply);
 				return SR_ERROR;
-			}
+			}*/
 
 			num = atoi(reply->element[i]->str + strlen(NET_PREFIX));
 			if (((rule_id_start == -1) && (rule_id_end == -1)) || ((num >= rule_id_start) && (num <= rule_id_end))) {
-					printf("%-6d %-32s %-32s %s %s %s %-24.24s %-10.10s %-10.10s\n",
-							num,
-							replies[i]->element[3]->str, /* src_addr | src_netmask */
-							replies[i]->element[5]->str, /* dst_addr | dst_netmask */
-							replies[i]->element[11]->str, /* proto */
-							replies[i]->element[13]->str, /* srcport */
-							replies[i]->element[15]->str, /* dstport */
-							replies[i]->element[7]->str, /*program */
-							replies[i]->element[9]->str, /* user */
-							replies[i]->element[1]->str /* action */);
+				printf("%-6d %-32s %-32s %s %s %s %-24.24s %-10.10s %-10.10s\n",
+						num,
+						replies[i]->elements > 3 ? replies[i]->element[3]->str : "NA", /* src_addr | src_netmask */
+						replies[i]->elements > 5 ? replies[i]->element[5]->str : "NA", /* dst_addr | dst_netmask */
+						replies[i]->elements > 11 ? replies[i]->element[11]->str : "NA", /* proto */
+						replies[i]->elements > 13 ? replies[i]->element[13]->str : "NA", /* srcport */
+						replies[i]->elements > 15 ? replies[i]->element[15]->str : "NA", /* dstport */
+						replies[i]->elements > 7 ? replies[i]->element[7]->str : "NA", /*program */
+						replies[i]->elements > 9 ? replies[i]->element[9]->str : "NA", /* user */
+						replies[i]->elements > 1 ? replies[i]->element[1]->str : "NA" /* action */);
 			}
 
 		} else if ((type == RULE_TYPE_FILE) && strstr(reply->element[i]->str, FILE_PREFIX)) { // file rule
 
-			if (replies[i]->elements != 10) {
-				printf("ERROR: redisGetReply %d length is wrong %d instead of 10\n", i, (int)replies[i]->elements);
+			/*if (replies[i]->elements != FILE_RULE_FIELDS) {
+				printf("ERROR: redisGetReply %d length is wrong %d instead of %d\n", i, (int)replies[i]->elements, FILE_RULE_FIELDS);
 				for (j = 0; j < i; j++)
 					freeReplyObject(replies[j]);
 				free(replies);
 				freeReplyObject(reply);
 				return SR_ERROR;
-			}
+			}*/
 
 			num = atoi(reply->element[i]->str + strlen(FILE_PREFIX));
 			if (((rule_id_start == -1) && (rule_id_end == -1)) || ((num >= rule_id_start) && (num <= rule_id_end))) {
 					printf("%-6d %-88.88s %-4s %-24.24s %-10.10s %-10.10s\n",
 							num,
-							replies[i]->element[3]->str, /* filename */
-							replies[i]->element[5]->str, /* permission */
-							replies[i]->element[7]->str, /* program */
-							replies[i]->element[9]->str, /* user */
-							replies[i]->element[1]->str /* action */);
+							replies[i]->elements > 3 ? replies[i]->element[3]->str : "NA", /* filename */
+							replies[i]->elements > 5 ? replies[i]->element[5]->str : "NA", /* permission */
+							replies[i]->elements > 7 ? replies[i]->element[7]->str : "NA", /* program */
+							replies[i]->elements > 9 ? replies[i]->element[9]->str : "NA", /* user */
+							replies[i]->elements > 1 ? replies[i]->element[1]->str : "NA" /* action */);
 			}
-
 		}
 	}
 
@@ -1439,8 +1438,8 @@ SR_32 redis_mng_load_db(redisContext *c, int pipelined, handle_rule_f_t cb_func)
 			if (strstr(reply->element[i]->str, CAN_PREFIX)) { // can rule
 
 				// ACTION, action, MID, mid, IN_INTERFACE, dir_str, OUT_INTERFACE, interface, PROGRAM_ID, exec, USER_ID, user
-				if (replies[i]->elements != 12) {
-					printf("ERROR: redisGetReply %d length is wrong %d instead of 12\n", i, (int)replies[i]->elements);
+				if (replies[i]->elements != CAN_RULE_FIELDS) {
+					printf("ERROR: redisGetReply %d length is wrong %d instead of %d\n", i, (int)replies[i]->elements, CAN_RULE_FIELDS);
 					for (j = 0; j < i; j++)
 						freeReplyObject(replies[j]);
 					free(replies);
@@ -1472,8 +1471,8 @@ SR_32 redis_mng_load_db(redisContext *c, int pipelined, handle_rule_f_t cb_func)
 
 				// ACTION, action, SRC_ADDR, src_addr_netmask, DST_ADDR, dst_addr_netmask, PROGRAM_ID, exec, USER_ID, user,
 				// PROTOCOL, proto, SRC_PORT, src_port, DST_PORT, dst_port
-				if (replies[i]->elements != 16) {
-					printf("ERROR: redisGetReply %d length is wrong %d instead of 16\n", i, (int)replies[i]->elements);
+				if (replies[i]->elements != NET_RULE_FIELDS) {
+					printf("ERROR: redisGetReply %d length is wrong %d instead of %d\n", i, (int)replies[i]->elements, NET_RULE_FIELDS);
 					for (j = 0; j < i; j++)
 						freeReplyObject(replies[j]);
 					free(replies);
@@ -1514,8 +1513,8 @@ SR_32 redis_mng_load_db(redisContext *c, int pipelined, handle_rule_f_t cb_func)
 			} else if (strstr(reply->element[i]->str, FILE_PREFIX)) { // file rule
 
 				// ACTION, action, FILENAME, file_name, PERMISSION, perms, PROGRAM_ID, exec, USER_ID, user
-				if (replies[i]->elements != 10) {
-					printf("ERROR: redisGetReply %d length is wrong %d instead of 10\n", i, (int)replies[i]->elements);
+				if (replies[i]->elements != FILE_RULE_FIELDS) {
+					printf("ERROR: redisGetReply %d length is wrong %d instead of %d\n", i, (int)replies[i]->elements, FILE_RULE_FIELDS);
 					for (j = 0; j < i; j++)
 						freeReplyObject(replies[j]);
 					free(replies);
@@ -1599,8 +1598,8 @@ SR_32 redis_mng_load_db(redisContext *c, int pipelined, handle_rule_f_t cb_func)
 			if (strstr(reply->element[i]->str, CAN_PREFIX)) { // can rule
 
 				// ACTION, action, MID, mid, IN_INTERFACE, dir_str, OUT_INTERFACE, interface, PROGRAM_ID, exec, USER_ID, user
-				if (reply2->elements != 12) {
-					printf("ERROR: redisGetReply %d length is wrong %d instead of 12\n", i, (int)reply2->elements);
+				if (reply2->elements != CAN_RULE_FIELDS) {
+					printf("ERROR: redisGetReply %d length is wrong %d instead of %d\n", i, (int)reply2->elements, CAN_RULE_FIELDS);
 					freeReplyObject(reply);
 					freeReplyObject(reply2);
 					return SR_ERROR;
@@ -1628,8 +1627,8 @@ SR_32 redis_mng_load_db(redisContext *c, int pipelined, handle_rule_f_t cb_func)
 
 				// ACTION, action, SRC_ADDR, src_addr_netmask, DST_ADDR, dst_addr_netmask, PROGRAM_ID, exec, USER_ID, user,
 				// PROTOCOL, proto, SRC_PORT, src_port, DST_PORT, dst_port
-				if (reply2->elements != 16) {
-					printf("ERROR: redisGetReply %d length is wrong %d instead of 16\n", i, (int)reply2->elements);
+				if (reply2->elements != NET_RULE_FIELDS) {
+					printf("ERROR: redisGetReply %d length is wrong %d instead of %d\n", i, (int)reply2->elements, NET_RULE_FIELDS);
 					freeReplyObject(reply);
 					freeReplyObject(reply2);
 					return SR_ERROR;
@@ -1663,8 +1662,8 @@ SR_32 redis_mng_load_db(redisContext *c, int pipelined, handle_rule_f_t cb_func)
 			} else if (strstr(reply->element[i]->str, FILE_PREFIX)) { // file rule
 
 				// ACTION, action, FILENAME, file_name, PERMISSION, perms, PROGRAM_ID, exec, USER_ID, user
-				if (reply2->elements != 10) {
-					printf("ERROR: redisGetReply %d length is wrong %d instead of 10\n", i, (int)reply2->elements);
+				if (reply2->elements != FILE_RULE_FIELDS) {
+					printf("ERROR: redisGetReply %d length is wrong %d instead of %d\n", i, (int)reply2->elements, FILE_RULE_FIELDS);
 					freeReplyObject(reply);
 					freeReplyObject(reply2);
 					return SR_ERROR;
@@ -1851,8 +1850,8 @@ SR_32 redis_mng_get_file_rule(redisContext *c, SR_32 rule_id, redis_mng_reply_t 
 		freeReplyObject(reply);
 		return SR_ERROR;
 	}
-	if (reply->elements != 10) {
-		printf("ERROR: redis_mng_get_file_rule %d length is wrong %d instead of 10\n", rule_id, (int)reply->elements);
+	if (reply->elements != FILE_RULE_FIELDS) {
+		printf("ERROR: redis_mng_get_file_rule %d length is wrong %d instead of %d\n", rule_id, (int)reply->elements, FILE_RULE_FIELDS);
 		freeReplyObject(reply);
 		return SR_ERROR;
 	}
