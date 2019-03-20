@@ -1824,14 +1824,14 @@ SR_32 redis_mng_update_file_rule(redisContext *c, SR_32 rule_id, char *file_name
 	return SR_SUCCESS;
 }
 
-SR_32 redis_mng_del_file_rule(redisContext *c, SR_32 rule_id_start, SR_32 rule_id_end)
+SR_32 redis_mng_del_file_rule(redisContext *c, SR_32 rule_id_start, SR_32 rule_id_end, SR_8 force)
 {
     redisReply *reply;
     SR_32 rule_id;
 
     for (rule_id = rule_id_start; rule_id_start <= rule_id_end; rule_id_end++) {
     	reply = redisCommand(c,"DEL %s%d", FILE_PREFIX, rule_id);
-    	if (reply == NULL || reply->type != REDIS_REPLY_INTEGER || reply->integer != 1) {
+    	if (!force && (reply == NULL || reply->type != REDIS_REPLY_INTEGER || reply->integer != 1)) {
     		printf("ERROR: redis_mng_del_file_rule failed, type %d, i %d\n", reply ? reply->type : -1, reply ? (int)reply->integer : 0);
     		freeReplyObject(reply);
     		return SR_ERROR;
@@ -1922,14 +1922,14 @@ SR_32 redis_mng_update_net_rule(redisContext *c, SR_32 rule_id, char *src_addr_n
 	return SR_SUCCESS;
 }
 
-SR_32 redis_mng_del_net_rule(redisContext *c, SR_32 rule_id_start, SR_32 rule_id_end)
+SR_32 redis_mng_del_net_rule(redisContext *c, SR_32 rule_id_start, SR_32 rule_id_end, SR_8 force)
 {
     redisReply *reply;
     SR_32 rule_id;
 
     for (rule_id = rule_id_start; rule_id_start <= rule_id_end; rule_id_end++) {
     	reply = redisCommand(c,"DEL %s%d", NET_PREFIX, rule_id);
-    	if (reply == NULL || reply->type != REDIS_REPLY_INTEGER || reply->integer != 1) {
+    	if (!force && (reply == NULL || reply->type != REDIS_REPLY_INTEGER || reply->integer != 1)) {
     		printf("ERROR: redis_mng_del_net_rule failed, type %d, i %d\n", reply ? reply->type : -1, reply ? (int)reply->integer : 0);
     		freeReplyObject(reply);
     		return SR_ERROR;
@@ -1989,14 +1989,14 @@ SR_32 redis_mng_update_can_rule(redisContext *c, SR_32 rule_id, char *mid, char 
 	return SR_SUCCESS;
 }
 
-SR_32 redis_mng_del_can_rule(redisContext *c, SR_32 rule_id_start, SR_32 rule_id_end)
+SR_32 redis_mng_del_can_rule(redisContext *c, SR_32 rule_id_start, SR_32 rule_id_end, SR_8 force)
 {
     redisReply *reply;
     SR_32 rule_id;
 
     for (rule_id = rule_id_start; rule_id_start <= rule_id_end; rule_id_end++) {
     	reply = redisCommand(c,"DEL %s%d", CAN_PREFIX, rule_id);
-    	if (reply == NULL || reply->type != REDIS_REPLY_INTEGER || reply->integer != 1) {
+    	if (!force && (reply == NULL || reply->type != REDIS_REPLY_INTEGER || reply->integer != 1)) {
     		printf("ERROR: redis_mng_del_can_rule failed, type %d, i %d\n", reply ? reply->type : -1, reply ? (int)reply->integer : 0);
     		freeReplyObject(reply);
     		return SR_ERROR;
