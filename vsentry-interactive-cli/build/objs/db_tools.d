@@ -1,0 +1,19 @@
+/home/arik/git/new_db/vsentry/vsentry-interactive-cli/build/objs/db_tools.o: \
+ src/db_tools.c \
+ /home/arik/git/new_db/vsentry/tools/db_tools/include/db_tools.h \
+ /home/arik/git/new_db/vsentry/vsentry-interactive-cli/../common/include/sr_types.h \
+ /home/arik/git/new_db/vsentry/vsentry-interactive-cli/../vsentry-lib/include/action.h \
+ /home/arik/git/new_db/vsentry/vsentry-interactive-cli/../vsentry-lib/include/sentry.h \
+ /home/arik/git/new_db/vsentry/vsentry-interactive-cli/../common/include/sr_msg.h \
+ /home/arik/git/new_db/vsentry/vsentry-interactive-cli/../common/include/sr_types.h \
+ /home/arik/git/new_db/vsentry/vsentry-interactive-cli/../common/include/sr_shmem.h \
+ /home/arik/git/new_db/vsentry/vsentry-interactive-cli/../vsentry-lib/include/sentry.h \
+ /home/arik/git/new_db/vsentry/vsentry-interactive-cli/../vsentry-lib/include/ip_rule.h \
+ /home/arik/git/new_db/vsentry/vsentry-interactive-cli/../vsentry-lib/include/action.h \
+ /home/arik/git/new_db/vsentry/vsentry-interactive-cli/../vsentry-lib/include/file_rule.h \
+ /home/arik/git/new_db/vsentry/vsentry-interactive-cli/../vsentry-lib/include/can_rule.h \
+ /home/arik/git/new_db/vsentry/vsentry-interactive-cli/../common/include/sr_canbus_common.h \
+ /home/arik/git/new_db/vsentry/vsentry-interactive-cli/../common/include/sr_sal_common.h \
+ /home/arik/git/new_db/vsentry/vsentry-interactive-cli/../tools/sr-log/include/sr_log.h \
+ /home/arik/git/new_db/vsentry/vsentry-interactive-cli/../common/include/sr_sal_common.h \
+ /home/arik/git/new_db/vsentry/vsentry-interactive-cli/../vsentry-engine/sal/platform/linux/include/sal_linux.h
