@@ -554,7 +554,7 @@ static SR_32 handle_delete(int argc, char **argv)
 {
 	char *type, *section;
 	SR_U32 from_rule = -1, to_rule = -1;
-	SR_BOOL is_can = SR_FALSE, is_file = SR_FALSE, is_ip = SR_FALSE;
+	SR_BOOL is_can = SR_FALSE, is_file = SR_FALSE, is_ip = SR_FALSE, is_force = SR_TRUE;
 
 	if (argc < 1) {
 		print_delete_usage();
@@ -610,6 +610,7 @@ static SR_32 handle_delete(int argc, char **argv)
 		goto delete;
 	}
 
+	is_force = SR_FALSE;
 	if (strcmp(argv[2], "rule_number") != 0) {
 		printf("Invalid parameter, rule_number is expected \n");
 		return SR_ERROR;
@@ -622,22 +623,22 @@ static SR_32 handle_delete(int argc, char **argv)
 
 delete:
 #if DEBUG
-	printf("deleting can:%d file:%d ip:%d from:%d to:%d\n", is_can, is_file, is_ip, from_rule, to_rule);
+	printf("deleting can:%d file:%d ip:%d from:%d to:%d force:%d \n", is_can, is_file, is_ip, from_rule, to_rule, is_force);
 #endif
 	if (is_file) {
-		if (redis_mng_del_file_rule(c, from_rule, to_rule, 1) != SR_SUCCESS) {
+		if (redis_mng_del_file_rule(c, from_rule, to_rule, is_force) != SR_SUCCESS) {
 			printf("File rules %d-%d failed\n", from_rule, to_rule);
 			return SR_ERROR;
 		}
 	}
 	if (is_ip) {
-		if (redis_mng_del_net_rule(c, from_rule, to_rule, 1) != SR_SUCCESS) {
+		if (redis_mng_del_net_rule(c, from_rule, to_rule, is_force) != SR_SUCCESS) {
 			printf("IP rules %d-%d failed\n", from_rule, to_rule);
 			return SR_ERROR;
 		}
 	}
 	if (is_can) {
-		if (redis_mng_del_can_rule(c, from_rule, to_rule, 1) != SR_SUCCESS) {
+		if (redis_mng_del_can_rule(c, from_rule, to_rule, is_force) != SR_SUCCESS) {
 			printf("CAN rules %d-%d failed\n", from_rule, to_rule);
 			return SR_ERROR;
 		}
