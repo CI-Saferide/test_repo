@@ -24,12 +24,26 @@
 #include "sr_cls_wl_common.h"
 
 #define MAX_LIST_NAME 64
+#define MAX_LIST_VALUES 256
+#define GROUP_NAME_SIZE 64
 #define IP_ADDR_SIZE 32
 #define IP_NETMASK_SIZE 4
 #define PROTO_SIZE 8
 #define PORT_SIZE 16
+#define MAX_GROUP 32
 
 static redisContext *c;
+
+typedef struct group_info {
+	char group_name[GROUP_NAME_SIZE];
+	SR_BOOL (*valid_cb)(char *val);
+} group_info_t;
+
+static SR_BOOL is_valid_file(char *file);
+
+static group_info_t group_info[MAX_GROUP + 1] = {
+	{.group_name = "file-group", .valid_cb = is_valid_file}
+};
 
 static int engine_connect(void)
 {
@@ -54,17 +68,22 @@ static int engine_connect(void)
 
 static void print_update_usage(void)
 {
-	printf("update ... \n");
+	printf("usgae: update ... \n");
 }
 
 static void print_show_usage(void)
 {
-	printf("show ... \n");
+	printf("usage: show ... \n");
 }
 
 static void print_delete_usage(void)
 {
-	printf("delete ... \n");
+	printf("usage: delete ... \n");
+}
+
+static void print_update_group(void)
+{
+	printf("uasge: update group ... \n");
 }
 
 static void print_usage(char *prog)
@@ -111,10 +130,10 @@ static SR_BOOL is_valid_file(char *file)
 
         if (stat(file, &buf)) {
                 printf("file does not exist\n");
-                return 0;
+                return SR_FALSE;
         }
 
-        return 1;
+        return SR_TRUE;
 }
 
 static SR_BOOL is_valid_msg_id(char *str)
@@ -441,17 +460,86 @@ static SR_32 handle_update_ip(SR_U32 rule_id, SR_BOOL is_wl, int argc, char **ar
 	return SR_SUCCESS;
 } 
 
+static SR_32 get_group_index(char *type)
+{
+	SR_U32 i;
+
+	for (i =0 ; i <= MAX_GROUP && *(group_info[i].group_name); i++) {
+		if (!strcmp(group_info[i].group_name, type))
+			return i;
+	}
+	return -1;
+}
+
+static SR_32 handle_update_group(int argc, char **argv)
+{
+	char *type, *name;
+	SR_32 group_id, i, n, rc = SR_SUCCESS;
+	char *list_values[MAX_LIST_VALUES] = {};
+
+	if (argc < 3) {
+		print_update_group();
+		return SR_ERROR;
+	}
+	type = argv[0];
+
+	if ((group_id = get_group_index(type)) < 0) {
+		printf(" group type %s is not valid \n", type);
+		return SR_ERROR;
+	}
+	name = argv[1];
+
+#ifdef DEBUG
+	printf("update group type:%s name:%s \n", type, name);
+#endif
+	n = argc - 2;
+	if (n >  MAX_LIST_VALUES) { 
+		printf("Number of items excees maximun of %d \n", MAX_LIST_VALUES);
+	}
+	for (i = 2; i < argc; i++) {
+		if (strlen(argv[i]) > MAX_LIST_VAL_LEN) {
+			printf("Item %s exceed maximun length of %d \n", argv[i], MAX_LIST_VAL_LEN);
+			rc = SR_ERROR;
+			goto out;
+		}
+		if (group_info[group_id].valid_cb && !group_info[group_id].valid_cb(argv[i])) {
+			printf("Value %s is invalid \n", argv[i]);
+			return SR_ERROR;
+		}
+		if (!(list_values[i - 2] = strdup(argv[i]))) {
+			printf("Failed allocating memory\n");
+			return SR_ERROR;
+		}
+	}
+
+	if (redis_mng_add_list(c, name, n, list_values)) {
+		printf("Redis list add Failed !!\n");
+		rc = SR_ERROR;
+	}
+
+out:
+	for (i = 0; i < MAX_LIST_VALUES && list_values[i]; i++) {
+		free(list_values[i]);
+	}
+	fflush(stdout);
+
+	return rc;
+}
+
 static SR_32 handle_update(int argc, char **argv)
 {
 	char *type, *section;
 	SR_U32 rule_id;
 
-	if (argc < 5) {
+	if (argc < 3) {
 		print_update_usage();
 		return SR_ERROR;
 	}
 
 	type = argv[0];
+	if (!strcmp(type, "group"))
+		return handle_update_group(argc - 1 , argv + 1);
+
 	section = argv[1];
 
 	if (strcmp(argv[2], "rule_number") != 0) {
@@ -506,6 +594,19 @@ static SR_32 show_version(void)
 	return SR_SUCCESS;
 }
 
+static SR_32 show_group(int argc, char **argv)
+{
+	char *type, *name;
+
+	type = argv[0];
+	name = argv[1];
+
+	/* list type is missing  a list should be kept for list*/
+	redis_mng_print_list(c, name);
+
+	return SR_SUCCESS;
+}
+
 static SR_32 handle_show(int argc, char **argv)
 {
 	SR_BOOL is_can = SR_FALSE, is_file = SR_FALSE, is_ip = SR_FALSE;
@@ -516,9 +617,10 @@ static SR_32 handle_show(int argc, char **argv)
 		return SR_SUCCESS;
 	}
 
-	if (!strcmp(argv[0], "version")) {
+	if (!strcmp(argv[0], "version"))
 		return show_version();
-	}
+	if (!strcmp(argv[0], "group"))
+		return show_group(argc - 1, argv + 1);
 
 	if (argc < 2) {
 		is_can = is_file = is_ip = SR_TRUE;
