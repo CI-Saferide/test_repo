@@ -543,15 +543,39 @@ static SR_32 handle_delete(int argc, char **argv)
 		goto delete;
 	}
 
-	if (!is_valid_rule_id(type, section, argv[2])) {
+	if (strcmp(argv[2], "rule_number") != 0) {
+		printf("Invalid parameter, rule_number is expected \n");
+		return SR_ERROR;
+	}
+	if (!is_valid_rule_id(type, section, argv[3])) {
 		printf("Invalid rule id\n");
 		return SR_ERROR;
 	}
+	from_rule = to_rule = atoi(argv[3]);
 
 delete:
 #if DEBUG
 	printf("deleting can:%d file:%d ip:%d from:%d to:%d\n", is_can, is_file, is_ip, from_rule, to_rule);
 #endif
+	if (is_file) {
+		if (redis_mng_del_file_rule(c, from_rule, to_rule) != SR_SUCCESS) {
+			printf("File rules %d-%d failed\n", from_rule, to_rule);
+			return SR_ERROR;
+		}
+	}
+	if (is_ip) {
+		if (redis_mng_del_net_rule(c, from_rule, to_rule) != SR_SUCCESS) {
+			printf("IP rules %d-%d failed\n", from_rule, to_rule);
+			return SR_ERROR;
+		}
+	}
+	if (is_can) {
+		if (redis_mng_del_can_rule(c, from_rule, to_rule) != SR_SUCCESS) {
+			printf("CAN rules %d-%d failed\n", from_rule, to_rule);
+			return SR_ERROR;
+		}
+	}
+
 	return SR_SUCCESS;
 }
 
