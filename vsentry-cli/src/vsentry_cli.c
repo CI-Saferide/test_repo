@@ -36,6 +36,11 @@ static void print_update_usage(void)
 	printf("update ... \n");
 }
 
+static void print_delete_usage(void)
+{
+	printf("delete ... \n");
+}
+
 static void print_usage(char *prog)
 {
 	printf("usgae: %s\n", prog);
@@ -173,6 +178,16 @@ static SR_BOOL is_valid_perm(char *perm)
 static SR_BOOL is_valid_action(char *action)
 {
 	return SR_TRUE;
+}
+
+static SR_BOOL is_valid_type(char *type)
+{
+	return (!strcmp(type, "rule") || !strcmp(type, "wl"));
+}
+
+static SR_BOOL is_valid_section(char *section)
+{
+	return (!strcmp(section, "can") || !strcmp(section, "file") || !strcmp(section, "ip"));
 }
 
 static SR_BOOL is_valid_ip_addr(char *ip_addr)
@@ -438,20 +453,19 @@ static SR_32 handle_show(int argc, char **argv)
 	SR_BOOL is_can = SR_FALSE, is_file = SR_FALSE, is_ip = SR_FALSE;
 	SR_32 from = -1, to = -1;
 
-	if (argc == 0) {
+	if (argc < 2) {
 		is_can = is_file = is_ip = SR_TRUE;
 		goto print;
 	}
-	if (!strcmp(argv[0], "can"))
+	if (!strcmp(argv[1], "can"))
 		is_can = SR_TRUE;
-	if (!strcmp(argv[0], "ip"))
+	if (!strcmp(argv[1], "ip"))
 		is_ip = SR_TRUE;
-	if (!strcmp(argv[0], "file"))
+	if (!strcmp(argv[1], "file"))
 		is_file = SR_TRUE;
 	
-	if (argc > 1)
+	if (argc > 2)
 		from = to = atoi(argv[1]);
-
 print:
 	if (is_can) {
 		printf("Can rules :\n");
@@ -466,6 +480,78 @@ print:
 		redis_mng_print_rules(c, RULE_TYPE_IP, from, to);
 	}
 
+	return SR_SUCCESS;
+}
+
+static SR_32 handle_delete(int argc, char **argv)
+{
+	char *type, *section;
+	SR_U32 from_rule = -1, to_rule = -1;
+	SR_BOOL is_can = SR_FALSE, is_file = SR_FALSE, is_ip = SR_FALSE;
+
+	if (argc < 1) {
+		print_delete_usage();
+		return SR_ERROR;
+	}
+
+	type = argv[0];
+	if (!is_valid_type(type)) {
+		printf("Invalid %s type.\n", type);
+		print_delete_usage();
+		return SR_ERROR;
+	}
+	
+	section = argv[1];
+	if (!is_valid_section(section)) {
+		printf("Invalid section: %s.\n", section);
+		print_delete_usage();
+		return SR_ERROR;
+	}
+	if (!strcmp(section, "can")) {
+		is_can = SR_TRUE;
+		if (!strcmp(type, "rule")) {
+			from_rule = 0;
+			to_rule = SR_CAN_WL_START_RULE_NO - 1;
+		} else if (!strcmp(type, "wl")) {
+			from_rule = SR_CAN_WL_START_RULE_NO;
+			to_rule = SR_CAN_WL_END_RULE_NO;
+		}
+	}
+	else if (!strcmp(section, "file")) {
+		is_file = SR_TRUE;
+		if (!strcmp(type, "rule")) {
+			from_rule = 0;
+			to_rule = SR_FILE_WL_START_RULE_NO - 1;
+		} else if (!strcmp(type, "wl")) {
+			from_rule = SR_FILE_WL_START_RULE_NO;
+			to_rule = SR_FILE_WL_END_RULE_NO;
+		}
+	} else if (!strcmp(section, "ip")) {
+		is_ip = SR_TRUE;
+		if (!strcmp(type, "rule")) {
+			from_rule = 0;
+			to_rule = SR_IP_WL_START_RULE_NO - 1;
+		} else if (!strcmp(type, "wl")) {
+			from_rule = SR_IP_WL_START_RULE_NO;
+			to_rule = SR_IP_WL_END_RULE_NO;
+		}
+	}
+	if (argc < 3) {
+		printf("Delete all %s rules of %s type ? [y/N]:", section, type);
+		if (getc(stdin) != 'y')
+			return SR_SUCCESS;
+		goto delete;
+	}
+
+	if (!is_valid_rule_id(type, section, argv[2])) {
+		printf("Invalid rule id\n");
+		return SR_ERROR;
+	}
+
+delete:
+#if DEBUG
+	printf("deleting can:%d file:%d ip:%d from:%d to:%d\n", is_can, is_file, is_ip, from_rule, to_rule);
+#endif
 	return SR_SUCCESS;
 }
 
@@ -486,6 +572,8 @@ SR_32 main(int argc, char **argv)
 		return handle_update(argc - 2, argv + 2);
 	if (!strcmp(argv[1], "show"))
 		return handle_show(argc - 2, argv + 2);
+	if (!strcmp(argv[1], "delete"))
+		return handle_delete(argc - 2, argv + 2);
 
 	return SR_SUCCESS;
 }
