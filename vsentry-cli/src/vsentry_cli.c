@@ -558,19 +558,19 @@ delete:
 	printf("deleting can:%d file:%d ip:%d from:%d to:%d\n", is_can, is_file, is_ip, from_rule, to_rule);
 #endif
 	if (is_file) {
-		if (redis_mng_del_file_rule(c, from_rule, to_rule) != SR_SUCCESS) {
+		if (redis_mng_del_file_rule(c, from_rule, to_rule, 1) != SR_SUCCESS) {
 			printf("File rules %d-%d failed\n", from_rule, to_rule);
 			return SR_ERROR;
 		}
 	}
 	if (is_ip) {
-		if (redis_mng_del_net_rule(c, from_rule, to_rule) != SR_SUCCESS) {
+		if (redis_mng_del_net_rule(c, from_rule, to_rule, 1) != SR_SUCCESS) {
 			printf("IP rules %d-%d failed\n", from_rule, to_rule);
 			return SR_ERROR;
 		}
 	}
 	if (is_can) {
-		if (redis_mng_del_can_rule(c, from_rule, to_rule) != SR_SUCCESS) {
+		if (redis_mng_del_can_rule(c, from_rule, to_rule, 1) != SR_SUCCESS) {
 			printf("CAN rules %d-%d failed\n", from_rule, to_rule);
 			return SR_ERROR;
 		}
