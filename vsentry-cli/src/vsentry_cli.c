@@ -31,9 +31,35 @@
 
 static redisContext *c;
 
+static int engine_connect(void)
+{
+	int fd;
+	struct sockaddr_un addr = {};
+
+	if ( (fd = socket(AF_UNIX, SOCK_STREAM, 0)) == -1) {
+		perror("socket error");
+		return -1;
+	}
+
+	addr.sun_family = AF_UNIX;
+	strcpy(addr.sun_path, SR_CLI_INTERFACE_FILE);
+
+	if (connect(fd, (struct sockaddr*)&addr, sizeof(addr)) == -1) {
+		perror("connect error");
+		return -1;
+	}
+
+	return fd;
+}
+
 static void print_update_usage(void)
 {
 	printf("update ... \n");
+}
+
+static void print_show_usage(void)
+{
+	printf("show ... \n");
 }
 
 static void print_delete_usage(void)
@@ -448,10 +474,51 @@ static SR_32 handle_update(int argc, char **argv)
 	return SR_SUCCESS;
 }
 
+static SR_32 show_version(void)
+{
+	int fd, rc;
+	char buf2[256];
+
+	if ((fd = engine_connect()) < 0) {
+		printf("failed engine connect");
+		return SR_ERROR;
+	}
+	rc = write(fd, "sr_ver", strlen("sr_ver"));
+	if (rc < 0) {
+ 		printf("write error");
+		return SR_ERROR;
+        }
+	if (rc < strlen("sr_ver")) {
+		printf("partial write");
+		return SR_ERROR;
+	}
+
+	usleep(30000);
+	rc = read(fd, buf2, 256);
+	if (rc < 0) {
+		printf("read error");
+		return SR_ERROR;
+	}
+	printf("%s\n", buf2);
+
+	close(fd);
+
+	return SR_SUCCESS;
+}
+
 static SR_32 handle_show(int argc, char **argv)
 {
 	SR_BOOL is_can = SR_FALSE, is_file = SR_FALSE, is_ip = SR_FALSE;
 	SR_32 from = -1, to = -1;
+
+	if (!argc) {
+		print_show_usage();
+		return SR_SUCCESS;
+	}
+
+	if (!strcmp(argv[0], "version")) {
+		return show_version();
+	}
 
 	if (argc < 2) {
 		is_can = is_file = is_ip = SR_TRUE;
