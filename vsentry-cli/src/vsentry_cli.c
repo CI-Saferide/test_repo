@@ -438,20 +438,19 @@ static SR_32 handle_show(int argc, char **argv)
 	SR_BOOL is_can = SR_FALSE, is_file = SR_FALSE, is_ip = SR_FALSE;
 	SR_32 from = -1, to = -1;
 
-	if (argc == 0) {
+	if (argc < 2) {
 		is_can = is_file = is_ip = SR_TRUE;
 		goto print;
 	}
-	if (!strcmp(argv[0], "can"))
+	if (!strcmp(argv[1], "can"))
 		is_can = SR_TRUE;
-	if (!strcmp(argv[0], "ip"))
+	if (!strcmp(argv[1], "ip"))
 		is_ip = SR_TRUE;
-	if (!strcmp(argv[0], "file"))
+	if (!strcmp(argv[1], "file"))
 		is_file = SR_TRUE;
 	
-	if (argc > 1)
+	if (argc > 2)
 		from = to = atoi(argv[1]);
-
 print:
 	if (is_can) {
 		printf("Can rules :\n");
