@@ -32,6 +32,8 @@
 #define PORT_SIZE 16
 #define MAX_GROUP 32
 
+// R1
+
 static redisContext *c;
 
 typedef struct group_info {
