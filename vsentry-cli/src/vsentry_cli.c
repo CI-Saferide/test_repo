@@ -66,6 +66,11 @@ static int engine_connect(void)
 	return fd;
 }
 
+static void print_control_usage(void)
+{
+	printf("usgae: control ... \n");
+}
+
 static void print_update_usage(void)
 {
 	printf("usgae: update ... \n");
@@ -747,6 +752,166 @@ delete:
 	}
 
 	return SR_SUCCESS;
+
+}
+
+static SR_32 cli_handle_reply(SR_32 fd, SR_32 (*handle_data_cb)(char *buf))
+{
+        SR_32 ind, len;
+        char buf[2000], cval;
+
+        if (!handle_data_cb) {
+                printf("Handle reply failed, no handle data cb\n");
+                return SR_ERROR;
+        }
+
+        buf[0] = 0;
+        ind = 0;
+        for (;;) {
+                len = read(fd, &cval, 1);
+                if (!len) {
+                        printf("failed to read from socket");
+                        return SR_ERROR;
+                }
+                switch (cval) {
+                        case SR_CLI_END_OF_TRANSACTION: /* Finish reply */
+                                goto out;
+                        case SR_CLI_END_OF_ENTITY: /* Finish entity */
+                                buf[ind] = 0;
+                                if (handle_data_cb(buf) != SR_SUCCESS) {
+                                        printf(" Handle buf:%s: failed \n", buf);
+                                }
+                                buf[0] = 0;
+                                ind = 0;
+                                break;
+                        default:
+                                buf[ind++] = cval;
+                                break;
+                }
+        }
+out:
+        return SR_SUCCESS;
+}
+
+static SR_32 handle_print_cb(char *buf)
+{
+        printf("%s", buf);
+        return SR_SUCCESS;
+}
+
+static void handle_cmd_gen(char *cmd, char *msg, SR_BOOL is_print)
+{
+        SR_32 fd;
+        int rc;
+
+        if ((fd = engine_connect()) < 0) {
+                printf("failed engine connect");
+                return;
+        }
+        rc = write(fd, cmd, strlen(cmd));
+        if (rc < 0) {
+                printf("write error");
+                return;
+        }
+        if (rc < strlen(cmd)) {
+                printf("partial write");
+                return;
+        }
+
+        if (is_print) {
+                if (cli_handle_reply(fd, handle_print_cb) != SR_SUCCESS)
+                        printf("print Failed\n");
+        }
+
+        close(fd);
+
+	if (msg)
+		printf("%s\n", msg);
+}
+
+static void handle_apply(void)
+{
+        SR_32 fd;
+        int ret = 0, rc, counter = 0;
+        char line[4] = {'|', '/', '-', '\\'}, cval;
+        fd_set fds;
+        struct timeval tv;
+
+        if ((fd = engine_connect()) < 0) {
+                printf("failed engine connect");
+                return;
+        }
+        rc = write(fd, "wl_apply", strlen("wl_apply"));
+        if (rc < 0) {
+                printf("write error");
+                return;
+        }
+        if (rc < strlen("wl_apply")) {
+                printf("partial write");
+                return;
+        }
+
+        printf("\napplying  ");
+
+        while (1) {
+                tv.tv_sec = 0;
+                tv.tv_usec = 250000;
+
+                FD_ZERO(&fds);
+                FD_SET(fd, &fds);
+
+                printf("\033[1D");
+                printf("%c", line[counter%4]);
+                fflush(stdout);
+
+                counter++;
+
+                ret =  select((fd+1), &fds, NULL, NULL, &tv);
+                if (!ret || ret <0)
+                        continue;
+                break;
+        }
+
+        if (read(fd, &cval, 1) < 1)
+                printf("failed reading from socket");
+
+        printf("\napply finished.\n");
+
+	close(fd);
+}
+
+static SR_32 handle_wl(int argc, char **argv)
+{
+	if (!argc) {
+		print_control_usage();
+		return SR_ERROR;
+	}
+	if (!strcmp(argv[0], "learn")) {
+		handle_cmd_gen("wl_learn", "learning...", SR_FALSE);
+		return SR_SUCCESS;
+	}
+	if (!strcmp(argv[0], "apply")) {
+		handle_apply();
+		return SR_SUCCESS;
+	}
+	if (!strcmp(argv[0], "print")) {
+		handle_cmd_gen("wl_print", NULL, SR_TRUE);
+		return SR_SUCCESS;
+	}
+
+	return SR_SUCCESS;
+}
+
+static SR_32 handle_control(int argc, char **argv)
+{
+	if (!argc) {
+		print_control_usage();
+		return SR_ERROR;
+	}
+	if (!strcmp(argv[0], "wl")) 
+		return handle_wl(argc - 1, argv + 1);
+
+	return SR_SUCCESS;
 }
 
 SR_32 main(int argc, char **argv)
@@ -768,6 +933,8 @@ SR_32 main(int argc, char **argv)
 		return handle_show(argc - 2, argv + 2);
 	if (!strcmp(argv[1], "delete"))
 		return handle_delete(argc - 2, argv + 2);
+	if (!strcmp(argv[1], "control"))
+		return handle_control(argc - 2, argv + 2);
 
 	return SR_SUCCESS;
 }
