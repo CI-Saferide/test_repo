@@ -71,6 +71,11 @@ SR_32 redis_mng_del_net_rule(redisContext *c, SR_32 rule_id_start, SR_32 rule_id
 SR_32 redis_mng_update_can_rule(redisContext *c, SR_32 rule_id, char *msg_id, char *interface, char *exec, char *user, char *action, char *dir);
 SR_32 redis_mng_del_can_rule(redisContext *c, SR_32 rule_id_start, SR_32 rule_id_end, SR_8 force);
 
+/* params:
+ * 	bm:		"drop" / "none" / "allow" (o/w invalid)
+ * 	log:	made of two parts, must contain one option of each, in a single string
+ * 			"file" / "none" / "sys" (syslog) (o/w invalid)
+ * 			"crt" / "err" / "warn" / "info" / "debug" */
 SR_32 redis_mng_add_action(redisContext *c, char *name, char *bm, char *log, char *sms, char *mail);
 SR_32 redis_mng_del_action(redisContext *c, char *name);
 
