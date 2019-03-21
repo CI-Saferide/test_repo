@@ -7,10 +7,24 @@
 
 #define MAX_LIST_NAME_LEN	96
 #define MAX_LIST_VAL_LEN	256
+
+#define ACTION_FIELDS		8
 #define FILE_RULE_FIELDS	10
 #define CAN_RULE_FIELDS		12
 #define NET_RULE_FIELDS		16
 #define MAX_RULE_FIELDS		16
+
+typedef enum redis_mng_list_type {
+	LIST_FILES = 1,
+	LIST_PROGRAMS,
+	LIST_USERS,
+	LIST_MIDS,
+	LIST_CAN_INTF,
+	LIST_ADDRS,
+	LIST_PORTS,
+	LIST_PROTOCOLS,
+	LIST_TYPE_MAX,
+} list_type_e;
 
 typedef struct redis_mng_reply {
 	SR_U8	num_fields;
@@ -31,14 +45,20 @@ void file_op_convert(SR_U8 file_op, char *perms);
 redisContext *redis_mng_session_start(SR_BOOL is_tcp);
 void redis_mng_session_end(redisContext *c);
 SR_32 redis_mng_clean_db(redisContext *c); // for test only
+/* get new configuration policy */
 SR_32 redis_mng_load_db(redisContext *c, int pipelined, handle_rule_f_t cb_func);
+
+/* get all file-paths and executables from the current rules, pipelined */
+SR_32 redis_mng_reconf(redisContext *c, handle_rule_f_t cb_func);
 
 /* if rule_id_start = rule_id_end: 		a specific rule is printed
  * if rule_id_start = rule_id_end = -1: all rules (of that type) are printed
  * else:								a range of rules (from start to end) are printed */
 SR_32 redis_mng_print_rules(redisContext *c, rule_type_t type, SR_32 rule_id_start, SR_32 rule_id_end);
 SR_32 redis_mng_print_actions(redisContext *c);
-SR_32 redis_mng_print_list(redisContext *c, char *name);
+SR_32 redis_mng_print_list(redisContext *c, list_type_e type, char *name);
+
+SR_32 redis_mng_print_all_list_names(redisContext *c, list_type_e type);
 
 /* update / delete rules and verify reply */
 SR_32 redis_mng_update_file_rule(redisContext *c, SR_32 rule_id, char *file_name, char *exec, char *user, char *action, char *file_op);
@@ -51,15 +71,15 @@ SR_32 redis_mng_del_net_rule(redisContext *c, SR_32 rule_id_start, SR_32 rule_id
 SR_32 redis_mng_update_can_rule(redisContext *c, SR_32 rule_id, char *msg_id, char *interface, char *exec, char *user, char *action, char *dir);
 SR_32 redis_mng_del_can_rule(redisContext *c, SR_32 rule_id_start, SR_32 rule_id_end, SR_8 force);
 
-SR_32 redis_mng_add_action(redisContext *c, char *name, SR_U8 bm, char *log, char *sms, char *mail);
+SR_32 redis_mng_add_action(redisContext *c, char *name, char *bm, char *log, char *sms, char *mail);
 SR_32 redis_mng_del_action(redisContext *c, char *name);
 
 /* add values to existing list or create a new list */
-SR_32 redis_mng_add_list(redisContext *c, char *name, SR_U32 length, char **values);
+SR_32 redis_mng_add_list(redisContext *c, list_type_e type, char *name, SR_U32 length, char **values);
 /* delete values from existing list */
-SR_32 redis_mng_del_list(redisContext *c, char *name, SR_U32 length, char **values);
+SR_32 redis_mng_del_list(redisContext *c, list_type_e type, char *name, SR_U32 length, char **values);
 /* remove entire list */
-SR_32 redis_mng_destroy_list(redisContext *c, char *name);
+SR_32 redis_mng_destroy_list(redisContext *c, list_type_e type, char *name);
 
 /* return:	1 if the key exists
  * 			0 if the key does not exist
@@ -67,6 +87,8 @@ SR_32 redis_mng_destroy_list(redisContext *c, char *name);
 SR_32 redis_mng_has_file_rule(redisContext *c, SR_32 rule_id);
 SR_32 redis_mng_has_net_rule(redisContext *c, SR_32 rule_id);
 SR_32 redis_mng_has_can_rule(redisContext *c, SR_32 rule_id);
+SR_32 redis_mng_has_action(redisContext *c, char *name);
+SR_32 redis_mng_has_list(redisContext *c, list_type_e type, char *name);
 
 /* add rules pipelined
  * without waiting for replies
