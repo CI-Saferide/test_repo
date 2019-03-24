@@ -42,17 +42,21 @@ typedef struct group_info {
 static SR_BOOL is_valid_file(char *file);
 static SR_BOOL is_valid_program(char *program);
 static SR_BOOL is_valid_user(char *user);
+static SR_BOOL is_valid_msg_id(char *str);
+static SR_BOOL is_valid_interface(char *interface);
+static SR_BOOL is_valid_ip_addr(char *ip_addr);
+static SR_BOOL is_valid_port(char *port);
+static SR_BOOL is_valid_ip_proto(char *ip_proto);
 
 static group_info_t group_info[MAX_GROUP + 1] = {
 	{.group_name = "file-group", .valid_cb = is_valid_file, .list_type = LIST_FILES},
 	{.group_name = "program-group", .valid_cb = is_valid_program, .list_type = LIST_PROGRAMS},
 	{.group_name = "user-group", .valid_cb = is_valid_user, .list_type = LIST_USERS},
-	{.group_name = "user-mids", .valid_cb = is_valid_user, .list_type = LIST_MIDS},
-	{.group_name = "user-can_intf", .valid_cb = NULL, .list_type = LIST_CAN_INTF},
-	{.group_name = "user-addrs", .valid_cb = NULL, .list_type = LIST_ADDRS},
-	{.group_name = "user-ports", .valid_cb = NULL, .list_type = LIST_PORTS},
-	{.group_name = "user-protocols", .valid_cb = NULL, .list_type = LIST_PROTOCOLS},
-	{.group_name = "user-type-max", .valid_cb = NULL, .list_type = LIST_TYPE_MAX},
+	{.group_name = "mid-group", .valid_cb = is_valid_msg_id, .list_type = LIST_MIDS},
+	{.group_name = "can-intf-group", .valid_cb = is_valid_interface, .list_type = LIST_CAN_INTF},
+	{.group_name = "addr-group", .valid_cb = is_valid_ip_addr, .list_type = LIST_ADDRS},
+	{.group_name = "port-group", .valid_cb = is_valid_port, .list_type = LIST_PORTS},
+	{.group_name = "proto-group", .valid_cb = is_valid_ip_proto, .list_type = LIST_PROTOCOLS},
 };
 
 static int engine_connect(void)
@@ -156,17 +160,6 @@ static SR_BOOL is_valid_file(char *file)
         return SR_TRUE;
 }
 
-static SR_BOOL is_valid_msg_id(char *str)
-{
-        if (!strcmp(str, "any"))
-                return 1;
-        for (; *str; str++) {
-                if (!isxdigit(*str))
-                        return 0;
-        }
-        return 1;
-}
-
 static SR_BOOL is_valid_dir(char *dir)
 {
 	return (!strcmp(dir, "in") || !strcmp(dir, "out") || !strcmp(dir, "both"));
@@ -224,6 +217,17 @@ static SR_BOOL is_valid_user(char *user)
                 return SR_TRUE;
 
         return SR_FALSE;
+}
+
+static SR_BOOL is_valid_msg_id(char *str)
+{
+        if (!strcmp(str, "any"))
+                return 1;
+        for (; *str; str++) {
+                if (!isxdigit(*str))
+                        return 0;
+        }
+        return 1;
 }
 
 static SR_BOOL is_valid_perm(char *perm)
@@ -516,7 +520,7 @@ static SR_32 handle_update_group(int argc, char **argv)
 	SR_32 group_id, i, n, rc = SR_SUCCESS;
 	char *list_values[MAX_LIST_VALUES] = {};
 
-	if (!argv) {
+	if (argc < 3) {
 		print_update_group_usage();
 		return SR_ERROR;
 	}
