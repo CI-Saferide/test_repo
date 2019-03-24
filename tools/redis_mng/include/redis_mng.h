@@ -60,6 +60,19 @@ typedef struct redis_mng_net_rule {
 	SR_8	users_list;
 } redis_mng_net_rule_t;
 
+typedef struct redis_mng_can_rule {
+	char 	*mid;
+	char 	*interface;
+	char 	*exec;
+	char 	*user;
+	char 	*dir;		// direction - single value
+	char 	*action; 	// single value
+	SR_8	mids_list;
+	SR_8	interfaces_list;
+	SR_8	execs_list;
+	SR_8	users_list;
+} redis_mng_can_rule_t;
+
 //SR_32 redis_mng_parse_json(redis_mng_handler_t *handler, char *buf, SR_U32 *version, SR_U32 old_version);
 
 /* Callback function definition:
@@ -97,7 +110,7 @@ SR_32 redis_mng_del_file_rule(redisContext *c, SR_32 rule_id_start, SR_32 rule_i
 SR_32 redis_mng_update_net_rule(redisContext *c, SR_32 rule_id, redis_mng_net_rule_t *rule);
 SR_32 redis_mng_del_net_rule(redisContext *c, SR_32 rule_id_start, SR_32 rule_id_end, SR_8 force);
 
-SR_32 redis_mng_update_can_rule(redisContext *c, SR_32 rule_id, char *msg_id, char *interface, char *exec, char *user, char *action, char *dir);
+SR_32 redis_mng_update_can_rule(redisContext *c, SR_32 rule_id, redis_mng_can_rule_t *rule);
 SR_32 redis_mng_del_can_rule(redisContext *c, SR_32 rule_id_start, SR_32 rule_id_end, SR_8 force);
 
 /* params:

@@ -514,6 +514,7 @@ static int sr_redis_test(int tcp, int clean_first, int clean_at_end)
 	} strs;
 	redis_mng_file_rule_t file_rule;
 	redis_mng_net_rule_t net_rule;
+	redis_mng_can_rule_t can_rule;
 
 //	printf("1\n");fflush(stdout);
 	redisContext *c = redis_mng_session_start(tcp);
@@ -591,7 +592,19 @@ static int sr_redis_test(int tcp, int clean_first, int clean_at_end)
 	// add 1200 can rules
 	for (i = 0; i < 1200; i++) {
 		sprintf(strs.mid, "%d", i);
-		if ((rc = redis_mng_update_can_rule(c, i, strs.mid, "NULL", "NULL", "NULL", "log", "in"))) {
+
+		can_rule.action = "log";
+		can_rule.dir = "in";
+		can_rule.exec = "NULL";
+		can_rule.execs_list = 0;
+		can_rule.interface = "NULL";
+		can_rule.interfaces_list = 0;
+		can_rule.mid = strs.mid;
+		can_rule.mids_list = 0;
+		can_rule.user = "NULL";
+		can_rule.users_list = 0;
+
+		if ((rc = redis_mng_update_can_rule(c, i, &can_rule))) {
 			printf("ERROR: redis_mng_update_can_rule %d failed, ret %d\n", i, rc);
 			redis_mng_session_end(c);
 			return -1;
@@ -602,16 +615,19 @@ static int sr_redis_test(int tcp, int clean_first, int clean_at_end)
 	// update all the rules
 	for (i = 0; i < 1200; i++) {
 		j = i % 3;
+
 		file_rule.file_name = NULL;
 		file_rule.exec = NULL;
 		file_rule.user = NULL;
 		file_rule.action = NULL;
 		file_rule.file_op = j ? (j == 1 ? "X"/*SR_FILEOPS_EXEC*/ : "R"/*SR_FILEOPS_READ*/) : "W"/*SR_FILEOPS_WRITE*/;
+
 		if ((rc = redis_mng_update_file_rule(c, i, &file_rule))) {
 			printf("ERROR: redis_mng_updateify_file_rule %d failed, ret %d\n", i, rc);
 			redis_mng_session_end(c);
 			return -1;
 		}
+
 		addr_lsb = i % 256;
 		mask = (i / 256) * 8;
 		sprintf(strs.addrs.s_port, "%04d", i + 1);
@@ -631,8 +647,18 @@ static int sr_redis_test(int tcp, int clean_first, int clean_at_end)
 			redis_mng_session_end(c);
 			return -1;
 		}
+
 		sprintf(strs.mid, "%d", i + 2);
-		if ((rc = redis_mng_update_can_rule(c, i, strs.mid, NULL, NULL, NULL, NULL, "both"))) {
+
+		can_rule.action = NULL;
+		can_rule.dir = "both";
+		can_rule.exec = NULL;
+		can_rule.interface = NULL;
+		can_rule.mid = strs.mid;
+		can_rule.mids_list = 0;
+		can_rule.user = NULL;
+
+		if ((rc = redis_mng_update_can_rule(c, i, &can_rule))) {
 			printf("ERROR: redis_mng_updateify_can_rule %d failed, ret %d\n", i, rc);
 			redis_mng_session_end(c);
 			return -1;
