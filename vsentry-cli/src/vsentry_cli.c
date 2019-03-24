@@ -8,7 +8,6 @@
 #include <sys/un.h>
 #include "sr_types.h"
 #include "sentry.h"
-#include "action.h"
 #include "ip_rule.h"
 #include "can_rule.h"
 #include "file_rule.h"
@@ -64,6 +63,11 @@ static int engine_connect(void)
 	}
 
 	return fd;
+}
+
+static void print_action_usage(void)
+{
+	printf("usgae: action ... \n");
 }
 
 static void print_control_usage(void)
@@ -279,6 +283,16 @@ static SR_BOOL is_valid_port(char *port)
 			return SR_FALSE;
 	}
 	return SR_TRUE;
+}
+
+static SR_BOOL is_valid_action_type(char *type)
+{
+	return (!strcmp(type, "drop") ||  !strcmp(type, "allow"));
+}
+
+static SR_BOOL is_valid_log_facility(char *log)
+{
+	return (!strcmp(log, "syslog"));
 }
 
 static SR_U32 handle_param(char *param, char *field, int field_size, int argc, int *i, char **argv, SR_BOOL (*is_valid_db)(char *value)) 
@@ -531,6 +545,40 @@ out:
 	return rc;
 }
 
+static SR_32 handle_update_action(int argc, char **argv)
+{
+	char *name , *type;
+	char log[LOG_FACILITY_SIZE] = {}, rl_action[ACTION_STR_SIZE] = {};
+	int ret, i;
+
+	if (argc < 2) {
+		print_action_usage();
+		return SR_ERROR;
+	}
+
+	name = argv[0];
+	type = argv[1];
+
+	// Check the validity of action type 
+	if (!is_valid_action_type(type)) {
+		printf("Invalid ation tyep:%s \n", type);
+		return SR_ERROR;
+	}
+	
+	for (i = 2; i < argc; i++) {
+		if (handle_param("log", log, sizeof(log), argc, &i, argv, is_valid_log_facility) != SR_SUCCESS)
+			return SR_ERROR; 
+		if (handle_param("rl_action", rl_action, sizeof(rl_action), argc, &i, argv, is_valid_action_type) != SR_SUCCESS)
+			return SR_ERROR; 
+	}
+
+#if DEBUG
+	printf("action name:%s type:%s log facility:%s rt actioin type:%s: \n", name, type, log, rl_action);
+#endif
+
+	return SR_SUCCESS;
+}
+
 static SR_32 handle_update(int argc, char **argv)
 {
 	char *type, *section;
@@ -544,6 +592,8 @@ static SR_32 handle_update(int argc, char **argv)
 	type = argv[0];
 	if (!strcmp(type, "group"))
 		return handle_update_group(argc - 1 , argv + 1);
+	if (!strcmp(type, "action"))
+		return handle_update_action(argc - 1 , argv + 1);
 
 	section = argv[1];
 
