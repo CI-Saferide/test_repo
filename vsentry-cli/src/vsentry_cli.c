@@ -227,12 +227,12 @@ static SR_BOOL is_valid_user(char *user)
 static SR_BOOL is_valid_msg_id(char *str)
 {
         if (!strcmp(str, "any"))
-                return 1;
+                return SR_TRUE;
         for (; *str; str++) {
                 if (!isxdigit(*str))
-                        return 0;
+                        return SR_FALSE;
         }
-        return 1;
+        return SR_TRUE;
 }
 
 static SR_BOOL is_valid_perm(char *perm)
@@ -315,7 +315,12 @@ static SR_BOOL is_valid_log_facility(char *log)
 	return (!strcmp(log, "syslog"));
 }
 
-static SR_U32 handle_param(char *param, char *field, int field_size, int argc, int *i, char **argv, SR_BOOL (*is_valid_db)(char *value)) 
+static SR_BOOL is_valid_mid_group(char *mid_group)
+{
+	return redis_mng_has_list(c, LIST_MIDS, mid_group) == 1; 
+}
+
+static SR_U32 handle_param(char *param, char *field, int field_size, int argc, int *i, char **argv, SR_BOOL (*is_valid_cb)(char *value)) 
 {
 	if (!strcmp(argv[*i], param)) {
 		(*i)++;
@@ -323,7 +328,7 @@ static SR_U32 handle_param(char *param, char *field, int field_size, int argc, i
 			printf("%s value is misssing.\n", param);
 			return SR_ERROR;
 		}
-		if (!is_valid_db(argv[*i])) {
+		if (!is_valid_cb(argv[*i])) {
 			printf("%s is invalid.\n", param);
 			return SR_ERROR;
 		}
@@ -361,7 +366,7 @@ static SR_U32 handle_param(char *param, char *field, int field_size, int argc, i
 static SR_32 handle_update_can(SR_U32 rule_id, SR_BOOL is_wl, int argc, char **argv)
 {
 	int i;
-	char mid[32], interface[64], dir[32], user[USER_NAME_SIZE], program[PROG_NAME_SIZE], action[ACTION_STR_SIZE];
+	char mid[MAX_LIST_NAME], interface[64], dir[32], user[USER_NAME_SIZE], program[PROG_NAME_SIZE], action[ACTION_STR_SIZE];
 	SR_32 ret, is_update;
 
 	if ((is_update = redis_mng_has_can_rule(c, rule_id)) == SR_ERROR)
@@ -378,6 +383,8 @@ static SR_32 handle_update_can(SR_U32 rule_id, SR_BOOL is_wl, int argc, char **a
 
 	for (i = 0; i < argc; i++) {
 		if (handle_param("mid", mid, sizeof(mid), argc, &i, argv, is_valid_msg_id) != SR_SUCCESS)
+			return SR_ERROR; 
+		if (handle_param("mid-group", mid, sizeof(mid), argc, &i, argv, is_valid_mid_group) != SR_SUCCESS)
 			return SR_ERROR; 
 		if (handle_param("interface", interface, sizeof(interface), argc, &i, argv, is_valid_interface) != SR_SUCCESS)
 			return SR_ERROR; 
