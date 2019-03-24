@@ -497,6 +497,7 @@ static SR_32 handle_update_ip(SR_U32 rule_id, SR_BOOL is_wl, int argc, char **ar
 	char user[USER_NAME_SIZE], program[PROG_NAME_SIZE], action[ACTION_STR_SIZE];
 	SR_BOOL is_src_addr_list, is_dst_addr_list, is_proto_list, is_src_port_list, is_dst_port_list, is_program_list, is_user_list;
 	SR_32 ret, is_update;
+	redis_mng_net_rule_t rule_info = {};
 
 	if ((is_update = redis_mng_has_net_rule(c, rule_id)) == SR_ERROR)
  		return SR_ERROR;
@@ -530,8 +531,14 @@ static SR_32 handle_update_ip(SR_U32 rule_id, SR_BOOL is_wl, int argc, char **ar
 		CHECK_MISSING_PARAM(action, "action")
 	}
 
-	ret = redis_mng_update_net_rule(c, rule_id, EMPTY2NULL(src_addr), EMPTY2NULL(dst_addr), EMPTY2NULL(proto),
-		EMPTY2NULL(src_port), EMPTY2NULL(dst_port), EMPTY2NULL(program), EMPTY2NULL(user), EMPTY2NULL(action));
+	rule_info.user = EMPTY2NULL(user);
+	rule_info.users_list = is_user_list;
+	rule_info.exec = EMPTY2NULL(program);
+	rule_info.execs_list = is_program_list;
+	rule_info.src_addr_netmask = EMPTY2NULL(src_addr);
+	rule_info.src_addr_netmasks_list = is_src_addr_list;
+	rule_info.action = action;
+	ret = redis_mng_update_net_rule(c, rule_id, &rule_info);
  	if (ret != SR_SUCCESS) {
 		printf("update rule failed");
 		return ret;
