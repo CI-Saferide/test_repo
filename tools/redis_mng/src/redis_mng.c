@@ -1200,38 +1200,11 @@ SR_32 redis_mng_print_list(redisContext *c, list_type_e type, char *name)
 	redisReply *reply;
 	redisReply **replies;
 
-	// get all keys
-	reply = redisCommand(c,"KEYS %s%d:*", LIST_PREFIX, type);
-	if (reply == NULL || reply->type != REDIS_REPLY_ARRAY) {
-		printf("ERROR: redis_mng_print_list failed, %d\n", reply ? reply->type : -1);
-		freeReplyObject(reply);
-		return SR_ERROR;
-	}
-
-	replies = malloc(sizeof(redisReply*) * reply->elements);
-	if (!replies) {
-		printf("ERROR: redis_mng_print_list allocation failed\n");
-		freeReplyObject(reply);
-		return SR_ERROR;
-	}
-
-	for (i = 0; i < reply->elements; i++)
-		redisAppendCommand(c,"HGETALL %s", reply->element[i]->str);
-
-	for (i = 0; i < (int)reply->elements; i++) {
-		if (redisGetReply(c, (void*)&replies[i]) != REDIS_OK) {
-			printf("ERROR: redisGetReply %d failed\n", i);
-			for (j = 0; j < i; j++)
-				freeReplyObject(replies[j]);
-			free(replies);
-			freeReplyObject(reply);
-			return SR_ERROR;
-		}
-		if (replies[i]->type != REDIS_REPLY_ARRAY) {
-			printf("ERROR: redisGetReply %d type is wrong %d\n", i, replies[i]->type);
-			for (j = 0; j < i; j++)
-				freeReplyObject(replies[j]);
-			free(replies);
+	if (name) {
+		// get specific key
+		reply = redisCommand(c,"LRANGE %s%d:%s 0 -1", LIST_PREFIX, type, name);
+		if (reply == NULL || reply->type != REDIS_REPLY_ARRAY) {
+			printf("ERROR: redis_mng_print_list failed, %d\n", reply ? reply->type : -1);
 			freeReplyObject(reply);
 			return SR_ERROR;
 		}
@@ -1239,12 +1212,54 @@ SR_32 redis_mng_print_list(redisContext *c, list_type_e type, char *name)
 		for (j = 0; j < replies[i]->elements; j++)
 			printf("%-64s ", replies[i]->element[j]->str);
 		printf("\n");
+	} else {
+		// get all keys
+		reply = redisCommand(c,"KEYS %s%d:*", LIST_PREFIX, type);
+		if (reply == NULL || reply->type != REDIS_REPLY_ARRAY) {
+			printf("ERROR: redis_mng_print_list failed, %d\n", reply ? reply->type : -1);
+			freeReplyObject(reply);
+			return SR_ERROR;
+		}
+
+		replies = malloc(sizeof(redisReply*) * reply->elements);
+		if (!replies) {
+			printf("ERROR: redis_mng_print_list allocation failed\n");
+			freeReplyObject(reply);
+			return SR_ERROR;
+		}
+
+		for (i = 0; i < reply->elements; i++)
+			redisAppendCommand(c,"HGETALL %s", reply->element[i]->str);
+
+		for (i = 0; i < (int)reply->elements; i++) {
+			if (redisGetReply(c, (void*)&replies[i]) != REDIS_OK) {
+				printf("ERROR: redisGetReply %d failed\n", i);
+				for (j = 0; j < i; j++)
+					freeReplyObject(replies[j]);
+				free(replies);
+				freeReplyObject(reply);
+				return SR_ERROR;
+			}
+			if (replies[i]->type != REDIS_REPLY_ARRAY) {
+				printf("ERROR: redisGetReply %d type is wrong %d\n", i, replies[i]->type);
+				for (j = 0; j < i; j++)
+					freeReplyObject(replies[j]);
+				free(replies);
+				freeReplyObject(reply);
+				return SR_ERROR;
+			}
+
+			for (j = 0; j < replies[i]->elements; j++)
+				printf("%-64s ", replies[i]->element[j]->str);
+			printf("\n");
+		}
+
+		// free replies
+		for (i = 0; i < reply->elements; i++)
+			freeReplyObject(replies[i]);
+		free(replies);
 	}
 
-	// free replies
-	for (i = 0; i < reply->elements; i++)
-		freeReplyObject(replies[i]);
-	free(replies);
 	freeReplyObject(reply);
 	return SR_SUCCESS;
 }
@@ -1792,6 +1807,7 @@ SR_32 redis_mng_load_db(redisContext *c, int pipelined, handle_rule_f_t cb_func)
 	freeReplyObject(reply);
 	return SR_SUCCESS;
 }
+
 #if 0
 SR_32 redis_mng_reconf(redisContext *c, handle_rule_f_t cb_func)
 {
@@ -1954,6 +1970,7 @@ SR_32 redis_mng_reconf(redisContext *c, handle_rule_f_t cb_func)
 	return SR_SUCCESS;
 }
 #endif
+
 SR_32 redis_mng_add_action(redisContext *c, char *name, char *bm, char *log, char *sms, char *mail)
 {
     redisReply *reply;
