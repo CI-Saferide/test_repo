@@ -1209,8 +1209,8 @@ SR_32 redis_mng_print_list(redisContext *c, list_type_e type, char *name)
 			return SR_ERROR;
 		}
 
-		for (j = 0; j < replies[i]->elements; j++)
-			printf("%-64s ", replies[i]->element[j]->str);
+		for (j = 0; j < reply->elements; j++)
+			printf("%-64s ", reply->element[j]->str);
 		printf("\n");
 	} else {
 		// get all keys
