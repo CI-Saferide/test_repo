@@ -211,6 +211,16 @@ static SR_BOOL is_valid_port_list(char *port_list)
         return is_valid_list_name("port-group", port_list);
 }
 
+static SR_BOOL is_valid_mid_list(char *mid_list)
+{
+        return is_valid_list_name("mid-group", mid_list);
+}
+
+static SR_BOOL is_valid_interface_list(char *interface_list)
+{
+        return is_valid_list_name("can-intf-group", interface_list);
+}
+
 static SR_BOOL is_valid_dir(char *dir)
 {
 	return (!strcmp(dir, "in") || !strcmp(dir, "out") || !strcmp(dir, "both"));
@@ -371,11 +381,6 @@ static SR_BOOL is_valid_log_facility(char *log)
 	return (!strcmp(log, "syslog") || !strcmp(log, "vsentry"));
 }
 
-static SR_BOOL is_valid_mid_group(char *mid_group)
-{
-	return redis_mng_has_list(c, LIST_MIDS, mid_group) == 1; 
-}
-
 static SR_U32 handle_param(char *param, char *field, int field_size, int argc, int *i, char **argv, SR_BOOL (*is_valid_cb)(char *value), SR_BOOL *is_list_var, SR_BOOL is_list) 
 {
 	if (!strcmp(argv[*i], param)) {
@@ -430,8 +435,9 @@ static SR_32 handle_update_can(SR_U32 rule_id, SR_BOOL is_wl, int argc, char **a
 {
 	int i, prev_i;
 	char mid[MAX_LIST_NAME], interface[64], dir[32], user[USER_NAME_SIZE], program[PROG_NAME_SIZE], action[ACTION_STR_SIZE];
-	SR_BOOL is_program_list, is_user_list, is_mid_list, is_interface_list;
+	SR_BOOL is_program_list = SR_FALSE, is_user_list = SR_FALSE, is_mid_list = SR_FALSE, is_interface_list = SR_FALSE;
 	SR_32 ret, is_update;
+	redis_mng_can_rule_t rule_info = {};
 
 	if ((is_update = redis_mng_has_can_rule(c, rule_id)) == SR_ERROR)
  		return SR_ERROR;
@@ -449,9 +455,11 @@ static SR_32 handle_update_can(SR_U32 rule_id, SR_BOOL is_wl, int argc, char **a
 		prev_i = i;
 		if (handle_param("mid", mid, sizeof(mid), argc, &i, argv, is_valid_msg_id, &is_mid_list, SR_FALSE) != SR_SUCCESS)
 			return SR_ERROR; 
-		if (handle_param("mid-group", mid, sizeof(mid), argc, &i, argv, is_valid_mid_group, &is_mid_list, SR_TRUE) != SR_SUCCESS)
+		if (handle_param("mid_group", mid, sizeof(mid), argc, &i, argv, is_valid_mid_list, &is_mid_list, SR_TRUE) != SR_SUCCESS)
 			return SR_ERROR; 
 		if (handle_param("interface", interface, sizeof(interface), argc, &i, argv, is_valid_interface, &is_interface_list, SR_FALSE) != SR_SUCCESS)
+			return SR_ERROR; 
+		if (handle_param("interface_group", interface, sizeof(interface), argc, &i, argv, is_valid_interface_list, &is_interface_list, SR_TRUE) != SR_SUCCESS)
 			return SR_ERROR; 
 		if (handle_param("dir", dir, sizeof(dir), argc, &i, argv, is_valid_dir, NULL, SR_FALSE) != SR_SUCCESS)
 			return SR_ERROR; 
@@ -464,14 +472,23 @@ static SR_32 handle_update_can(SR_U32 rule_id, SR_BOOL is_wl, int argc, char **a
 	}
 	CHECK_MISSING_PARAM(interface, "interface")
 
-	ret = redis_mng_update_can_rule(c, rule_id, EMPTY2NULL(mid), EMPTY2NULL(interface), EMPTY2NULL(program), EMPTY2NULL(user),
-		EMPTY2NULL(action), EMPTY2NULL(dir));
+	rule_info.user = EMPTY2NULL(user);
+	rule_info.users_list = is_user_list;
+	rule_info.exec = EMPTY2NULL(program);
+	rule_info.execs_list = is_program_list;
+	rule_info.mid = EMPTY2NULL(mid);
+	rule_info.mids_list = is_mid_list;
+	rule_info.interface = EMPTY2NULL(interface);
+	rule_info.interfaces_list = is_interface_list;
+	rule_info.dir = EMPTY2NULL(dir);
+	rule_info.action = action;
+	ret = redis_mng_update_can_rule(c, rule_id, &rule_info);
 	if (ret != SR_SUCCESS) {
 		printf("update rule failed");
 		return ret;
 	}
 #ifdef DEBUG
-	printf("handle can %d %d mid:%s interface:%s program:%s user:%s ret:%d \n", rule_id, is_wl, mid, interface, program, user, ret); 
+	printf("handle can %d %d mid:%s interface:%s program:%s user:%s action:%s ret:%d \n", rule_id, is_wl, mid, interface, program, user, action, ret); 
 #endif
 
 	return SR_SUCCESS;
