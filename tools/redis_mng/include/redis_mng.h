@@ -31,6 +31,17 @@ typedef struct redis_mng_reply {
     char	feilds[MAX_RULE_FIELDS][MAX_LIST_NAME_LEN];
 } redis_mng_reply_t;
 
+typedef struct redis_mng_file_rule {
+	char 	*file_name;
+	SR_8	file_names_list;
+	char 	*exec;
+	SR_8	execs_list;
+	char 	*user;
+	SR_8	users_list;
+	char 	*action; 	// single value
+	char 	*file_op; 	// single value
+} redis_mng_file_rule_t;
+
 //SR_32 redis_mng_parse_json(redis_mng_handler_t *handler, char *buf, SR_U32 *version, SR_U32 old_version);
 
 /* Callback function definition:
@@ -61,7 +72,7 @@ SR_32 redis_mng_print_list(redisContext *c, list_type_e type, char *name);
 SR_32 redis_mng_print_all_list_names(redisContext *c, list_type_e type);
 
 /* update / delete rules and verify reply */
-SR_32 redis_mng_update_file_rule(redisContext *c, SR_32 rule_id, char *file_name, char *exec, char *user, char *action, char *file_op);
+SR_32 redis_mng_update_file_rule(redisContext *c, SR_32 rule_id, redis_mng_file_rule_t *rule);
 SR_32 redis_mng_del_file_rule(redisContext *c, SR_32 rule_id_start, SR_32 rule_id_end, SR_8 force);
 //SR_32 redis_mng_get_file_rule(redisContext *c, SR_32 rule_id, redis_mng_reply_t *reply);
 
