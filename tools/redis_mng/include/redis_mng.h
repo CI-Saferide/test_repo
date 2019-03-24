@@ -73,6 +73,15 @@ typedef struct redis_mng_can_rule {
 	SR_8	users_list;
 } redis_mng_can_rule_t;
 
+typedef struct redis_mng_action {
+	char *bm;	// bitmap
+	char *log_facility;
+	char *log_severity;
+	char *rl;	// rate limit
+	char *sms;
+	char *mail;
+} redis_mng_action_t;
+
 //SR_32 redis_mng_parse_json(redis_mng_handler_t *handler, char *buf, SR_U32 *version, SR_U32 old_version);
 
 /* Callback function definition:
@@ -116,9 +125,8 @@ SR_32 redis_mng_del_can_rule(redisContext *c, SR_32 rule_id_start, SR_32 rule_id
 /* params:
  * 	bm (bitmap):	"drop" / "none" / "allow" (o/w invalid)
  * 	log_facility:	"file" / "none" / "sys" (syslog) (o/w invalid)
- * 	log_severity:	"crt" / "err" / "warn" / "info" / "debug"
- * 	rl (rate limit) */
-SR_32 redis_mng_add_action(redisContext *c, char *name, char *bm, char *log_facility, char *log_severity, char *rl, char *sms, char *mail);
+ * 	log_severity:	"crt" / "err" / "warn" / "info" / "debug" */
+SR_32 redis_mng_add_action(redisContext *c, char *name, redis_mng_action_t *action);
 SR_32 redis_mng_del_action(redisContext *c, char *name);
 
 /* add values to existing list or create a new list */

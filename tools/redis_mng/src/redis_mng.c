@@ -1934,12 +1934,13 @@ SR_32 redis_mng_reconf(redisContext *c, handle_rule_f_t cb_func)
 }
 #endif
 
-SR_32 redis_mng_add_action(redisContext *c, char *name, char *bm, char *log_facility, char *log_severity, char *rl, char *sms, char *mail)
+SR_32 redis_mng_add_action(redisContext *c, char *name, redis_mng_action_t *action)
 {
     redisReply *reply;
 
-	reply = redisCommand(c,"HMSET %s%d %s %s %s %s %s %s %s %s", ACTION_PREFIX, name, BITMAP, bm, LOG_FACILITY, log_facility,
-			LOG_SEVERITY, log_severity, RL, rl, SMS, sms, EMAIL, mail);
+	reply = redisCommand(c,"HMSET %s%d %s %s %s %s %s %s %s %s", ACTION_PREFIX, name, BITMAP, action->bm,
+			LOG_FACILITY, action->log_facility, LOG_SEVERITY, action->log_severity, RL, action->rl,
+			SMS, action->sms, EMAIL, action->mail);
 	if (reply == NULL || reply->type != REDIS_REPLY_STATUS) {
 		printf("ERROR: redis_mng_add_file_rule failed, %d\n", reply ? reply->type : -1);
 		freeReplyObject(reply);
