@@ -82,12 +82,12 @@ static int engine_connect(void)
 
 static void print_action_usage(void)
 {
-	printf("usgae: action ... \n");
+	printf("action update action action_name [action allow | drop] [log vasentry | syslog] [rate_limit_action allow | drop] [rate_limit_log vsentry | syslog] \n");
 }
 
 static void print_control_usage(void)
 {
-	printf("usgae: control ... \n");
+	printf("control wl | sp | net [learn | apply | print | reset]\n");
 }
 
 static void print_update_usage(void)
@@ -97,7 +97,9 @@ static void print_update_usage(void)
 
 static void print_show_usage(void)
 {
-	printf("usage: show ... \n");
+	printf("vsnetry_cli show [rule | wl ] [section (can, ip, file) rule_number 99]  \n");
+	printf("vsnetry_cli show action [action name] \n");
+	printf("vsnetry_cli show group [group name] \n");
 }
 
 static void print_delete_group_usage(void)
