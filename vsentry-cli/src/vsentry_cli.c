@@ -36,12 +36,23 @@ static redisContext *c;
 typedef struct group_info {
 	char group_name[GROUP_NAME_SIZE];
 	SR_BOOL (*valid_cb)(char *val);
+	list_type_e list_type;
 } group_info_t;
 
 static SR_BOOL is_valid_file(char *file);
+static SR_BOOL is_valid_program(char *program);
+static SR_BOOL is_valid_user(char *user);
 
 static group_info_t group_info[MAX_GROUP + 1] = {
-	{.group_name = "file-group", .valid_cb = is_valid_file}
+	{.group_name = "file-group", .valid_cb = is_valid_file, .list_type = LIST_FILES},
+	{.group_name = "program-group", .valid_cb = is_valid_program, .list_type = LIST_PROGRAMS},
+	{.group_name = "user-group", .valid_cb = is_valid_user, .list_type = LIST_USERS},
+	{.group_name = "user-mids", .valid_cb = is_valid_user, .list_type = LIST_MIDS},
+	{.group_name = "user-can_intf", .valid_cb = NULL, .list_type = LIST_CAN_INTF},
+	{.group_name = "user-addrs", .valid_cb = NULL, .list_type = LIST_ADDRS},
+	{.group_name = "user-ports", .valid_cb = NULL, .list_type = LIST_PORTS},
+	{.group_name = "user-protocols", .valid_cb = NULL, .list_type = LIST_PROTOCOLS},
+	{.group_name = "user-type-max", .valid_cb = NULL, .list_type = LIST_TYPE_MAX},
 };
 
 static int engine_connect(void)
@@ -90,7 +101,7 @@ static void print_delete_usage(void)
 	printf("usage: delete ... \n");
 }
 
-static void print_update_group(void)
+static void print_update_group_usage(void)
 {
 	printf("uasge: update group ... \n");
 }
@@ -490,18 +501,27 @@ static SR_32 get_group_index(char *type)
 	return -1;
 }
 
+static void print_groups_types(void)
+{
+	SR_U32 i;
+
+	for (i =0 ; i <= MAX_GROUP && *(group_info[i].group_name); i++) {
+		printf("%s\n", group_info[i].group_name);
+	}
+}
+
 static SR_32 handle_update_group(int argc, char **argv)
 {
 	char *type, *name;
 	SR_32 group_id, i, n, rc = SR_SUCCESS;
 	char *list_values[MAX_LIST_VALUES] = {};
 
-	if (argc < 3) {
-		print_update_group();
+	if (!argv) {
+		print_update_group_usage();
 		return SR_ERROR;
 	}
-	type = argv[0];
 
+	type = argv[0];
 	if ((group_id = get_group_index(type)) < 0) {
 		printf(" group type %s is not valid \n", type);
 		return SR_ERROR;
@@ -531,7 +551,7 @@ static SR_32 handle_update_group(int argc, char **argv)
 		}
 	}
 
-	if (redis_mng_add_list(c, name, n, list_values)) {
+	if (redis_mng_add_list(c, group_info[group_id].list_type, name, n, list_values)) {
 		printf("Redis list add Failed !!\n");
 		rc = SR_ERROR;
 	}
@@ -652,12 +672,28 @@ static SR_32 show_version(void)
 static SR_32 show_group(int argc, char **argv)
 {
 	char *type, *name;
+	SR_32 group_id;
+
+	if (!argc) {
+		printf("Show all the list types:\n");
+		print_groups_types();
+		return SR_SUCCESS;
+	}
 
 	type = argv[0];
-	name = argv[1];
+	if ((group_id = get_group_index(type)) < 0) {
+		printf(" group type %s is not valid \n", type);
+		return SR_ERROR;
+	}
 
-	/* list type is missing  a list should be kept for list*/
-	redis_mng_print_list(c, name);
+	if (argc == 1) {
+		redis_mng_print_all_list_names(c, group_info[group_id].list_type);
+		return SR_SUCCESS;
+	}
+
+	name = argv[1];
+	printf("Showing group type:%d name:%s:\n", group_info[group_id].list_type, name);
+	redis_mng_print_list(c, group_info[group_id].list_type, name);
 
 	return SR_SUCCESS;
 }
