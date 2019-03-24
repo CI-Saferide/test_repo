@@ -83,7 +83,7 @@ static int redis_changes;
 #define CAN_POLICIES "canPolicies"
 #define SYSTEM_POLICIES "systemPolicies"
 #define ACTIONS "actions"
-#define DB_PREFIX "saferide:config" 
+#define DB_PREFIX "saferide:config"
 #define SR_ACTIONS "sr_actions"
 #define ACTION "action"
 #define LIST_ACTIONS "list_actions"
@@ -2040,7 +2040,6 @@ SR_32 redis_mng_update_file_rule(redisContext *c, SR_32 rule_id, redis_mng_file_
 		return SR_ERROR;
 	}
 
-	// todo check lists
 	len = sprintf(cmd, "HMSET %s%d", FILE_PREFIX, rule_id);
 	if (rule->action)
 		len += sprintf(cmd + len, " %s %s", ACTION, rule->action);
@@ -2230,35 +2229,50 @@ SR_32 redis_mng_create_net_rule(redisContext *c, SR_32 rule_id, char *src_addr, 
 }
 #endif
 
-SR_32 redis_mng_update_can_rule(redisContext *c, SR_32 rule_id, char *mid, char *interface, char *exec, char *user,
-		char *action, char *dir)
+SR_32 redis_mng_update_can_rule(redisContext *c, SR_32 rule_id, redis_mng_can_rule_t *rule)
 {
 	redisReply *reply;
-	char *rule;
+	char *cmd;
 	int len;
 
-	rule = malloc(CAN_RULE_FIELDS * MAX_LIST_NAME_LEN);
-	if (!rule) {
+	cmd = malloc(CAN_RULE_FIELDS * MAX_LIST_NAME_LEN);
+	if (!cmd) {
 		printf("ERROR: redis_mng_update_can_rule allocation failed\n");
 		return SR_ERROR;
 	}
 
-	len = sprintf(rule, "HMSET %s%d", CAN_PREFIX, rule_id);
-	if (action)
-		len += sprintf(rule + len, " %s %s", ACTION, action);
-	if (mid)
-		len += sprintf(rule + len, " %s %s", MID, mid);
-	if (dir)
-		len += sprintf(rule + len, " %s %s", IN_INTERFACE, dir);
-	if (interface)
-		len += sprintf(rule + len, " %s %s", OUT_INTERFACE, interface);
-	if (exec)
-		len += sprintf(rule + len, " %s %s", PROGRAM_ID, exec);
-	if (user)
-		len += sprintf(rule + len, " %s %s", USER_ID, user);
+	len = sprintf(cmd, "HMSET %s%d", CAN_PREFIX, rule_id);
+	if (rule->action)
+		len += sprintf(cmd + len, " %s %s", ACTION, rule->action);
+	if (rule->mid) {
+		if (rule->mids_list) // list
+			len += sprintf(cmd + len, " %s %d%s%s", MID, LIST_MIDS, LIST_PREFIX, rule->mid);
+		else // single value
+			len += sprintf(cmd + len, " %s %s", MID, rule->mid);
+	}
+	if (rule->dir)
+		len += sprintf(cmd + len, " %s %s", IN_INTERFACE, rule->dir);
+	if (rule->interface) {
+		if (rule->interfaces_list) // list
+			len += sprintf(cmd + len, " %s %d%s%s", OUT_INTERFACE, LIST_CAN_INTF, LIST_PREFIX, rule->interface);
+		else // single value
+			len += sprintf(cmd + len, " %s %s", OUT_INTERFACE, rule->interface);
+	}
+	if (rule->exec) {
+		if (rule->execs_list) // list
+			len += sprintf(cmd + len, " %s %d%s%s", PROGRAM_ID, LIST_PROGRAMS, LIST_PREFIX, rule->exec);
+		else // single value
+			len += sprintf(cmd + len, " %s %s", PROGRAM_ID, rule->exec);
+	}
+	if (rule->user) {
+		if (rule->users_list) // list
+			len += sprintf(cmd + len, " %s %d%s%s", USER_ID, LIST_USERS, LIST_PREFIX, rule->user);
+		else // single value
+			len += sprintf(cmd + len, " %s %s", USER_ID, rule->user);
+	}
 
-	reply = redisCommand(c, rule);
-	free(rule);
+	reply = redisCommand(c, cmd);
+	free(cmd);
 	if (reply == NULL || reply->type != REDIS_REPLY_STATUS) {
 		printf("ERROR: redis_mng_update_can_rule failed, %d\n", reply ? reply->type : -1);
 		freeReplyObject(reply);
