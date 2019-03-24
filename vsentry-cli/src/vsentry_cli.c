@@ -90,9 +90,15 @@ static void print_control_usage(void)
 	printf("control wl | sp | net [learn | apply | print | reset]\n");
 }
 
+static void print_update_group_usage(void)
+{
+	printf("vsentry-cli update group type group-name item1 item2 \n");
+}
+
 static void print_update_usage(void)
 {
-	printf("usgae: update ... \n");
+	print_action_usage();
+	print_update_group_usage();
 }
 
 static void print_show_usage(void)
@@ -110,11 +116,6 @@ static void print_delete_group_usage(void)
 static void print_delete_usage(void)
 {
 	printf("usage: delete ... \n");
-}
-
-static void print_update_group_usage(void)
-{
-	printf("uasge: update group ... \n");
 }
 
 static void print_usage(char *prog)
@@ -314,7 +315,7 @@ static SR_BOOL is_valid_action_type(char *type)
 
 static SR_BOOL is_valid_log_facility(char *log)
 {
-	return (!strcmp(log, "syslog"));
+	return (!strcmp(log, "syslog") || !strcmp(log, "vsentry"));
 }
 
 static SR_BOOL is_valid_mid_group(char *mid_group)
@@ -598,33 +599,31 @@ out:
 
 static SR_32 handle_update_action(int argc, char **argv)
 {
-	char *name , *type;
-	char log[LOG_FACILITY_SIZE] = {}, rl_action[ACTION_STR_SIZE] = {};
+	char *name;
+	char log[LOG_FACILITY_SIZE] = {}, rl_log[LOG_FACILITY_SIZE] = {};
+	char rl_action[ACTION_STR_SIZE] = {}, action[ACTION_STR_SIZE] = {};
 	int ret, i;
 
-	if (argc < 2) {
+	if (argc < 3) {
 		print_action_usage();
 		return SR_ERROR;
 	}
 
 	name = argv[0];
-	type = argv[1];
-
-	// Check the validity of action type 
-	if (!is_valid_action_type(type)) {
-		printf("Invalid ation tyep:%s \n", type);
-		return SR_ERROR;
-	}
 	
-	for (i = 2; i < argc; i++) {
+	for (i = 1; i < argc; i++) {
+		if (handle_param("action", action, sizeof(action), argc, &i, argv, is_valid_action_type) != SR_SUCCESS)
+			return SR_ERROR; 
 		if (handle_param("log", log, sizeof(log), argc, &i, argv, is_valid_log_facility) != SR_SUCCESS)
 			return SR_ERROR; 
-		if (handle_param("rl_action", rl_action, sizeof(rl_action), argc, &i, argv, is_valid_action_type) != SR_SUCCESS)
+		if (handle_param("rate_limit_action", rl_action, sizeof(rl_action), argc, &i, argv, is_valid_action_type) != SR_SUCCESS)
+			return SR_ERROR; 
+		if (handle_param("rate_limit_log", rl_log, sizeof(rl_action), argc, &i, argv, is_valid_log_facility) != SR_SUCCESS)
 			return SR_ERROR; 
 	}
 
 #if DEBUG
-	printf("action name:%s type:%s log facility:%s rt actioin type:%s: \n", name, type, log, rl_action);
+	printf("action name:%s action:%s action log facility:%s rl actioin :%s: rl action log:%s:\n", name, action, log, rl_action, rl_log);
 #endif
 
 	return SR_SUCCESS;
