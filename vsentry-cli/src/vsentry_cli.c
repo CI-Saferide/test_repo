@@ -90,9 +90,15 @@ static void print_control_usage(void)
 	printf("control wl | sp | net [learn | apply | print | reset]\n");
 }
 
+static void print_update_group_usage(void)
+{
+	printf("vsentry-cli update group type group-name item1 item2 \n");
+}
+
 static void print_update_usage(void)
 {
-	printf("usgae: update ... \n");
+	print_action_usage();
+	print_update_group_usage();
 }
 
 static void print_show_usage(void)
@@ -110,11 +116,6 @@ static void print_delete_group_usage(void)
 static void print_delete_usage(void)
 {
 	printf("usage: delete ... \n");
-}
-
-static void print_update_group_usage(void)
-{
-	printf("uasge: update group ... \n");
 }
 
 static void print_usage(char *prog)
@@ -167,6 +168,11 @@ static SR_BOOL is_valid_file(char *file)
         return SR_TRUE;
 }
 
+static SR_BOOL is_valid_filename_list(char *file)
+{
+        return SR_TRUE;
+}
+
 static SR_BOOL is_valid_dir(char *dir)
 {
 	return (!strcmp(dir, "in") || !strcmp(dir, "out") || !strcmp(dir, "both"));
@@ -215,6 +221,11 @@ static SR_BOOL is_valid_program(char *program)
 
 }
 
+static SR_BOOL is_valid_program_group(char *program_group)
+{
+	return SR_TRUE;
+}
+
 static SR_BOOL is_valid_user(char *user)
 {
         if (*user == '*')
@@ -224,6 +235,11 @@ static SR_BOOL is_valid_user(char *user)
                 return SR_TRUE;
 
         return SR_FALSE;
+}
+
+static SR_BOOL is_valid_user_group(char *user_group)
+{
+	return SR_TRUE;
 }
 
 static SR_BOOL is_valid_msg_id(char *str)
@@ -314,7 +330,7 @@ static SR_BOOL is_valid_action_type(char *type)
 
 static SR_BOOL is_valid_log_facility(char *log)
 {
-	return (!strcmp(log, "syslog"));
+	return (!strcmp(log, "syslog") || !strcmp(log, "vsentry"));
 }
 
 static SR_BOOL is_valid_mid_group(char *mid_group)
@@ -322,7 +338,7 @@ static SR_BOOL is_valid_mid_group(char *mid_group)
 	return redis_mng_has_list(c, LIST_MIDS, mid_group) == 1; 
 }
 
-static SR_U32 handle_param(char *param, char *field, int field_size, int argc, int *i, char **argv, SR_BOOL (*is_valid_cb)(char *value)) 
+static SR_U32 handle_param(char *param, char *field, int field_size, int argc, int *i, char **argv, SR_BOOL (*is_valid_cb)(char *value), SR_BOOL *is_list_var, SR_BOOL is_list) 
 {
 	if (!strcmp(argv[*i], param)) {
 		(*i)++;
@@ -335,16 +351,22 @@ static SR_U32 handle_param(char *param, char *field, int field_size, int argc, i
 			return SR_ERROR;
 		}
 		strncpy(field, argv[*i], field_size);
+		if (is_list_var)
+			*is_list_var = is_list;
 	}
 	return SR_SUCCESS;
 }
 
 #define HANDLE_COMMON_PARAMS \
-	if (handle_param("program", program, sizeof(program), argc, &i, argv, is_valid_program) != SR_SUCCESS) \
+	if (handle_param("program", program, sizeof(program), argc, &i, argv, is_valid_program, &is_program_list, SR_FALSE) != SR_SUCCESS) \
 		return SR_ERROR;  \
-	if (handle_param("user", user, sizeof(user), argc, &i, argv, is_valid_user) != SR_SUCCESS) \
+	if (handle_param("program-group", program, sizeof(program), argc, &i, argv, is_valid_program_group, &is_program_list, SR_TRUE) != SR_SUCCESS) \
 		return SR_ERROR;  \
-	if (handle_param("action", action, sizeof(action), argc, &i, argv, is_valid_action) != SR_SUCCESS) \
+	if (handle_param("user", user, sizeof(user), argc, &i, argv, is_valid_user, &is_user_list, SR_FALSE) != SR_SUCCESS) \
+		return SR_ERROR;  \
+	if (handle_param("user-group", user, sizeof(user), argc, &i, argv, is_valid_user_group, &is_user_list, SR_TRUE) != SR_SUCCESS) \
+		return SR_ERROR;  \
+	if (handle_param("action", action, sizeof(action), argc, &i, argv, is_valid_action, NULL, SR_FALSE) != SR_SUCCESS) \
 		return SR_ERROR; \
 
 #define INIT_COMMON_PARAMS \
@@ -369,6 +391,7 @@ static SR_32 handle_update_can(SR_U32 rule_id, SR_BOOL is_wl, int argc, char **a
 {
 	int i;
 	char mid[MAX_LIST_NAME], interface[64], dir[32], user[USER_NAME_SIZE], program[PROG_NAME_SIZE], action[ACTION_STR_SIZE];
+	SR_BOOL is_program_list, is_user_list, is_mid_list, is_interface_list;
 	SR_32 ret, is_update;
 
 	if ((is_update = redis_mng_has_can_rule(c, rule_id)) == SR_ERROR)
@@ -384,13 +407,13 @@ static SR_32 handle_update_can(SR_U32 rule_id, SR_BOOL is_wl, int argc, char **a
 	}
 
 	for (i = 0; i < argc; i++) {
-		if (handle_param("mid", mid, sizeof(mid), argc, &i, argv, is_valid_msg_id) != SR_SUCCESS)
+		if (handle_param("mid", mid, sizeof(mid), argc, &i, argv, is_valid_msg_id, &is_mid_list, SR_FALSE) != SR_SUCCESS)
 			return SR_ERROR; 
-		if (handle_param("mid-group", mid, sizeof(mid), argc, &i, argv, is_valid_mid_group) != SR_SUCCESS)
+		if (handle_param("mid-group", mid, sizeof(mid), argc, &i, argv, is_valid_mid_group, &is_mid_list, SR_TRUE) != SR_SUCCESS)
 			return SR_ERROR; 
-		if (handle_param("interface", interface, sizeof(interface), argc, &i, argv, is_valid_interface) != SR_SUCCESS)
+		if (handle_param("interface", interface, sizeof(interface), argc, &i, argv, is_valid_interface, &is_interface_list, SR_FALSE) != SR_SUCCESS)
 			return SR_ERROR; 
-		if (handle_param("dir", dir, sizeof(dir), argc, &i, argv, is_valid_dir) != SR_SUCCESS)
+		if (handle_param("dir", dir, sizeof(dir), argc, &i, argv, is_valid_dir, NULL, SR_FALSE) != SR_SUCCESS)
 			return SR_ERROR; 
 		HANDLE_COMMON_PARAMS
 	}
@@ -417,7 +440,9 @@ static SR_32 handle_update_file(SR_U32 rule_id, SR_BOOL is_wl, int argc, char **
 	int i;
 	char filename[32], perm[FILE_NAME_SIZE];
 	char user[USER_NAME_SIZE], program[PROG_NAME_SIZE], action[ACTION_STR_SIZE];
+	SR_BOOL is_filename_list = SR_FALSE, is_program_list = SR_FALSE, is_user_list = SR_FALSE;
 	SR_32 ret, is_update;
+	redis_mng_file_rule_t rule_info = {};
 
 	if ((is_update = redis_mng_has_file_rule(c, rule_id)) == SR_ERROR)
  		return SR_ERROR;
@@ -431,9 +456,11 @@ static SR_32 handle_update_file(SR_U32 rule_id, SR_BOOL is_wl, int argc, char **
 	}
 
 	for (i = 0; i < argc; i++) {
-		if (handle_param("filename", filename, sizeof(filename), argc, &i, argv, is_valid_file) != SR_SUCCESS)
+		if (handle_param("filename", filename, sizeof(filename), argc, &i, argv, is_valid_file, &is_filename_list, SR_FALSE) != SR_SUCCESS)
 			return SR_ERROR; 
-		if (handle_param("perm", perm, sizeof(perm), argc, &i, argv, is_valid_perm) != SR_SUCCESS)
+		if (handle_param("file-group", filename, sizeof(filename), argc, &i, argv, is_valid_filename_list, &is_filename_list, SR_TRUE) != SR_SUCCESS)
+			return SR_ERROR; 
+		if (handle_param("perm", perm, sizeof(perm), argc, &i, argv, is_valid_perm, NULL, SR_FALSE) != SR_SUCCESS)
 			return SR_ERROR; 
 		HANDLE_COMMON_PARAMS
 	}
@@ -443,7 +470,15 @@ static SR_32 handle_update_file(SR_U32 rule_id, SR_BOOL is_wl, int argc, char **
 	CHECK_MISSING_PARAM(filename, "filename")
 	CHECK_MISSING_PARAM(perm, "perm")
 
-	ret = redis_mng_update_file_rule(c, rule_id, EMPTY2NULL(filename), EMPTY2NULL(program), EMPTY2NULL(user), EMPTY2NULL(action), *perm ? perm_cli_to_db(perm) : NULL);
+	rule_info.user = EMPTY2NULL(user);
+	rule_info.users_list = is_user_list;
+	rule_info.exec = EMPTY2NULL(program);
+	rule_info.execs_list = is_program_list;
+	rule_info.file_name = EMPTY2NULL(filename);
+	rule_info.file_names_list = is_filename_list;
+	rule_info.file_op = EMPTY2NULL(perm);
+	rule_info.action = action;
+	ret = redis_mng_update_file_rule(c, rule_id, &rule_info);
 	if (ret != SR_SUCCESS) {
 		printf("update rule failed");
 		return ret;
@@ -460,7 +495,9 @@ static SR_32 handle_update_ip(SR_U32 rule_id, SR_BOOL is_wl, int argc, char **ar
 	int i;
 	char src_addr[IP_ADDR_SIZE + IP_NETMASK_SIZE + 1], dst_addr[IP_ADDR_SIZE + IP_NETMASK_SIZE + 1], proto[PROTO_SIZE], src_port[PORT_SIZE], dst_port[PORT_SIZE];
 	char user[USER_NAME_SIZE], program[PROG_NAME_SIZE], action[ACTION_STR_SIZE];
+	SR_BOOL is_src_addr_list, is_dst_addr_list, is_proto_list, is_src_port_list, is_dst_port_list, is_program_list, is_user_list;
 	SR_32 ret, is_update;
+	redis_mng_net_rule_t rule_info = {};
 
 	if ((is_update = redis_mng_has_net_rule(c, rule_id)) == SR_ERROR)
  		return SR_ERROR;
@@ -477,15 +514,15 @@ static SR_32 handle_update_ip(SR_U32 rule_id, SR_BOOL is_wl, int argc, char **ar
 		*proto = *src_addr = *dst_addr = *src_port = *dst_port = 0;
 	}
 	for (i = 0; i < argc; i++) {
-		if (handle_param("src_addr", src_addr, sizeof(src_addr), argc, &i, argv, is_valid_ip_addr) != SR_SUCCESS)
+		if (handle_param("src_addr", src_addr, sizeof(src_addr), argc, &i, argv, is_valid_ip_addr, &is_src_addr_list, SR_FALSE) != SR_SUCCESS)
 			return SR_ERROR; 
-		if (handle_param("dst_addr", dst_addr, sizeof(dst_addr), argc, &i, argv, is_valid_ip_addr) != SR_SUCCESS)
+		if (handle_param("dst_addr", dst_addr, sizeof(dst_addr), argc, &i, argv, is_valid_ip_addr, &is_dst_addr_list, SR_FALSE) != SR_SUCCESS)
 			return SR_ERROR; 
-		if (handle_param("proto", proto, sizeof(proto), argc, &i, argv, is_valid_ip_proto) != SR_SUCCESS)
+		if (handle_param("proto", proto, sizeof(proto), argc, &i, argv, is_valid_ip_proto, &is_proto_list, SR_FALSE) != SR_SUCCESS)
 			return SR_ERROR; 
-		if (handle_param("src_port", src_port, sizeof(src_port), argc, &i, argv, is_valid_port) != SR_SUCCESS)
+		if (handle_param("src_port", src_port, sizeof(src_port), argc, &i, argv, is_valid_port, &is_src_port_list, SR_FALSE) != SR_SUCCESS)
 			return SR_ERROR; 
-		if (handle_param("dst_port", dst_port, sizeof(dst_port), argc, &i, argv, is_valid_port) != SR_SUCCESS)
+		if (handle_param("dst_port", dst_port, sizeof(dst_port), argc, &i, argv, is_valid_port, &is_dst_port_list, SR_FALSE) != SR_SUCCESS)
 			return SR_ERROR; 
 		HANDLE_COMMON_PARAMS
 	}
@@ -494,8 +531,14 @@ static SR_32 handle_update_ip(SR_U32 rule_id, SR_BOOL is_wl, int argc, char **ar
 		CHECK_MISSING_PARAM(action, "action")
 	}
 
-	ret = redis_mng_update_net_rule(c, rule_id, EMPTY2NULL(src_addr), EMPTY2NULL(dst_addr), EMPTY2NULL(proto),
-		EMPTY2NULL(src_port), EMPTY2NULL(dst_port), EMPTY2NULL(program), EMPTY2NULL(user), EMPTY2NULL(action));
+	rule_info.user = EMPTY2NULL(user);
+	rule_info.users_list = is_user_list;
+	rule_info.exec = EMPTY2NULL(program);
+	rule_info.execs_list = is_program_list;
+	rule_info.src_addr_netmask = EMPTY2NULL(src_addr);
+	rule_info.src_addr_netmasks_list = is_src_addr_list;
+	rule_info.action = action;
+	ret = redis_mng_update_net_rule(c, rule_id, &rule_info);
  	if (ret != SR_SUCCESS) {
 		printf("update rule failed");
 		return ret;
@@ -598,33 +641,31 @@ out:
 
 static SR_32 handle_update_action(int argc, char **argv)
 {
-	char *name , *type;
-	char log[LOG_FACILITY_SIZE] = {}, rl_action[ACTION_STR_SIZE] = {};
+	char *name;
+	char log[LOG_FACILITY_SIZE] = {}, rl_log[LOG_FACILITY_SIZE] = {};
+	char rl_action[ACTION_STR_SIZE] = {}, action[ACTION_STR_SIZE] = {};
 	int ret, i;
 
-	if (argc < 2) {
+	if (argc < 3) {
 		print_action_usage();
 		return SR_ERROR;
 	}
 
 	name = argv[0];
-	type = argv[1];
-
-	// Check the validity of action type 
-	if (!is_valid_action_type(type)) {
-		printf("Invalid ation tyep:%s \n", type);
-		return SR_ERROR;
-	}
 	
-	for (i = 2; i < argc; i++) {
-		if (handle_param("log", log, sizeof(log), argc, &i, argv, is_valid_log_facility) != SR_SUCCESS)
+	for (i = 1; i < argc; i++) {
+		if (handle_param("action", action, sizeof(action), argc, &i, argv, is_valid_action_type, NULL, SR_FALSE) != SR_SUCCESS)
 			return SR_ERROR; 
-		if (handle_param("rl_action", rl_action, sizeof(rl_action), argc, &i, argv, is_valid_action_type) != SR_SUCCESS)
+		if (handle_param("log", log, sizeof(log), argc, &i, argv, is_valid_log_facility, NULL, SR_FALSE) != SR_SUCCESS)
+			return SR_ERROR; 
+		if (handle_param("rate_limit_action", rl_action, sizeof(rl_action), argc, &i, argv, is_valid_action_type, NULL, SR_FALSE) != SR_SUCCESS)
+			return SR_ERROR; 
+		if (handle_param("rate_limit_log", rl_log, sizeof(rl_action), argc, &i, argv, is_valid_log_facility, NULL, SR_FALSE) != SR_SUCCESS)
 			return SR_ERROR; 
 	}
 
 #if DEBUG
-	printf("action name:%s type:%s log facility:%s rt actioin type:%s: \n", name, type, log, rl_action);
+	printf("action name:%s action:%s action log facility:%s rl actioin :%s: rl action log:%s:\n", name, action, log, rl_action, rl_log);
 #endif
 
 	return SR_SUCCESS;
