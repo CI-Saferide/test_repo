@@ -2132,39 +2132,66 @@ SR_32 redis_mng_create_file_rule(redisContext *c, SR_32 rule_id, char *file_name
 }
 #endif
 
-SR_32 redis_mng_update_net_rule(redisContext *c, SR_32 rule_id, char *src_addr_netmask, char *dst_addr_netmask,
-		char *proto, char *src_port, char *dst_port, char *exec, char *user, char *action)
+SR_32 redis_mng_update_net_rule(redisContext *c, SR_32 rule_id, redis_mng_net_rule_t *rule)
 {
 	redisReply *reply;
-	char *rule;
+	char *cmd;
 	int len;
 
-	rule = malloc(NET_RULE_FIELDS * MAX_LIST_NAME_LEN);
-	if (!rule) {
+	cmd = malloc(NET_RULE_FIELDS * MAX_LIST_NAME_LEN);
+	if (!cmd) {
 		printf("ERROR: redis_mng_update_net_rule allocation failed\n");
 		return SR_ERROR;
 	}
 
-	len = sprintf(rule, "HMSET %s%d", NET_PREFIX, rule_id);
-	if (action)
-		len += sprintf(rule + len, " %s %s", ACTION, action);
-	if (src_addr_netmask)
-		len += sprintf(rule + len, " %s %s", SRC_ADDR, src_addr_netmask);
-	if (dst_addr_netmask)
-		len += sprintf(rule + len, " %s %s", DST_ADDR, dst_addr_netmask);
-	if (exec)
-		len += sprintf(rule + len, " %s %s", PROGRAM_ID, exec);
-	if (user)
-		len += sprintf(rule + len, " %s %s", USER_ID, user);
-	if (proto)
-		len += sprintf(rule + len, " %s %s", PROTOCOL, proto);
-	if (src_port)
-		len += sprintf(rule + len, " %s %s", SRC_PORT, src_port);
-	if (dst_port)
-		len += sprintf(rule + len, " %s %s", DST_PORT, dst_port);
+	len = sprintf(cmd, "HMSET %s%d", NET_PREFIX, rule_id);
+	if (rule->action)
+		len += sprintf(cmd + len, " %s %s", ACTION, rule->action);
+	if (rule->src_addr_netmask) {
+		if (rule->src_addr_netmasks_list) // list
+			len += sprintf(cmd + len, " %s %d%s%s", SRC_ADDR, LIST_ADDRS, LIST_PREFIX, rule->src_addr_netmask);
+		else // single value
+			len += sprintf(cmd + len, " %s %s", SRC_ADDR, rule->src_addr_netmask);
+	}
+	if (rule->dst_addr_netmask) {
+		if (rule->dst_addr_netmasks_list) // list
+			len += sprintf(cmd + len, " %s %d%s%s", DST_ADDR, LIST_ADDRS, LIST_PREFIX, rule->dst_addr_netmask);
+		else // single value
+			len += sprintf(cmd + len, " %s %s", DST_ADDR, rule->dst_addr_netmask);
+	}
+	if (rule->exec) {
+		if (rule->execs_list) // list
+			len += sprintf(cmd + len, " %s %d%s%s", PROGRAM_ID, LIST_PROGRAMS, LIST_PREFIX, rule->exec);
+		else // single value
+			len += sprintf(cmd + len, " %s %s", PROGRAM_ID, rule->exec);
+	}
+	if (rule->user) {
+		if (rule->users_list) // list
+			len += sprintf(cmd + len, " %s %d%s%s", USER_ID, LIST_USERS, LIST_PREFIX, rule->user);
+		else // single value
+			len += sprintf(cmd + len, " %s %s", USER_ID, rule->user);
+	}
+	if (rule->proto) {
+		if (rule->protos_list) // list
+			len += sprintf(cmd + len, " %s %d%s%s", PROTOCOL, LIST_PROTOCOLS, LIST_PREFIX, rule->proto);
+		else // single value
+			len += sprintf(cmd + len, " %s %s", PROTOCOL, rule->proto);
+	}
+	if (rule->src_port) {
+		if (rule->src_ports_list) // list
+			len += sprintf(cmd + len, " %s %d%s%s", SRC_PORT, LIST_PORTS, LIST_PREFIX, rule->src_port);
+		else // single value
+			len += sprintf(cmd + len, " %s %s", SRC_PORT, rule->src_port);
+	}
+	if (rule->dst_port) {
+		if (rule->dst_ports_list) // list
+			len += sprintf(cmd + len, " %s %d%s%s", DST_PORT, LIST_PORTS, LIST_PREFIX, rule->dst_port);
+		else // single value
+			len += sprintf(cmd + len, " %s %s", DST_PORT, rule->dst_port);
+	}
 
-	reply = redisCommand(c, rule);
-	free(rule);
+	reply = redisCommand(c, cmd);
+	free(cmd);
 	if (reply == NULL || reply->type != REDIS_REPLY_STATUS) {
 		printf("ERROR: redis_mng_update_net_rule failed, %d\n", reply ? reply->type : -1);
 		freeReplyObject(reply);

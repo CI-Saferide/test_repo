@@ -33,14 +33,32 @@ typedef struct redis_mng_reply {
 
 typedef struct redis_mng_file_rule {
 	char 	*file_name;
-	SR_8	file_names_list;
 	char 	*exec;
-	SR_8	execs_list;
 	char 	*user;
-	SR_8	users_list;
 	char 	*action; 	// single value
 	char 	*file_op; 	// single value
+	SR_8	file_names_list;
+	SR_8	execs_list;
+	SR_8	users_list;
 } redis_mng_file_rule_t;
+
+typedef struct redis_mng_net_rule {
+	char 	*src_addr_netmask;
+	char 	*dst_addr_netmask;
+	char 	*proto;		// protocol
+	char 	*src_port;
+	char 	*dst_port;
+	char 	*exec;
+	char 	*user;
+	char 	*action; 	// single value
+	SR_8 	src_addr_netmasks_list;
+	SR_8 	dst_addr_netmasks_list;
+	SR_8 	protos_list;
+	SR_8 	src_ports_list;
+	SR_8 	dst_ports_list;
+	SR_8	execs_list;
+	SR_8	users_list;
+} redis_mng_net_rule_t;
 
 //SR_32 redis_mng_parse_json(redis_mng_handler_t *handler, char *buf, SR_U32 *version, SR_U32 old_version);
 
@@ -76,7 +94,7 @@ SR_32 redis_mng_update_file_rule(redisContext *c, SR_32 rule_id, redis_mng_file_
 SR_32 redis_mng_del_file_rule(redisContext *c, SR_32 rule_id_start, SR_32 rule_id_end, SR_8 force);
 //SR_32 redis_mng_get_file_rule(redisContext *c, SR_32 rule_id, redis_mng_reply_t *reply);
 
-SR_32 redis_mng_update_net_rule(redisContext *c, SR_32 rule_id, char *src_addr_netmask, char *dst_addr_netmask, char *proto, char *src_port, char *dst_port, char *exec, char *user, char *action);
+SR_32 redis_mng_update_net_rule(redisContext *c, SR_32 rule_id, redis_mng_net_rule_t *rule);
 SR_32 redis_mng_del_net_rule(redisContext *c, SR_32 rule_id_start, SR_32 rule_id_end, SR_8 force);
 
 SR_32 redis_mng_update_can_rule(redisContext *c, SR_32 rule_id, char *msg_id, char *interface, char *exec, char *user, char *action, char *dir);
