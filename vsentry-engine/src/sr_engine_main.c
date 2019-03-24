@@ -218,6 +218,7 @@ static void engine_shutdown(void)
 	sr_stop_task(SR_INFO_GATHER_TASK);
 	sr_stop_task(SR_ENGINE_TASK);
 	sentry_stop();
+	// todo remove redsi
 #ifdef CONFIG_STAT_ANALYSIS
 	sr_stat_analysis_uninit();
 #endif /* CONFIG_STAT_ANALYSIS */
@@ -500,6 +501,8 @@ static int sr_redis_test(int tcp, int clean_first, int clean_at_end)
 		} addrs;
 		char mid[16];
 	} strs;
+	redis_mng_file_rule_t file_rule;
+	redis_mng_net_rule_t net_rule;
 
 //	printf("1\n");fflush(stdout);
 	redisContext *c = redis_mng_session_start(tcp);
@@ -524,8 +527,17 @@ static int sr_redis_test(int tcp, int clean_first, int clean_at_end)
 	for (i = 0; i < 1200; i++) {
 		sprintf(strs.file + 44, "%04d", i);
 		j = i % 3;
-		if ((rc = redis_mng_update_file_rule(c, i, strs.file, "NULL", "NULL", "drop",
-				j ? (j == 1 ? "R"/*SR_FILEOPS_READ*/ : "W"/*SR_FILEOPS_WRITE*/) : "X"/*SR_FILEOPS_EXEC*/))) {
+
+		file_rule.file_name = strs.file;
+		file_rule.file_names_list = 0;
+		file_rule.exec = "NULL";
+		file_rule.execs_list = 0;
+		file_rule.user = "NULL";
+		file_rule.users_list = 0;
+		file_rule.action = "drop";
+		file_rule.file_op = j ? (j == 1 ? "R"/*SR_FILEOPS_READ*/ : "W"/*SR_FILEOPS_WRITE*/) : "X"/*SR_FILEOPS_EXEC*/;
+
+		if ((rc = redis_mng_update_file_rule(c, i, &file_rule))) {
 			printf("ERROR: redis_mng_update_file_rule %d failed, ret %d\n", i, rc);
 			redis_mng_session_end(c);
 			return -1;
@@ -541,8 +553,24 @@ static int sr_redis_test(int tcp, int clean_first, int clean_at_end)
 		sprintf(strs.addrs.proto, "%02d", addr_lsb);
 		sprintf(strs.addrs.s_port, "%04d", i);
 		sprintf(strs.addrs.d_port, "%04d", i + 3);
-		if ((rc = redis_mng_update_net_rule(c, i, strs.addrs.sa, strs.addrs.da, strs.addrs.proto, strs.addrs.s_port,
-				strs.addrs.d_port, "NULL", "NULL", "drop_log"))) {
+
+		net_rule.action = "drop_log";
+		net_rule.dst_addr_netmask = strs.addrs.da;
+		net_rule.dst_addr_netmasks_list = 0;
+		net_rule.src_addr_netmask = strs.addrs.sa;
+		net_rule.src_addr_netmasks_list = 0;
+		net_rule.dst_port = strs.addrs.d_port;
+		net_rule.dst_ports_list = 0;
+		net_rule.src_port = strs.addrs.s_port;
+		net_rule.src_ports_list = 0;
+		net_rule.proto = strs.addrs.proto;
+		net_rule.protos_list = 0;
+		net_rule.exec = "NULL";
+		net_rule.execs_list = 0;
+		net_rule.user = "NULL";
+		net_rule.users_list = 0;
+
+		if ((rc = redis_mng_update_net_rule(c, i, &net_rule))) {
 			printf("ERROR: redis_mng_update_net_rule %d failed, ret %d\n", i, rc);
 			redis_mng_session_end(c);
 			return -1;
@@ -563,8 +591,12 @@ static int sr_redis_test(int tcp, int clean_first, int clean_at_end)
 	// update all the rules
 	for (i = 0; i < 1200; i++) {
 		j = i % 3;
-		if ((rc = redis_mng_update_file_rule(c, i, NULL, NULL, NULL, NULL,
-				j ? (j == 1 ? "X"/*SR_FILEOPS_EXEC*/ : "R"/*SR_FILEOPS_READ*/) : "W"/*SR_FILEOPS_WRITE*/))) {
+		file_rule.file_name = NULL;
+		file_rule.exec = NULL;
+		file_rule.user = NULL;
+		file_rule.action = NULL;
+		file_rule.file_op = j ? (j == 1 ? "X"/*SR_FILEOPS_EXEC*/ : "R"/*SR_FILEOPS_READ*/) : "W"/*SR_FILEOPS_WRITE*/;
+		if ((rc = redis_mng_update_file_rule(c, i, &file_rule))) {
 			printf("ERROR: redis_mng_updateify_file_rule %d failed, ret %d\n", i, rc);
 			redis_mng_session_end(c);
 			return -1;
@@ -572,7 +604,18 @@ static int sr_redis_test(int tcp, int clean_first, int clean_at_end)
 		addr_lsb = i % 256;
 		mask = (i / 256) * 8;
 		sprintf(strs.addrs.s_port, "%04d", i + 1);
-		if ((rc = redis_mng_update_net_rule(c, i, NULL, NULL, NULL, strs.addrs.s_port, NULL, NULL, NULL, NULL))) {
+
+		net_rule.action = NULL;
+		net_rule.dst_addr_netmask = NULL;
+		net_rule.src_addr_netmask = NULL;
+		net_rule.dst_port = NULL;
+		net_rule.src_port = strs.addrs.s_port;
+		net_rule.src_ports_list = 0;
+		net_rule.proto = NULL;
+		net_rule.exec = NULL;
+		net_rule.user = NULL;
+
+		if ((rc = redis_mng_update_net_rule(c, i, &net_rule))) {
 			printf("ERROR: redis_mng_updateify_net_rule %d failed, ret %d\n", i, rc);
 			redis_mng_session_end(c);
 			return -1;
@@ -665,6 +708,14 @@ SR_32 sr_engine_start(int argc, char *argv[])
 		exit (-1);
 	}
 
+	// todo call redis
+#if 0
+	if (system("/bin/stty raw")) {
+		printf("error seting the term\n");
+		return;
+	}
+#endif
+
 	if (NULL == config_file) {
 		/* no config file parameters passed, using current directory */
 		char cwd[1024];
@@ -751,6 +802,7 @@ SR_32 sr_engine_start(int argc, char *argv[])
 						"%s=failed setting task pre stop cb",REASON);
 		return SR_ERROR;
 	}
+
 	ret = sr_start_task(SR_ENGINE_TASK, engine_main_loop);
 	if (ret != SR_SUCCESS) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
@@ -759,6 +811,9 @@ SR_32 sr_engine_start(int argc, char *argv[])
 
 		return SR_ERROR;
 	}
+
+	// todo reconf here ?
+	// afterwards remove redis (wrap in production mode only)
 
 	ret = sr_file_hash_init();
 	if (ret != SR_SUCCESS){
