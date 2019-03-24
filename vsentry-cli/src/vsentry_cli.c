@@ -522,7 +522,7 @@ static void print_groups_types(void)
 static SR_32 handle_update_group(int argc, char **argv)
 {
 	char *type, *name;
-	SR_32 group_id, i, n, rc = SR_SUCCESS;
+	SR_32 group_id, i, n, rc = SR_SUCCESS, ret;
 	char *list_values[MAX_LIST_VALUES] = {};
 
 	if (argc < 3) {
@@ -536,6 +536,19 @@ static SR_32 handle_update_group(int argc, char **argv)
 		return SR_ERROR;
 	}
 	name = argv[1];
+
+	// If list exits, delete it, the recreate it
+	if ((ret = redis_mng_has_list(c, group_info[group_id].list_type, name)) == SR_ERROR){
+		printf("redis_mng_has_list failed\n");
+		return SR_ERROR;
+	}
+	if (ret == 1) {	
+		// Delete list
+		if (redis_mng_destroy_list(c, group_info[group_id].list_type, name) != SR_SUCCESS) {
+			printf("Delete failed\n");
+			return SR_ERROR;
+		}
+	}
 
 #ifdef DEBUG
 	printf("update group type:%s name:%s \n", type, name);
