@@ -100,6 +100,11 @@ static void print_show_usage(void)
 	printf("usage: show ... \n");
 }
 
+static void print_delete_group_usage(void)
+{
+	printf("usage: delete group ... \n");
+}
+
 static void print_delete_usage(void)
 {
 	printf("usage: delete ... \n");
@@ -747,6 +752,31 @@ print:
 	return SR_SUCCESS;
 }
 
+static SR_32 handle_delete_group(int argc, char **argv)
+{
+	char *type, *name;
+	SR_32 group_id;
+
+	if (argc < 2) {
+		print_delete_group_usage();
+		return SR_ERROR;
+	}
+
+	type = argv[0];
+	if ((group_id = get_group_index(type)) < 0) {
+		printf(" group type %s is not valid \n", type);
+		return SR_ERROR;
+	}
+	name = argv[1];
+
+	if (redis_mng_destroy_list(c, group_info[group_id].list_type, name) != SR_SUCCESS) {
+		printf("Delete failed\n");
+		return SR_ERROR;
+	}
+
+	return SR_SUCCESS;
+}
+
 static SR_32 handle_delete(int argc, char **argv)
 {
 	char *type, *section;
@@ -757,6 +787,9 @@ static SR_32 handle_delete(int argc, char **argv)
 		print_delete_usage();
 		return SR_ERROR;
 	}
+
+	if (!strcmp(argv[0], "group"))
+		return handle_delete_group(argc - 1, argv + 1);
 
 	type = argv[0];
 	if (!is_valid_type(type)) {
