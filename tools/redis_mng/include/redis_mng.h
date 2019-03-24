@@ -72,11 +72,11 @@ SR_32 redis_mng_update_can_rule(redisContext *c, SR_32 rule_id, char *msg_id, ch
 SR_32 redis_mng_del_can_rule(redisContext *c, SR_32 rule_id_start, SR_32 rule_id_end, SR_8 force);
 
 /* params:
- * 	bm:		"drop" / "none" / "allow" (o/w invalid)
- * 	log:	made of two parts, must contain one option of each, in a single string
- * 			"file" / "none" / "sys" (syslog) (o/w invalid)
- * 			"crt" / "err" / "warn" / "info" / "debug" */
-SR_32 redis_mng_add_action(redisContext *c, char *name, char *bm, char *log, char *sms, char *mail);
+ * 	bm (bitmap):	"drop" / "none" / "allow" (o/w invalid)
+ * 	log_facility:	"file" / "none" / "sys" (syslog) (o/w invalid)
+ * 	log_severity:	"crt" / "err" / "warn" / "info" / "debug"
+ * 	rl (rate limit) */
+SR_32 redis_mng_add_action(redisContext *c, char *name, char *bm, char *log_facility, char *log_severity, char *rl, char *sms, char *mail);
 SR_32 redis_mng_del_action(redisContext *c, char *name);
 
 /* add values to existing list or create a new list */

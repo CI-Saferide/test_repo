@@ -50,7 +50,9 @@
 #define PERMISSION	 	"perm"
 // action specific fields
 #define BITMAP	 		"bm"
-#define LOG		 		"log"
+#define LOG_FACILITY	"lf"
+#define LOG_SEVERITY	"ls"
+#define RL		 		"rl"
 #define SMS		 		"sms"
 #define EMAIL	 		"mail"
 // todo what is rl (for action) and skip rule ?
@@ -1180,10 +1182,12 @@ SR_32 redis_mng_print_actions(redisContext *c)
 		}
 
 		// action has no number so all are printed
-		printf("%-10s %-6s %-6s \n",
+		printf("%-10s %-6s %-6s %-6s %s \n",
 				reply->element[i]->str + strlen(ACTION_PREFIX), /* name */
 				replies[i]->element[1]->str, /* bm */
-				strcmp(replies[i]->element[3]->str, "none") != 0 ? "1" : "0" /* log */);
+				strcmp(replies[i]->element[3]->str, "none") != 0 ? "1" : "0" /* log facility */,
+				replies[i]->element[5]->str /* log severity */,
+				replies[i]->element[7]->str /* rl */);
 	}
 
 	// free replies
@@ -1196,13 +1200,12 @@ SR_32 redis_mng_print_actions(redisContext *c)
 
 SR_32 redis_mng_print_list(redisContext *c, list_type_e type, char *name)
 {
-	int i, j;
+	int j;
 	redisReply *reply;
-	redisReply **replies;
 
 	if (name) {
 		// get specific key
-		reply = redisCommand(c,"LRANGE %s%d:%s 0 -1", LIST_PREFIX, type, name);
+		reply = redisCommand(c,"LRANGE %d%s%s 0 -1", type, LIST_PREFIX, name);
 		if (reply == NULL || reply->type != REDIS_REPLY_ARRAY) {
 			printf("ERROR: redis_mng_print_list failed, %d\n", reply ? reply->type : -1);
 			freeReplyObject(reply);
@@ -1229,7 +1232,7 @@ SR_32 redis_mng_print_all_list_names(redisContext *c, list_type_e type)
 	redisReply *reply;
 
 	// get all keys
-	reply = redisCommand(c,"KEYS %s%d:*", LIST_PREFIX, type);
+	reply = redisCommand(c,"KEYS %d%s*", type, LIST_PREFIX);
 	if (reply == NULL || reply->type != REDIS_REPLY_ARRAY) {
 		printf("ERROR: redis_mng_print_all_list_names failed, %d\n", reply ? reply->type : -1);
 		freeReplyObject(reply);
@@ -1538,7 +1541,7 @@ SR_32 redis_mng_load_db(redisContext *c, int pipelined, handle_rule_f_t cb_func)
 
 			} else { // action
 
-				// BITMAP, bm, LOG, log, SMS, sms, EMAIL, mail
+				// BITMAP, bm, LOG_FACILITY, log_facility, LOG_SEVERITY, log_severity, RL, rl, SMS, sms, EMAIL, mail
 				if (replies[i]->elements != ACTION_FIELDS) {
 					printf("ERROR: redisGetReply %d length is wrong %d instead of %d\n", i, (int)replies[i]->elements, ACTION_FIELDS);
 					for (j = 0; j < i; j++)
@@ -1549,6 +1552,7 @@ SR_32 redis_mng_load_db(redisContext *c, int pipelined, handle_rule_f_t cb_func)
 				}
 				action.black_list = 0; // fixme
 				action.terminate = 0; // fixme
+				// todo replies[i]->element[7]->str - rate limit
 				memcpy(action.action_name, reply->element[i]->str + strlen(ACTION_PREFIX),
 						strlen(reply->element[i]->str) - strlen(ACTION_PREFIX));
 
@@ -1570,15 +1574,15 @@ SR_32 redis_mng_load_db(redisContext *c, int pipelined, handle_rule_f_t cb_func)
 				else
 					action.log_facility = LOG_INVALID;
 
-				if (strstr(replies[i]->element[3]->str, "crt"))
+				if (strstr(replies[i]->element[5]->str, "crt"))
 					action.log_severity = LOG_SEVERITY_CRT;
-				else if (strstr(replies[i]->element[3]->str, "err"))
+				else if (strstr(replies[i]->element[5]->str, "err"))
 					action.log_severity = LOG_SEVERITY_ERR;
-				else if (strstr(replies[i]->element[3]->str, "warn"))
+				else if (strstr(replies[i]->element[5]->str, "warn"))
 					action.log_severity = LOG_SEVERITY_WARN;
-				else if (strstr(replies[i]->element[3]->str, "info"))
+				else if (strstr(replies[i]->element[5]->str, "info"))
 					action.log_severity = LOG_SEVERITY_INFO;
-				else if (strstr(replies[i]->element[3]->str, "debug"))
+				else if (strstr(replies[i]->element[5]->str, "debug"))
 					action.log_severity = LOG_SEVERITY_DEBUG;
 				else
 					action.log_severity = LOG_SEVERITY_NONE;
@@ -1930,12 +1934,12 @@ SR_32 redis_mng_reconf(redisContext *c, handle_rule_f_t cb_func)
 }
 #endif
 
-SR_32 redis_mng_add_action(redisContext *c, char *name, char *bm, char *log, char *sms, char *mail)
+SR_32 redis_mng_add_action(redisContext *c, char *name, char *bm, char *log_facility, char *log_severity, char *rl, char *sms, char *mail)
 {
     redisReply *reply;
 
-	reply = redisCommand(c,"HMSET %s%d %s %s %s %s %s %s %s %s", ACTION_PREFIX, name, BITMAP, bm, LOG, log, SMS, sms,
-							EMAIL, mail);
+	reply = redisCommand(c,"HMSET %s%d %s %s %s %s %s %s %s %s", ACTION_PREFIX, name, BITMAP, bm, LOG_FACILITY, log_facility,
+			LOG_SEVERITY, log_severity, RL, rl, SMS, sms, EMAIL, mail);
 	if (reply == NULL || reply->type != REDIS_REPLY_STATUS) {
 		printf("ERROR: redis_mng_add_file_rule failed, %d\n", reply ? reply->type : -1);
 		freeReplyObject(reply);
@@ -1977,7 +1981,7 @@ SR_32 redis_mng_add_list(redisContext *c, list_type_e type, char *name, SR_U32 l
 	for (i = 0; i < length; i++)
 		len += sprintf(cmd + len, " %s", values[i]);
 
-	reply = redisCommand(c,"LPUSH %s%d:%s %s", LIST_PREFIX, type, name, cmd);
+	reply = redisCommand(c,"LPUSH %d%s%s %s", type, LIST_PREFIX, name, cmd);
 	free(cmd);
 	if (reply == NULL || reply->type != REDIS_REPLY_INTEGER || reply->integer != 1) {
 		printf("ERROR: redis_mng_add_list failed, type %d, i %d\n", reply ? reply->type : -1, reply ? (int)reply->integer : 0);
@@ -1998,7 +2002,7 @@ SR_32 redis_mng_del_list(redisContext *c, list_type_e type, char *name, SR_U32 l
 		return SR_ERROR;
 	}
 	for (i = 0; i < length; i++) {
-		reply = redisCommand(c,"LREM %s%d:%s 0 %s", LIST_PREFIX, type, name, values[i]);
+		reply = redisCommand(c,"LREM %d%s%s 0 %s", type, LIST_PREFIX, name, values[i]);
 		if (reply == NULL || reply->type != REDIS_REPLY_INTEGER || reply->integer != 1) {
 			printf("ERROR: redis_mng_del_list % d failed, type %d, i %d\n", i,
 					reply ? reply->type : -1, reply ? (int)reply->integer : 0);
@@ -2014,7 +2018,7 @@ SR_32 redis_mng_destroy_list(redisContext *c, list_type_e type, char *name)
 {
 	redisReply *reply;
 
-	reply = redisCommand(c,"DEL %s%d:%s", LIST_PREFIX, type, name);
+	reply = redisCommand(c,"DEL %d%s%s", type, LIST_PREFIX, name);
 	if (reply == NULL || reply->type != REDIS_REPLY_INTEGER || reply->integer != 1) {
 		printf("ERROR: redis_mng_destroy_list failed, type %d, i %d\n", reply ? reply->type : -1, reply ? (int)reply->integer : 0);
 		freeReplyObject(reply);
@@ -2310,7 +2314,7 @@ SR_32 redis_mng_has_list(redisContext *c, list_type_e type, char *name)
     redisReply *reply;
     SR_32 ret;
 
-	reply = redisCommand(c,"EXISTS %s%d:%s", LIST_PREFIX, type, name);
+	reply = redisCommand(c,"EXISTS %d%s%s", type, LIST_PREFIX, name);
 	if (reply == NULL || reply->type != REDIS_REPLY_INTEGER) {
 		printf("ERROR: redis_mng_has_file_rule failed, %d\n", reply ? reply->type : -1);
 		freeReplyObject(reply);
