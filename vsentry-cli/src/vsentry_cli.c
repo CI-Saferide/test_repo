@@ -32,7 +32,7 @@
 #define PORT_SIZE 16
 #define MAX_GROUP 32
 
-// R8
+// R9
 
 static redisContext *c;
 
