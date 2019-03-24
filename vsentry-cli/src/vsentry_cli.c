@@ -59,6 +59,17 @@ static group_info_t group_info[MAX_GROUP + 1] = {
 	{.group_name = "proto-group", .valid_cb = is_valid_ip_proto, .list_type = LIST_PROTOCOLS},
 };
 
+static SR_32 get_group_index(char *type)
+{
+	SR_U32 i;
+
+	for (i =0 ; i <= MAX_GROUP && *(group_info[i].group_name); i++) {
+		if (!strcmp(group_info[i].group_name, type))
+			return i;
+	}
+	return -1;
+}
+
 static int engine_connect(void)
 {
 	int fd;
@@ -168,9 +179,21 @@ static SR_BOOL is_valid_file(char *file)
         return SR_TRUE;
 }
 
-static SR_BOOL is_valid_filename_list(char *file)
+static SR_BOOL is_valid_list_name(char *type, char *name)
 {
-        return SR_TRUE;
+	SR_32 group_id;
+
+	if ((group_id = get_group_index(type)) < 0)
+		return SR_FALSE;
+	if (redis_mng_has_list(c, group_info[group_id].list_type, name) != 1)
+		return SR_FALSE;
+
+	return SR_TRUE;
+} 
+
+static SR_BOOL is_valid_filename_list(char *file_list)
+{
+        return is_valid_list_name("file-group", file_list);
 }
 
 static SR_BOOL is_valid_dir(char *dir)
@@ -223,7 +246,7 @@ static SR_BOOL is_valid_program(char *program)
 
 static SR_BOOL is_valid_program_group(char *program_group)
 {
-	return SR_TRUE;
+        return is_valid_list_name("program-group", program_group);
 }
 
 static SR_BOOL is_valid_user(char *user)
@@ -239,7 +262,7 @@ static SR_BOOL is_valid_user(char *user)
 
 static SR_BOOL is_valid_user_group(char *user_group)
 {
-	return SR_TRUE;
+        return is_valid_list_name("user-group", user_group);
 }
 
 static SR_BOOL is_valid_msg_id(char *str)
@@ -550,17 +573,6 @@ static SR_32 handle_update_ip(SR_U32 rule_id, SR_BOOL is_wl, int argc, char **ar
 
 	return SR_SUCCESS;
 } 
-
-static SR_32 get_group_index(char *type)
-{
-	SR_U32 i;
-
-	for (i =0 ; i <= MAX_GROUP && *(group_info[i].group_name); i++) {
-		if (!strcmp(group_info[i].group_name, type))
-			return i;
-	}
-	return -1;
-}
 
 static void print_groups_types(void)
 {
