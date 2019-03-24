@@ -2028,32 +2028,45 @@ SR_32 redis_mng_destroy_list(redisContext *c, list_type_e type, char *name)
 	return SR_SUCCESS;
 }
 
-SR_32 redis_mng_update_file_rule(redisContext *c, SR_32 rule_id, char *file_name, char *exec, char *user, char *action, char *file_op)
+SR_32 redis_mng_update_file_rule(redisContext *c, SR_32 rule_id, redis_mng_file_rule_t *rule)
 {
 	redisReply *reply;
-	char *rule;
+	char *cmd;
 	int len;
 
-	rule = malloc(FILE_RULE_FIELDS * MAX_LIST_NAME_LEN);
-	if (!rule) {
+	cmd = malloc(FILE_RULE_FIELDS * MAX_LIST_NAME_LEN);
+	if (!cmd) {
 		printf("ERROR: redis_mng_update_file_rule allocation failed\n");
 		return SR_ERROR;
 	}
 
-	len = sprintf(rule, "HMSET %s%d", FILE_PREFIX, rule_id);
-	if (action)
-		len += sprintf(rule + len, " %s %s", ACTION, action);
-	if (file_name)
-		len += sprintf(rule + len, " %s %s", FILENAME, file_name);
-	if (file_op)
-		len += sprintf(rule + len, " %s %s", PERMISSION, file_op);
-	if (exec)
-		len += sprintf(rule + len, " %s %s", PROGRAM_ID, exec);
-	if (user)
-		len += sprintf(rule + len, " %s %s", USER_ID, user);
+	// todo check lists
+	len = sprintf(cmd, "HMSET %s%d", FILE_PREFIX, rule_id);
+	if (rule->action)
+		len += sprintf(cmd + len, " %s %s", ACTION, rule->action);
+	if (rule->file_name) {
+		if (rule->file_names_list) // list
+			len += sprintf(cmd + len, " %s %d%s%s", FILENAME, LIST_FILES, LIST_PREFIX, rule->file_name);
+		else // single value
+			len += sprintf(cmd + len, " %s %s", FILENAME, rule->file_name);
+	}
+	if (rule->file_op)
+		len += sprintf(cmd + len, " %s %s", PERMISSION, rule->file_op);
+	if (rule->exec) {
+		if (rule->execs_list) // list
+			len += sprintf(cmd + len, " %s %d%s%s", PROGRAM_ID, LIST_PROGRAMS, LIST_PREFIX, rule->exec);
+		else // single value
+			len += sprintf(cmd + len, " %s %s", PROGRAM_ID, rule->exec);
+	}
+	if (rule->user) {
+		if (rule->users_list) // list
+			len += sprintf(cmd + len, " %s %d%s%s", USER_ID, LIST_USERS, LIST_PREFIX, rule->user);
+		else // single value
+			len += sprintf(cmd + len, " %s %s", USER_ID, rule->user);
+	}
 
-	reply = redisCommand(c, rule);
-	free(rule);
+	reply = redisCommand(c, cmd);
+	free(cmd);
 	if (reply == NULL || reply->type != REDIS_REPLY_STATUS) {
 		printf("ERROR: redis_mng_update_file_rule failed, %d\n", reply ? reply->type : -1);
 		freeReplyObject(reply);
