@@ -92,13 +92,24 @@ static int engine_connect(void)
 	return fd;
 }
 
-static void print_action_usage(void)
+static void print_update_action_usage(void)
 {
 	printf("action update action action_name [action allow | drop] [log vasentry | syslog] [rate_limit_action allow | drop] [rate_limit_log vsentry | syslog] \n");
 }
 
+static void print_show_action_usage(void)
+{
+	printf("vsnetry_cli show action [action name] \n");
+}
+
+static void print_show_rule_usage(void)
+{
+	printf("vsnetry_cli show [rule | wl] [section (can, ip, file) rule_number 99]  \n");
+}
+
 static void print_control_usage(void)
 {
+	printf("\n control:\n");
 	printf("control wl | sp | net [learn | apply | print | reset]\n");
 }
 
@@ -107,32 +118,66 @@ static void print_update_group_usage(void)
 	printf("vsentry-cli update group type group-name item1 item2 \n");
 }
 
+static void print_show_group_usage(void)
+{
+	printf("vsnetry_cli show group [group name] \n");
+}
+
+static void print_update_rule_usage(void)
+{
+	printf("can: vsentry_cli update [rule | wl] can rule_number my_rule_number dir [in | out | both] [mid | mid_group my_mid] "
+		"[interface | interface_group my_interface] [program_group | program my_program] [user_group | user my_user] action my_action\n");
+	printf("ip: vsentry_cli update [rule wl] ip rule_number my_rule_number [src_addr_group | src_addr my_ip] [dst_addr_group | dstaddr my_ip] [proto_group | proto my_proto] "
+		" [src_port_group my_port ] [dst_port_group | src_port my_port] [program_group | program my_program] [user_group | user my_user] action my_action\n");
+	printf("file: vsentry_cli update [rule wl] rule_number my_rule_number [file file_group my_file]  [perm my_per (combination of r, w, x)]" 
+		" [program_group | program my_program] [user_group | user my user ] action my_action\n");
+}
+
 static void print_update_usage(void)
 {
-	print_action_usage();
+	printf("\nupdate:\n");
+	print_update_rule_usage();
+	print_update_action_usage();
 	print_update_group_usage();
 }
 
 static void print_show_usage(void)
 {
-	printf("vsnetry_cli show [rule | wl ] [section (can, ip, file) rule_number 99]  \n");
-	printf("vsnetry_cli show action [action name] \n");
-	printf("vsnetry_cli show group [group name] \n");
+	printf("\nshow:\n");
+	print_show_rule_usage();
+	print_show_action_usage();
+	print_show_group_usage();
 }
 
 static void print_delete_group_usage(void)
 {
-	printf("usage: delete group ... \n");
+	printf("vsentry_cli delete group group_type group_name\n");
+}
+
+static void print_delete_rules(void)
+{
+	printf("vsentry_cli delete rule file | can | ip [rule_number my_rule_number]\n");
+}
+
+static void print_delete_actions(void)
+{
+	printf("vsentry_cli delete action action_name\n");
 }
 
 static void print_delete_usage(void)
 {
-	printf("usage: delete ... \n");
+	printf("\ndelete:\n");
+	print_delete_rules();
+	print_delete_actions();
+	print_delete_group_usage();
 }
 
-static void print_usage(char *prog)
+static void print_usage(void)
 {
-	printf("usgae: %s\n", prog);
+	print_show_usage();
+	print_update_usage();
+	print_delete_usage();
+	print_control_usage();
 }
 
 static SR_BOOL is_valid_rule_id(char *type, char *section, char *rule_str)
@@ -721,7 +766,7 @@ static SR_32 handle_update_action(int argc, char **argv)
 	redis_mng_action_t action_info = {};
 
 	if (argc < 3) {
-		print_action_usage();
+		print_update_action_usage();
 		return SR_ERROR;
 	}
 
@@ -1236,7 +1281,7 @@ SR_32 main(int argc, char **argv)
         }
 
 	if (argc < 2) {
-		print_usage(argv[0]);
+		print_usage();
 		return SR_ERROR;
 	}
 
