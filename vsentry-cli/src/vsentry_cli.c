@@ -318,7 +318,7 @@ static SR_BOOL is_valid_perm(char *perm)
 
 static SR_BOOL is_valid_action(char *action)
 {
-	return SR_TRUE;
+	return redis_mng_has_action(c, action) == 1;
 }
 
 static SR_BOOL is_valid_type(char *type)
