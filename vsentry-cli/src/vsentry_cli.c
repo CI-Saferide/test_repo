@@ -442,7 +442,7 @@ static SR_32 handle_update_can(SR_U32 rule_id, SR_BOOL is_wl, int argc, char **a
 	if ((is_update = redis_mng_has_can_rule(c, rule_id)) == SR_ERROR)
  		return SR_ERROR;
 
-	*interface = 0;
+	*dir = *interface = *mid = 0;
 	if (!is_update) {
 		INIT_COMMON_PARAMS
 		strcpy(mid, "any");
@@ -506,8 +506,7 @@ static SR_32 handle_update_file(SR_U32 rule_id, SR_BOOL is_wl, int argc, char **
 	if ((is_update = redis_mng_has_file_rule(c, rule_id)) == SR_ERROR)
  		return SR_ERROR;
 
-	*filename = 0;
-	*perm = 0;
+	*filename = *perm = 0;
 	if (!is_update) {
 		INIT_COMMON_PARAMS
 	} else {
