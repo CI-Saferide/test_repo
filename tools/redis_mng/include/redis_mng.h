@@ -74,12 +74,14 @@ typedef struct redis_mng_can_rule {
 } redis_mng_can_rule_t;
 
 typedef struct redis_mng_action {
-	char *bm;	// bitmap
-	char *log_facility;
-	char *log_severity;
-	char *rl;	// rate limit
-	char *sms;
-	char *mail;
+	char *action_bm;	// bitmap
+	char *action_log;
+//	char *log_facility;
+//	char *log_severity;
+	char *rl_bm;
+	char *rl_log;
+//	char *sms;
+//	char *mail;
 } redis_mng_action_t;
 
 //SR_32 redis_mng_parse_json(redis_mng_handler_t *handler, char *buf, SR_U32 *version, SR_U32 old_version);

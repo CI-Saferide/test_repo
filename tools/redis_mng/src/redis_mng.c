@@ -49,13 +49,14 @@
 #define FILENAME		"file"
 #define PERMISSION	 	"perm"
 // action specific fields
-#define BITMAP	 		"bm"
-#define LOG_FACILITY	"lf"
-#define LOG_SEVERITY	"ls"
-#define RL		 		"rl"
-#define SMS		 		"sms"
-#define EMAIL	 		"mail"
-// todo what is rl (for action) and skip rule ?
+#define ACTION_BITMAP	"abm"
+#define ACTION_LOG		"al"
+//#define LOG_FACILITY	"al"
+//#define LOG_SEVERITY	"ls"
+#define RL_BITMAP 		"rlbm"
+#define RL_LOG	 		"rll"
+//#define SMS		 	"sms"
+//#define EMAIL	 		"mail"
 
 static int redis_changes;
 
@@ -1172,7 +1173,7 @@ SR_32 redis_mng_print_actions(redisContext *c)
 			freeReplyObject(reply);
 			return SR_ERROR;
 		}
-		if (replies[i]->elements != 8) {
+		if (replies[i]->elements != ACTION_FIELDS) {
 			printf("ERROR: redisGetReply %d length is wrong %d instead of 8\n", i, (int)replies[i]->elements);
 			for (j = 0; j < i; j++)
 				freeReplyObject(replies[j]);
@@ -1182,12 +1183,13 @@ SR_32 redis_mng_print_actions(redisContext *c)
 		}
 
 		// action has no number so all are printed
+		// ACTION_BITMAP, action->action_bm, ACTION_LOG, action->action_log, RL_BITMAP, action->rl_bm, RL_LOG, action->rl_log
 		printf("%-10s %-6s %-6s %-6s %s \n",
 				reply->element[i]->str + strlen(ACTION_PREFIX), /* name */
-				replies[i]->element[1]->str, /* bm */
-				strcmp(replies[i]->element[3]->str, "none") != 0 ? "1" : "0" /* log facility */,
-				replies[i]->element[5]->str /* log severity */,
-				replies[i]->element[7]->str /* rl */);
+				replies[i]->element[1]->str, /* action_bm */
+				replies[i]->element[3]->str, /* action_log */
+				replies[i]->element[5]->str, /* rl_mb */
+				replies[i]->element[7]->str /* rl_log */);
 	}
 
 	// free replies
@@ -1938,9 +1940,8 @@ SR_32 redis_mng_add_action(redisContext *c, char *name, redis_mng_action_t *acti
 {
     redisReply *reply;
 
-	reply = redisCommand(c,"HMSET %s%d %s %s %s %s %s %s %s %s", ACTION_PREFIX, name, BITMAP, action->bm,
-			LOG_FACILITY, action->log_facility, LOG_SEVERITY, action->log_severity, RL, action->rl,
-			SMS, action->sms, EMAIL, action->mail);
+	reply = redisCommand(c,"HMSET %s%s %s %s %s %s %s %s %s %s", ACTION_PREFIX, name, ACTION_BITMAP, action->action_bm,
+			ACTION_LOG, action->action_log, RL_BITMAP, action->rl_bm, RL_LOG, action->rl_log);
 	if (reply == NULL || reply->type != REDIS_REPLY_STATUS) {
 		printf("ERROR: redis_mng_add_file_rule failed, %d\n", reply ? reply->type : -1);
 		freeReplyObject(reply);
