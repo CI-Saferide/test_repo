@@ -21,6 +21,7 @@
 #include <pwd.h>
 #include <unistd.h>
 #include "sr_cls_wl_common.h"
+#include "sr_actions_common.h"
 
 #define MAX_LIST_NAME 64
 #define MAX_LIST_VALUES 256
@@ -714,15 +715,22 @@ static SR_32 handle_update_action(int argc, char **argv)
 	char *name;
 	char log[LOG_FACILITY_SIZE] = {}, rl_log[LOG_FACILITY_SIZE] = {};
 	char rl_action[ACTION_STR_SIZE] = {}, action[ACTION_STR_SIZE] = {};
-	int ret, i;
+	char str_bm[32] = {}, str_rl_bm[32] = {};
+	SR_U32 bm = 0, rl_bm = 0;
+	SR_32 i;
+	redis_mng_action_t action_info = {};
 
 	if (argc < 3) {
 		print_action_usage();
 		return SR_ERROR;
 	}
 
+	strcpy(action, "none");
+	strcpy(log, "none");
+	strcpy(rl_action, "none");
+	strcpy(rl_log, "none");
+
 	name = argv[0];
-	
 	for (i = 1; i < argc; ) {
 		if (handle_param("action", action, sizeof(action), argc, &i, argv, is_valid_action_type, NULL, SR_FALSE) == SR_SUCCESS)
 			continue;
@@ -730,14 +738,40 @@ static SR_32 handle_update_action(int argc, char **argv)
 			continue;
 		if (handle_param("rate_limit_action", rl_action, sizeof(rl_action), argc, &i, argv, is_valid_action_type, NULL, SR_FALSE) == SR_SUCCESS)
 			continue;
-		if (handle_param("rate_limit_log", rl_log, sizeof(rl_action), argc, &i, argv, is_valid_log_facility, NULL, SR_FALSE) == SR_SUCCESS)
+		if (handle_param("rate_limit_log", rl_log, sizeof(rl_log), argc, &i, argv, is_valid_log_facility, NULL, SR_FALSE) == SR_SUCCESS)
 			continue;
 		printf("Invalid parameter :%s \n", argv[i]);
 		return SR_ERROR;
 	}
 
-#if DEBUG
-	printf("action name:%s action:%s action log facility:%s rl actioin :%s: rl action log:%s:\n", name, action, log, rl_action, rl_log);
+	if (!strcmp(action, "allow"))
+		bm |= SR_CLS_ACTION_ALLOW;
+	if (!strcmp(action, "drop"))
+		bm |= SR_CLS_ACTION_DROP;
+	if (strcmp(log, "none"))
+		bm |= SR_CLS_ACTION_LOG;
+	if (strcmp(rl_action, "none"))
+		bm |= SR_CLS_ACTION_RATE;
+	if (!strcmp(rl_action, "allow"))
+		rl_bm |= SR_CLS_ACTION_ALLOW;
+	if (!strcmp(rl_action, "drop"))
+		rl_bm |= SR_CLS_ACTION_DROP;
+	if (strcmp(rl_log, "none"))
+		rl_bm |= SR_CLS_ACTION_LOG;
+	snprintf(str_bm, sizeof(str_bm), "%d", bm);
+	snprintf(str_rl_bm, sizeof(str_bm), "%d", rl_bm);
+	action_info.action_bm = str_bm;
+	action_info.rl_bm = str_rl_bm;
+	action_info.action_log = log;
+	action_info.rl_log = rl_log;
+
+	if (redis_mng_add_action(c, name, &action_info)) {
+		printf("add action failed \n");
+		return SR_ERROR;
+	}
+
+#ifdef DEBUG
+	printf("action updated: name:%s: bm:%s: log_facility:%s: rl_bm:%s rl_log:%s  \n", name, action_info.action_bm, action_info.action_log, action_info.rl_bm, action_info.rl_log);
 #endif
 
 	return SR_SUCCESS;
@@ -813,6 +847,11 @@ static SR_32 show_version(void)
 	return SR_SUCCESS;
 }
 
+static SR_32 show_action(int argc, char **argv)
+{
+	return redis_mng_print_actions(c);
+}
+
 static SR_32 show_group(int argc, char **argv)
 {
 	char *type, *name;
@@ -856,6 +895,8 @@ static SR_32 handle_show(int argc, char **argv)
 		return show_version();
 	if (!strcmp(argv[0], "group"))
 		return show_group(argc - 1, argv + 1);
+	if (!strcmp(argv[0], "action"))
+		return show_action(argc - 1, argv + 1);
 
 	if (argc < 2) {
 		is_can = is_file = is_ip = SR_TRUE;
@@ -912,6 +953,18 @@ static SR_32 handle_delete_group(int argc, char **argv)
 	return SR_SUCCESS;
 }
 
+static SR_32 handle_delete_action(int argc, char **argv)
+{
+	if (!argc) {
+		printf("Enter action name\n");
+		return SR_ERROR;
+	}
+
+	printf("deleteing action :%s \n", argv[0]);
+
+	return redis_mng_del_action(c, argv[0]);
+}
+
 static SR_32 handle_delete(int argc, char **argv)
 {
 	char *type, *section;
@@ -925,6 +978,8 @@ static SR_32 handle_delete(int argc, char **argv)
 
 	if (!strcmp(argv[0], "group"))
 		return handle_delete_group(argc - 1, argv + 1);
+	if (!strcmp(argv[0], "action"))
+		return handle_delete_action(argc - 1, argv + 1);
 
 	type = argv[0];
 	if (!is_valid_type(type)) {
