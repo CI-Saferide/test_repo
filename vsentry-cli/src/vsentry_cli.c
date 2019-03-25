@@ -109,7 +109,7 @@ static void print_show_rule_usage(void)
 
 static void print_control_usage(void)
 {
-	printf("\n control:\n");
+	printf("\ncontrol:\n");
 	printf("control wl | sp | net [learn | apply | print | reset]\n");
 }
 
@@ -1252,8 +1252,34 @@ static SR_32 handle_wl(int argc, char **argv)
 		handle_apply();
 		return SR_SUCCESS;
 	}
+	if (!strcmp(argv[0], "reset")) {
+		handle_cmd_gen("wl_reset", "reseting...", SR_FALSE);
+		return SR_SUCCESS;
+	}
 	if (!strcmp(argv[0], "print")) {
 		handle_cmd_gen("wl_print", NULL, SR_TRUE);
+		return SR_SUCCESS;
+	}
+
+	return SR_SUCCESS;
+}
+
+static SR_32 handle_sp(int argc, char **argv)
+{
+	if (!argc) {
+		print_control_usage();
+		return SR_ERROR;
+	}
+	if (!strcmp(argv[0], "learn")) {
+		handle_cmd_gen("sp_learn", "learning...", SR_FALSE);
+		return SR_SUCCESS;
+	}
+	if (!strcmp(argv[0], "apply")) {
+		handle_cmd_gen("sp_apply", "applying ...", SR_FALSE);
+		return SR_SUCCESS;
+	}
+	if (!strcmp(argv[0], "off")) {
+		handle_cmd_gen("sp_off", "", SR_FALSE);
 		return SR_SUCCESS;
 	}
 
@@ -1268,6 +1294,8 @@ static SR_32 handle_control(int argc, char **argv)
 	}
 	if (!strcmp(argv[0], "wl")) 
 		return handle_wl(argc - 1, argv + 1);
+	if (!strcmp(argv[0], "sp")) 
+		return handle_sp(argc - 1, argv + 1);
 
 	return SR_SUCCESS;
 }
