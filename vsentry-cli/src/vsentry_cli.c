@@ -397,21 +397,22 @@ static SR_U32 handle_param(char *param, char *field, int field_size, int argc, i
 		if (is_list_var)
 			*is_list_var = is_list;
 		(*i)++;
+		return SR_SUCCESS;
 	}
-	return SR_SUCCESS;
+	return SR_NOT_FOUND;
 }
 
 #define HANDLE_COMMON_PARAMS \
-	if (handle_param("program", program, sizeof(program), argc, &i, argv, is_valid_program, &is_program_list, SR_FALSE) != SR_SUCCESS) \
-		return SR_ERROR;  \
-	if (handle_param("program_group", program, sizeof(program), argc, &i, argv, is_valid_program_group, &is_program_list, SR_TRUE) != SR_SUCCESS) \
-		return SR_ERROR;  \
-	if (handle_param("user", user, sizeof(user), argc, &i, argv, is_valid_user, &is_user_list, SR_FALSE) != SR_SUCCESS) \
-		return SR_ERROR;  \
-	if (handle_param("user_group", user, sizeof(user), argc, &i, argv, is_valid_user_group, &is_user_list, SR_TRUE) != SR_SUCCESS) \
-		return SR_ERROR;  \
-	if (handle_param("action", action, sizeof(action), argc, &i, argv, is_valid_action, NULL, SR_FALSE) != SR_SUCCESS) \
-		return SR_ERROR; \
+	if (handle_param("program", program, sizeof(program), argc, &i, argv, is_valid_program, &is_program_list, SR_FALSE) == SR_SUCCESS) \
+		continue; \
+	if (handle_param("program_group", program, sizeof(program), argc, &i, argv, is_valid_program_group, &is_program_list, SR_TRUE) == SR_SUCCESS) \
+		continue; \
+	if (handle_param("user", user, sizeof(user), argc, &i, argv, is_valid_user, &is_user_list, SR_FALSE) == SR_SUCCESS) \
+		continue; \
+	if (handle_param("user_group", user, sizeof(user), argc, &i, argv, is_valid_user_group, &is_user_list, SR_TRUE) == SR_SUCCESS) \
+		continue; \
+	if (handle_param("action", action, sizeof(action), argc, &i, argv, is_valid_action, NULL, SR_FALSE) == SR_SUCCESS) \
+		continue; 
 
 #define INIT_COMMON_PARAMS \
 	*action = 0; \
@@ -433,7 +434,7 @@ static SR_U32 handle_param(char *param, char *field, int field_size, int argc, i
 
 static SR_32 handle_update_can(SR_U32 rule_id, SR_BOOL is_wl, int argc, char **argv)
 {
-	int i, prev_i;
+	int i;
 	char mid[MAX_LIST_NAME], interface[64], dir[32], user[USER_NAME_SIZE], program[PROG_NAME_SIZE], action[ACTION_STR_SIZE];
 	SR_BOOL is_program_list = SR_FALSE, is_user_list = SR_FALSE, is_mid_list = SR_FALSE, is_interface_list = SR_FALSE;
 	SR_32 ret, is_update;
@@ -452,20 +453,19 @@ static SR_32 handle_update_can(SR_U32 rule_id, SR_BOOL is_wl, int argc, char **a
 	}
 
 	for (i = 0; i < argc; ) {
-		prev_i = i;
-		if (handle_param("mid", mid, sizeof(mid), argc, &i, argv, is_valid_msg_id, &is_mid_list, SR_FALSE) != SR_SUCCESS)
-			return SR_ERROR; 
-		if (handle_param("mid_group", mid, sizeof(mid), argc, &i, argv, is_valid_mid_list, &is_mid_list, SR_TRUE) != SR_SUCCESS)
-			return SR_ERROR; 
-		if (handle_param("interface", interface, sizeof(interface), argc, &i, argv, is_valid_interface, &is_interface_list, SR_FALSE) != SR_SUCCESS)
-			return SR_ERROR; 
-		if (handle_param("interface_group", interface, sizeof(interface), argc, &i, argv, is_valid_interface_list, &is_interface_list, SR_TRUE) != SR_SUCCESS)
-			return SR_ERROR; 
-		if (handle_param("dir", dir, sizeof(dir), argc, &i, argv, is_valid_dir, NULL, SR_FALSE) != SR_SUCCESS)
-			return SR_ERROR; 
+		if (handle_param("mid", mid, sizeof(mid), argc, &i, argv, is_valid_msg_id, &is_mid_list, SR_FALSE) == SR_SUCCESS)
+			continue;
+		if (handle_param("mid_group", mid, sizeof(mid), argc, &i, argv, is_valid_mid_list, &is_mid_list, SR_TRUE) == SR_SUCCESS)
+			continue;
+		if (handle_param("interface", interface, sizeof(interface), argc, &i, argv, is_valid_interface, &is_interface_list, SR_FALSE) == SR_SUCCESS)
+			continue;
+		if (handle_param("interface_group", interface, sizeof(interface), argc, &i, argv, is_valid_interface_list, &is_interface_list, SR_TRUE) == SR_SUCCESS)
+			continue;
+		if (handle_param("dir", dir, sizeof(dir), argc, &i, argv, is_valid_dir, NULL, SR_FALSE) == SR_SUCCESS)
+			continue;
 		HANDLE_COMMON_PARAMS
-		if (i == prev_i)
-			i++;
+		printf("Invalid paramter:%s \n", argv[i]);
+		return SR_ERROR;
 	}
 	if (!is_wl) {
 		CHECK_MISSING_PARAM(action, "action")
@@ -496,7 +496,7 @@ static SR_32 handle_update_can(SR_U32 rule_id, SR_BOOL is_wl, int argc, char **a
 
 static SR_32 handle_update_file(SR_U32 rule_id, SR_BOOL is_wl, int argc, char **argv)
 {
-	int i, prev_i;
+	int i;
 	char filename[32], perm[FILE_NAME_SIZE];
 	char user[USER_NAME_SIZE], program[PROG_NAME_SIZE], action[ACTION_STR_SIZE];
 	SR_BOOL is_filename_list = SR_FALSE, is_program_list = SR_FALSE, is_user_list = SR_FALSE;
@@ -514,16 +514,15 @@ static SR_32 handle_update_file(SR_U32 rule_id, SR_BOOL is_wl, int argc, char **
 	}
 
 	for (i = 0; i < argc; ) {
-		prev_i = i;
-		if (handle_param("filename", filename, sizeof(filename), argc, &i, argv, is_valid_file, &is_filename_list, SR_FALSE) != SR_SUCCESS)
-			return SR_ERROR; 
-		if (handle_param("file_group", filename, sizeof(filename), argc, &i, argv, is_valid_filename_list, &is_filename_list, SR_TRUE) != SR_SUCCESS)
-			return SR_ERROR; 
-		if (handle_param("perm", perm, sizeof(perm), argc, &i, argv, is_valid_perm, NULL, SR_FALSE) != SR_SUCCESS)
-			return SR_ERROR; 
+		if (handle_param("filename", filename, sizeof(filename), argc, &i, argv, is_valid_file, &is_filename_list, SR_FALSE) == SR_SUCCESS)
+			continue;
+		if (handle_param("file_group", filename, sizeof(filename), argc, &i, argv, is_valid_filename_list, &is_filename_list, SR_TRUE) == SR_SUCCESS)
+			continue;
+		if (handle_param("perm", perm, sizeof(perm), argc, &i, argv, is_valid_perm, NULL, SR_FALSE) == SR_SUCCESS)
+			continue;
 		HANDLE_COMMON_PARAMS
-		if (i == prev_i)
-			i++;
+		printf("Invalid paramter:%s \n", argv[i]);
+		return SR_ERROR;
 	}
 	if (!is_wl) {
 		CHECK_MISSING_PARAM(action, "action")
@@ -553,7 +552,7 @@ static SR_32 handle_update_file(SR_U32 rule_id, SR_BOOL is_wl, int argc, char **
 
 static SR_32 handle_update_ip(SR_U32 rule_id, SR_BOOL is_wl, int argc, char **argv)
 {
-	int i, prev_i;
+	int i;
 	char src_addr[IP_ADDR_SIZE + IP_NETMASK_SIZE + 1], dst_addr[IP_ADDR_SIZE + IP_NETMASK_SIZE + 1], proto[PROTO_SIZE], src_port[PORT_SIZE], dst_port[PORT_SIZE];
 	char user[USER_NAME_SIZE], program[PROG_NAME_SIZE], action[ACTION_STR_SIZE];
 	SR_BOOL is_src_addr_list = SR_FALSE, is_dst_addr_list = SR_FALSE, is_proto_list = SR_FALSE,
@@ -576,30 +575,29 @@ static SR_32 handle_update_ip(SR_U32 rule_id, SR_BOOL is_wl, int argc, char **ar
 		*proto = *src_addr = *dst_addr = *src_port = *dst_port = 0;
 	}
 	for (i = 0; i < argc; ) {
-		prev_i = i;
-		if (handle_param("src_addr", src_addr, sizeof(src_addr), argc, &i, argv, is_valid_ip_addr, &is_src_addr_list, SR_FALSE) != SR_SUCCESS)
-			return SR_ERROR; 
-		if (handle_param("src_addr_group", src_addr, sizeof(src_addr), argc, &i, argv, is_valid_ip_addr_list, &is_src_addr_list, SR_TRUE) != SR_SUCCESS)
-			return SR_ERROR; 
-		if (handle_param("dst_addr", dst_addr, sizeof(dst_addr), argc, &i, argv, is_valid_ip_addr, &is_dst_addr_list, SR_FALSE) != SR_SUCCESS)
-			return SR_ERROR; 
-		if (handle_param("dst_addr_group", dst_addr, sizeof(dst_addr), argc, &i, argv, is_valid_ip_addr_list, &is_dst_addr_list, SR_TRUE) != SR_SUCCESS)
-			return SR_ERROR; 
-		if (handle_param("proto", proto, sizeof(proto), argc, &i, argv, is_valid_ip_proto, &is_proto_list, SR_FALSE) != SR_SUCCESS)
-			return SR_ERROR; 
-		if (handle_param("proto_group", proto, sizeof(proto), argc, &i, argv, is_valid_proto_list, &is_proto_list, SR_TRUE) != SR_SUCCESS)
-			return SR_ERROR; 
-		if (handle_param("src_port", src_port, sizeof(src_port), argc, &i, argv, is_valid_port, &is_src_port_list, SR_FALSE) != SR_SUCCESS)
-			return SR_ERROR; 
-		if (handle_param("src_port_group", src_port, sizeof(src_port), argc, &i, argv, is_valid_port_list, &is_src_port_list, SR_TRUE) != SR_SUCCESS)
-			return SR_ERROR; 
-		if (handle_param("dst_port", dst_port, sizeof(dst_port), argc, &i, argv, is_valid_port, &is_dst_port_list, SR_FALSE) != SR_SUCCESS)
-			return SR_ERROR; 
-		if (handle_param("dst_port_group", dst_port, sizeof(dst_port), argc, &i, argv, is_valid_port_list, &is_dst_port_list, SR_TRUE) != SR_SUCCESS)
-			return SR_ERROR; 
+		if (handle_param("src_addr", src_addr, sizeof(src_addr), argc, &i, argv, is_valid_ip_addr, &is_src_addr_list, SR_FALSE) == SR_SUCCESS)
+			continue;
+		if (handle_param("src_addr_group", src_addr, sizeof(src_addr), argc, &i, argv, is_valid_ip_addr_list, &is_src_addr_list, SR_TRUE) == SR_SUCCESS)
+			continue;
+		if (handle_param("dst_addr", dst_addr, sizeof(dst_addr), argc, &i, argv, is_valid_ip_addr, &is_dst_addr_list, SR_FALSE) == SR_SUCCESS)
+			continue;
+		if (handle_param("dst_addr_group", dst_addr, sizeof(dst_addr), argc, &i, argv, is_valid_ip_addr_list, &is_dst_addr_list, SR_TRUE) == SR_SUCCESS)
+			continue;
+		if (handle_param("proto", proto, sizeof(proto), argc, &i, argv, is_valid_ip_proto, &is_proto_list, SR_FALSE) == SR_SUCCESS)
+			continue;
+		if (handle_param("proto_group", proto, sizeof(proto), argc, &i, argv, is_valid_proto_list, &is_proto_list, SR_TRUE) == SR_SUCCESS)
+			continue;
+		if (handle_param("src_port", src_port, sizeof(src_port), argc, &i, argv, is_valid_port, &is_src_port_list, SR_FALSE) == SR_SUCCESS)
+			continue;
+		if (handle_param("src_port_group", src_port, sizeof(src_port), argc, &i, argv, is_valid_port_list, &is_src_port_list, SR_TRUE) == SR_SUCCESS)
+			continue;
+		if (handle_param("dst_port", dst_port, sizeof(dst_port), argc, &i, argv, is_valid_port, &is_dst_port_list, SR_FALSE) == SR_SUCCESS)
+			continue;
+		if (handle_param("dst_port_group", dst_port, sizeof(dst_port), argc, &i, argv, is_valid_port_list, &is_dst_port_list, SR_TRUE) == SR_SUCCESS)
+			continue;
 		HANDLE_COMMON_PARAMS
-		if (i == prev_i)
-			i++;
+		printf("Invalid paramter:%s \n", argv[i]);
+		return SR_ERROR;
 	}
 
 	if (!is_wl) {
@@ -725,15 +723,17 @@ static SR_32 handle_update_action(int argc, char **argv)
 
 	name = argv[0];
 	
-	for (i = 1; i < argc; i++) {
-		if (handle_param("action", action, sizeof(action), argc, &i, argv, is_valid_action_type, NULL, SR_FALSE) != SR_SUCCESS)
-			return SR_ERROR; 
-		if (handle_param("log", log, sizeof(log), argc, &i, argv, is_valid_log_facility, NULL, SR_FALSE) != SR_SUCCESS)
-			return SR_ERROR; 
-		if (handle_param("rate_limit_action", rl_action, sizeof(rl_action), argc, &i, argv, is_valid_action_type, NULL, SR_FALSE) != SR_SUCCESS)
-			return SR_ERROR; 
-		if (handle_param("rate_limit_log", rl_log, sizeof(rl_action), argc, &i, argv, is_valid_log_facility, NULL, SR_FALSE) != SR_SUCCESS)
-			return SR_ERROR; 
+	for (i = 1; i < argc; ) {
+		if (handle_param("action", action, sizeof(action), argc, &i, argv, is_valid_action_type, NULL, SR_FALSE) == SR_SUCCESS)
+			continue;
+		if (handle_param("log", log, sizeof(log), argc, &i, argv, is_valid_log_facility, NULL, SR_FALSE) == SR_SUCCESS)
+			continue;
+		if (handle_param("rate_limit_action", rl_action, sizeof(rl_action), argc, &i, argv, is_valid_action_type, NULL, SR_FALSE) == SR_SUCCESS)
+			continue;
+		if (handle_param("rate_limit_log", rl_log, sizeof(rl_action), argc, &i, argv, is_valid_log_facility, NULL, SR_FALSE) == SR_SUCCESS)
+			continue;
+		printf("Invalid parameter :%s \n", argv[i]);
+		return SR_ERROR;
 	}
 
 #if DEBUG
