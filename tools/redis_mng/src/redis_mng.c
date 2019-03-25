@@ -1104,16 +1104,19 @@ SR_U8 redis_mng_perm_get_code(char *perms)
 
 void file_op_convert(SR_U8 file_op, char *perms)
 {
-	SR_U8 res = 0;
+	//SR_U8 res = 0;
 
 	if (file_op & SR_FILEOPS_READ) 
-		res |= 4;
+		//res |= 4;
+		sprintf(perms, "R");
 	if (file_op & SR_FILEOPS_WRITE) 
-		res |= 2;
+		//res |= 2;
+		sprintf(perms, "W");
 	if (file_op & SR_FILEOPS_EXEC) 
-		res |= 1;
+		//res |= 1;
+		sprintf(perms, "X");
 
-	sprintf(perms, "77%d", res);
+	//sprintf(perms, "77%d", res);
 }
 
 #define ADD_FILE_FIELD(fieldname, fieldvalue) \
@@ -1940,6 +1943,7 @@ SR_32 redis_mng_add_action(redisContext *c, char *name, redis_mng_action_t *acti
 {
     redisReply *reply;
 
+    // todo handle NULL
 	reply = redisCommand(c,"HMSET %s%s %s %s %s %s %s %s %s %s", ACTION_PREFIX, name, ACTION_BITMAP, action->action_bm,
 			ACTION_LOG, action->action_log, RL_BITMAP, action->rl_bm, RL_LOG, action->rl_log);
 	if (reply == NULL || reply->type != REDIS_REPLY_STATUS) {

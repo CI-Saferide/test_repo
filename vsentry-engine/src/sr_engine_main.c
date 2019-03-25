@@ -454,7 +454,7 @@ static int sr_redis_load(int tcp, int pipeline)
 			sprintf(file, "a_file_path_of_50_chars_length_123456789_0AB____GH");
 			sprintf(file + 44, "%04d", i);
 			if (strcmp(file_rule_ptr->tuple.filename, file)) {
-				printf("ERROR: file rule %d filepath %s != %s\n", i, file_rule_ptr->tuple.filename, file);
+				printf("ERROR: file rule %d file path %s != %s\n", i, file_rule_ptr->tuple.filename, file);
 				sr_db_deinit();
 				return -1;
 			}
