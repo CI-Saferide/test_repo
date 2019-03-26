@@ -829,7 +829,7 @@ static SR_32 handle_update(int argc, char **argv)
 
 	if (argc < 3) {
 		print_update_usage();
-		return SR_ERROR;
+		return SR_SUCCESS;
 	}
 
 	type = argv[0];
@@ -1310,7 +1310,7 @@ SR_32 main(int argc, char **argv)
 
 	if (argc < 2) {
 		print_usage();
-		return SR_ERROR;
+		return SR_SUCCESS;
 	}
 
 	if (!strcmp(argv[1], "update"))
