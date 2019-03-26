@@ -954,8 +954,8 @@ static SR_32 handle_show(int argc, char **argv)
 	if (!strcmp(argv[1], "file"))
 		is_file = SR_TRUE;
 	
-	if (argc > 2)
-		from = to = atoi(argv[1]);
+	if (argc == 4 && !strcmp(argv[2], "rule_number"))
+		from = to = atoi(argv[3]);
 print:
 	if (is_can) {
 		printf("Can rules :\n");
