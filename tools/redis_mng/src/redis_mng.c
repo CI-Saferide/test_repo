@@ -1307,7 +1307,7 @@ SR_32 redis_mng_print_rules(redisContext *c, rule_type_t type, SR_32 rule_id_sta
 
 			num = atoi(reply->element[i]->str + strlen(CAN_PREFIX));
 			if (((rule_id_start == -1) && (rule_id_end == -1)) || ((num >= rule_id_start) && (num <= rule_id_end))) {
-					printf("\r%-6d %-8s %-24.24s %-24.24s %-24.24s %-24.10s %-24.10s\n",
+					printf("\r%-6d %-8s %-24.24s %-24.24s %-24.24s %-24.24s %-24.10s\n",
 							num,
 							replies[i]->elements > 3 ? replies[i]->element[3]->str : "NA", /* msg_id */
 							replies[i]->elements > 5 ? replies[i]->element[5]->str : "NA", /* direction */
