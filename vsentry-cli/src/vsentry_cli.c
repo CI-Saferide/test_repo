@@ -1016,7 +1016,7 @@ static SR_32 handle_delete(int argc, char **argv)
 	SR_U32 from_rule = -1, to_rule = -1;
 	SR_BOOL is_can = SR_FALSE, is_file = SR_FALSE, is_ip = SR_FALSE, is_force = SR_TRUE;
 
-	if (argc < 1) {
+	if (argc < 2) {
 		print_delete_usage();
 		return SR_ERROR;
 	}
