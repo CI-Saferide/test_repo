@@ -481,7 +481,7 @@ static SR_U32 handle_param(char *param, char *field, int field_size, int argc, i
 static SR_32 handle_update_can(SR_U32 rule_id, SR_BOOL is_wl, int argc, char **argv)
 {
 	int i;
-	char mid[MAX_LIST_NAME], interface[64], dir[32], user[USER_NAME_SIZE], program[PROG_NAME_SIZE], action[ACTION_STR_SIZE];
+	char mid[GROUP_NAME_SIZE], interface[GROUP_NAME_SIZE], dir[16], user[GROUP_NAME_SIZE], program[GROUP_NAME_SIZE], action[ACTION_STR_SIZE];
 	SR_BOOL is_program_list = SR_FALSE, is_user_list = SR_FALSE, is_mid_list = SR_FALSE, is_interface_list = SR_FALSE;
 	SR_32 ret, is_update;
 	redis_mng_can_rule_t rule_info = {};
@@ -543,8 +543,8 @@ static SR_32 handle_update_can(SR_U32 rule_id, SR_BOOL is_wl, int argc, char **a
 static SR_32 handle_update_file(SR_U32 rule_id, SR_BOOL is_wl, int argc, char **argv)
 {
 	int i;
-	char filename[32], perm[FILE_NAME_SIZE];
-	char user[USER_NAME_SIZE], program[PROG_NAME_SIZE], action[ACTION_STR_SIZE];
+	char filename[GROUP_NAME_SIZE], perm[16];
+	char user[GROUP_NAME_SIZE], program[GROUP_NAME_SIZE], action[ACTION_STR_SIZE];
 	SR_BOOL is_filename_list = SR_FALSE, is_program_list = SR_FALSE, is_user_list = SR_FALSE;
 	SR_32 ret, is_update;
 	redis_mng_file_rule_t rule_info = {};
@@ -560,7 +560,7 @@ static SR_32 handle_update_file(SR_U32 rule_id, SR_BOOL is_wl, int argc, char **
 	}
 
 	for (i = 0; i < argc; ) {
-		if (handle_param("filename", filename, sizeof(filename), argc, &i, argv, is_valid_file, &is_filename_list, SR_FALSE) == SR_SUCCESS)
+		if (handle_param("file", filename, sizeof(filename), argc, &i, argv, is_valid_file, &is_filename_list, SR_FALSE) == SR_SUCCESS)
 			continue;
 		if (handle_param("file_group", filename, sizeof(filename), argc, &i, argv, is_valid_filename_list, &is_filename_list, SR_TRUE) == SR_SUCCESS)
 			continue;
@@ -599,8 +599,8 @@ static SR_32 handle_update_file(SR_U32 rule_id, SR_BOOL is_wl, int argc, char **
 static SR_32 handle_update_ip(SR_U32 rule_id, SR_BOOL is_wl, int argc, char **argv)
 {
 	int i;
-	char src_addr[IP_ADDR_SIZE + IP_NETMASK_SIZE + 1], dst_addr[IP_ADDR_SIZE + IP_NETMASK_SIZE + 1], proto[PROTO_SIZE], src_port[PORT_SIZE], dst_port[PORT_SIZE];
-	char user[USER_NAME_SIZE], program[PROG_NAME_SIZE], action[ACTION_STR_SIZE];
+	char src_addr[GROUP_NAME_SIZE], dst_addr[GROUP_NAME_SIZE], proto[GROUP_NAME_SIZE], src_port[GROUP_NAME_SIZE], dst_port[GROUP_NAME_SIZE];
+	char user[GROUP_NAME_SIZE], program[GROUP_NAME_SIZE], action[ACTION_STR_SIZE];
 	SR_BOOL is_src_addr_list = SR_FALSE, is_dst_addr_list = SR_FALSE, is_proto_list = SR_FALSE,
 		 is_src_port_list = SR_FALSE, is_dst_port_list = SR_FALSE, is_program_list = SR_FALSE, is_user_list = SR_FALSE;
 	SR_32 ret, is_update;
