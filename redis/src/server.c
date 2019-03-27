@@ -56,7 +56,7 @@
 #include <locale.h>
 #include <sys/socket.h>
 
-//#define DEL		"b840fc02d52be45429941cc15f59e41cb7ef6c52"
+#define DEL			"GEL"
 #define PASS_128	"a95qaewbe13dr68tayb45u63i8o9fepac[b]0069 \
 					 ea4s1bcd7ef8g90chfbj8k40flc;02d'5/2be.45 \
 					 ,4m299n41bcvc15vf5c9xe41zcb17`ef63c5425= \
@@ -4018,7 +4018,7 @@ int main(int argc, char **argv) {
     FILE *logfp;
     struct redisCommand *cmd;
     int retval;
-    sds copy, name;
+    sds /*copy,*/ name;
 
 #ifdef REDIS_TEST
     if (argc == 3 && !strcasecmp(argv[1], "test")) {
@@ -4224,8 +4224,7 @@ int main(int argc, char **argv) {
     	serverLog(LL_WARNING,"No such command in rename-command CONFIG");
     // todo rename all the commands we use
     // Note: changing the name of commands that are logged into the AOF file or transmitted to replicas may cause problems
-#if 0
-    printf("\n*** DBG *** replace DEL begin\n");
+//    printf("\n*** DBG *** replace DEL begin\n");
     name = sdsnew("del");
     cmd = dictFetchValue(server.commands, name);
     if (cmd) {
@@ -4234,18 +4233,14 @@ int main(int argc, char **argv) {
     	if (retval != DICT_OK)
     		serverLog(LL_WARNING,"Failed to remove command DEL");
     	// now re-add the command under a different name
-//    	copy = sdsdup(/* fixme DEL*/"GEL");
-    	copy = sdsnew("GEL");
-    	printf("*** DBG *** DEL cmd %s, copy %s\n", (char *)cmd, (char *)copy);
-    	// copy = sdsnew(c->name = str), cmd = struct redisCommand *
-    	retval = dictAdd(server.commands, copy/*sdsnew("GEL")*/, cmd);
-//    	sdsfree(copy);
+//    	copy = sdsnew(DEL);
+//    	printf("*** DBG *** DEL cmd %s, copy %s\n", (char *)cmd, (char *)copy);
+    	retval = dictAdd(server.commands, /*copy*/sdsnew(DEL), cmd);
     	if (retval != DICT_OK)
     		serverLog(LL_WARNING,"Failed to replace command DEL");
     } else
     	serverLog(LL_WARNING,"No such command in rename-command DEL");
-    printf("*** DBG *** replace DEL end\n\n");
-#endif
+//    printf("*** DBG *** replace DEL end\n\n");
 
     // connection:
     server.port = 6379; // todo which port we want ?
