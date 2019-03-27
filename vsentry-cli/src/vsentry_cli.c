@@ -435,7 +435,7 @@ static SR_U32 handle_param(char *param, char *field, int field_size, int argc, i
 			printf("%s value is misssing.\n", param);
 			return SR_ERROR;
 		}
-		if (!is_valid_cb(argv[*i])) {
+		if (is_valid_cb && !is_valid_cb(argv[*i])) {
 			printf("%s is invalid.\n", param);
 			return SR_ERROR;
 		}
