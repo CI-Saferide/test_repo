@@ -23,7 +23,9 @@
 #include "sr_log.h"
 #endif
 
-#define DEL			"GEL"
+#define AUTH		"O5TBQ23IBTIGBV9WWAHTG9824G"
+#define DEL			"205Y38YHBJNSNBNESROTHY309HL"
+
 #define PASS_128	"a95qaewbe13dr68tayb45u63i8o9fepac[b]0069 \
 					 ea4s1bcd7ef8g90chfbj8k40flc;02d'5/2be.45 \
 					 ,4m299n41bcvc15vf5c9xe41zcb17`ef63c5425= \
@@ -1082,7 +1084,7 @@ redisContext *redis_mng_session_start(SR_BOOL is_tcp)
 			return NULL;
 	}
 	// authenticate
-	reply = redisCommand(c,"AUTH %s", PASS_128);
+	reply = redisCommand(c,"%s %s", AUTH, PASS_128);
 	if (reply == NULL || reply->type != REDIS_REPLY_STATUS || strcmp(reply->str, "OK")) {
 		printf("ERROR: redis_mng_session_start auth failed, %d, %s\n", reply ? reply->type : -1, reply->str ? reply->str : "NULL");
 		freeReplyObject(reply);
