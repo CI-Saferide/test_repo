@@ -23,6 +23,10 @@
 #include "sr_log.h"
 #endif
 
+//#define DEL		"b840fc02d52be45429941cc15f59e41cb7ef6c52"
+//#define DEL		"GEL"
+#define DEL		"DEL"
+
 #define ENGINE		 	"engine"
 #define ACTION_PREFIX   "a:"
 #define LIST_PREFIX		"l:"
@@ -45,6 +49,8 @@
 #define PROTOCOL 		"prot"
 #define SRC_PORT		"sp"
 #define DST_PORT	 	"dp"
+#define UP_RL		 	"url"
+#define DOWN_RL	 		"drl"
 // file rule specific fields
 #define FILENAME		"file"
 #define PERMISSION	 	"perm"
@@ -1330,7 +1336,7 @@ SR_32 redis_mng_print_rules(redisContext *c, rule_type_t type, SR_32 rule_id_sta
 
 			num = atoi(reply->element[i]->str + strlen(NET_PREFIX));
 			if (((rule_id_start == -1) && (rule_id_end == -1)) || ((num >= rule_id_start) && (num <= rule_id_end))) {
-				printf("%-6d %-32s %-32s %s %s %s %-24.24s %-24.24s %-24.24s\n",
+				printf("%-6d %-32s %-32s %s %s %s %-24.24s %-24.24s %-24.24s %-10.10s %-10.10s\n",
 						num,
 						replies[i]->elements > 3 ? replies[i]->element[3]->str : "NA", /* src_addr | src_netmask */
 						replies[i]->elements > 5 ? replies[i]->element[5]->str : "NA", /* dst_addr | dst_netmask */
@@ -1339,7 +1345,9 @@ SR_32 redis_mng_print_rules(redisContext *c, rule_type_t type, SR_32 rule_id_sta
 						replies[i]->elements > 15 ? replies[i]->element[15]->str : "NA", /* dstport */
 						replies[i]->elements > 7 ? replies[i]->element[7]->str : "NA", /*program */
 						replies[i]->elements > 9 ? replies[i]->element[9]->str : "NA", /* user */
-						replies[i]->elements > 1 ? replies[i]->element[1]->str : "NA" /* action */);
+						replies[i]->elements > 1 ? replies[i]->element[1]->str : "NA", /* action */
+						replies[i]->elements > 17 ? replies[i]->element[17]->str : "NA", /* up_rl */
+						replies[i]->elements > 19 ? replies[i]->element[19]->str : "NA" /* down_rl */);
 			}
 
 		} else if ((type == RULE_TYPE_FILE)/* && strstr(reply->element[i]->str, FILE_PREFIX)*/) { // file rule
@@ -1943,9 +1951,10 @@ SR_32 redis_mng_add_action(redisContext *c, char *name, redis_mng_action_t *acti
 {
     redisReply *reply;
 
-    // todo handle NULL
-	reply = redisCommand(c,"HMSET %s%s %s %s %s %s %s %s %s %s", ACTION_PREFIX, name, ACTION_BITMAP, action->action_bm,
-			ACTION_LOG, action->action_log, RL_BITMAP, action->rl_bm, RL_LOG, action->rl_log);
+	reply = redisCommand(c,"HMSET %s%s %s %s %s %s %s %s %s %s", ACTION_PREFIX, name,
+			ACTION_BITMAP, action->action_bm ? action->action_bm : "NULL",
+			ACTION_LOG, action->action_log ? action->action_log : "NULL",
+			RL_BITMAP, action->rl_bm ? action->rl_bm : "NULL", RL_LOG, action->rl_log ? action->rl_log : "NULL");
 	if (reply == NULL || reply->type != REDIS_REPLY_STATUS) {
 		printf("ERROR: redis_mng_add_file_rule failed, %d\n", reply ? reply->type : -1);
 		freeReplyObject(reply);
@@ -1959,7 +1968,7 @@ SR_32 redis_mng_del_action(redisContext *c, char *name)
 {
     redisReply *reply;
 
-	reply = redisCommand(c,"DEL %s%s", ACTION_PREFIX, name);
+	reply = redisCommand(c,"%s %s%s", DEL, ACTION_PREFIX, name);
 	if (reply == NULL || reply->type != REDIS_REPLY_INTEGER || reply->integer != 1) {
 		printf("ERROR: redis_mng_del_file_rule failed, type %d, i %d\n", reply ? reply->type : -1, reply ? (int)reply->integer : 0);
 		freeReplyObject(reply);
@@ -2024,7 +2033,7 @@ SR_32 redis_mng_destroy_list(redisContext *c, list_type_e type, char *name)
 {
 	redisReply *reply;
 
-	reply = redisCommand(c,"DEL %d%s%s", type, LIST_PREFIX, name);
+	reply = redisCommand(c,"%s %d%s%s", DEL, type, LIST_PREFIX, name);
 	if (reply == NULL || reply->type != REDIS_REPLY_INTEGER || reply->integer != 1) {
 		printf("ERROR: redis_mng_destroy_list failed, type %d, i %d\n", reply ? reply->type : -1, reply ? (int)reply->integer : 0);
 		freeReplyObject(reply);
@@ -2087,7 +2096,7 @@ SR_32 redis_mng_del_file_rule(redisContext *c, SR_32 rule_id_start, SR_32 rule_i
     SR_32 rule_id;
 
     for (rule_id = rule_id_start; rule_id <= rule_id_end; rule_id++) {
-    	reply = redisCommand(c,"DEL %s%d", FILE_PREFIX, rule_id);
+    	reply = redisCommand(c,"%s %s%d", DEL, FILE_PREFIX, rule_id);
     	if (!force && (reply == NULL || reply->type != REDIS_REPLY_INTEGER || reply->integer != 1)) {
     		printf("ERROR: redis_mng_del_file_rule failed, type %d, i %d\n", reply ? reply->type : -1, reply ? (int)reply->integer : 0);
     		freeReplyObject(reply);
@@ -2194,6 +2203,10 @@ SR_32 redis_mng_update_net_rule(redisContext *c, SR_32 rule_id, redis_mng_net_ru
 		else // single value
 			len += sprintf(cmd + len, " %s %s", DST_PORT, rule->dst_port);
 	}
+	if (rule->action)
+		len += sprintf(cmd + len, " %s %s", UP_RL, rule->action);
+	if (rule->action)
+		len += sprintf(cmd + len, " %s %s", DOWN_RL, rule->action);
 
 	reply = redisCommand(c, cmd);
 	free(cmd);
@@ -2212,7 +2225,7 @@ SR_32 redis_mng_del_net_rule(redisContext *c, SR_32 rule_id_start, SR_32 rule_id
     SR_32 rule_id;
 
     for (rule_id = rule_id_start; rule_id <= rule_id_end; rule_id++) {
-    	reply = redisCommand(c,"DEL %s%d", NET_PREFIX, rule_id);
+    	reply = redisCommand(c,"%s %s%d", DEL, NET_PREFIX, rule_id);
     	if (!force && (reply == NULL || reply->type != REDIS_REPLY_INTEGER || reply->integer != 1)) {
     		printf("ERROR: redis_mng_del_net_rule failed, type %d, i %d\n", reply ? reply->type : -1, reply ? (int)reply->integer : 0);
     		freeReplyObject(reply);
@@ -2294,7 +2307,7 @@ SR_32 redis_mng_del_can_rule(redisContext *c, SR_32 rule_id_start, SR_32 rule_id
     SR_32 rule_id;
 
     for (rule_id = rule_id_start; rule_id <= rule_id_end; rule_id++) {
-    	reply = redisCommand(c,"DEL %s%d", CAN_PREFIX, rule_id);
+    	reply = redisCommand(c,"%s %s%d", DEL, CAN_PREFIX, rule_id);
     	if (!force && (reply == NULL || reply->type != REDIS_REPLY_INTEGER || reply->integer != 1)) {
     		printf("ERROR: redis_mng_del_can_rule failed, type %d, i %d\n", reply ? reply->type : -1, reply ? (int)reply->integer : 0);
     		freeReplyObject(reply);
