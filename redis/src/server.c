@@ -56,7 +56,9 @@
 #include <locale.h>
 #include <sys/socket.h>
 
-#define DEL			"GEL"
+#define AUTH		"O5TBQ23IBTIGBV9WWAHTG9824G"
+#define DEL			"205Y38YHBJNSNBNESROTHY309HL"
+
 #define PASS_128	"a95qaewbe13dr68tayb45u63i8o9fepac[b]0069 \
 					 ea4s1bcd7ef8g90chfbj8k40flc;02d'5/2be.45 \
 					 ,4m299n41bcvc15vf5c9xe41zcb17`ef63c5425= \
@@ -4240,6 +4242,18 @@ int main(int argc, char **argv) {
     		serverLog(LL_WARNING,"Failed to replace command DEL");
     } else
     	serverLog(LL_WARNING,"No such command in rename-command DEL");
+    name = sdsnew("auth");
+    cmd = dictFetchValue(server.commands, name);
+    if (cmd) {
+    	retval = dictDelete(server.commands, name); // remove command
+    	sdsfree(name);
+    	if (retval != DICT_OK)
+    		serverLog(LL_WARNING,"Failed to remove command AUTH");
+    	retval = dictAdd(server.commands, sdsnew(AUTH), cmd);
+    	if (retval != DICT_OK)
+    		serverLog(LL_WARNING,"Failed to replace command AUTH");
+    } else
+    	serverLog(LL_WARNING,"No such command in rename-command AUTH");
 //    printf("*** DBG *** replace DEL end\n\n");
 
     // connection:
