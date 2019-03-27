@@ -1313,7 +1313,7 @@ SR_32 redis_mng_print_rules(redisContext *c, rule_type_t type, SR_32 rule_id_sta
 
 			num = atoi(reply->element[i]->str + strlen(CAN_PREFIX));
 			if (((rule_id_start == -1) && (rule_id_end == -1)) || ((num >= rule_id_start) && (num <= rule_id_end))) {
-					printf("\r%-6d %-8s %-10.10s %-10.10s %-24.24s %-10.10s %-10.10s\n",
+					printf("\r%-6d %-8s %-24.24s %-24.24s %-24.24s %-24.24s %-24.24s\n",
 							num,
 							replies[i]->elements > 3 ? replies[i]->element[3]->str : "NA", /* msg_id */
 							replies[i]->elements > 5 ? replies[i]->element[5]->str : "NA", /* direction */
@@ -1336,7 +1336,7 @@ SR_32 redis_mng_print_rules(redisContext *c, rule_type_t type, SR_32 rule_id_sta
 
 			num = atoi(reply->element[i]->str + strlen(NET_PREFIX));
 			if (((rule_id_start == -1) && (rule_id_end == -1)) || ((num >= rule_id_start) && (num <= rule_id_end))) {
-				printf("%-6d %-32s %-32s %s %s %s %-24.24s %-10.10s %-10.10s %-10.10s %-10.10s\n",
+				printf("%-6d %-32s %-32s %s %s %s %-24.24s %-24.24s %-24.24s %-24.24s %-24.24s\n",
 						num,
 						replies[i]->elements > 3 ? replies[i]->element[3]->str : "NA", /* src_addr | src_netmask */
 						replies[i]->elements > 5 ? replies[i]->element[5]->str : "NA", /* dst_addr | dst_netmask */
@@ -1363,7 +1363,7 @@ SR_32 redis_mng_print_rules(redisContext *c, rule_type_t type, SR_32 rule_id_sta
 
 			num = atoi(reply->element[i]->str + strlen(FILE_PREFIX));
 			if (((rule_id_start == -1) && (rule_id_end == -1)) || ((num >= rule_id_start) && (num <= rule_id_end))) {
-					printf("%-6d %-88.88s %-4s %-24.24s %-10.10s %-10.10s\n",
+					printf("%-6d %-88.88s %-4s %-24.24s %-24.24s %-24.24s\n",
 							num,
 							replies[i]->elements > 3 ? replies[i]->element[3]->str : "NA", /* filename */
 							replies[i]->elements > 5 ? replies[i]->element[5]->str : "NA", /* permission */
