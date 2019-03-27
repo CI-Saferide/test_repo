@@ -23,7 +23,7 @@
 #include "sr_log.h"
 #endif
 
-#define DEL			"DEL"
+#define DEL			"GEL"
 #define PASS_128	"a95qaewbe13dr68tayb45u63i8o9fepac[b]0069 \
 					 ea4s1bcd7ef8g90chfbj8k40flc;02d'5/2be.45 \
 					 ,4m299n41bcvc15vf5c9xe41zcb17`ef63c5425= \
