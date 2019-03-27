@@ -4013,14 +4013,44 @@ int redisIsSupervised(int mode) {
     return 0;
 }
 
+static void remove_command(char *cmd_name)
+{
+	int retval;
+	struct redisCommand *cmd;
+	sds name = sdsnew(cmd_name);
+	cmd = dictFetchValue(server.commands, name);
+	if (cmd) {
+		retval = dictDelete(server.commands, name); // remove command
+		sdsfree(name);
+		if (retval != DICT_OK)
+			serverLog(LL_WARNING,"Failed to remove command - %s", cmd_name);
+	} else
+		serverLog(LL_WARNING,"No such command in rename-command - %s", cmd_name);
+}
+
+static void rename_command(char *old_name, char *new_name)
+{
+	int retval;
+	struct redisCommand *cmd;
+	sds name = sdsnew(old_name);
+	cmd = dictFetchValue(server.commands, name);
+	if (cmd) {
+		retval = dictDelete(server.commands, name); // remove command
+		sdsfree(name);
+		if (retval != DICT_OK)
+			serverLog(LL_WARNING,"Failed to remove command - %s", old_name);
+		// now re-add the command under a different name
+		retval = dictAdd(server.commands, sdsnew(new_name), cmd);
+		if (retval != DICT_OK)
+			serverLog(LL_WARNING,"Failed to replace command - %s", old_name);
+	} else
+		serverLog(LL_WARNING,"No such command in rename-command - %s", old_name);
+}
 
 int main(int argc, char **argv) {
     struct timeval tv;
     int j;
     FILE *logfp;
-    struct redisCommand *cmd;
-    int retval;
-    sds /*copy,*/ name;
 
 #ifdef REDIS_TEST
     if (argc == 3 && !strcasecmp(argv[1], "test")) {
@@ -4211,50 +4241,16 @@ int main(int argc, char **argv) {
     server.repl_diskless_sync = 0;
     // rdb-save-incremental-fsync yes
 
-    // security
+    // security:
     // todo choose strong password
     server.requirepass = zstrdup(PASS_128);
-    // kill: CONFIG (remove it from the command table)
-    name = sdsnew("config");
-    cmd = dictFetchValue(server.commands, name);
-    if (cmd) {
-    	retval = dictDelete(server.commands, name/*"config"*/); // remove command
-    	sdsfree(name);
-    	if (retval != DICT_OK)
-    		serverLog(LL_WARNING,"Failed to remove command CONFIG");
-    } else
-    	serverLog(LL_WARNING,"No such command in rename-command CONFIG");
-    // todo rename all the commands we use
+    // kill all commands we do not use (remove from the command table)
+    remove_command("config");
+    remove_command("command");
+    // rename commands we use
     // Note: changing the name of commands that are logged into the AOF file or transmitted to replicas may cause problems
-//    printf("\n*** DBG *** replace DEL begin\n");
-    name = sdsnew("del");
-    cmd = dictFetchValue(server.commands, name);
-    if (cmd) {
-    	retval = dictDelete(server.commands, name/*"del"*/); // remove command
-    	sdsfree(name);
-    	if (retval != DICT_OK)
-    		serverLog(LL_WARNING,"Failed to remove command DEL");
-    	// now re-add the command under a different name
-//    	copy = sdsnew(DEL);
-//    	printf("*** DBG *** DEL cmd %s, copy %s\n", (char *)cmd, (char *)copy);
-    	retval = dictAdd(server.commands, /*copy*/sdsnew(DEL), cmd);
-    	if (retval != DICT_OK)
-    		serverLog(LL_WARNING,"Failed to replace command DEL");
-    } else
-    	serverLog(LL_WARNING,"No such command in rename-command DEL");
-    name = sdsnew("auth");
-    cmd = dictFetchValue(server.commands, name);
-    if (cmd) {
-    	retval = dictDelete(server.commands, name); // remove command
-    	sdsfree(name);
-    	if (retval != DICT_OK)
-    		serverLog(LL_WARNING,"Failed to remove command AUTH");
-    	retval = dictAdd(server.commands, sdsnew(AUTH), cmd);
-    	if (retval != DICT_OK)
-    		serverLog(LL_WARNING,"Failed to replace command AUTH");
-    } else
-    	serverLog(LL_WARNING,"No such command in rename-command AUTH");
-//    printf("*** DBG *** replace DEL end\n\n");
+    rename_command("del", DEL);
+    rename_command("auth", AUTH);
 
     // connection:
     server.port = 6379; // todo which port we want ?
