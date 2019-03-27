@@ -56,6 +56,9 @@
 #include <locale.h>
 #include <sys/socket.h>
 
+//#define DEL		"b840fc02d52be45429941cc15f59e41cb7ef6c52"
+//#define DEL		"b840fc02d52be45429941cc15f59e41cb7ef6c52"
+
 /* Our shared "common" objects */
 
 struct sharedObjectsStruct shared;
@@ -4012,7 +4015,7 @@ int main(int argc, char **argv) {
     FILE *logfp;
     struct redisCommand *cmd;
     int retval;
-    sds copy;
+    sds copy, name;
 
 #ifdef REDIS_TEST
     if (argc == 3 && !strcasecmp(argv[1], "test")) {
@@ -4152,7 +4155,8 @@ int main(int argc, char **argv) {
     // todo change params here
     server.maxclients = 1; // accept single client at a time
     server.repl_timeout = 0;
-    server.daemonize = 1;
+    // fixme restore
+//    server.daemonize = 1;
     server.supervised_mode = 0/*configEnumGetValue(supervised_mode_enum,"no")*/;
     // replace log file, o/w logs will be sent to /dev/null (daemon)
     zfree(server.logfile);
@@ -4206,28 +4210,39 @@ int main(int argc, char **argv) {
     // todo choose strong password
     //server.requirepass = zstrdup("my_pass_up_to_512_chars");
     // kill: CONFIG (remove it from the command table)
-    cmd = lookupCommand("config");
+    name = sdsnew("config");
+    cmd = dictFetchValue(server.commands, name);
     if (cmd) {
-//    	serverLog(LL_WARNING,"No such command in rename-command CONFIG");
-    	retval = dictDelete(server.commands, "config"); // remove command
-    	serverAssert(retval == DICT_OK);
-    }
+    	retval = dictDelete(server.commands, name/*"config"*/); // remove command
+    	sdsfree(name);
+    	if (retval != DICT_OK)
+    		serverLog(LL_WARNING,"Failed to remove command CONFIG");
+    } else
+    	serverLog(LL_WARNING,"No such command in rename-command CONFIG");
     // todo rename all the commands we use
     // Note: changing the name of commands that are logged into the AOF file or transmitted to replicas may cause problems
-    cmd = lookupCommand("del");
+#if 0
+    printf("\n*** DBG *** replace DEL begin\n");
+    name = sdsnew("del");
+    cmd = dictFetchValue(server.commands, name);
     if (cmd) {
-    	//    	serverLog(LL_WARNING,"No such command in rename-command DEL");
-    	retval = dictDelete(server.commands, "del"); // remove command
-    	serverAssert(retval == DICT_OK);
+    	retval = dictDelete(server.commands, name/*"del"*/); // remove command
+    	sdsfree(name);
+    	if (retval != DICT_OK)
+    		serverLog(LL_WARNING,"Failed to remove command DEL");
     	// now re-add the command under a different name
-    	copy = sdsdup("b840fc02d524045429941cc15f59e41cb7be6c52");
-    	retval = dictAdd(server.commands, copy, cmd);
-    	sdsfree(copy);
-    	if (retval != DICT_OK) {
-    		serverLog(LL_WARNING,"Target command name already exists, failed to replace DEL");
-    		exit(1);
-    	}
-    }
+//    	copy = sdsdup(/* fixme DEL*/"GEL");
+    	copy = sdsnew("GEL");
+    	printf("*** DBG *** DEL cmd %s, copy %s\n", (char *)cmd, (char *)copy);
+    	// copy = sdsnew(c->name = str), cmd = struct redisCommand *
+    	retval = dictAdd(server.commands, copy/*sdsnew("GEL")*/, cmd);
+//    	sdsfree(copy);
+    	if (retval != DICT_OK)
+    		serverLog(LL_WARNING,"Failed to replace command DEL");
+    } else
+    	serverLog(LL_WARNING,"No such command in rename-command DEL");
+    printf("*** DBG *** replace DEL end\n\n");
+#endif
 
     // connection:
     server.port = 6379; // todo which port we want ?

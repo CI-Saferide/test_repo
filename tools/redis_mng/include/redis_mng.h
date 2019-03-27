@@ -11,8 +11,8 @@
 #define ACTION_FIELDS		8
 #define FILE_RULE_FIELDS	10
 #define CAN_RULE_FIELDS		12
-#define NET_RULE_FIELDS		16
-#define MAX_RULE_FIELDS		16
+#define NET_RULE_FIELDS		20
+#define MAX_RULE_FIELDS		20
 
 typedef enum redis_mng_list_type {
 	LIST_FILES = 1,
@@ -51,6 +51,8 @@ typedef struct redis_mng_net_rule {
 	char 	*exec;
 	char 	*user;
 	char 	*action; 	// single value
+	char 	*up_rl; 	// upload rate limit - single value
+	char 	*down_rl; 	// download rate limit - single value
 	SR_8 	src_addr_netmasks_list;
 	SR_8 	dst_addr_netmasks_list;
 	SR_8 	protos_list;
