@@ -23,9 +23,11 @@
 #include "sr_log.h"
 #endif
 
-//#define DEL		"b840fc02d52be45429941cc15f59e41cb7ef6c52"
-//#define DEL		"GEL"
-#define DEL		"DEL"
+#define DEL			"DEL"
+#define PASS_128	"a95qaewbe13dr68tayb45u63i8o9fepac[b]0069 \
+					 ea4s1bcd7ef8g90chfbj8k40flc;02d'5/2be.45 \
+					 ,4m299n41bcvc15vf5c9xe41zcb17`ef63c5425= \
+					 /-.0,m7v"
 
 #define ENGINE		 	"engine"
 #define ACTION_PREFIX   "a:"
@@ -1067,6 +1069,7 @@ out:
 redisContext *redis_mng_session_start(SR_BOOL is_tcp)
 { 
 	redisContext *c;
+	redisReply *reply;
 	// todo allow to change these params
 	// choose connection type
 	if (is_tcp)
@@ -1078,6 +1081,15 @@ redisContext *redis_mng_session_start(SR_BOOL is_tcp)
 			printf("ERROR: %s failed, ret %d\n", is_tcp ? "redisConnect" : "redisConnectUnix", c ? c->err : 0);
 			return NULL;
 	}
+	// authenticate
+	reply = redisCommand(c,"AUTH %s", PASS_128);
+	if (reply == NULL || reply->type != REDIS_REPLY_STATUS || strcmp(reply->str, "OK")) {
+		printf("ERROR: redis_mng_session_start auth failed, %d, %s\n", reply ? reply->type : -1, reply->str ? reply->str : "NULL");
+		freeReplyObject(reply);
+		redisFree(c);
+		return NULL;
+	}
+	freeReplyObject(reply);
 	redis_changes = 0;
 	return c;
 }
@@ -1450,7 +1462,8 @@ SR_32 redis_mng_load_db(redisContext *c, int pipelined, handle_rule_f_t cb_func)
 
 				// ACTION, action, MID, mid, IN_INTERFACE, dir_str, OUT_INTERFACE, interface, PROGRAM_ID, exec, USER_ID, user
 				if (replies[i]->elements != CAN_RULE_FIELDS) {
-					printf("ERROR: redisGetReply %d length is wrong %d instead of %d\n", i, (int)replies[i]->elements, CAN_RULE_FIELDS);
+					printf("ERROR: redisGetReply %d length is wrong %d instead of %d\n", i, (int)replies[i]->elements,
+							CAN_RULE_FIELDS);
 					for (j = 0; j < i; j++)
 						freeReplyObject(replies[j]);
 					free(replies);
@@ -1483,7 +1496,8 @@ SR_32 redis_mng_load_db(redisContext *c, int pipelined, handle_rule_f_t cb_func)
 				// ACTION, action, SRC_ADDR, src_addr_netmask, DST_ADDR, dst_addr_netmask, PROGRAM_ID, exec, USER_ID, user,
 				// PROTOCOL, proto, SRC_PORT, src_port, DST_PORT, dst_port
 				if (replies[i]->elements != NET_RULE_FIELDS) {
-					printf("ERROR: redisGetReply %d length is wrong %d instead of %d\n", i, (int)replies[i]->elements, NET_RULE_FIELDS);
+					printf("ERROR: redisGetReply %d length is wrong %d instead of %d\n", i, (int)replies[i]->elements,
+							NET_RULE_FIELDS);
 					for (j = 0; j < i; j++)
 						freeReplyObject(replies[j]);
 					free(replies);
