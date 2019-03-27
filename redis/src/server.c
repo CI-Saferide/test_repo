@@ -57,7 +57,10 @@
 #include <sys/socket.h>
 
 //#define DEL		"b840fc02d52be45429941cc15f59e41cb7ef6c52"
-//#define DEL		"b840fc02d52be45429941cc15f59e41cb7ef6c52"
+#define PASS_128	"a95qaewbe13dr68tayb45u63i8o9fepac[b]0069 \
+					 ea4s1bcd7ef8g90chfbj8k40flc;02d'5/2be.45 \
+					 ,4m299n41bcvc15vf5c9xe41zcb17`ef63c5425= \
+					 /-.0,m7v"
 
 /* Our shared "common" objects */
 
@@ -4208,7 +4211,7 @@ int main(int argc, char **argv) {
 
     // security
     // todo choose strong password
-    //server.requirepass = zstrdup("my_pass_up_to_512_chars");
+    server.requirepass = zstrdup(PASS_128);
     // kill: CONFIG (remove it from the command table)
     name = sdsnew("config");
     cmd = dictFetchValue(server.commands, name);
