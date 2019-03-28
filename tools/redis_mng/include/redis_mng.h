@@ -86,6 +86,15 @@ typedef struct redis_mng_action {
 //	char *mail;
 } redis_mng_action_t;
 
+typedef struct redis_system_policer {
+	SR_U64  utime;
+	SR_U64  stime;
+	SR_U32  bytes_read;
+	SR_U32  bytes_write;
+	SR_U32  vm_allocated;
+	SR_U32  num_of_threads;
+} redis_system_policer_t;
+
 //SR_32 redis_mng_parse_json(redis_mng_handler_t *handler, char *buf, SR_U32 *version, SR_U32 old_version);
 
 /* Callback function definition:
@@ -170,5 +179,10 @@ SR_32 redis_mng_delete_all(redis_mng_handler_t *handler, SR_BOOL is_commit);
 SR_32 redis_mng_update_engine_state(redisContext *c, SR_BOOL is_on);
 
 //SR_U8 redis_mng_perm_get_code(char *perms);
+
+SR_32 redis_mng_add_system_policer(redisContext *c, char *exec, redis_system_policer_t *system_policer_info);
+SR_32 redis_mng_print_system_policer(redisContext *c);
+SR_32 redis_mng_exec_all_system_policer(redisContext *c, SR_32 (*cb)(char *exec, redis_system_policer_t *sp));
+
 
 #endif

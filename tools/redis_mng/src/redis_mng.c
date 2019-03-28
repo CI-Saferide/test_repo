@@ -66,6 +66,14 @@
 //#define SMS		 	"sms"
 //#define EMAIL	 		"mail"
 
+#define SYSTEM_POLICER_PREFIX   	"sp:"
+#define SP_UTIME 			"utime"
+#define SP_STIME 			"stime"
+#define SP_BYTES_READ 		"br"
+#define SP_BYTES_WRITE 		"bw"
+#define SP_VM_ALLOC 		"vma"
+#define SP_THREADS_NO 		"tn"
+
 static int redis_changes;
 
 #if 0
@@ -2475,3 +2483,102 @@ SR_32 redis_mng_create_action(redisContext *c, char *action_name, SR_BOOL is_all
 }
 #endif
 
+SR_32 redis_mng_add_system_policer(redisContext *c, char *exec, redis_system_policer_t *sp)
+{
+	redisReply *reply;
+	
+	reply = redisCommand(c,"HMSET %s%s %s %lu %s %lu %s %u %s %u %s %u %s %u", SYSTEM_POLICER_PREFIX, exec,
+		SP_UTIME, sp->utime,
+		SP_STIME, sp->stime,
+		SP_BYTES_READ, sp->bytes_read,
+		SP_BYTES_WRITE, sp->bytes_write,
+		SP_VM_ALLOC, sp->vm_allocated,
+		SP_THREADS_NO, sp->num_of_threads);
+	if (reply == NULL || reply->type != REDIS_REPLY_STATUS) {
+		printf("ERROR: redis_mng_add_system_policer failed, %d\n", reply ? reply->type : -1);
+		freeReplyObject(reply);
+		return SR_ERROR;
+	}
+	freeReplyObject(reply);
+
+	return SR_SUCCESS;
+}
+
+#define CHECK_PRINT(n) (replies[i]->elements > n) ?  replies[i]->element[n]->str : ""
+
+static SR_32 print_cb(char *exec, redis_system_policer_t *sp)
+{
+	printf("exec:%s utime:%lu stime:%lu byte read:%u byte write:%u vm alloc:%u num of threads:%u \n",
+				exec, sp->utime, sp->stime, sp->bytes_read, sp->bytes_write, sp->vm_allocated, sp->num_of_threads);
+	return SR_SUCCESS;
+}
+
+SR_32 redis_mng_print_system_policer(redisContext *c)
+{
+	return redis_mng_exec_all_system_policer(c, print_cb);
+}
+
+SR_32 redis_mng_exec_all_system_policer(redisContext *c, SR_32 (*cb)(char *exec, redis_system_policer_t *sp))
+{
+	int i, j;
+	redisReply *reply;
+	redisReply **replies;
+	redis_system_policer_t sp = {};
+	// get all keys
+	reply = redisCommand(c,"KEYS %s*", SYSTEM_POLICER_PREFIX);
+	if (reply == NULL || reply->type != REDIS_REPLY_ARRAY) {
+		printf("ERROR: redis_mng_print_system_policer failed, %d\n", reply ? reply->type : -1);
+		freeReplyObject(reply);
+		return SR_ERROR;
+	}
+
+	replies = malloc(sizeof(redisReply*) * reply->elements);
+	if (!replies) {
+		printf("ERROR: redis_mng_print_system_policer allocation failed\n");
+		freeReplyObject(reply);
+		return SR_ERROR;
+	}
+
+	for (i = 0; i < reply->elements; i++)
+		redisAppendCommand(c,"HGETALL %s", reply->element[i]->str);
+
+	for (i = 0; i < (int)reply->elements; i++) {
+		if (redisGetReply(c, (void*)&replies[i]) != REDIS_OK) {
+			printf("ERROR: redisGetReply %d failed\n", i);
+			for (j = 0; j < i; j++)
+				freeReplyObject(replies[j]);
+			free(replies);
+			freeReplyObject(reply);
+			return SR_ERROR;
+		}
+		if (replies[i]->type != REDIS_REPLY_ARRAY) {
+			printf("ERROR: redisGetReply %d type is wrong %d\n", i, replies[i]->type);
+			for (j = 0; j < i; j++)
+				freeReplyObject(replies[j]);
+			free(replies);
+			freeReplyObject(reply);
+			return SR_ERROR;
+		}
+
+		memset(&sp, 0, sizeof(sp));
+		if (replies[i]->elements > 1) 
+			sp.utime = atol(replies[i]->element[1]->str);
+		if (replies[i]->elements > 3) 
+			sp.bytes_read = atol(replies[i]->element[3]->str);
+		if (replies[i]->elements > 5) 
+			sp.bytes_write = atol(replies[i]->element[5]->str);
+		if (replies[i]->elements > 7) 
+			sp.vm_allocated = atol(replies[i]->element[7]->str);
+		if (replies[i]->elements > 9) 
+			sp.num_of_threads = atol(replies[i]->element[9]->str);
+		if (cb)
+			cb(reply->element[i]->str + strlen(SYSTEM_POLICER_PREFIX), &sp);
+	}
+
+	// free replies
+	for (i = 0; i < reply->elements; i++)
+		freeReplyObject(replies[i]);
+	free(replies);
+	freeReplyObject(reply);
+	return SR_SUCCESS;
+}
