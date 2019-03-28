@@ -2510,7 +2510,7 @@ SR_32 redis_mng_add_system_policer(redisContext *c, char *exec, redis_system_pol
 
 static SR_32 print_cb(char *exec, redis_system_policer_t *sp)
 {
-	printf("exec:%s utime:%lu stime:%lu byte read:%u byte write:%u vm alloc:%u num of threads:%u \n",
+	printf("exec:%s utime:%llu stime:%llu byte read:%u byte write:%u vm alloc:%u num of threads:%u \n",
 				exec, sp->utime, sp->stime, sp->bytes_read, sp->bytes_write, sp->vm_allocated, sp->num_of_threads);
 	return SR_SUCCESS;
 }
