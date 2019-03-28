@@ -8,7 +8,7 @@ BUILD_DIR 	:= $(TOP_DIR)/build
 OBJDIR		:= $(BUILD_DIR)/objs
 LIBDIR		:= $(BUILD_DIR)/lib
 BINDIR 		:= $(BUILD_DIR)/bin
-MUTUAL_REPO_DIR := $(TOP_DIR)/../mutual-repo
+MUTUAL_REPO_DIR := mutual-repo
 
 TARGET 		:= sr_engine
 
@@ -93,8 +93,8 @@ INCLUDES 	:=  -I../common/include \
 				-Iwhite_list/include \
 				-Ithird-party/include \
 				-Idb/include \
-				-I../mutual-repo/include \
-				-I../mutual-repo/client \
+				-Imutual-repo/include \
+				-Imutual-repo/client \
 				-I$(TOP_DIR)/../binary_cls \
 
 OBJS		:=  $(addprefix $(OBJDIR)/,$(SRCS:.c=.o))
@@ -107,7 +107,7 @@ else
 LIBS 		:= -Wl,--start-group -l$(TARGET) -lsr_hash -lsr_log -lsysrepo_mng -ldb_tools -Wl,--end-group -lpthread -ljsmn -lsentry -lsysrepo -lcurl -larchive -lcrypto -lclient
 endif
 # and where to search them 
-LIB_PATH 	:= -L$(LIBDIR) -L../mutual-repo/client/lib
+LIB_PATH 	:= -L$(LIBDIR) -Lmutual-repo/client/build/lib
 
 CFLAGS 		+= -MMD -Wall
 CFLAGS 		+= -DCONFIG_STAT_ANALYSIS
@@ -142,19 +142,23 @@ endif
 	@echo "linking $(notdir $@)"
 	@$(CC) $(LDFLAGS) -o $(BINDIR)/$(TARGET) $(LIB_PATH) $(LIBS)
 
-$(MUTUAL_REPO_DIR):
-	cd .. && \
-	git clone -n git@github.com:saferide-tech/mutual-repo.git --depth 1 &&\
-	cd mutual-repo  &&\
-	git checkout HEAD client/lib/libclient.a && \
-	git checkout HEAD include/message.h && \
-	git checkout HEAD client/vproxy_client.h
+ifdef XCODE
+	XCODE_FLAGS = XCODE=1
+endif
+
+
+.NOTPARALLEL:
+repo-clone:
+	@rm -rf mutual-repo
+	@git clone -n git@github.com:saferide-tech/mutual-repo.git --depth 1
+	@cd mutual-repo && git checkout HEAD client/ && git checkout HEAD include/ && git checkout HEAD Makefile
+	@cd mutual-repo && make libclient $(XCODE_FLAGS)
 
 lib$(TARGET): build_ver OBJSDIR $(OBJS) 
 	@echo "linking $(notdir $@)"
 	@$(AR) rc $(LIBDIR)/$@.a $(OBJS)
 
-OBJSDIR:
+OBJSDIR: repo-clone
 	@echo "creating $(OBJDIR) $(LIBDIR) $(BINDIR)"
 	@mkdir -p $(OBJDIR)
 	@mkdir -p $(LIBDIR)
@@ -177,7 +181,7 @@ libdb_tools:
 
 libbin_cls:
 	@$(MAKE) -s -C ../binary_cls TOP_DIR=$(TOP_DIR)
-$(OBJDIR)/%.o: %.c $(MUTUAL_REPO_DIR)
+$(OBJDIR)/%.o: %.c
 	@echo "compiling $(notdir $<)"
 	@$(CC) $(CFLAGS) $(INCLUDES) -c $< -o $@
 
@@ -186,6 +190,7 @@ install:
 
 clean:
 	@rm -fr $(BUILD_DIR)
+	@rm -fr mutual-repo
 
 SPLINT_FLAGS += -warnposix -paramuse -unrecog -retvalint -boolops -predboolothers -mustfreefresh -retvalother
 SPLINT_FLAGS += -mustfreeonly -predboolint -nullpass -infloops -compmempass -immediatetrans
