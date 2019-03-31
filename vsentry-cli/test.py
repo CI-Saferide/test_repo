@@ -298,7 +298,6 @@ def check_ip_rule_add(rule_type, rule_number, is_src_addr_group, src_addr, is_ds
 	update_cmd = add_rule_field(update_cmd, is_program_group, 'program', program)
 	update_cmd = add_rule_field(update_cmd, is_user_group, 'user', user)
 	update_cmd += ' action ' + action
-	print update_cmd
 	try:
 		run_cmd(update_cmd)
 	except subprocess.CalledProcessError, e:

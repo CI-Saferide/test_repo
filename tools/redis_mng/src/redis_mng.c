@@ -2233,10 +2233,10 @@ SR_32 redis_mng_update_net_rule(redisContext *c, SR_32 rule_id, redis_mng_net_ru
 		else // single value
 			len += sprintf(cmd + len, " %s %s", DST_PORT, rule->dst_port);
 	}
-	if (rule->action)
-		len += sprintf(cmd + len, " %s %s", UP_RL, rule->action);
-	if (rule->action)
-		len += sprintf(cmd + len, " %s %s", DOWN_RL, rule->action);
+	if (rule->up_rl)
+		len += sprintf(cmd + len, " %s %s", UP_RL, rule->up_rl);
+	if (rule->down_rl)
+		len += sprintf(cmd + len, " %s %s", DOWN_RL, rule->down_rl);
 
 	reply = redisCommand(c, cmd);
 	free(cmd);
