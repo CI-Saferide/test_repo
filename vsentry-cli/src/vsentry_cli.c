@@ -617,6 +617,8 @@ static SR_32 handle_update_ip(SR_U32 rule_id, SR_BOOL is_wl, int argc, char **ar
 		strcpy(dst_addr, "0.0.0.0/32");
 		strcpy(src_port, "0");
 		strcpy(dst_port, "0");
+		strcpy(up_rl, "0");
+		strcpy(down_rl, "0");
 	} else {
 		UPDATE_INIT_COMMON_PARAMS
 		*proto = *src_addr = *dst_addr = *src_port = *dst_port = 0;

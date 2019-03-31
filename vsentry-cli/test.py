@@ -256,7 +256,7 @@ def is_valid_ip_rule(reply, is_src_addr_group, src_addr, is_dst_addr_group, dst_
 	rule_dst_portr = reply[5]
 	rule_prog = reply[6]
 	rule_user = reply[7]
-	rule_action = reply[8]
+	rule_action = reply[10]
 	if is_src_addr_group:
 		src_addr  = 'l:' + src_addr
 	if rule_src_addr.find(src_addr) == -1:
