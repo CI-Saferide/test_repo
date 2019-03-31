@@ -29,7 +29,7 @@ def create_group(group_type, group_name, values):
 
 def check_groups():
 	create_group('file-group', 'file_group1', '/work/file1.txt /work/file2.txt')
-	create_group('program-group', 'gropram_group1', '/bin/cat /bin/echo')
+	create_group('program-group', 'program_group1', '/bin/cat /bin/echo')
 	create_group('user-group', 'user_group1', 'root arik')
 	create_group('mid-group', 'mid_group1', '123 124')
 	create_group('can-intf-group', 'caninf_group1', 'vcan0')
