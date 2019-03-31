@@ -41,7 +41,6 @@ struct config_params_t {
 	SR_BOOL	policy_update_enable;
 
 #ifdef CONFIG_SYSTEM_POLICER 
-	SR_8	system_prolicer_learn_file[PATH_BUFF];
 	SR_U8	system_policer_interval;
 	SR_U8	system_policer_threshold_percent;
 #endif

@@ -435,7 +435,7 @@ static SR_U32 handle_param(char *param, char *field, int field_size, int argc, i
 			printf("%s value is misssing.\n", param);
 			return SR_ERROR;
 		}
-		if (!is_valid_cb(argv[*i])) {
+		if (is_valid_cb && !is_valid_cb(argv[*i])) {
 			printf("%s is invalid.\n", param);
 			return SR_ERROR;
 		}
@@ -897,6 +897,11 @@ static SR_32 show_action(int argc, char **argv)
 	return redis_mng_print_actions(c);
 }
 
+static SR_32 show_sp(int argc, char **argv)
+{
+	return redis_mng_print_system_policer(c);
+}
+
 static SR_32 show_group(int argc, char **argv)
 {
 	char *type, *name;
@@ -942,6 +947,8 @@ static SR_32 handle_show(int argc, char **argv)
 		return show_group(argc - 1, argv + 1);
 	if (!strcmp(argv[0], "action"))
 		return show_action(argc - 1, argv + 1);
+	if (!strcmp(argv[0], "sp"))
+		return show_sp(argc - 1, argv + 1);
 
 	if (argc < 2) {
 		is_can = is_file = is_ip = SR_TRUE;
