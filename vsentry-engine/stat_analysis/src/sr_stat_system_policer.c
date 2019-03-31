@@ -113,7 +113,7 @@ static SR_32 write_leran_to_db(void *hash_data, void *data)
 
 static SR_32 system_policer_flush_learn_table(void)
 {
-	if (!(c = redis_mng_session_start(1))) {
+	if (!(c = redis_mng_session_start())) {
         	CEF_log_event(SR_CEF_CID_SP, "error", SEVERITY_HIGH, "%s=Failed start redis session", REASON);
 		return SR_ERROR;
 	}
@@ -427,7 +427,7 @@ static SR_32 policer_cb(char *exec, redis_system_policer_t *sp)
 
 SR_32 sr_stat_policer_load_file(void)
 {
-	if (!(c = redis_mng_session_start(1))) {
+	if (!(c = redis_mng_session_start())) {
         	CEF_log_event(SR_CEF_CID_SP, "error", SEVERITY_HIGH, "%s=Failed start redis session", REASON);
 		return SR_ERROR;
 	}

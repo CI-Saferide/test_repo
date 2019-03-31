@@ -1309,7 +1309,7 @@ static SR_32 handle_control(int argc, char **argv)
 
 SR_32 main(int argc, char **argv)
 {
-	if (!(c = redis_mng_session_start(1))) {
+	if (!(c = redis_mng_session_start())) {
                 printf("ERROR: redis_mng_session_start failed\n");
                 redis_mng_session_end(c);
                 return SR_ERROR;
