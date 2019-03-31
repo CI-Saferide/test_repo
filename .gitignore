@@ -53,7 +53,9 @@ redis/src/redis-check-rdb
 redis/src/redis-cli
 redis/src/redis-sentinel
 redis/src/redis-server
+redis/src/redis-benchmark
 redis/src/release.h
+redis/deps/
 
 .cproject
 .project
