@@ -45,8 +45,8 @@
 #define PROGRAM_ID 		"prog"
 #define USER_ID 		"user"
 #define ACTION 			"act"
-#define IN_INTERFACE 	"in"
-#define OUT_INTERFACE 	"out"
+#define DIRECTION		"dir"
+#define INTERFACE		"intf"
 #define RATE_LIMIT		"rl"
 // CAN rule specific fields
 #define MID 			"mid"
@@ -1286,6 +1286,18 @@ SR_32 redis_mng_print_all_list_names(redisContext *c, list_type_e type)
 	return SR_SUCCESS;
 }
 
+static void print_field(char *field, char *format, int n, redisReply *reply)
+{
+	int i;
+
+	for (i = 0; i < n - 1; i += 2) {
+		if (!strcmp(reply->element[i]->str, field)) {
+			printf(format, reply->element[i + 1]->str);
+			break;
+		}
+	}
+}
+
 SR_32 redis_mng_print_rules(redisContext *c, rule_type_t type, SR_32 rule_id_start, SR_32 rule_id_end)
 {
 	int i, j, num;
@@ -1341,14 +1353,14 @@ SR_32 redis_mng_print_rules(redisContext *c, rule_type_t type, SR_32 rule_id_sta
 
 			num = atoi(reply->element[i]->str + strlen(CAN_PREFIX));
 			if (((rule_id_start == -1) && (rule_id_end == -1)) || ((num >= rule_id_start) && (num <= rule_id_end))) {
-					printf("\r%-6d %-8s %-24.24s %-24.24s %-24.24s %-24.24s %-24.24s\n",
-							num,
-							replies[i]->elements > 3 ? replies[i]->element[3]->str : "NA", /* msg_id */
-							replies[i]->elements > 5 ? replies[i]->element[5]->str : "NA", /* direction */
-							replies[i]->elements > 7 ? replies[i]->element[7]->str : "NA", /* interface */
-							replies[i]->elements > 9 ? replies[i]->element[9]->str : "NA", /* program */
-							replies[i]->elements > 11 ? replies[i]->element[11]->str : "NA", /* user */
-							replies[i]->elements > 1 ? replies[i]->element[1]->str : "NA" /* action */);
+					printf("%-6d ", num);
+					print_field(MID, "%-8s ", replies[i]->elements, replies[i]);
+					print_field(DIRECTION, "%-24.24s ", replies[i]->elements, replies[i]);
+					print_field(INTERFACE, "%-24.24s ", replies[i]->elements, replies[i]);
+					print_field(PROGRAM_ID, "%-24.24s ", replies[i]->elements, replies[i]);
+					print_field(USER_ID, "%-24.24s ", replies[i]->elements, replies[i]);
+					print_field(ACTION, "%s ", replies[i]->elements, replies[i]);
+					printf("\n");
 			}
 
 		} else if ((type == RULE_TYPE_IP)/* && strstr(reply->element[i]->str, NET_PREFIX)*/) { // net rule
@@ -1364,18 +1376,18 @@ SR_32 redis_mng_print_rules(redisContext *c, rule_type_t type, SR_32 rule_id_sta
 
 			num = atoi(reply->element[i]->str + strlen(NET_PREFIX));
 			if (((rule_id_start == -1) && (rule_id_end == -1)) || ((num >= rule_id_start) && (num <= rule_id_end))) {
-				printf("%-6d %-32s %-32s %s %s %s %-24.24s %-24.24s %-24.24s %-10.10s %-10.10s\n",
-						num,
-						replies[i]->elements > 3 ? replies[i]->element[3]->str : "NA", /* src_addr | src_netmask */
-						replies[i]->elements > 5 ? replies[i]->element[5]->str : "NA", /* dst_addr | dst_netmask */
-						replies[i]->elements > 11 ? replies[i]->element[11]->str : "NA", /* proto */
-						replies[i]->elements > 13 ? replies[i]->element[13]->str : "NA", /* srcport */
-						replies[i]->elements > 15 ? replies[i]->element[15]->str : "NA", /* dstport */
-						replies[i]->elements > 7 ? replies[i]->element[7]->str : "NA", /*program */
-						replies[i]->elements > 9 ? replies[i]->element[9]->str : "NA", /* user */
-						replies[i]->elements > 1 ? replies[i]->element[1]->str : "NA", /* action */
-						replies[i]->elements > 17 ? replies[i]->element[17]->str : "NA", /* up_rl */
-						replies[i]->elements > 19 ? replies[i]->element[19]->str : "NA" /* down_rl */);
+				printf("%-6d ", num);
+				print_field(SRC_ADDR, "%-32s ", replies[i]->elements, replies[i]);
+				print_field(DST_ADDR, "%-32s ", replies[i]->elements, replies[i]);
+				print_field(PROTOCOL, "%s ", replies[i]->elements, replies[i]);
+				print_field(SRC_PORT, "%s ", replies[i]->elements, replies[i]);
+				print_field(DST_PORT, "%s ", replies[i]->elements, replies[i]);
+				print_field(PROGRAM_ID, "%-24.24s ", replies[i]->elements, replies[i]);
+				print_field(USER_ID, "%-24.24s ", replies[i]->elements, replies[i]);
+				print_field(UP_RL, "%s ", replies[i]->elements, replies[i]);
+				print_field(DOWN_RL, "%s ", replies[i]->elements, replies[i]);
+				print_field(ACTION, "%s ", replies[i]->elements, replies[i]);
+				printf("\n");
 			}
 
 		} else if ((type == RULE_TYPE_FILE)/* && strstr(reply->element[i]->str, FILE_PREFIX)*/) { // file rule
@@ -1476,7 +1488,7 @@ SR_32 redis_mng_load_db(redisContext *c, int pipelined, handle_rule_f_t cb_func)
 			// todo change to new struct without tuples
 			if (strstr(reply->element[i]->str, CAN_PREFIX)) { // can rule
 
-				// ACTION, action, MID, mid, IN_INTERFACE, dir_str, OUT_INTERFACE, interface, PROGRAM_ID, exec, USER_ID, user
+				// ACTION, action, MID, mid, DIRECTIN, dir_str, INTERFACE, interface, PROGRAM_ID, exec, USER_ID, user
 				if (replies[i]->elements != CAN_RULE_FIELDS) {
 					printf("ERROR: redisGetReply %d length is wrong %d instead of %d\n", i, (int)replies[i]->elements,
 							CAN_RULE_FIELDS);
@@ -1664,7 +1676,7 @@ SR_32 redis_mng_load_db(redisContext *c, int pipelined, handle_rule_f_t cb_func)
 			// todo change to new struct without tuples
 			if (strstr(reply->element[i]->str, CAN_PREFIX)) { // can rule
 
-				// ACTION, action, MID, mid, IN_INTERFACE, dir_str, OUT_INTERFACE, interface, PROGRAM_ID, exec, USER_ID, user
+				// ACTION, action, MID, mid, DIRECTION, dir_str, INTERFACE, interface, PROGRAM_ID, exec, USER_ID, user
 				if (reply2->elements != CAN_RULE_FIELDS) {
 					printf("ERROR: redisGetReply %d length is wrong %d instead of %d\n", i, (int)reply2->elements, CAN_RULE_FIELDS);
 					freeReplyObject(reply);
@@ -1865,7 +1877,7 @@ SR_32 redis_mng_reconf(redisContext *c, handle_rule_f_t cb_func)
 		// todo change to new struct without tuples
 		if (strstr(reply->element[i]->str, CAN_PREFIX)) { // can rule
 
-			// ACTION, action, MID, mid, IN_INTERFACE, dir_str, OUT_INTERFACE, interface, PROGRAM_ID, exec, USER_ID, user
+			// ACTION, action, MID, mid, DIRECTION, dir_str, INTERFACE, interface, PROGRAM_ID, exec, USER_ID, user
 			if (replies[i]->elements != CAN_RULE_FIELDS) {
 				printf("ERROR: redisGetReply %d length is wrong %d instead of %d\n", i, (int)replies[i]->elements, CAN_RULE_FIELDS);
 				for (j = 0; j < i; j++)
@@ -2300,12 +2312,12 @@ SR_32 redis_mng_update_can_rule(redisContext *c, SR_32 rule_id, redis_mng_can_ru
 			len += sprintf(cmd + len, " %s %s", MID, rule->mid);
 	}
 	if (rule->dir)
-		len += sprintf(cmd + len, " %s %s", IN_INTERFACE, rule->dir);
+		len += sprintf(cmd + len, " %s %s", DIRECTION, rule->dir);
 	if (rule->interface) {
 		if (rule->interfaces_list) // list
-			len += sprintf(cmd + len, " %s %d%s%s", OUT_INTERFACE, LIST_CAN_INTF, LIST_PREFIX, rule->interface);
+			len += sprintf(cmd + len, " %s %d%s%s", INTERFACE, LIST_CAN_INTF, LIST_PREFIX, rule->interface);
 		else // single value
-			len += sprintf(cmd + len, " %s %s", OUT_INTERFACE, rule->interface);
+			len += sprintf(cmd + len, " %s %s", INTERFACE, rule->interface);
 	}
 	if (rule->exec) {
 		if (rule->execs_list) // list
@@ -2437,7 +2449,7 @@ SR_32 redis_mng_create_canbus_rule(redisContext *c, SR_32 rule_id, SR_U32 msg_id
 	strcpy(dir_str, get_dir_desc(dir));
 	// todo dir and int instead of in_int and out_int - fix
 	redisAppendCommand(c,"HMSET %s%d %s %s %s %s %s %s %s %s %s %s %s %s", CAN_PREFIX, rule_id, ACTION, action,
-			MID, msgid_str, IN_INTERFACE, dir_str, OUT_INTERFACE, interface, PROGRAM_ID, exec, USER_ID, user);
+			MID, msgid_str, DIRECTION, dir_str, INTERFACE, interface, PROGRAM_ID, exec, USER_ID, user);
 	redis_changes++;
 	return SR_SUCCESS;
 }
