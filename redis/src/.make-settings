@@ -1,7 +1,7 @@
 STD=-std=c99 -pedantic -DREDIS_STATIC=
 WARN=-Wall -W -Wno-missing-field-initializers
 OPT=-O2
-MALLOC=jemalloc
+MALLOC=
 CFLAGS=
 LDFLAGS=
 REDIS_CFLAGS=
