@@ -4016,6 +4016,7 @@ int redisIsSupervised(int mode) {
     return 0;
 }
 
+#ifndef DEBUG
 static void remove_command(char *cmd_name)
 {
 	int retval;
@@ -4049,6 +4050,7 @@ static void rename_command(char *old_name, char *new_name)
 	} else
 		serverLog(LL_WARNING,"No such command in rename-command - %s", old_name);
 }
+#endif
 
 int main(int argc, char **argv) {
     struct timeval tv;
@@ -4249,16 +4251,14 @@ int main(int argc, char **argv) {
 #ifndef DEBUG
     // todo choose strong password
     server.requirepass = zstrdup(PASS_128);
-#endif
     // kill all commands we do not use (remove from the command table)
     remove_command("config");
     remove_command("command");
     // rename commands we use
     // Note: changing the name of commands that are logged into the AOF file or transmitted to replicas may cause problems
-//#ifndef DEBUG
     rename_command("del", DEL);
     rename_command("auth", AUTH);
-//#endif
+#endif
 
     // connection:
     // removed TCP, should connect only through Unix socket
