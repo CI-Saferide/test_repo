@@ -29,7 +29,7 @@ def create_group(group_type, group_name, values):
 
 def check_groups():
 	create_group('file-group', 'file_group1', '/work/file1.txt /work/file2.txt')
-	create_group('program-group', 'gropram_group1', '/bin/cat /bin/echo')
+	create_group('program-group', 'program_group1', '/bin/cat /bin/echo')
 	create_group('user-group', 'user_group1', 'root arik')
 	create_group('mid-group', 'mid_group1', '123 124')
 	create_group('can-intf-group', 'caninf_group1', 'vcan0')
@@ -256,7 +256,7 @@ def is_valid_ip_rule(reply, is_src_addr_group, src_addr, is_dst_addr_group, dst_
 	rule_dst_portr = reply[5]
 	rule_prog = reply[6]
 	rule_user = reply[7]
-	rule_action = reply[8]
+	rule_action = reply[10]
 	if is_src_addr_group:
 		src_addr  = 'l:' + src_addr
 	if rule_src_addr.find(src_addr) == -1:
@@ -298,7 +298,6 @@ def check_ip_rule_add(rule_type, rule_number, is_src_addr_group, src_addr, is_ds
 	update_cmd = add_rule_field(update_cmd, is_program_group, 'program', program)
 	update_cmd = add_rule_field(update_cmd, is_user_group, 'user', user)
 	update_cmd += ' action ' + action
-	print update_cmd
 	try:
 		run_cmd(update_cmd)
 	except subprocess.CalledProcessError, e:
