@@ -56,6 +56,9 @@
 #include <locale.h>
 #include <sys/socket.h>
 
+// fixme remove
+#define DEBUG
+
 #define AUTH		"O5TBQ23IBTIGBV9WWAHTG9824G"
 #define DEL			"205Y38YHBJNSNBNESROTHY309HL"
 
@@ -4190,12 +4193,13 @@ int main(int argc, char **argv) {
     // todo change params here
     server.maxclients = 1; // accept single client at a time
     server.repl_timeout = 0;
-    // fixme restore
-//    server.daemonize = 1;
     server.supervised_mode = 0;
+#ifndef DEBUG
+    server.daemonize = 1;
     // replace log file, o/w logs will be sent to /dev/null (daemon)
     zfree(server.logfile);
-    server.logfile = zstrdup(""); // fixme choose log file
+    server.logfile = zstrdup("/var/log/rdb.log");
+#endif
     if (server.logfile[0] != '\0') {
     	// Test if we are able to open the file. The server will not be able to abort just for this problem later
     	logfp = fopen(server.logfile,"a");
@@ -4231,7 +4235,7 @@ int main(int argc, char **argv) {
     server.rdb_checksum = 1;
     // back-up copy filename
     zfree(server.rdb_filename);
-    server.rdb_filename = zstrdup("dump.rdb"); // todo choose filename and dir
+    server.rdb_filename = zstrdup("/etc/vsentry/dump.rdb");
     if (chdir("./") == -1) {
     	serverLog(LL_WARNING,"Can't chdir to '%s': %s",
     			argv[1], strerror(errno));
@@ -4242,15 +4246,19 @@ int main(int argc, char **argv) {
     // rdb-save-incremental-fsync yes
 
     // security:
+#ifndef DEBUG
     // todo choose strong password
     server.requirepass = zstrdup(PASS_128);
+#endif
     // kill all commands we do not use (remove from the command table)
     remove_command("config");
     remove_command("command");
     // rename commands we use
     // Note: changing the name of commands that are logged into the AOF file or transmitted to replicas may cause problems
+//#ifndef DEBUG
     rename_command("del", DEL);
     rename_command("auth", AUTH);
+//#endif
 
     // connection:
     // removed TCP, should connect only through Unix socket

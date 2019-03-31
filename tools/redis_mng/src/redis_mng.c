@@ -23,6 +23,9 @@
 #include "sr_log.h"
 #endif
 
+// fixme remove
+#define DEBUG
+
 #define AUTH		"O5TBQ23IBTIGBV9WWAHTG9824G"
 #define DEL			"205Y38YHBJNSNBNESROTHY309HL"
 
@@ -1079,7 +1082,9 @@ out:
 redisContext *redis_mng_session_start(void/*SR_BOOL is_tcp*/)
 { 
 	redisContext *c;
+#ifndef DEBUG
 	redisReply *reply;
+#endif
 	// choose connection type
 //	if (is_tcp)
 //		c = redisConnect("127.0.0.1", 6379);
@@ -1090,6 +1095,7 @@ redisContext *redis_mng_session_start(void/*SR_BOOL is_tcp*/)
 			printf("ERROR: %s failed, ret %d\n", /*is_tcp ? "redisConnect" :*/ "redisConnectUnix", c ? c->err : 0);
 			return NULL;
 	}
+#ifndef DEBUG
 	// authenticate
 	reply = redisCommand(c,"%s %s", AUTH, PASS_128);
 	if (reply == NULL || reply->type != REDIS_REPLY_STATUS || strcmp(reply->str, "OK")) {
@@ -1099,6 +1105,7 @@ redisContext *redis_mng_session_start(void/*SR_BOOL is_tcp*/)
 		return NULL;
 	}
 	freeReplyObject(reply);
+#endif
 	redis_changes = 0;
 	return c;
 }
