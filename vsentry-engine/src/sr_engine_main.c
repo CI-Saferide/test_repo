@@ -229,7 +229,7 @@ static void engine_shutdown(void)
 	sr_stop_task(SR_INFO_GATHER_TASK);
 	sr_stop_task(SR_ENGINE_TASK);
 	sentry_stop();
-	// todo remove redsi
+	// todo remove redis
 #ifdef CONFIG_STAT_ANALYSIS
 	sr_stat_analysis_uninit();
 #endif /* CONFIG_STAT_ANALYSIS */
@@ -282,7 +282,7 @@ static void db_add_rule_or_action(void *rule, SR_8 type, SR_32 *status)
 	}
 }
 
-static int sr_redis_load(int tcp, int pipeline)
+static int sr_redis_load(/*int tcp,*/ int pipeline)
 {
 	int i;
 	can_rule_t can_rule, *can_rule_ptr;
@@ -291,7 +291,7 @@ static int sr_redis_load(int tcp, int pipeline)
 	char file[60];
 	char perms[4];
 	struct timeval t1, t2;
-	redisContext *c = redis_mng_session_start(tcp);
+	redisContext *c = redis_mng_session_start(/*tcp*/);
 	if (c == NULL) {
 		printf("ERROR: redis_mng_session_start failed\n");
 		redis_mng_session_end(c);
@@ -497,7 +497,7 @@ static int sr_redis_load(int tcp, int pipeline)
 	return 0;
 }
 // test Redis: connect either by TCP or Unix sockets
-static int sr_redis_test(int tcp, int clean_first, int clean_at_end)
+static int sr_redis_test(/*int tcp,*/ int clean_first, int clean_at_end)
 {
 	SR_32 rc, i, j;
 	SR_U8 addr_lsb, mask;
@@ -517,7 +517,7 @@ static int sr_redis_test(int tcp, int clean_first, int clean_at_end)
 	redis_mng_can_rule_t can_rule;
 
 //	printf("1\n");fflush(stdout);
-	redisContext *c = redis_mng_session_start(tcp);
+	redisContext *c = redis_mng_session_start(/*tcp*/);
 	if (c == NULL) {
 		printf("ERROR: redis_mng_session_start failed\n");
 		redis_mng_session_end(c);
@@ -896,16 +896,16 @@ SR_32 sr_engine_start(int argc, char *argv[])
 	bin_cls_init();
 #endif
 #ifdef REDIS_TEST
-#define TCP 1
+//#define TCP 1
 #define PIPELINE 1
-	printf("\nRedis start - %s, %s:\n", TCP ? "TCP" : "Unix socket", PIPELINE ? "pipelined" : "non-pipelined");
+	printf("\nRedis start - %s, %s:\n", /*TCP ? "TCP" :*/ "Unix socket", PIPELINE ? "pipelined" : "non-pipelined");
 	// read after boot
-	if (sr_redis_load(TCP, PIPELINE))
+	if (sr_redis_load(/*TCP,*/ PIPELINE))
 		printf("*** REDIS LOAD *** failed\n");
 	else
 		printf("*** REDIS LOAD *** SUCCESS!!!\n");
 	// add entries for next boot
-	if (sr_redis_test(TCP, 1, 0))
+	if (sr_redis_test(/*TCP,*/ 1, 0))
 		printf("*** REDIS TEST *** failed\n\n");
 	else
 		printf("*** REDIS TEST *** SUCCESS!!!\n\n");

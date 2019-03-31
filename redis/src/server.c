@@ -4192,7 +4192,7 @@ int main(int argc, char **argv) {
     server.repl_timeout = 0;
     // fixme restore
 //    server.daemonize = 1;
-    server.supervised_mode = 0/*configEnumGetValue(supervised_mode_enum,"no")*/;
+    server.supervised_mode = 0;
     // replace log file, o/w logs will be sent to /dev/null (daemon)
     zfree(server.logfile);
     server.logfile = zstrdup(""); // fixme choose log file
@@ -4253,13 +4253,13 @@ int main(int argc, char **argv) {
     rename_command("auth", AUTH);
 
     // connection:
-    server.port = 6379; // todo which port we want ?
-    server.tcp_backlog = 511;
-//    server.bindaddr;
-//    server.bindaddr_count;
-//    printf("us %s, us p %d\n", server.unixsocket ? server.unixsocket : "NULL", server.unixsocketperm);
+    // removed TCP, should connect only through Unix socket
+//    server.port = 6379;
+//    server.tcp_backlog = 511;
+    //server.bindaddr = NULL;
+    //server.bindaddr_count = 0;
     zfree(server.unixsocket);
-    server.unixsocket = zstrdup("/tmp/redis.sock");
+    server.unixsocket = zstrdup("/dev/redis.sock");
     server.unixsocketperm = 448/*(mode_t)strtol("700", NULL, 8)*/;
 //    printf("us %s, us p %d\n", server.unixsocket, server.unixsocketperm);
 

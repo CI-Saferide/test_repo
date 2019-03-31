@@ -106,7 +106,7 @@ typedef void handle_rule_f_t(void *rule, SR_8 type, SR_32 *status);
 
 void file_op_convert(SR_U8 file_op, char *perms);
 
-redisContext *redis_mng_session_start(SR_BOOL is_tcp);
+redisContext *redis_mng_session_start(void);
 void redis_mng_session_end(redisContext *c);
 SR_32 redis_mng_clean_db(redisContext *c); // for test only
 /* get new configuration policy */

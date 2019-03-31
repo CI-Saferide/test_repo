@@ -1076,19 +1076,18 @@ out:
 }
 #endif
 
-redisContext *redis_mng_session_start(SR_BOOL is_tcp)
+redisContext *redis_mng_session_start(void/*SR_BOOL is_tcp*/)
 { 
 	redisContext *c;
 	redisReply *reply;
-	// todo allow to change these params
 	// choose connection type
-	if (is_tcp)
-		c = redisConnect("127.0.0.1", 6379);
-	else // unix sockets
-		c = redisConnectUnix("/tmp/redis.sock");
+//	if (is_tcp)
+//		c = redisConnect("127.0.0.1", 6379);
+//	else // unix sockets
+	c = redisConnectUnix("/dev/redis.sock");
 	// verify success here, else return NULL
 	if (c == NULL || c->err) {
-			printf("ERROR: %s failed, ret %d\n", is_tcp ? "redisConnect" : "redisConnectUnix", c ? c->err : 0);
+			printf("ERROR: %s failed, ret %d\n", /*is_tcp ? "redisConnect" :*/ "redisConnectUnix", c ? c->err : 0);
 			return NULL;
 	}
 	// authenticate
