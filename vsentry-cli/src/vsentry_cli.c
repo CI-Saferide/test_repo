@@ -673,7 +673,6 @@ static SR_32 handle_update_ip(SR_U32 rule_id, SR_BOOL is_wl, int argc, char **ar
 	rule_info.dst_ports_list = is_dst_port_list;
 	rule_info.dst_port = EMPTY2NULL(dst_port);
 	rule_info.dst_ports_list = is_dst_port_list;
-	ret = redis_mng_update_net_rule(c, rule_id, &rule_info);
 	rule_info.down_rl = EMPTY2NULL(down_rl);
 	rule_info.up_rl = EMPTY2NULL(up_rl);
 	rule_info.action = action;
