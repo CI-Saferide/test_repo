@@ -272,8 +272,7 @@ SR_32 sal_exec_for_all_tasks(SR_32 (*cb)(void *data))
 				system_stat.vm_allocated += mm->total_vm;
 				mmput(mm);
 			}
-			system_stat.utime += t->utime;
-			system_stat.stime += t->stime;
+			system_stat.time += t->utime + t->stime;
 			system_stat.num_of_threads++;
                         task_io_accounting_add(&acct, &t->ioac);
 		}
