@@ -48,6 +48,7 @@ sr_build_ver.h
 scripts/tmp/
 run.sh
 redis/dump.rdb
+redis/src/Makefile.dep
 redis/src/redis-check-aof
 redis/src/redis-check-rdb
 redis/src/redis-cli

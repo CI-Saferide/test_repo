@@ -4266,6 +4266,7 @@ int main(int argc, char **argv) {
 //    server.tcp_backlog = 511;
     //server.bindaddr = NULL;
     //server.bindaddr_count = 0;
+    server.port = 0; // no TCP
     zfree(server.unixsocket);
     server.unixsocket = zstrdup("/dev/redis.sock");
     server.unixsocketperm = 448/*(mode_t)strtol("700", NULL, 8)*/;

@@ -25,10 +25,13 @@
 
 // fixme remove
 #define DEBUG
-
+#ifdef DEBUG
+#define AUTH		"AUTH"
+#define DEL			"DEL"
+#else
 #define AUTH		"O5TBQ23IBTIGBV9WWAHTG9824G"
 #define DEL			"205Y38YHBJNSNBNESROTHY309HL"
-
+#endif
 #define PASS_128	"a95qaewbe13dr68tayb45u63i8o9fepac[b]0069 \
 					 ea4s1bcd7ef8g90chfbj8k40flc;02d'5/2be.45 \
 					 ,4m299n41bcvc15vf5c9xe41zcb17`ef63c5425= \
@@ -2200,58 +2203,72 @@ SR_32 redis_mng_update_net_rule(redisContext *c, SR_32 rule_id, redis_mng_net_ru
 		return SR_ERROR;
 	}
 
+	//printf("4.1.1\n");fflush(stdout);
 	len = sprintf(cmd, "HMSET %s%d", NET_PREFIX, rule_id);
+	//printf("4.1.1.1\n");fflush(stdout);
 	if (rule->action)
 		len += sprintf(cmd + len, " %s %s", ACTION, rule->action);
+	//printf("4.1.1.2\n");fflush(stdout);
 	if (rule->src_addr_netmask) {
 		if (rule->src_addr_netmasks_list) // list
 			len += sprintf(cmd + len, " %s %d%s%s", SRC_ADDR, LIST_ADDRS, LIST_PREFIX, rule->src_addr_netmask);
 		else // single value
 			len += sprintf(cmd + len, " %s %s", SRC_ADDR, rule->src_addr_netmask);
 	}
+	//printf("4.1.1.3\n");fflush(stdout);
 	if (rule->dst_addr_netmask) {
 		if (rule->dst_addr_netmasks_list) // list
 			len += sprintf(cmd + len, " %s %d%s%s", DST_ADDR, LIST_ADDRS, LIST_PREFIX, rule->dst_addr_netmask);
 		else // single value
 			len += sprintf(cmd + len, " %s %s", DST_ADDR, rule->dst_addr_netmask);
 	}
+	//printf("4.1.1.4\n");fflush(stdout);
 	if (rule->exec) {
 		if (rule->execs_list) // list
 			len += sprintf(cmd + len, " %s %d%s%s", PROGRAM_ID, LIST_PROGRAMS, LIST_PREFIX, rule->exec);
 		else // single value
 			len += sprintf(cmd + len, " %s %s", PROGRAM_ID, rule->exec);
 	}
+	//printf("4.1.1.5\n");fflush(stdout);
 	if (rule->user) {
 		if (rule->users_list) // list
 			len += sprintf(cmd + len, " %s %d%s%s", USER_ID, LIST_USERS, LIST_PREFIX, rule->user);
 		else // single value
 			len += sprintf(cmd + len, " %s %s", USER_ID, rule->user);
 	}
+	//printf("4.1.1.6\n");fflush(stdout);
 	if (rule->proto) {
 		if (rule->protos_list) // list
 			len += sprintf(cmd + len, " %s %d%s%s", PROTOCOL, LIST_PROTOCOLS, LIST_PREFIX, rule->proto);
 		else // single value
 			len += sprintf(cmd + len, " %s %s", PROTOCOL, rule->proto);
 	}
+	//printf("4.1.1.7\n");fflush(stdout);
 	if (rule->src_port) {
 		if (rule->src_ports_list) // list
 			len += sprintf(cmd + len, " %s %d%s%s", SRC_PORT, LIST_PORTS, LIST_PREFIX, rule->src_port);
 		else // single value
 			len += sprintf(cmd + len, " %s %s", SRC_PORT, rule->src_port);
 	}
+	//printf("4.1.1.8\n");fflush(stdout);
 	if (rule->dst_port) {
 		if (rule->dst_ports_list) // list
 			len += sprintf(cmd + len, " %s %d%s%s", DST_PORT, LIST_PORTS, LIST_PREFIX, rule->dst_port);
 		else // single value
 			len += sprintf(cmd + len, " %s %s", DST_PORT, rule->dst_port);
 	}
+	//printf("4.1.1.9\n");fflush(stdout);
 	if (rule->up_rl)
 		len += sprintf(cmd + len, " %s %s", UP_RL, rule->up_rl);
+	//printf("4.1.1.10\n");fflush(stdout);
 	if (rule->down_rl)
 		len += sprintf(cmd + len, " %s %s", DOWN_RL, rule->down_rl);
+	//printf("4.1.2\n");fflush(stdout);
 
 	reply = redisCommand(c, cmd);
+	//printf("4.1.3\n");fflush(stdout);
 	free(cmd);
+	//printf("4.1.4\n");fflush(stdout);
 	if (reply == NULL || reply->type != REDIS_REPLY_STATUS) {
 		printf("ERROR: redis_mng_update_net_rule failed, %d\n", reply ? reply->type : -1);
 		freeReplyObject(reply);
