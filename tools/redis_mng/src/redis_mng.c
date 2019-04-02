@@ -75,8 +75,7 @@
 //#define EMAIL	 		"mail"
 
 #define SYSTEM_POLICER_PREFIX   	"sp:"
-#define SP_UTIME 			"utime"
-#define SP_STIME 			"stime"
+#define SP_TIME 			"time"
 #define SP_BYTES_READ 		"br"
 #define SP_BYTES_WRITE 		"bw"
 #define SP_VM_ALLOC 		"vma"
@@ -2524,9 +2523,8 @@ SR_32 redis_mng_add_system_policer(redisContext *c, char *exec, redis_system_pol
 {
 	redisReply *reply;
 	
-	reply = redisCommand(c,"HMSET %s%s %s %lu %s %lu %s %u %s %u %s %u %s %u", SYSTEM_POLICER_PREFIX, exec,
-		SP_UTIME, sp->utime,
-		SP_STIME, sp->stime,
+	reply = redisCommand(c,"HMSET %s%s %s %lu %s %u %s %u %s %u %s %u", SYSTEM_POLICER_PREFIX, exec,
+		SP_TIME, sp->time,
 		SP_BYTES_READ, sp->bytes_read,
 		SP_BYTES_WRITE, sp->bytes_write,
 		SP_VM_ALLOC, sp->vm_allocated,
@@ -2545,8 +2543,8 @@ SR_32 redis_mng_add_system_policer(redisContext *c, char *exec, redis_system_pol
 
 static SR_32 print_cb(char *exec, redis_system_policer_t *sp)
 {
-	printf("exec:%s utime:%llu stime:%llu byte read:%u byte write:%u vm alloc:%u num of threads:%u \n",
-				exec, sp->utime, sp->stime, sp->bytes_read, sp->bytes_write, sp->vm_allocated, sp->num_of_threads);
+	printf("exec:%s time:%llu byte read:%u byte write:%u vm alloc:%u num of threads:%u \n",
+				exec, sp->time, sp->bytes_read, sp->bytes_write, sp->vm_allocated, sp->num_of_threads);
 	return SR_SUCCESS;
 }
 
@@ -2599,7 +2597,7 @@ SR_32 redis_mng_exec_all_system_policer(redisContext *c, SR_32 (*cb)(char *exec,
 
 		memset(&sp, 0, sizeof(sp));
 		if (replies[i]->elements > 1) 
-			sp.utime = atol(replies[i]->element[1]->str);
+			sp.time = atol(replies[i]->element[1]->str);
 		if (replies[i]->elements > 3) 
 			sp.bytes_read = atol(replies[i]->element[3]->str);
 		if (replies[i]->elements > 5) 

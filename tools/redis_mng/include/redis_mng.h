@@ -87,8 +87,7 @@ typedef struct redis_mng_action {
 } redis_mng_action_t;
 
 typedef struct redis_system_policer {
-	SR_U64  utime;
-	SR_U64  stime;
+	SR_U64  time;
 	SR_U32  bytes_read;
 	SR_U32  bytes_write;
 	SR_U32  vm_allocated;

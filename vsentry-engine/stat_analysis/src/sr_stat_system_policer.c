@@ -37,8 +37,8 @@ static void system_policer_print(void *data_in_hash)
 {
 	system_policer_item_t *system_policer_item = (system_policer_item_t *)data_in_hash;
 
-        CEF_log_event(SR_CEF_CID_SP, "info", SEVERITY_LOW, "process :%s: utime:%d stime:%d vm_allocated:%d bytes_read:%d bytes_write:%d num of threads:%d curr_time:%d",
-		system_policer_item->exec, system_policer_item->stats.utime, system_policer_item->stats.stime,
+        CEF_log_event(SR_CEF_CID_SP, "info", SEVERITY_LOW, "process :%s: time:%d vm_allocated:%d bytes_read:%d bytes_write:%d num of threads:%d curr_time:%d",
+		system_policer_item->exec, system_policer_item->stats.time,
 		system_policer_item->stats.vm_allocated,  
 		system_policer_item->stats.bytes_read, system_policer_item->stats.bytes_write,
 		system_policer_item->stats.num_of_threads, system_policer_item->stats.curr_time);
@@ -97,8 +97,7 @@ static SR_32 write_leran_to_db(void *hash_data, void *data)
 	system_policer_item_t *learn = (system_policer_item_t *)hash_data;
 	redis_system_policer_t sp_info = {};
 
-	sp_info.utime = learn->stats.utime;
-	sp_info.stime = learn->stats.stime;
+	sp_info.time = learn->stats.time;
 	sp_info.bytes_read = learn->stats.bytes_read;
 	sp_info.bytes_write = learn->stats.bytes_write;
 	sp_info.vm_allocated = learn->stats.vm_allocated;
@@ -172,8 +171,7 @@ static SR_32 system_policer_update_max(char *exe, struct sr_ec_system_stat_t *cu
 {
 	SR_U64 value;
 
-	SET_MAX_DIF_FIELD(curr->utime, prev->utime, max->utime, curr->curr_time, prev->curr_time)
-	SET_MAX_DIF_FIELD(curr->stime, prev->stime, max->stime, curr->curr_time, prev->curr_time)
+	SET_MAX_DIF_FIELD(curr->time, prev->time, max->time, curr->curr_time, prev->curr_time)
 	SET_MAX_DIF_FIELD(curr->bytes_read, prev->bytes_read, max->bytes_read, curr->curr_time, prev->curr_time)
 	SET_MAX_DIF_FIELD(curr->bytes_write, prev->bytes_write, max->bytes_write, curr->curr_time, prev->curr_time)
 
@@ -191,8 +189,7 @@ static SR_32 system_policer_update_tolerance(char *exe, struct sr_ec_system_stat
 
         config_params = sr_config_get_param();
 
-	SET_MAX_DIF_FIELD_PROTECT(curr->utime, prev->utime, max->utime, curr->curr_time, prev->curr_time, exe, "utime")
-	SET_MAX_DIF_FIELD_PROTECT(curr->stime, prev->stime, max->stime, curr->curr_time, prev->curr_time, exe, "stime")
+	SET_MAX_DIF_FIELD_PROTECT(curr->time, prev->time, max->time, curr->curr_time, prev->curr_time, exe, "time")
 	SET_MAX_DIF_FIELD_PROTECT(curr->bytes_read, prev->bytes_read, max->bytes_read, curr->curr_time, prev->curr_time, exe, "bytes_read")
 	SET_MAX_DIF_FIELD_PROTECT(curr->bytes_write, prev->bytes_write, max->bytes_write, curr->curr_time, prev->curr_time, exe, "bytes_write")
 
@@ -315,8 +312,7 @@ SR_32 sr_stat_system_policer_new_data(struct sr_ec_system_stat_t *stats)
 	if (system_policer_item->stats.pid != stats->pid)
 		goto out;
 	/* If threads died */
-	if (stats->utime < system_policer_item->stats.utime ||
-	    stats->stime < system_policer_item->stats.stime)  {
+	if (stats->time < system_policer_item->stats.time) {
 		goto out;
 	}
 
@@ -405,8 +401,7 @@ static SR_32 policer_cb(char *exec, redis_system_policer_t *sp)
 		return SR_ERROR;
 	}
 	strncpy(system_policer_learn_item->exec, exec, SR_MAX_PATH_SIZE);
-	system_policer_learn_item->stats.utime = sp->utime;
-	system_policer_learn_item->stats.stime = sp->stime;
+	system_policer_learn_item->stats.time = sp->time;
 	system_policer_learn_item->stats.bytes_read = sp->bytes_read;
 	system_policer_learn_item->stats.bytes_write = sp->bytes_write;
 	system_policer_learn_item->stats.vm_allocated = sp->vm_allocated;
