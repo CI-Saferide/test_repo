@@ -72,6 +72,9 @@ typedef long long mstime_t; /* millisecond time type. */
 #include "endianconv.h"
 #include "crc64.h"
 
+// fixme remove
+#define DEBUG
+
 /* Error codes */
 #define C_OK                    0
 #define C_ERR                   -1
@@ -82,8 +85,13 @@ typedef long long mstime_t; /* millisecond time type. */
 #define CONFIG_MIN_HZ            1
 #define CONFIG_MAX_HZ            500
 #define MAX_CLIENTS_PER_CLOCK_TICK 200          /* HZ is adapted based on that. */
+#ifdef DEBUG
 #define CONFIG_DEFAULT_SERVER_PORT        6379  /* TCP port. */
 #define CONFIG_DEFAULT_TCP_BACKLOG       511    /* TCP listen backlog. */
+#else
+#define CONFIG_DEFAULT_SERVER_PORT        0  /* TCP port. */
+#define CONFIG_DEFAULT_TCP_BACKLOG       0    /* TCP listen backlog. */
+#endif
 #define CONFIG_DEFAULT_CLIENT_TIMEOUT       0   /* Default client timeout: infinite */
 #define CONFIG_DEFAULT_DBNUM     16
 #define CONFIG_MAX_LINE    1024
