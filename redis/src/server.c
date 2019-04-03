@@ -56,9 +56,6 @@
 #include <locale.h>
 #include <sys/socket.h>
 
-// fixme remove
-#define DEBUG
-
 #define AUTH		"O5TBQ23IBTIGBV9WWAHTG9824G"
 #define DEL			"205Y38YHBJNSNBNESROTHY309HL"
 
@@ -4262,11 +4259,10 @@ int main(int argc, char **argv) {
 
     // connection:
     // removed TCP, should connect only through Unix socket
-//    server.port = 6379;
-//    server.tcp_backlog = 511;
+    //server.port = 6379;
+    //server.tcp_backlog = 511;
     //server.bindaddr = NULL;
     //server.bindaddr_count = 0;
-    server.port = 0; // no TCP
     zfree(server.unixsocket);
     server.unixsocket = zstrdup("/dev/redis.sock");
     server.unixsocketperm = 448/*(mode_t)strtol("700", NULL, 8)*/;
