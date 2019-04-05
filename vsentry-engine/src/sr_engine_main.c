@@ -41,10 +41,8 @@
 #ifdef SR_CLI
 #include "sal_cli_interface.h"
 #endif
-#ifdef CONFIG_IRDETO_INTERFACE
-#include "irdeto_unix_interface.h"
-#endif
 #include "sr_stat_system_policer.h"
+#include "sr_engine_static_rules.h"
 
 static SR_BOOL is_engine_on;
 
@@ -200,9 +198,6 @@ static void engine_shutdown(void)
 	sal_cli_interface_uninit();
 #endif
 
-#ifdef CONFIG_IRDETO_INTERFACE
-	irdeto_interface_uninit();
-#endif /* CONFIG_IRDETO_INTERFACE */
 
 	if (config_params->remote_server_support_enable) {
 		sr_get_command_stop();
@@ -396,9 +391,11 @@ SR_32 sr_engine_start(int argc, char *argv[])
 	}
 #endif
 
-#ifdef CONFIG_IRDETO_INTERFACE
-	ret = irdeto_interface_init();
-#endif /* CONFIG_IRDETO_INTERFACE */
+ 	if (create_static_white_list()) {
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+			"%s=failed to create Irdeto static white list ",REASON);
+		return SR_ERROR;
+	}
 
 	sr_db_init();
 	sentry_init(sr_config_vsentry_db_cb);

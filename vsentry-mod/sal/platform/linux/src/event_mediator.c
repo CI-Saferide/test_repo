@@ -745,6 +745,23 @@ static SR_32 vsentry_file_open_task(struct file *file, const struct cred *credv,
 	if (file->f_mode & FMODE_READ)
 		disp.fileinfo.fileop |= SR_FILEOPS_READ;
 
+	disp.fileinfo.dev_type = DEV_TYPE_UNKOWN;
+	if (file->f_path.dentry->d_inode && file->f_path.dentry->d_inode->i_sb) { 
+		if (!strcmp(file->f_path.dentry->d_inode->i_sb->s_id, "proc"))
+				disp.fileinfo.dev_type = DEV_TYPE_PROC;
+		else if(!strcmp(file->f_path.dentry->d_inode->i_sb->s_id, "devtmpfs"))
+				disp.fileinfo.dev_type = DEV_TYPE_DEV;
+		else if(!strcmp(file->f_path.dentry->d_inode->i_sb->s_id, "sysfs"))
+				disp.fileinfo.dev_type = DEV_TYPE_SYS;
+		else if(!strcmp(file->f_path.dentry->d_inode->i_sb->s_id, "tmpfs"))
+				disp.fileinfo.dev_type = DEV_TYPE_TMP;
+	}
+	
+	//shay - temp start
+	sr_get_full_path(file, disp.fileinfo.fullpath, SR_MAX_PATH_SIZE);
+	get_process_name(disp.fileinfo.id.pid, disp.fileinfo.id.exec, SR_MAX_PATH_SIZE);
+	//shay - temp end
+
 #ifdef DEBUG_EVENT_MEDIATOR
 #pragma GCC diagnostic ignored "-Wdeclaration-after-statement"
 	SR_U8 		filename[SR_MAX_PATH_SIZE];
@@ -759,18 +776,6 @@ static SR_32 vsentry_file_open_task(struct file *file, const struct cred *credv,
 					disp.fileinfo.id.pid,
 					disp.fileinfo.id.uid);
 #endif /* DEBUG_EVENT_MEDIATOR */
-
-	disp.fileinfo.dev_type = DEV_TYPE_UNKOWN;
-	if (file->f_path.dentry->d_inode && file->f_path.dentry->d_inode->i_sb) { 
-		if (!strcmp(file->f_path.dentry->d_inode->i_sb->s_id, "proc"))
-				disp.fileinfo.dev_type = DEV_TYPE_PROC;
-		else if(!strcmp(file->f_path.dentry->d_inode->i_sb->s_id, "devtmpfs"))
-				disp.fileinfo.dev_type = DEV_TYPE_DEV;
-		else if(!strcmp(file->f_path.dentry->d_inode->i_sb->s_id, "sysfs"))
-				disp.fileinfo.dev_type = DEV_TYPE_SYS;
-		else if(!strcmp(file->f_path.dentry->d_inode->i_sb->s_id, "tmpfs"))
-				disp.fileinfo.dev_type = DEV_TYPE_TMP;
-	}
 
 	/* call dispatcher */
 	rc = disp_file_open(&disp);

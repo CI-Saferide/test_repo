@@ -66,7 +66,7 @@ SRCS 		:=  main.c \
 				log_uploader.c \
 				sr_canbus_common.c \
 				sr_stat_system_policer.c \
-				irdeto_unix_interface.c
+				sr_engine_static_rules.c
 
 SRCS 		+= $(if $(SR_CLI),sal_cli_interface.c sr_engine_cli.c)
 

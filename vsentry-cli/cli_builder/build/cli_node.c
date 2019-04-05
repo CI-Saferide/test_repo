@@ -1,0 +1,1 @@
+/home/shay/git/vsentry/vsentry-cli/cli_builder/src/cli_node.c

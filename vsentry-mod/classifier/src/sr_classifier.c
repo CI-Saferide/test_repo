@@ -395,13 +395,14 @@ result:
 			action = sr_cls_file_rule_match(info->fileinfo.fileop, rule);
 		}
 		if (action & SR_CLS_ACTION_LOG) {
-			char ext[64];
+			char ext[1024];
 			
-			sprintf(ext, "%s=%d%s %s=%u %s=%s",
+			sprintf(ext, "%s=%d%s %s=%s %s=%s %s=%s",
 				RULE_NUM_KEY,rule, rule == SR_CLS_DEFAULT_RULE ? "(default)" : "", 
-				INODE_NUMBER,info->fileinfo.parent_inode?info->fileinfo.parent_inode:info->fileinfo.current_inode,
-				FILE_PERMISSION,(info->fileinfo.fileop&SR_FILEOPS_WRITE)?"write":(info->fileinfo.fileop&SR_FILEOPS_READ)?"read":"execute"); 
-			
+				"file",info->fileinfo.fullpath,
+				"exec",info->fileinfo.id.exec,
+				FILE_PERMISSION,(info->fileinfo.fileop&SR_FILEOPS_WRITE)?"write":(info->fileinfo.fileop&SR_FILEOPS_READ)?"read":"execute");
+
 			if (action & SR_CLS_ACTION_DROP)
 				CEF_log_event(SR_CEF_CID_FILE, "file operation drop" , SEVERITY_HIGH, ext);
 			else
