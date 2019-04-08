@@ -2,6 +2,12 @@ ifndef TOP_DIR
 TOP_DIR 	:= $(shell pwd)
 endif
 
+ifdef KERNEL_SRC
+INCLUDES 	:= -I$(KERNEL_SRC)/usr/include
+else
+INCLUDES 	:= -I/usr/include/linux/vsentry
+endif
+
 BUILD_DIR 	:= $(TOP_DIR)/build
 OBJDIR 		:= $(BUILD_DIR)/clsbin/objs
 BINDIR 		:= $(BUILD_DIR)/bin
@@ -10,7 +16,6 @@ LIBDIR 		:= $(BUILD_DIR)/lib
 TARGET	 	:= $(LIBDIR)/libbin_cls.a
 OBJS 		:= $(addprefix $(OBJDIR)/,$(SRCS:.c=.o))
 VPATH 		:= $(TOP_DIR)/classifier
-INCLUDES 	:= -I/usr/include/linux/vsentry
 
 CFLAGS 		+= -MMD -O2 -ffreestanding -fpie
 CFLAGS 		+= -Wall -Wundef -Wstrict-prototypes -Wno-trigraphs
@@ -112,3 +117,4 @@ clean:
 	@rm -fr $(BUILD_DIR)
 
 -include $(DEPS)
+
