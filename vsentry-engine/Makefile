@@ -70,6 +70,7 @@ SRCS 		:=  main.c \
 				irdeto_unix_interface.c \
 				irdeto_interface.c \
 				sr_engine_static_rules.c 
+
 ifdef BIN_CLS_DB
 SRCS += 			sr_bin_cls_eng.c
 endif
@@ -96,6 +97,7 @@ INCLUDES 	:=  -I../common/include \
 				-Imutual-repo/include \
 				-Imutual-repo/client \
 				-I$(TOP_DIR)/../binary_cls \
+				-I$(KERNEL_SRC)/usr/include \
 
 OBJS		:=  $(addprefix $(OBJDIR)/,$(SRCS:.c=.o))
 DEPS		:=  $(OBJS:.o=.d)
@@ -181,6 +183,8 @@ libdb_tools:
 
 libbin_cls:
 	@$(MAKE) -s -C ../binary_cls TOP_DIR=$(TOP_DIR)
+
+
 $(OBJDIR)/%.o: %.c
 	@echo "compiling $(notdir $<)"
 	@$(CC) $(CFLAGS) $(INCLUDES) -c $< -o $@
