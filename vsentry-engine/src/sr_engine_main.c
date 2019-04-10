@@ -60,6 +60,18 @@
 
 static SR_BOOL is_engine_on;
 
+static SR_MUTEX db_mutex = SR_MUTEX_INIT_VALUE;
+
+SR_32 sr_engine_get_db_lock(void)
+{
+	return SR_MUTEX_LOCK(&db_mutex) == 0 ? SR_SUCCESS : SR_ERROR; 
+}
+
+SR_32 sr_engine_get_db_unlock(void)
+{
+	return  SR_MUTEX_UNLOCK(&db_mutex) == 0 ? SR_SUCCESS : SR_ERROR; 
+}
+
 SR_BOOL get_engine_state(void)
 {
 	return is_engine_on;
