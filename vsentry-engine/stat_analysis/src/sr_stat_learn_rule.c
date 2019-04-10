@@ -14,13 +14,21 @@
 #include <curl/curl.h>
 #include "sr_config_parse.h"
 #include "sr_stat_learn_rule.h"
+#include "sr_cls_wl_common.h"
+#include "redis_mng.h"
+#include "sr_engine_main.h"
 
 #define HASH_SIZE 500
-#define START_RULE_NUM 300
+#define ACTION_RL "action_rl"
 
-static SR_U16 rule_number = START_RULE_NUM;
+static SR_U16 rule_number = SR_IP_WL_RL_START_RULE_NO;
 
 static struct sr_gen_hash *learn_rule_hash;
+
+static SR_BOOL is_action_created = SR_FALSE;
+static SR_BOOL is_update_process = SR_FALSE;
+
+static redisContext *c;
 
 typedef struct learn_rule_item  {
 	char exec[SR_MAX_PATH_SIZE];
@@ -100,6 +108,8 @@ static SR_32 notify_learning(char *exec, sr_stat_con_stats_t *stats)
 	char buf[SR_MAX_PATH_SIZE + 200], post_vin[64];
 	SR_32 rc = SR_SUCCESS;
 	struct config_params_t *config_params;
+
+	if (1) return SR_SUCCESS;
 
 	config_params = sr_config_get_param();
 
@@ -255,8 +265,9 @@ void sr_learn_rule_connection_hash_print(void)
 
 static SR_32 sr_stat_learn_rule_update_rule(char *exec, SR_U16 rule_num, sr_stat_con_stats_t *counters)
 {
-	SR_U16 actions = SR_CLS_ACTION_RATE, rl_exceed_action = SR_CLS_ACTION_DROP;
+	char rl[128];
 
+	redis_mng_net_rule_t rule_info = {};
 	/* Currently supports only UDP, TODO, support TCP, ANY protocl for port match */
 	CEF_log_event(SR_CEF_CID_STAT_IP, "info", SEVERITY_LOW,
 		"UPDATE rule#%d exec:%s RX p:%d b:%d", 
@@ -264,27 +275,52 @@ static SR_32 sr_stat_learn_rule_update_rule(char *exec, SR_U16 rule_num, sr_stat
 		exec,
 		8 * counters->rx_msgs,
 		8 * counters->rx_bytes);
-		
-	sr_cls_add_ipv4(0, exec, "*", 0, rule_num, SR_DIR_SRC);
-	sr_cls_add_ipv4(0, exec, "*", 0xffffffff, rule_num, SR_DIR_DST); /* local dst */
-	sr_cls_port_add_rule(0, exec, "*", rule_num, SR_DIR_SRC, 17); 
-	sr_cls_port_add_rule(0, exec, "*", rule_num, SR_DIR_DST, 17); 
-	sr_cls_rule_add(SR_NET_RULES, rule_num, actions, SR_FILEOPS_READ, SR_RATE_TYPE_BYTES, counters->rx_bytes * 1.1, rl_exceed_action, 0, 0, 0, 0);
 
-	CEF_log_event(SR_CEF_CID_STAT_IP, "info", SEVERITY_LOW,
-		"UPDATE rule#%d exec:%s TX p:%d b:%d", 
-		rule_num + 1, exec,
-		8 * counters->tx_msgs,
-		8 * counters->tx_bytes);
-		
-	sr_cls_add_ipv4(0, exec, "*", 0xffffffff, rule_num + 1, SR_DIR_SRC); /* local src */
-	sr_cls_add_ipv4(0, exec, "*", 0, rule_num + 1, SR_DIR_DST);
-	sr_cls_port_add_rule(0, exec, "*", rule_num + 1, SR_DIR_SRC, 17); 
-	sr_cls_port_add_rule(0, exec, "*", rule_num + 1, SR_DIR_DST, 17); 
-	sr_cls_rule_add(SR_NET_RULES, rule_num + 1, actions, SR_FILEOPS_READ, SR_RATE_TYPE_BYTES, counters->tx_bytes * 1.1, rl_exceed_action, 0, 0, 0, 0);
+	rule_info.user = "*";
+	rule_info.exec = exec;
+	rule_info.proto = "udp";
+	rule_info.src_port = "0";
+	rule_info.dst_port = "0";
+	rule_info.action = ACTION_RL;
+
+	// Download 
+	rule_info.src_addr_netmask = "0.0.0.0/0"; // source any
+	rule_info.dst_addr_netmask = "0.0.0.0/32"; // destination local
+	snprintf(rl, sizeof(rl), "%d", (int)(counters->rx_bytes * 1.1));
+	rule_info.down_rl = rl;
+	rule_info.up_rl = "0";
+
+	if (redis_mng_update_net_rule(c, rule_num, &rule_info) != SR_SUCCESS) {
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+		"%s=redis failed update rule",REASON);
+		return SR_ERROR;
+	}
+
+	// Upload 
+	rule_info.src_addr_netmask = "0.0.0.0/32"; // source local
+	rule_info.dst_addr_netmask = "0.0.0.0/0"; // dewstination any
+	snprintf(rl, sizeof(rl), "%d", (int)(counters->tx_bytes * 1.1));
+	rule_info.up_rl = rl;
+	rule_info.down_rl = "0";
+        
+	if (redis_mng_update_net_rule(c, rule_num + 1, &rule_info) != SR_SUCCESS) {
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+			"%s=redis failed update rule",REASON);
+		return SR_ERROR;
+	}
 
 	return SR_SUCCESS;
 } 
+
+static SR_32 check_if_update_process_rule_cb(void *hash_data, void *data)
+{
+	learn_rule_item_t *learn_rule_item = (learn_rule_item_t *)hash_data;
+
+	if (learn_rule_item->is_updated)
+		is_update_process = SR_TRUE;
+		
+	return SR_SUCCESS;
+}
 
 static SR_32 update_process_rule_cb(void *hash_data, void *data)
 {
@@ -306,11 +342,61 @@ static SR_32 deploy_process_rule_cb(void *hash_data, void *data)
 	return sr_stat_learn_rule_update_rule(learn_rule_item->exec, learn_rule_item->rule_num, &(learn_rule_item->counters));
 }
 
-SR_32 sr_stat_learn_rule_create_process_rules(void)
+static SR_32 create_learn_rl_action()
 {
-	sr_stat_learn_rule_hash_exec_for_all(update_process_rule_cb);
+	redis_mng_action_t action_info = {};
+	char str_bm[32] = {}, str_rl_bm[32] = {};
+	SR_U32 rl_bm = SR_CLS_ACTION_DROP | SR_CLS_ACTION_LOG; 
+	SR_U32 bm = SR_CLS_ACTION_RATE;
+
+	snprintf(str_bm, sizeof(str_bm), "%d", bm);
+	snprintf(str_rl_bm, sizeof(str_rl_bm), "%d", rl_bm);
+	action_info.action_bm = str_bm;
+	action_info.rl_bm = str_rl_bm;
+	action_info.rl_log = "vsentry";
+
+	if (redis_mng_add_action(c, ACTION_RL , &action_info)) {
+		printf("add action failed \n");
+		return SR_ERROR;
+	}
 
 	return SR_SUCCESS;
+}
+
+SR_32 sr_stat_learn_rule_create_process_rules(void)
+{
+	SR_32 rc = SR_SUCCESS;
+
+	sr_stat_learn_rule_hash_exec_for_all(check_if_update_process_rule_cb);
+	if (!is_update_process)
+		return SR_SUCCESS;
+	is_update_process = SR_FALSE;
+
+	sr_engine_get_db_lock();
+	c = redis_mng_session_start();
+	if (!c) {
+                CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+					"%s=redis session start failed",REASON);
+		rc = SR_ERROR;
+		goto out;
+	}
+	if (!is_action_created) {
+		is_action_created = SR_TRUE;
+		if (create_learn_rl_action() != SR_SUCCESS) {
+			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+			"%s=rl action creation failed",REASON);
+			rc = SR_ERROR;
+			goto out;
+		}
+	}
+
+	sr_stat_learn_rule_hash_exec_for_all(update_process_rule_cb);
+	redis_mng_session_end(c);
+
+out:
+	sr_engine_get_db_unlock();
+
+	return rc;
 }
 
 static SR_32 delete_process_rule_cb(void *hash_data, void *data)
@@ -351,9 +437,35 @@ SR_32 sr_stat_learn_rule_undeploy(void)
 
 SR_32 sr_stat_learn_rule_deploy(void)
 {
+	SR_32 rc = SR_SUCCESS;
+
+	sr_engine_get_db_lock();
+
+	c = redis_mng_session_start();
+	if (!c) {
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+		"%s=redis session start failed",REASON);
+		rc = SR_ERROR;
+		goto out;
+	}
+	if (!is_action_created) {
+		is_action_created = SR_TRUE;
+		if (create_learn_rl_action() != SR_SUCCESS) {
+			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+			"%s=rl action creation failed",REASON);
+			rc = SR_ERROR;
+			goto out;
+		}
+	}
+
 	sr_stat_learn_rule_hash_exec_for_all(deploy_process_rule_cb);
 
-	return SR_SUCCESS;
+out:
+	if (c)
+		redis_mng_session_end(c);
+	sr_engine_get_db_unlock();
+
+	return rc;
 }
 
 
@@ -362,7 +474,7 @@ SR_32 sr_stat_learn_rule_cleanup_process_rules(void)
 	sr_stat_learn_rule_undeploy();
 
 	// Reset rule number 
-	rule_number = START_RULE_NUM;
+	rule_number = SR_IP_WL_RL_START_RULE_NO;
 
 	sr_stat_learn_rule_delete_all();
 

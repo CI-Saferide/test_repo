@@ -205,9 +205,9 @@ static SR_BOOL is_valid_rule_id(char *type, char *section, char *rule_str)
 	}
 	if (!strcmp(section, "ip")) {
 		if (!strcmp(type, "wl")) {
-			return (rule >= SR_IP_WL_START_RULE_NO && rule <= SR_IP_WL_END_RULE_NO);
+			return (rule >= SR_IP_WL_RL_START_RULE_NO && rule <= SR_IP_WL_END_RULE_NO);
 		}
-		return (rule < SR_IP_WL_START_RULE_NO);
+		return (rule < SR_IP_WL_RL_START_RULE_NO);
 	}
 
 	return SR_TRUE;
@@ -1080,9 +1080,9 @@ static SR_32 handle_delete(int argc, char **argv)
 		is_ip = SR_TRUE;
 		if (!strcmp(type, "rule")) {
 			from_rule = 0;
-			to_rule = SR_IP_WL_START_RULE_NO - 1;
+			to_rule = SR_IP_WL_RL_START_RULE_NO - 1;
 		} else if (!strcmp(type, "wl")) {
-			from_rule = SR_IP_WL_START_RULE_NO;
+			from_rule = SR_IP_WL_RL_START_RULE_NO;
 			to_rule = SR_IP_WL_END_RULE_NO;
 		}
 	}
