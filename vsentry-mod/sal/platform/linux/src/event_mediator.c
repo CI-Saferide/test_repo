@@ -80,8 +80,11 @@ static SR_8 get_path(struct dentry *dentry, SR_8 *buffer, SR_32 len)
 	SR_8 path[SR_MAX_PATH_SIZE], *path_ptr;
 	
 	path_ptr = dentry_path_raw(dentry, path, SR_MAX_PATH_SIZE);
-	if (IS_ERR(path_ptr))
+	if (IS_ERR(path_ptr)) {
+		CEF_log_event(SR_CEF_CID_SYSTEM, "Get path error" , SEVERITY_HIGH, 
+						"%s=path_ptr in NULL failed to get file path",REASON);
 		return SR_ERROR;
+	}
 
 	if (strlen(path_ptr) > SR_MAX_PATH_SIZE) { 
 		CEF_log_event(SR_CEF_CID_SYSTEM, "Get path error" , SEVERITY_HIGH, 
@@ -93,6 +96,7 @@ static SR_8 get_path(struct dentry *dentry, SR_8 *buffer, SR_32 len)
 	return SR_SUCCESS;
 }
 
+#if 1
 static SR_32 sr_get_full_path(struct file * file, char *file_full_path, SR_U32 max_len)
 {
 	SR_32 mount_point_length = 0;
@@ -105,9 +109,11 @@ static SR_32 sr_get_full_path(struct file * file, char *file_full_path, SR_U32 m
 
 	path = file->f_path;
 	/* inc reference counter */
-	if (unlikely(!dget(file->f_path.dentry)))
+	if (unlikely(!dget(file->f_path.dentry))) {
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+				"%s=failed to get file dentry", REASON);
 		return SR_ERROR;
-
+	}
 	if (follow_up(&path)) {
 		/* if foolow_up succeed, it dec the reference counter */
 		get_path(path.dentry, file_full_path, max_len);
@@ -134,12 +140,43 @@ static SR_32 sr_get_full_path(struct file * file, char *file_full_path, SR_U32 m
 
 	return SR_SUCCESS;
 }
+#else
+static SR_32 sr_get_full_path(struct file * file, char *file_full_path, SR_U32 max_len)
+{
+
+	char* pbuff  = NULL;
+	char* szpath = NULL;
+
+	/* Allocate page */
+	pbuff = (char *) __get_free_page(GFP_KERNEL);
+	if (!pbuff)
+	{
+		printk("__get_free_page: %d\n", -ENOMEM);
+		szpath = ERR_PTR(-ENOMEM);
+		return SR_ERROR;
+	}
+
+	/* Convert path to string */
+	szpath = d_path(&(file->f_path), pbuff, PAGE_SIZE);
+	if (IS_ERR(szpath))
+	{
+		printk("d_path: %ld\n", PTR_ERR(szpath));
+		
+		pbuff = NULL;
+	}
+
+	strncpy(file_full_path, szpath, max_len);
+	free_page((unsigned long) pbuff);
+	return SR_SUCCESS;	
+}
+#endif
 
 SR_32 get_process_name(SR_U32 pid, char *exec, SR_U32 max_len)
 {
 	struct pid *pid_struct;
 	struct task_struct *task;
 	struct mm_struct *mm;
+	struct file* exec_file;
 	SR_32 rc = SR_SUCCESS;
 
 	pid_struct = find_get_pid(pid);
@@ -152,7 +189,9 @@ SR_32 get_process_name(SR_U32 pid, char *exec, SR_U32 max_len)
 		return SR_ERROR;
 
 	down_read(&mm->mmap_sem);
+	exec_file = get_file(mm->exe_file);
 	rc = sr_get_full_path(mm->exe_file, exec, max_len);
+	fput(exec_file);
 	up_read(&mm->mmap_sem);
 	mmput(mm);
 
@@ -235,8 +274,12 @@ static void update_process_info (identifier *id, struct sock *sk, struct task_st
 
 		if (ts)
 			task = ts;
-
-		rcred = task->real_cred;
+		else
+			return;
+		if (task)
+			rcred = task->real_cred;
+		else
+			return;
 
 		id->pid = task->tgid;
 		id->uid = (int)rcred->uid.val;
@@ -1220,7 +1263,7 @@ SR_32 vsentry_bprm_check_security(struct linux_binprm *bprm)
 {
 	disp_info_t disp;
 	struct task_struct *ts = current;
-	const struct cred *rcred= ts->real_cred;
+	const struct cred *rcred= (ts)? ts->real_cred : NULL;
 	SR_32 rc;
 	
 	memset(&disp, 0, sizeof(disp_info_t));

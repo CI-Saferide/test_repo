@@ -2,7 +2,8 @@ ifdef CROSS_COMPILE
 export CC=$(CROSS_COMPILE)gcc
 endif
 
-CPPFLAGS += -I../common/include -I../vsentry-lib/include -I../vsentry-engine/sal/platform/linux/include -I../vsentry-engine/include -I../tools/sr-log/include -I../tools/db_tools/include -Icli_builder/include
+CPPFLAGS += -I../common/include -I../vsentry-lib/include -I../vsentry-engine/sal/platform/linux/include -I../vsentry-engine/include -I../tools/sr-log/include -I../tools/db_tools/include
+
 
 TOP_DIR		:= $(shell pwd)
 BUILD_DIR 	:= $(TOP_DIR)/build
@@ -25,9 +26,9 @@ OBJS		:=  $(addprefix $(OBJDIR)/,$(SRCS:.c=.o))
 DEPS		:=  $(OBJS:.o=.d)
 
 # libs to link with
-LIBS		:= -l$(TARGET) -lsentry -ldb_tools -lcli
+LIBS		:= -l$(TARGET) -lsentry -ldb_tools
 # and where to search them 
-LIB_PATH 	:= -L$(LIBDIR) -L$(TOP_DIR)/cli_builder/build
+LIB_PATH 	:= -L$(LIBDIR)
 
 CFLAGS 		+= -MMD -Wall
 
@@ -37,14 +38,9 @@ else
 CFLAGS 		+= -O2
 endif
 
-LIBCLI = cli_builder/build/libcli.a
-
 all: $(TARGET)
 
-$(LIBCLI):
-	make -C cli_builder
-
-$(TARGET): lib$(TARGET) libdb_tools $(LIBCLI)
+$(TARGET): lib$(TARGET) libdb_tools
 	@echo "linking $(notdir $@)"
 	$(CC) $(LDFLAGS) -o $(BINDIR)/$(TARGET) $(LIB_PATH) $(LIBS)
 

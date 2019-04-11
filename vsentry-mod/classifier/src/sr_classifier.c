@@ -14,7 +14,7 @@
 #include "sr_cls_test.h"
 #endif
 
-static cls_file_mem_optimization_t dparent_flag = CLS_FILE_MEM_OPT_ALL_FILES;
+static cls_file_mem_optimization_t dparent_flag = CLS_FILE_MEM_OPT_ONLY_DIR;
 static SR_BOOL is_def; /* global variable for all default rules */
 
 static SR_U32 run_ino;
@@ -254,7 +254,7 @@ result:
 	return SR_CLS_ACTION_ALLOW;
 }
 
-
+static int wa_cnt = 0;
 SR_32 sr_classifier_file(disp_info_t* info)
 {
 	disp_info_t* tmp_info;
@@ -295,7 +295,7 @@ check_parent:
 		ptr = sr_cls_file_find(tmp_info->fileinfo.parent_inode);
 		if (ptr) {
 			sal_or_self_op_arrays(&ba_res, ptr);
-		}else if(dparent_flag == CLS_FILE_MEM_OPT_ONLY_DIR){		
+		}else {		
 			if(tmp_info->fileinfo.parent_info){ //safty check if the "parent_info" ptr is null for some reason...
 				tmp_info=(disp_info_t*)sal_get_parent_dir(tmp_info);
 				if(tmp_info){// check if we in ROOT "/" directory cuz info will be null
@@ -334,7 +334,7 @@ check_old_parent:
 		ptr = sr_cls_file_find(tmp_info->fileinfo.old_parent_inode);
 		if (ptr) {
 			sal_or_self_op_arrays(&ba_res, ptr);
-		}else if(dparent_flag == CLS_FILE_MEM_OPT_ONLY_DIR){		
+		}else {		
 			if(tmp_info->fileinfo.parent_info){ //safty check if the "parent_info" ptr is null for some reason...
 				tmp_info=(disp_info_t*)sal_get_parent_dir(tmp_info);
 				if(tmp_info){
@@ -385,7 +385,13 @@ check_old_parent:
 defaultConf:
 	is_def = SR_TRUE;
 	if(config_params->def_file_action)
-		def_action = config_params->def_file_action;	
+		def_action = config_params->def_file_action;
+	if ((info->fileinfo.id.pid == 0) && (info->fileinfo.current_inode == 0)) {
+		wa_cnt++;
+		//CEF_log_event(SR_CEF_CID_SYSTEM, "work-arround", SEVERITY_HIGH,
+		//		"%s=inode and pid are zero wa_cnt=%d",REASON, wa_cnt);
+		return SR_CLS_ACTION_ALLOW;
+	}
 	
 result:	
 	while ((rule = find_next_rule (&ba_res)) != SR_CLS_NO_MATCH) {
@@ -397,10 +403,12 @@ result:
 		if (action & SR_CLS_ACTION_LOG) {
 			char ext[1024];
 			
-			sprintf(ext, "%s=%d%s %s=%s %s=%s %s=%s",
+			snprintf(ext, 1024, "%s=%d%s %s=%s %s=%s %s=%d %s=%u %s=%s",
 				RULE_NUM_KEY,rule, rule == SR_CLS_DEFAULT_RULE ? "(default)" : "", 
 				"file",info->fileinfo.fullpath,
 				"exec",info->fileinfo.id.exec,
+				"pid",info->fileinfo.id.pid,
+				"fileinode",info->fileinfo.current_inode,
 				FILE_PERMISSION,(info->fileinfo.fileop&SR_FILEOPS_WRITE)?"write":(info->fileinfo.fileop&SR_FILEOPS_READ)?"read":"execute");
 
 			if (action & SR_CLS_ACTION_DROP)
