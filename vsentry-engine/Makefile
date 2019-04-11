@@ -8,7 +8,6 @@ BUILD_DIR 	:= $(TOP_DIR)/build
 OBJDIR		:= $(BUILD_DIR)/objs
 LIBDIR		:= $(BUILD_DIR)/lib
 BINDIR 		:= $(BUILD_DIR)/bin
-MUTUAL_REPO_DIR := mutual-repo
 
 TARGET 		:= sr_engine
 
@@ -94,8 +93,6 @@ INCLUDES 	:=  -I../common/include \
 				-Iwhite_list/include \
 				-Ithird-party/include \
 				-Idb/include \
-				-Imutual-repo/include \
-				-Imutual-repo/client \
 				-I$(TOP_DIR)/../binary_cls \
 				-I$(KERNEL_SRC)/usr/include \
 
@@ -109,7 +106,7 @@ else
 LIBS 		:= -Wl,--start-group -l$(TARGET) -lsr_hash -lsr_log -lsysrepo_mng -ldb_tools -Wl,--end-group -lpthread -ljsmn -lsentry -lsysrepo -lcurl -larchive -lcrypto -lclient
 endif
 # and where to search them 
-LIB_PATH 	:= -L$(LIBDIR) -Lmutual-repo/client/build/lib
+LIB_PATH 	:= -L$(LIBDIR)
 
 CFLAGS 		+= -MMD -Wall
 CFLAGS 		+= -DCONFIG_STAT_ANALYSIS
@@ -149,18 +146,11 @@ ifdef XCODE
 endif
 
 
-.NOTPARALLEL:
-repo-clone:
-	@rm -rf mutual-repo
-	@git clone -n git@github.com:saferide-tech/mutual-repo.git --depth 1
-	@cd mutual-repo && git checkout HEAD client/ && git checkout HEAD include/ && git checkout HEAD Makefile
-	@cd mutual-repo && make libclient $(XCODE_FLAGS)
-
 lib$(TARGET): build_ver OBJSDIR $(OBJS) 
 	@echo "linking $(notdir $@)"
 	@$(AR) rc $(LIBDIR)/$@.a $(OBJS)
 
-OBJSDIR: repo-clone
+OBJSDIR:
 	@echo "creating $(OBJDIR) $(LIBDIR) $(BINDIR)"
 	@mkdir -p $(OBJDIR)
 	@mkdir -p $(LIBDIR)
@@ -194,7 +184,6 @@ install:
 
 clean:
 	@rm -fr $(BUILD_DIR)
-	@rm -fr mutual-repo
 
 SPLINT_FLAGS += -warnposix -paramuse -unrecog -retvalint -boolops -predboolothers -mustfreefresh -retvalother
 SPLINT_FLAGS += -mustfreeonly -predboolint -nullpass -infloops -compmempass -immediatetrans
