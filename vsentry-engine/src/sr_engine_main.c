@@ -45,7 +45,9 @@
 #include "irdeto_unix_interface.h"
 #endif
 #include "sr_stat_system_policer.h"
+#ifdef IRDETO
 #include "irdeto_interface.h"
+#endif
 #include "sr_engine_static_rules.h"
 
 #ifdef BIN_CLS_DB
@@ -206,7 +208,9 @@ static void engine_shutdown(void)
 	sal_cli_interface_uninit();
 #endif
 
+#ifdef IRDETO
 	irdeto_interface_uninit();
+#endif
 #ifdef CONFIG_IRDETO_INTERFACE
 	irdeto_unix_interface_uninit();
 #endif /* CONFIG_IRDETO_INTERFACE */
@@ -411,12 +415,14 @@ SR_32 sr_engine_start(int argc, char *argv[])
 #ifdef CONFIG_IRDETO_INTERFACE
 	ret = irdeto_unix_interface_init();
 #endif /* CONFIG_IRDETO_INTERFACE */
+#ifdef IRDETO
 	ret = irdeto_interface_init();
 	if (ret != SR_SUCCESS){
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 			"%s=failed to init irdeto interface",REASON);
 		return SR_ERROR;
 	}
+#endif
 
 #ifdef BIN_CLS_DB
 	bin_cls_init();

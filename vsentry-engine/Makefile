@@ -67,12 +67,13 @@ SRCS 		:=  main.c \
 				sr_canbus_common.c \
 				sr_stat_system_policer.c \
 				irdeto_unix_interface.c \
-				irdeto_interface.c \
 				sr_engine_static_rules.c 
 
 ifdef BIN_CLS_DB
 SRCS += 			sr_bin_cls_eng.c
 endif
+
+SRCS +=	$(if $(IRDETO),irdeto_interface.c)
 
 SRCS 		+= $(if $(SR_CLI),sal_cli_interface.c sr_engine_cli.c)
 
@@ -101,10 +102,11 @@ DEPS		:=  $(OBJS:.o=.d)
 
 # libs to link with
 ifdef BIN_CLS_DB
-LIBS		:= -Wl,--start-group -l$(TARGET) -lsr_hash -lsr_log -lsysrepo_mng -ldb_tools -lbin_cls -Wl,--end-group -lpthread -ljsmn -lsentry -lsysrepo -lcurl -larchive -lcrypto -lclient
+LIBS		:= -Wl,--start-group -l$(TARGET) -lsr_hash -lsr_log -lsysrepo_mng -ldb_tools -lbin_cls -Wl,--end-group -lpthread -ljsmn -lsentry -lsysrepo -lcurl -larchive -lcrypto
 else
-LIBS 		:= -Wl,--start-group -l$(TARGET) -lsr_hash -lsr_log -lsysrepo_mng -ldb_tools -Wl,--end-group -lpthread -ljsmn -lsentry -lsysrepo -lcurl -larchive -lcrypto -lclient
+LIBS 		:= -Wl,--start-group -l$(TARGET) -lsr_hash -lsr_log -lsysrepo_mng -ldb_tools -Wl,--end-group -lpthread -ljsmn -lsentry -lsysrepo -lcurl -larchive -lcrypto
 endif
+LIBS += $(if $(IRDETO),-lclient)
 # and where to search them 
 LIB_PATH 	:= -L$(LIBDIR)
 
@@ -115,6 +117,7 @@ CFLAGS 		+= -DCONFIG_CAN_ML
 CFLAGS 		+= -DCONFIG_IRDETO_INTERFACE
 CFLAGS 		+= $(if $(SR_STAT_ANALYSIS_DEBUG),-DSR_STAT_ANALYSIS_DEBUG)
 CFLAGS 		+= $(if $(SR_CAN_DEBUG_PRINT),-DSR_CAN_DEBUG_PRINT)
+CFLAGS 		+= $(if $(IRDETO),-DIRDETO)
 CFLAGS 		+= -DSR_CAN_DEBUG_PRINT
 #CFLAGS 		+= -DSR_RB_DEBUG -DSR_MSG_DEBUG
 CFLAGS 		+= -D__linux
