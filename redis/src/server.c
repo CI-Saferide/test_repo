@@ -3851,26 +3851,28 @@ int checkForSentinelMode(int argc, char **argv) {
     return 0;
 }
 
+#if 0
 static long long usec(void) {
     struct timeval tv;
     gettimeofday(&tv,NULL);
     return (((long long)tv.tv_sec)*1000000)+tv.tv_usec;
 }
+#endif
 
 /* Function called at startup to load RDB or AOF file in memory. */
 void loadDataFromDisk(void) {
-	long long t1, t2;
+//	long long t1, t2;
     long long start = ustime();
-	t1 = usec();
+//	t1 = usec();
     if (server.aof_state == AOF_ON) {
         if (loadAppendOnlyFile(server.aof_filename) == C_OK)
             serverLog(LL_NOTICE,"DB loaded from append only file: %.3f seconds",(float)(ustime()-start)/1000000);
     } else {
         rdbSaveInfo rsi = RDB_SAVE_INFO_INIT;
         if (rdbLoad(server.rdb_filename,&rsi) == C_OK) {
-        	t2 = usec();
+//        	t2 = usec();
             serverLog(LL_NOTICE,"DB loaded from disk: %.3f seconds", (float)(ustime()-start)/1000000);
-            printf("*** DBG *** DB load from file took %.6fs\n", (t2-t1)/1000000.0);
+//            printf("*** DBG *** DB load from file took %.6fs\n", (t2-t1)/1000000.0);fflush(stdout);
 
             /* Restore the replication ID / offset from the RDB file. */
             if (server.masterhost &&
@@ -4231,7 +4233,7 @@ int main(int argc, char **argv) {
     appendServerSaveParams(60, 1000);
     server.stop_writes_on_bgsave_err = 1;
     server.rdb_compression = 1;
-    server.rdb_checksum = 1;
+    server.rdb_encrypt = 1;
     // back-up copy filename
     zfree(server.rdb_filename);
     server.rdb_filename = zstrdup("/etc/vsentry/dump.rdb");
