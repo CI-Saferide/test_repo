@@ -429,18 +429,26 @@ static SR_32 policer_cb(char *exec, redis_system_policer_t *sp)
 
 SR_32 sr_stat_policer_load_file(void)
 {
+	SR_32 rc = SR_SUCCESS;
+
+	sr_engine_get_db_lock();
 	if (!(c = redis_mng_session_start())) {
         	CEF_log_event(SR_CEF_CID_SP, "error", SEVERITY_HIGH, "%s=Failed start redis session", REASON);
-		return SR_ERROR;
+		rc = SR_ERROR;
+		goto out;
 	}
 
 	if (redis_mng_exec_all_system_policer(c, policer_cb)) {
         	CEF_log_event(SR_CEF_CID_SP, "error", SEVERITY_HIGH, "%s=Failed policer load file", REASON);
-		return SR_ERROR;
+		rc = SR_ERROR;
+		goto out;
 	} 
 	
-	redis_mng_session_end(c);
+out:
+	if (c)
+		redis_mng_session_end(c);
+	sr_engine_get_db_unlock();
 
-	return SR_SUCCESS;
+	return rc;
 }
 
