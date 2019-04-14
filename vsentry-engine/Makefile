@@ -8,7 +8,6 @@ BUILD_DIR 	:= $(TOP_DIR)/build
 OBJDIR		:= $(BUILD_DIR)/objs
 LIBDIR		:= $(BUILD_DIR)/lib
 BINDIR 		:= $(BUILD_DIR)/bin
-MUTUAL_REPO_DIR := mutual-repo
 
 TARGET 		:= sr_engine
 
@@ -68,12 +67,13 @@ SRCS 		:=  main.c \
 				sr_canbus_common.c \
 				sr_stat_system_policer.c \
 				irdeto_unix_interface.c \
-				irdeto_interface.c \
 				sr_engine_static_rules.c 
 
 ifdef BIN_CLS_DB
 SRCS += 			sr_bin_cls_eng.c
 endif
+
+SRCS +=	$(if $(IRDETO),irdeto_interface.c)
 
 SRCS 		+= $(if $(SR_CLI),sal_cli_interface.c sr_engine_cli.c)
 
@@ -94,8 +94,6 @@ INCLUDES 	:=  -I../common/include \
 				-Iwhite_list/include \
 				-Ithird-party/include \
 				-Idb/include \
-				-Imutual-repo/include \
-				-Imutual-repo/client \
 				-I$(TOP_DIR)/../binary_cls \
 				-I$(KERNEL_SRC)/usr/include \
 
@@ -104,12 +102,13 @@ DEPS		:=  $(OBJS:.o=.d)
 
 # libs to link with
 ifdef BIN_CLS_DB
-LIBS		:= -Wl,--start-group -l$(TARGET) -lsr_hash -lsr_log -lsysrepo_mng -ldb_tools -lbin_cls -Wl,--end-group -lpthread -ljsmn -lsentry -lsysrepo -lcurl -larchive -lcrypto -lclient
+LIBS		:= -Wl,--start-group -l$(TARGET) -lsr_hash -lsr_log -lsysrepo_mng -ldb_tools -lbin_cls -Wl,--end-group -lpthread -ljsmn -lsentry -lsysrepo -lcurl -larchive -lcrypto
 else
-LIBS 		:= -Wl,--start-group -l$(TARGET) -lsr_hash -lsr_log -lsysrepo_mng -ldb_tools -Wl,--end-group -lpthread -ljsmn -lsentry -lsysrepo -lcurl -larchive -lcrypto -lclient
+LIBS 		:= -Wl,--start-group -l$(TARGET) -lsr_hash -lsr_log -lsysrepo_mng -ldb_tools -Wl,--end-group -lpthread -ljsmn -lsentry -lsysrepo -lcurl -larchive -lcrypto
 endif
+LIBS += $(if $(IRDETO),-lclient)
 # and where to search them 
-LIB_PATH 	:= -L$(LIBDIR) -Lmutual-repo/client/build/lib
+LIB_PATH 	:= -L$(LIBDIR)
 
 CFLAGS 		+= -MMD -Wall
 CFLAGS 		+= -DCONFIG_STAT_ANALYSIS
@@ -118,6 +117,7 @@ CFLAGS 		+= -DCONFIG_CAN_ML
 CFLAGS 		+= -DCONFIG_IRDETO_INTERFACE
 CFLAGS 		+= $(if $(SR_STAT_ANALYSIS_DEBUG),-DSR_STAT_ANALYSIS_DEBUG)
 CFLAGS 		+= $(if $(SR_CAN_DEBUG_PRINT),-DSR_CAN_DEBUG_PRINT)
+CFLAGS 		+= $(if $(IRDETO),-DIRDETO)
 CFLAGS 		+= -DSR_CAN_DEBUG_PRINT
 #CFLAGS 		+= -DSR_RB_DEBUG -DSR_MSG_DEBUG
 CFLAGS 		+= -D__linux
@@ -149,18 +149,11 @@ ifdef XCODE
 endif
 
 
-.NOTPARALLEL:
-repo-clone:
-	@rm -rf mutual-repo
-	@git clone -n git@github.com:saferide-tech/mutual-repo.git --depth 1
-	@cd mutual-repo && git checkout HEAD client/ && git checkout HEAD include/ && git checkout HEAD Makefile
-	@cd mutual-repo && make libclient $(XCODE_FLAGS)
-
 lib$(TARGET): build_ver OBJSDIR $(OBJS) 
 	@echo "linking $(notdir $@)"
 	@$(AR) rc $(LIBDIR)/$@.a $(OBJS)
 
-OBJSDIR: repo-clone
+OBJSDIR:
 	@echo "creating $(OBJDIR) $(LIBDIR) $(BINDIR)"
 	@mkdir -p $(OBJDIR)
 	@mkdir -p $(LIBDIR)
@@ -194,7 +187,6 @@ install:
 
 clean:
 	@rm -fr $(BUILD_DIR)
-	@rm -fr mutual-repo
 
 SPLINT_FLAGS += -warnposix -paramuse -unrecog -retvalint -boolops -predboolothers -mustfreefresh -retvalother
 SPLINT_FLAGS += -mustfreeonly -predboolint -nullpass -infloops -compmempass -immediatetrans

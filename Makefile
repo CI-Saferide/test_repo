@@ -14,6 +14,7 @@ KERNEL_SRC  ?= /lib/modules/$(shell uname -r)/build
 #  SR_STAT_ANALYSIS_DEBUG=y - set stat analysis debug flag
 
 ENG_FLAGS += $(if $(SR_CLI),SR_CLI=1)
+ENG_FLAGS += $(if $(IRDETO),IRDETO=1)
 MORE_TARGETS += $(if $(SR_CLI),cli)
 MORE_CLEAN_TARGETS += $(if $(SR_CLI),clean_cli)
 

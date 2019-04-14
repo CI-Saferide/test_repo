@@ -3,8 +3,8 @@
 #include "sr_tasks.h"
 #include "sal_linux.h"
 
-#include "vproxy_client.h"
-#include "message.h"
+#include "mutual_repo/vproxy_client.h"
+#include "mutual_repo/message.h"
 #include "file_rule.h"
 #include "sr_cls_wl_common.h"
 #include "sr_actions_common.h"
