@@ -91,6 +91,9 @@ static const rio rioBufferIO = {
     rioBufferTell,
     rioBufferFlush,
     NULL,           /* update_checksum */
+	NULL,           /* encrypt */
+	NULL,           /* decrypt */
+	-1,				/* load_total_bytes - used only for decrypt */
     0,              /* current checksum */
     0,              /* bytes read or written */
     0,              /* read/write chunk size */
@@ -144,6 +147,9 @@ static const rio rioFileIO = {
     rioFileTell,
     rioFileFlush,
     NULL,           /* update_checksum */
+	NULL,           /* encrypt */
+	NULL,           /* decrypt */
+	-1,				/* load_total_bytes - used only for decrypt */
     0,              /* current checksum */
     0,              /* bytes read or written */
     0,              /* read/write chunk size */
@@ -257,6 +263,9 @@ static const rio rioFdsetIO = {
     rioFdsetTell,
     rioFdsetFlush,
     NULL,           /* update_checksum */
+	NULL,           /* encrypt */
+	NULL,           /* decrypt */
+	-1,				/* load_total_bytes - used only for decrypt */
     0,              /* current checksum */
     0,              /* bytes read or written */
     0,              /* read/write chunk size */

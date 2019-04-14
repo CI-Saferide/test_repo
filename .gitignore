@@ -57,6 +57,7 @@ redis/src/redis-server
 redis/src/redis-benchmark
 redis/src/release.h
 redis/deps/
+redis/total
 
 .cproject
 .project

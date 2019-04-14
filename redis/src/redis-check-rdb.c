@@ -188,7 +188,15 @@ int redis_check_rdb(char *rdbfilename, FILE *fp) {
 
     rioInitWithFile(&rdb,fp);
     rdbstate.rio = &rdb;
-    rdb.update_cksum = rdbLoadProgressCallback;
+
+    if (server.rdb_encrypt) {
+    	rdb.decrypt = aes_decrypt;
+    	if (aes_init())
+    		return C_ERR;
+    	rdb.processed_bytes = 0;
+        rdb.load_total_bytes = server.loading_total_bytes;
+    } else if (server.rdb_checksum)
+    	rdb.update_cksum = rdbLoadProgressCallback;
     if (rioRead(&rdb,buf,9) == 0) goto eoferr;
     buf[9] = '\0';
     if (memcmp(buf,"REDIS",5) != 0) {
@@ -297,7 +305,7 @@ int redis_check_rdb(char *rdbfilename, FILE *fp) {
         expiretime = -1;
     }
     /* Verify the checksum if RDB version is >= 5 */
-    if (rdbver >= 5 && server.rdb_checksum) {
+    if (rdbver >= 5 && !server.rdb_encrypt && server.rdb_checksum) {
         uint64_t cksum, expected = rdb.cksum;
 
         rdbstate.doing = RDB_CHECK_DOING_CHECK_SUM;
@@ -314,9 +322,13 @@ int redis_check_rdb(char *rdbfilename, FILE *fp) {
     }
 
     if (closefile) fclose(fp);
+    if (server.rdb_encrypt)
+    	aes_uninit();
     return 0;
 
 eoferr: /* unexpected end of file is handled here with a fatal exit */
+	if (server.rdb_encrypt)
+    	aes_uninit();
     if (rdbstate.error_set) {
         rdbCheckError(rdbstate.error);
     } else {

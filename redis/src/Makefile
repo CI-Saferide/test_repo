@@ -126,6 +126,8 @@ endif
 endif
 endif
 endif
+FINAL_LIBS+= -lcrypto
+
 # Include paths to dependencies
 FINAL_CFLAGS+= -I../deps/hiredis -I../deps/linenoise -I../deps/lua/src
 

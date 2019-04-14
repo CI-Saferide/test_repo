@@ -34,6 +34,7 @@
 
 #include <stdio.h>
 #include <stdint.h>
+//#include <string.h>
 #include "sds.h"
 
 struct _rio {
@@ -50,6 +51,10 @@ struct _rio {
      * and len fields pointing to the new block of data to add to the checksum
      * computation. */
     void (*update_cksum)(struct _rio *, const void *buf, size_t len);
+
+    int (*encrypt)(const char *plaintext, int in_len, char **ciphertext, int *out_len, int last);
+    int (*decrypt)(char *ciphertext, int in_len, char *plaintext, int *out_len);
+	size_t load_total_bytes;
 
     /* The current checksum */
     uint64_t cksum;
@@ -86,32 +91,113 @@ struct _rio {
 
 typedef struct _rio rio;
 
+static char tmp_read_buf[1024];
+
 /* The following functions are our interface with the stream. They'll call the
  * actual implementation of read / write / tell, and will update the checksum
  * if needed. */
 
 static inline size_t rioWrite(rio *r, const void *buf, size_t len) {
-    while (len) {
-        size_t bytes_to_write = (r->max_processing_chunk && r->max_processing_chunk < len) ? r->max_processing_chunk : len;
-        if (r->update_cksum) r->update_cksum(r,buf,bytes_to_write);
-        if (r->write(r,buf,bytes_to_write) == 0)
-            return 0;
-        buf = (char*)buf + bytes_to_write;
-        len -= bytes_to_write;
-        r->processed_bytes += bytes_to_write;
-    }
-    return 1;
+	char *c_buf;
+	size_t write_len;
+	int bytes_to_write;
+//	int i;
+
+//	printf("*** DBG *** rioWrite: %d\n", (int)len);
+	/*for (i = 0; i < (int)len; i++)
+		printf("%c", ((char *)buf)[i]);
+	printf("\n");*/
+	while (len) {
+		write_len = (r->max_processing_chunk && r->max_processing_chunk < len) ? r->max_processing_chunk : len;
+		if (r->encrypt) {
+			if (r->encrypt(buf, (int)write_len, &c_buf, &bytes_to_write, 0)) {
+//				printf("*** ERR *** rioWrite: encrypt fail\n");
+				return 0;
+			}
+			if (bytes_to_write) {
+//				printf("*** DBG *** rioWrite: (enc) bytes_to_write %d\n", bytes_to_write);fflush(stdout);
+				if (r->write(r, c_buf, bytes_to_write) == 0) {
+//					printf("*** ERR *** rioWrite: (enc) write ret 0\n");
+					return 0;
+				}
+			}
+		} else {
+			if (r->update_cksum)
+				r->update_cksum(r, buf, write_len);
+			if (r->write(r, buf, write_len) == 0) {
+				printf("*** ERR *** rioWrite: (non enc)write ret 0\n");
+				return 0;
+			}
+		}
+		buf = (char *)buf + write_len;
+		len -= write_len;
+		r->processed_bytes += write_len;
+	}
+	return 1;
 }
 
 static inline size_t rioRead(rio *r, void *buf, size_t len) {
+	size_t read_len;
+	int read_bytes;
+
+//	printf("*** DBG *** read len %d\n", (int)len);
     while (len) {
-        size_t bytes_to_read = (r->max_processing_chunk && r->max_processing_chunk < len) ? r->max_processing_chunk : len;
-        if (r->read(r,buf,bytes_to_read) == 0)
-            return 0;
-        if (r->update_cksum) r->update_cksum(r,buf,bytes_to_read);
-        buf = (char*)buf + bytes_to_read;
-        len -= bytes_to_read;
-        r->processed_bytes += bytes_to_read;
+        read_len = (r->max_processing_chunk && r->max_processing_chunk < len) ? r->max_processing_chunk : len;
+        if (r->decrypt) {
+        	if (!r->load_total_bytes) { // fixme remove
+        		printf("*** ERR *** decrypt but no load_total_bytes !!!\n");
+        		return 0;
+        	}
+            // first try to use what we have in the decrypted buffer
+//        	printf("*** DBG *** dec NULL len %d\n", (int)read_len);fflush(stdout);
+        	if (r->decrypt(NULL, (int)read_len, buf, &read_bytes)) {
+//        		printf("*** ERR *** rioRead: decrypt fail\n");
+        		return 0;
+        	}
+        	if (read_bytes == (int)read_len) {
+        		// have all the bytes we need already read and decrypted
+        		buf = (char*)buf + read_len;
+        		len -= read_len;
+        	} else {
+        		 // save the length we need, before reading more from file
+        		buf = (char*)buf + read_bytes;
+        		read_len -= read_bytes;
+        		len -= read_bytes;
+        		read_bytes = read_len;
+
+        		// need to read and decrypt more bytes
+        		read_len = r->load_total_bytes - r->processed_bytes < 1024 ? r->load_total_bytes - r->processed_bytes : 1024;
+//        		printf("*** DBG *** before read: total_bytes %d - processed_bytes %d -> %d (needed %d)\n",
+//        				(int)r->load_total_bytes, (int)r->processed_bytes, (int)read_len, read_bytes);fflush(stdout);
+        		if (!r->read(r, tmp_read_buf, read_len)) {
+//        			printf("*** ERR *** rioRead: read failed\n");
+        			return 0;
+        		}
+
+        		// todo decrypt read_len bytes and continue with read_bytes bytes we still need to read
+//        		printf("*** DBG *** bef: dec BUF len %d -> %d\n", (int)read_len, read_bytes);fflush(stdout);
+        		if (r->decrypt(tmp_read_buf, (int)read_len, buf, &read_bytes)) {
+//        			printf("*** ERR *** rioRead: decrypt fail\n");
+        			return 0;
+        		}
+//        		printf("*** DBG *** aft: dec BUF len %d -> %d\n", (int)read_len, read_bytes);fflush(stdout);
+        		buf = (char*)buf + read_bytes;
+        		len -= read_bytes;
+        		r->processed_bytes += read_len;
+        	}
+        } else {
+        	if (!r->read(r, buf, read_len)) {
+//        		printf("*** ERR *** rioRead: (nor) read failed\n");
+        		return 0;
+        	}
+
+        	if (r->update_cksum)
+        		r->update_cksum(r, buf, read_len);
+
+        	buf = (char*)buf + read_len;
+        	len -= read_len;
+        	r->processed_bytes += read_len;
+        }
     }
     return 1;
 }

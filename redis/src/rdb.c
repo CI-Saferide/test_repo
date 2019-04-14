@@ -41,6 +41,9 @@
 #include <arpa/inet.h>
 #include <sys/stat.h>
 #include <sys/param.h>
+#include <openssl/aes.h>
+#include <openssl/evp.h>
+#include <openssl/hmac.h>
 
 #define rdbExitReportCorruptRDB(...) rdbCheckThenExit(__LINE__,__VA_ARGS__)
 
@@ -1091,6 +1094,220 @@ int rdbSaveInfoAuxFields(rio *rdb, int flags, rdbSaveInfo *rsi) {
     return 1;
 }
 
+/* --------------------------- Encryption - Decryption --------------------------*/
+
+static EVP_CIPHER_CTX e_ctx;
+static EVP_CIPHER_CTX d_ctx;
+
+static unsigned char key[32] = { 	0xde, 0x71, 0xca, 0xb0, 0x02, 0xf0, 0x85, 0x55,
+									0xcb, 0xf3, 0xf3, 0xc0, 0xab, 0x07, 0x4e, 0x2c,
+									0x5b, 0xeb, 0x1e, 0x0d, 0xde, 0xe4, 0x00, 0x7f,
+									0x0d, 0x44, 0x49, 0x40, 0x76, 0x4b, 0x69, 0x96 };
+static unsigned char iv[32] = { 	0x5e, 0x26, 0x8c, 0x70, 0x0f, 0xdf, 0x75, 0x2a,
+									0x62, 0x66, 0x45, 0xc6, 0x11, 0x94, 0xd8, 0x8f,
+									0x91, 0x47, 0x6e, 0x48, 0x00, 0x80, 0xff, 0xff,
+									0x24, 0x00, 0x00, 0x00, 0xff, 0x7f, 0x00, 0x00 };
+
+#define ENC_DEC_BUF_MAX_SIZE	1024
+#define MAX_ENC_SIZE			(ENC_DEC_BUF_MAX_SIZE - 1)
+
+static unsigned char plain_buf[ENC_DEC_BUF_MAX_SIZE];
+static unsigned char cipher_buf[ENC_DEC_BUF_MAX_SIZE];
+
+static int plain_buf_pos;
+static int plain_buf_size;
+
+int aes_init(void)
+{
+	EVP_CIPHER_CTX_init(&e_ctx);
+	if (!EVP_EncryptInit_ex(&e_ctx, EVP_aes_256_cbc(), NULL, key, iv)) {
+		printf("EVP_EncryptInit_ex failed\n");
+		return -1;
+	}
+
+	EVP_CIPHER_CTX_init(&d_ctx);
+	if (!EVP_DecryptInit_ex(&d_ctx, EVP_aes_256_cbc(), NULL, key, iv)) {
+		printf("EVP_DecryptInit_ex failed\n");
+		EVP_CIPHER_CTX_cleanup(&e_ctx);
+		return -1;
+	}
+
+	plain_buf_pos = 0;
+	plain_buf_size = 0;
+	return 0;
+}
+
+void aes_uninit(void)
+{
+	EVP_CIPHER_CTX_cleanup(&e_ctx);
+	EVP_CIPHER_CTX_cleanup(&d_ctx);
+}
+
+/* Encrypt in_len bytes of data
+ * All data going in & out is considered binary (unsigned char[]) */
+int aes_encrypt(const char *plaintext, int in_len, char **ciphertext, int *out_len, int last)
+{
+	int len, c_len, f_len;
+//	int i;
+
+#if 0
+	// todo probably not needed
+	if (in_len > MAX_ENC_SIZE) {
+		printf("ERR: aes_encrypt: need to enlarge plain_buf, in_len %d > %d\n", in_len, ENC_DEC_BUF_MAX_SIZE);
+		return -1;
+	}
+#endif
+
+	/* allows reusing of 'e' for multiple encryption cycles */
+	if (!EVP_EncryptInit_ex(&e_ctx, NULL, NULL, NULL, NULL)) {
+		printf("EVP_EncryptInit_ex failed\n");
+		return -1;
+	}
+
+	if (last) {
+		// no more plaintext, just return what's left to encrypt
+		if (plain_buf_pos) {
+/*			printf("*** DBG *** (%d) Plain: ", plain_buf_pos);
+			for (i = 0; i < plain_buf_pos; i++)
+				printf("%c", ((char *)plain_buf)[i]);
+			printf("\n");*/
+			/* update ciphertext, c_len is filled with the length of ciphertext generated, *len is the size of plaintext in bytes */
+			if (!EVP_EncryptUpdate(&e_ctx, cipher_buf /* ciphertext */, &c_len,
+					plain_buf /* plaintext */, plain_buf_pos /* in_len */)) {
+				printf("EVP_EncryptUpdate failed\n");
+				return -1;
+			}
+		} else
+			c_len = 0;
+
+		/* update ciphertext with the final remaining bytes */
+		if (!EVP_EncryptFinal_ex(&e_ctx, cipher_buf + c_len, &f_len)) {
+			printf("EVP_EncryptFinal_ex failed\n");
+			return -1;
+		}
+
+		*out_len = c_len + f_len;
+/*		printf("*** DBG *** ENC update: (last) p_len %d -> c_len %d + f_len %d = %d\n",
+				plain_buf_pos, c_len, f_len, *out_len);
+		printf("*** DBG *** (%d) Cipher: ", c_len + f_len);
+		for (i = 0; i < c_len + f_len; i++)
+			printf("%02x", cipher_buf[i]);
+		printf("\n");*/
+		*ciphertext = (char *)cipher_buf;
+		// for next time
+		plain_buf_pos = 0;
+		return 0;
+	}
+
+	// new data: add as much of in_len as possible to temp_buf
+	len = plain_buf_pos + in_len <= MAX_ENC_SIZE ? in_len : MAX_ENC_SIZE - plain_buf_pos;
+//	printf("*** DBG *** ENC: pos %d + in_len %d -> len %d\n", plain_buf_pos, in_len, len);
+	memcpy(plain_buf + plain_buf_pos, plaintext, len);
+	plain_buf_pos += len;
+//	printf("*** DBG *** ENC: new pos %d\n", plain_buf_pos);
+
+	if (plain_buf_pos == MAX_ENC_SIZE) {
+/*		printf("*** DBG *** (%d) Plain: ", plain_buf_pos);
+		for (i = 0; i < plain_buf_pos; i++)
+			printf("%c", ((char *)plain_buf)[i]);
+		printf("\n");*/
+		// temp_buf is full, encrypt it
+		if (!EVP_EncryptUpdate(&e_ctx, cipher_buf /* ciphertext */, &c_len,
+				plain_buf /* plaintext */, plain_buf_pos /* in_len */)) {
+			printf("EVP_EncryptUpdate failed\n");
+			return -1;
+		}
+#if 0
+		if (c_len != MAX_ENC_SIZE) { // fixme remove
+			printf("*** ERR *** ENC update: plain_buf_pos %d -> c_len %d\n", plain_buf_pos, c_len);
+			return -1;
+		}
+#endif
+//		printf("*** DBG *** ENC update: plaintext_len %d -> ciphertext_len %d\n", plain_buf_pos, c_len);
+
+		if (!EVP_EncryptFinal_ex(&e_ctx, cipher_buf + c_len, &f_len)) {
+			printf("EVP_EncryptFinal_ex failed\n");
+			return -1;
+		}
+/*		printf("*** DBG *** ENC ex: f_len %d\n", f_len);
+		printf("*** DBG *** (%d) Cipher: ", c_len + f_len);
+		for (i = 0; i < c_len + f_len; i++)
+			printf("%02x", cipher_buf[i]);
+		printf("\n");*/
+
+		*ciphertext = (char *)cipher_buf;
+		*out_len = c_len + f_len;
+
+		in_len -= len;
+		if (in_len) {
+			// some of the new data could not fit, so add it now
+			memcpy(plain_buf, plaintext + len, in_len);
+			plain_buf_pos = in_len;
+		} else {
+			 // for next time
+			plain_buf_pos = 0;
+		}
+	} else {
+		// nothing to return yet
+		*out_len = 0;
+	}
+	return 0;
+}
+
+/*
+ * Decrypt in_len bytes of ciphertext
+ */
+int aes_decrypt(char *ciphertext, int in_len, char *plaintext, int *out_len/*, int last*/)
+{
+	/* plaintext will always be equal to or less than length of ciphertext */
+	int len, p_len, f_len;
+//	int i;
+
+	if (ciphertext) {
+		if (!EVP_DecryptInit_ex(&d_ctx, NULL, NULL, NULL, NULL)) {
+			printf("EVP_DecryptInit_ex failed\n");
+			return -1;
+		}
+
+/*		printf("*** DBG *** (%d) Cipher: ", in_len);
+		for (i = 0; i < in_len; i++)
+			printf("%02x", ((unsigned char *)ciphertext)[i]);
+		printf("\n");*/
+		// decrypt new read data
+		if (!EVP_DecryptUpdate(&d_ctx, plain_buf, &p_len, (unsigned char *)ciphertext, in_len)) {
+			printf("aes_decrypt: EVP_DecryptUpdate failed\n");
+			return -1;
+		}
+//		printf("*** DBG *** DEC update: c_len %d -> p_len %d\n", in_len, p_len);
+
+		if (!EVP_DecryptFinal_ex(&d_ctx, plain_buf + p_len, &f_len)) {
+			printf("EVP_DecryptFinal_ex failed, f_len %d\n", f_len);
+			return -1;
+		}
+/*		printf("*** DBG *** (%d) Plain: ", p_len + f_len);
+		for (i = 0; i < p_len + f_len; i++)
+			printf("%c", ((char *)plain_buf)[i]);
+		printf("\n");*/
+
+		plain_buf_size = p_len + f_len;
+//		printf("*** DBG *** DEC ex: f_len %d -> total %d\n", f_len, plain_buf_size);
+		in_len = *out_len; // for next step
+		plain_buf_pos = 0;
+	}
+
+	// copy as much decrypted data as we can
+	// if there is not enough (len < in_len), we will be called again with more data to decrypt
+	len = plain_buf_pos + in_len <= plain_buf_size ? in_len : plain_buf_size - plain_buf_pos;
+//	printf("*** DBG *** tmp_pos %d + in_len %d ? tmp_size %d -> %d\n", plain_buf_pos, in_len, plain_buf_size, len);
+	if (len)
+		memcpy(plaintext, plain_buf + plain_buf_pos, len);
+	plain_buf_pos += len;
+	*out_len = len;
+	return 0;
+}
+
+/* ------------------------------------------------------------------------------*/
+
 /* Produces a dump of the database in RDB format sending it to the specified
  * Redis I/O channel. On success C_OK is returned, otherwise C_ERR
  * is returned and part of the output, or all the output, can be
@@ -1106,22 +1323,34 @@ int rdbSaveRio(rio *rdb, int *error, int flags, rdbSaveInfo *rsi) {
     int j;
     uint64_t cksum;
     size_t processed = 0;
+    int len;
+    char *buf;
 
-    if (server.rdb_checksum)
-        rdb->update_cksum = rioGenericUpdateChecksum;
+    if (server.rdb_encrypt) {
+    	rdb->encrypt = aes_encrypt;
+    	if (aes_init())
+    		goto werr;
+        rdb->processed_bytes = 0;
+    } else if (server.rdb_checksum)
+    	rdb->update_cksum = rioGenericUpdateChecksum;
     snprintf(magic,sizeof(magic),"REDIS%04d",RDB_VERSION);
-    if (rdbWriteRaw(rdb,magic,9) == -1) goto werr;
-    if (rdbSaveInfoAuxFields(rdb,flags,rsi) == -1) goto werr;
+    if (rdbWriteRaw(rdb,magic,9) == -1)
+    	goto werr;
+    if (rdbSaveInfoAuxFields(rdb,flags,rsi) == -1)
+    	goto werr;
 
     for (j = 0; j < server.dbnum; j++) {
         redisDb *db = server.db+j;
         dict *d = db->dict;
-        if (dictSize(d) == 0) continue;
+        if (dictSize(d) == 0)
+        	continue;
         di = dictGetSafeIterator(d);
 
         /* Write the SELECT DB opcode */
-        if (rdbSaveType(rdb,RDB_OPCODE_SELECTDB) == -1) goto werr;
-        if (rdbSaveLen(rdb,j) == -1) goto werr;
+        if (rdbSaveType(rdb,RDB_OPCODE_SELECTDB) == -1)
+        	goto werr;
+        if (rdbSaveLen(rdb,j) == -1)
+        	goto werr;
 
         /* Write the RESIZE DB opcode. We trim the size to UINT32_MAX, which
          * is currently the largest type we are able to represent in RDB sizes.
@@ -1130,9 +1359,12 @@ int rdbSaveRio(rio *rdb, int *error, int flags, rdbSaveInfo *rsi) {
         uint64_t db_size, expires_size;
         db_size = dictSize(db->dict);
         expires_size = dictSize(db->expires);
-        if (rdbSaveType(rdb,RDB_OPCODE_RESIZEDB) == -1) goto werr;
-        if (rdbSaveLen(rdb,db_size) == -1) goto werr;
-        if (rdbSaveLen(rdb,expires_size) == -1) goto werr;
+        if (rdbSaveType(rdb,RDB_OPCODE_RESIZEDB) == -1)
+        	goto werr;
+        if (rdbSaveLen(rdb,db_size) == -1)
+        	goto werr;
+        if (rdbSaveLen(rdb,expires_size) == -1)
+        	goto werr;
 
         /* Iterate this DB writing every entry */
         while((de = dictNext(di)) != NULL) {
@@ -1142,7 +1374,8 @@ int rdbSaveRio(rio *rdb, int *error, int flags, rdbSaveInfo *rsi) {
 
             initStaticStringObject(key,keystr);
             expire = getExpire(db,&key);
-            if (rdbSaveKeyValuePair(rdb,&key,o,expire) == -1) goto werr;
+            if (rdbSaveKeyValuePair(rdb,&key,o,expire) == -1)
+            	goto werr;
 
             /* When this RDB is produced as part of an AOF rewrite, move
              * accumulated diff from parent to child while rewriting in
@@ -1174,17 +1407,37 @@ int rdbSaveRio(rio *rdb, int *error, int flags, rdbSaveInfo *rsi) {
     }
 
     /* EOF opcode */
-    if (rdbSaveType(rdb,RDB_OPCODE_EOF) == -1) goto werr;
+    if (rdbSaveType(rdb,RDB_OPCODE_EOF) == -1)
+    	goto werr;
 
-    /* CRC64 checksum. It will be zero if checksum computation is disabled, the
-     * loading code skips the check in this case. */
-    cksum = rdb->cksum;
-    memrev64ifbe(&cksum);
-    if (rioWrite(rdb,&cksum,8) == 0) goto werr;
+    if (rdb->encrypt) {
+    	if (rdb->encrypt(NULL, 0, &buf, &len, 1)) {
+    		printf("*** ERR *** rdbSaveRio: rdb->encrypt ret NULL\n");
+    		goto werr;
+    	}
+    	if (len) {
+    		if (rdb->write(rdb, buf, len) == 0) {
+    			printf("*** ERR *** rdbSaveRio: (enc) write ret 0\n");
+    			goto werr;
+    		}
+    	}
+//    	printf("*** DBG *** rdbSaveRio: last len %d\n", len);fflush(stdout);
+    } else {
+    	/* CRC64 checksum. It will be zero if checksum computation is disabled, the
+    	 * loading code skips the check in this case. */
+    	cksum = rdb->cksum;
+    	memrev64ifbe(&cksum);
+    	if (rioWrite(rdb,&cksum,8) == 0)
+    		goto werr;
+    }
+    if (server.rdb_encrypt)
+    	aes_uninit();
     return C_OK;
 
 werr:
-    if (error) *error = errno;
+	if (server.rdb_encrypt)
+    	aes_uninit();
+	if (error) *error = errno;
     if (di) dictReleaseIterator(di);
     return C_ERR;
 }
@@ -1253,7 +1506,7 @@ int rdbSave(char *filename, rdbSaveInfo *rsi) {
 
     /* Use RENAME to make sure the DB file is changed atomically only
      * if the generate DB file is ok. */
-    printf("*** DBG *** rename %s -> %s\n", tmpfile, filename);
+    //printf("*** DBG *** rename %s -> %s\n", tmpfile, filename);
     if (rename(tmpfile,filename) == -1) {
         char *cwdp = getcwd(cwd,MAXPATHLEN);
         serverLog(LL_WARNING,
@@ -1830,7 +2083,7 @@ void stopLoading(void) {
 /* Track loading progress in order to serve client's from time to time
    and if needed calculate rdb checksum  */
 void rdbLoadProgressCallback(rio *r, const void *buf, size_t len) {
-    if (server.rdb_checksum)
+    if (!server.rdb_encrypt && server.rdb_checksum)
         rioGenericUpdateChecksum(r, buf, len);
     if (server.loading_process_events_interval_bytes &&
         (r->processed_bytes + len)/server.loading_process_events_interval_bytes > r->processed_bytes/server.loading_process_events_interval_bytes)
@@ -1854,17 +2107,28 @@ int rdbLoadRio(rio *rdb, rdbSaveInfo *rsi, int loading_aof) {
     redisDb *db = server.db+0;
     char buf[1024];
 
-    rdb->update_cksum = rdbLoadProgressCallback;
+    if (server.rdb_encrypt) {
+    	rdb->decrypt = aes_decrypt;
+    	if (aes_init())
+    		return C_ERR;
+        rdb->processed_bytes = 0;
+        rdb->load_total_bytes = server.loading_total_bytes;
+    } else if (server.rdb_checksum)
+        rdb->update_cksum = rdbLoadProgressCallback;
     rdb->max_processing_chunk = server.loading_process_events_interval_bytes;
     if (rioRead(rdb,buf,9) == 0) goto eoferr;
     buf[9] = '\0';
     if (memcmp(buf,"REDIS",5) != 0) {
-        serverLog(LL_WARNING,"Wrong signature trying to load DB from file");
+    	if (server.rdb_encrypt)
+    		aes_uninit();
+        serverLog(LL_WARNING,"Wrong signature trying to load DB from file, %s != REDIS", buf);
         errno = EINVAL;
         return C_ERR;
     }
     rdbver = atoi(buf+5);
     if (rdbver < 1 || rdbver > RDB_VERSION) {
+    	if (server.rdb_encrypt)
+    		aes_uninit();
         serverLog(LL_WARNING,"Can't handle RDB format version %d",rdbver);
         errno = EINVAL;
         return C_ERR;
@@ -1912,6 +2176,8 @@ int rdbLoadRio(rio *rdb, rdbSaveInfo *rsi, int loading_aof) {
             /* SELECTDB: Select the specified database. */
             if ((dbid = rdbLoadLen(rdb,NULL)) == RDB_LENERR) goto eoferr;
             if (dbid >= (unsigned)server.dbnum) {
+            	if (server.rdb_encrypt)
+            		aes_uninit();
                 serverLog(LL_WARNING,
                     "FATAL: Data file was created with a Redis "
                     "server configured to handle more than %d "
@@ -1989,10 +2255,14 @@ int rdbLoadRio(rio *rdb, rdbSaveInfo *rsi, int loading_aof) {
             moduleTypeNameByID(name,moduleid);
 
             if (!rdbCheckMode && mt == NULL) {
+            	if (server.rdb_encrypt)
+            		aes_uninit();
                 /* Unknown module. */
                 serverLog(LL_WARNING,"The RDB file contains AUX module data I can't load: no matching module '%s'", name);
                 exit(1);
             } else if (!rdbCheckMode && mt != NULL) {
+            	if (server.rdb_encrypt)
+            		aes_uninit();
                 /* This version of Redis actually does not know what to do
                  * with modules AUX data... */
                 serverLog(LL_WARNING,"The RDB file contains AUX module data I can't load for the module '%s'. Probably you want to use a newer version of Redis which implements aux data callbacks", name);
@@ -2037,24 +2307,30 @@ int rdbLoadRio(rio *rdb, rdbSaveInfo *rsi, int loading_aof) {
         lfu_freq = -1;
         lru_idle = -1;
     }
-    /* Verify the checksum if RDB version is >= 5 */
-    if (rdbver >= 5) {
-        uint64_t cksum, expected = rdb->cksum;
+    if (!server.rdb_encrypt) {
+    	/* Verify the checksum if RDB version is >= 5 */
+    	if (rdbver >= 5) {
+    		uint64_t cksum, expected = rdb->cksum;
 
-        if (rioRead(rdb,&cksum,8) == 0) goto eoferr;
-        if (server.rdb_checksum) {
-            memrev64ifbe(&cksum);
-            if (cksum == 0) {
-                serverLog(LL_WARNING,"RDB file was saved with checksum disabled: no check performed.");
-            } else if (cksum != expected) {
-                serverLog(LL_WARNING,"Wrong RDB checksum. Aborting now.");
-                rdbExitReportCorruptRDB("RDB CRC error");
-            }
-        }
+    		if (rioRead(rdb,&cksum,8) == 0) goto eoferr;
+    		if (server.rdb_checksum) {
+    			memrev64ifbe(&cksum);
+    			if (cksum == 0) {
+    				serverLog(LL_WARNING,"RDB file was saved with checksum disabled: no check performed.");
+    			} else if (cksum != expected) {
+    				serverLog(LL_WARNING,"Wrong RDB checksum. Aborting now.");
+    				rdbExitReportCorruptRDB("RDB CRC error");
+    			}
+    		}
+    	}
     }
+    if (server.rdb_encrypt)
+    	aes_uninit();
     return C_OK;
 
 eoferr: /* unexpected end of file is handled here with a fatal exit */
+	if (server.rdb_encrypt)
+    	aes_uninit();
     serverLog(LL_WARNING,"Short read or OOM loading DB. Unrecoverable error, aborting now.");
     rdbExitReportCorruptRDB("Unexpected EOF reading RDB file");
     return C_ERR; /* Just to avoid warning */

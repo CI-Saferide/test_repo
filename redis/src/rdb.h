@@ -156,4 +156,9 @@ int rdbLoadBinaryFloatValue(rio *rdb, float *val);
 int rdbLoadRio(rio *rdb, rdbSaveInfo *rsi, int loading_aof);
 rdbSaveInfo *rdbPopulateSaveInfo(rdbSaveInfo *rsi);
 
+int aes_decrypt(char *ciphertext, int in_len, char *plaintext, int *out_len);
+int aes_init(void);
+void aes_uninit(void);
+
+
 #endif
