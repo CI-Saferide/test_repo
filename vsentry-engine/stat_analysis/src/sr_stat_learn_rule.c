@@ -269,6 +269,13 @@ static SR_32 sr_stat_learn_rule_update_rule(char *exec, SR_U16 rule_num, sr_stat
 
 	redis_mng_net_rule_t rule_info = {};
 	/* Currently supports only UDP, TODO, support TCP, ANY protocl for port match */
+#ifdef DEBUG
+	printf("UPDATE rule#%d exec:%s RX p:%d b:%d", 
+		rule_num,
+		exec,
+		8 * counters->rx_msgs,
+		8 * counters->rx_bytes);
+#endif
 	CEF_log_event(SR_CEF_CID_STAT_IP, "info", SEVERITY_LOW,
 		"UPDATE rule#%d exec:%s RX p:%d b:%d", 
 		rule_num,
@@ -391,9 +398,10 @@ SR_32 sr_stat_learn_rule_create_process_rules(void)
 	}
 
 	sr_stat_learn_rule_hash_exec_for_all(update_process_rule_cb);
-	redis_mng_session_end(c);
 
 out:
+	if (c)
+		redis_mng_session_end(c);
 	sr_engine_get_db_unlock();
 
 	return rc;
