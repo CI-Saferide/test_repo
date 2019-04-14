@@ -5,6 +5,7 @@
 #include "sr_stat_analysis.h"
 #include "sr_config_parse.h"
 #include "redis_mng.h"
+#include "sr_engine_main.h"
 
 #define HASH_SIZE 500
 
@@ -112,15 +113,21 @@ static SR_32 write_leran_to_db(void *hash_data, void *data)
 
 static SR_32 system_policer_flush_learn_table(void)
 {
+	SR_32 ret = SR_SUCCESS;
+	sr_engine_get_db_lock();
 	if (!(c = redis_mng_session_start())) {
         	CEF_log_event(SR_CEF_CID_SP, "error", SEVERITY_HIGH, "%s=Failed start redis session", REASON);
-		return SR_ERROR;
+		ret = SR_ERROR;
+		goto out;
 	}
 	sr_gen_hash_exec_for_each(system_policer_learn_table, write_leran_to_db, NULL, 0); 
 
-	redis_mng_session_end(c);
+out:
+	if (c)
+		redis_mng_session_end(c);
+	sr_engine_get_db_unlock();
 
-	return SR_SUCCESS;
+	return ret;
 }
 
 #define SET_MAX_DIF_FIELD(curr, prev, max, ctime, ptime) \
@@ -211,7 +218,7 @@ static SR_32 system_policer_learn(char *exe_name, system_policer_item_t *system_
 
 #ifdef SYSTEM_POLICER_DEBUG
 	if (is_debug_exe(exe_name)) {
-		printf("LLLLLLLLLLLLLLLLLLLLLLLLL exe:%s utime:%d bytes read:%llu !!!!!\n", exe_name, stats->utime, stats->bytes_read);
+		printf("LLLLLLLLLLLLLLLLLLLLLLLLL exe:%s utime:%d bytes read:%llu !!!!!\n", exe_name, stats->time, stats->bytes_read);
 	}
 #endif
 

@@ -7,6 +7,7 @@
 #define SR_CAN_WL_END_RULE_NO           4095
 #define SR_FILE_WL_START_RULE_NO        3072
 #define SR_FILE_WL_END_RULE_NO          4095
+#define SR_IP_WL_RL_START_RULE_NO		3072
 #define SR_IP_WL_START_RULE_NO          4095
 #define SR_IP_WL_END_RULE_NO            4095
 

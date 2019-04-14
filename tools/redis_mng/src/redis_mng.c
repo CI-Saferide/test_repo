@@ -2553,12 +2553,27 @@ SR_32 redis_mng_print_system_policer(redisContext *c)
 	return redis_mng_exec_all_system_policer(c, print_cb);
 }
 
+static char *get_field(char *field, int n, redisReply *reply)
+{
+	int i;
+
+	for (i = 0; i < n - 1; i += 2) {
+		if (!strcmp(reply->element[i]->str, field)) {
+			return reply->element[i + 1]->str;
+		}
+	}
+
+	return NULL;
+}
+
 SR_32 redis_mng_exec_all_system_policer(redisContext *c, SR_32 (*cb)(char *exec, redis_system_policer_t *sp))
 {
 	int i, j;
 	redisReply *reply;
 	redisReply **replies;
 	redis_system_policer_t sp = {};
+	char *field;
+
 	// get all keys
 	reply = redisCommand(c,"KEYS %s*", SYSTEM_POLICER_PREFIX);
 	if (reply == NULL || reply->type != REDIS_REPLY_ARRAY) {
@@ -2596,16 +2611,16 @@ SR_32 redis_mng_exec_all_system_policer(redisContext *c, SR_32 (*cb)(char *exec,
 		}
 
 		memset(&sp, 0, sizeof(sp));
-		if (replies[i]->elements > 1) 
-			sp.time = atol(replies[i]->element[1]->str);
-		if (replies[i]->elements > 3) 
-			sp.bytes_read = atol(replies[i]->element[3]->str);
-		if (replies[i]->elements > 5) 
-			sp.bytes_write = atol(replies[i]->element[5]->str);
-		if (replies[i]->elements > 7) 
-			sp.vm_allocated = atol(replies[i]->element[7]->str);
-		if (replies[i]->elements > 9) 
-			sp.num_of_threads = atol(replies[i]->element[9]->str);
+		if ((field = get_field(SP_TIME, replies[i]->elements, replies[i])))
+			sp.time = atol(field);
+		if ((field = get_field(SP_BYTES_READ, replies[i]->elements, replies[i])))
+			sp.bytes_read = atol(field);
+		if ((field = get_field(SP_BYTES_WRITE, replies[i]->elements, replies[i])))
+			sp.bytes_write = atol(field);
+		if ((field = get_field(SP_VM_ALLOC, replies[i]->elements, replies[i])))
+			sp.vm_allocated = atol(field);
+		if ((field = get_field(SP_THREADS_NO, replies[i]->elements, replies[i])))
+			sp.num_of_threads = atol(field);
 		if (cb)
 			cb(reply->element[i]->str + strlen(SYSTEM_POLICER_PREFIX), &sp);
 	}
