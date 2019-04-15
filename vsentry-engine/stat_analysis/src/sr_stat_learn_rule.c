@@ -269,6 +269,13 @@ static SR_32 sr_stat_learn_rule_update_rule(char *exec, SR_U16 rule_num, sr_stat
 
 	redis_mng_net_rule_t rule_info = {};
 	/* Currently supports only UDP, TODO, support TCP, ANY protocl for port match */
+#ifdef DEBUG
+	printf("UPDATE rule#%d exec:%s RX p:%d b:%d", 
+		rule_num,
+		exec,
+		8 * counters->rx_msgs,
+		8 * counters->rx_bytes);
+#endif
 	CEF_log_event(SR_CEF_CID_STAT_IP, "info", SEVERITY_LOW,
 		"UPDATE rule#%d exec:%s RX p:%d b:%d", 
 		rule_num,
@@ -391,9 +398,10 @@ SR_32 sr_stat_learn_rule_create_process_rules(void)
 	}
 
 	sr_stat_learn_rule_hash_exec_for_all(update_process_rule_cb);
-	redis_mng_session_end(c);
 
 out:
+	if (c)
+		redis_mng_session_end(c);
 	sr_engine_get_db_unlock();
 
 	return rc;
@@ -407,32 +415,41 @@ static SR_32 delete_process_rule_cb(void *hash_data, void *data)
 		"%s=delete rule %d %s",MESSAGE,
 		learn_rule_item->rule_num,
 		learn_rule_item->exec);
-	
-	sr_cls_del_ipv4(0, learn_rule_item->exec, "*", 0, learn_rule_item->rule_num, SR_DIR_SRC);
-	sr_cls_del_ipv4(0, learn_rule_item->exec, "*", 0, learn_rule_item->rule_num, SR_DIR_DST);
-	sr_cls_port_del_rule(0, learn_rule_item->exec, "*", learn_rule_item->rule_num, SR_DIR_SRC, 17); 
-	sr_cls_port_del_rule(0, learn_rule_item->exec, "*", learn_rule_item->rule_num, SR_DIR_DST, 17); 
-	sr_cls_rule_del(SR_NET_RULES, learn_rule_item->rule_num);
-
 	CEF_log_event(SR_CEF_CID_STAT_IP, "info", SEVERITY_LOW,
 		"%s= delete rule %d %s",MESSAGE,
 		learn_rule_item->rule_num + 1,
 		learn_rule_item->exec);
-	
-	sr_cls_del_ipv4(0, learn_rule_item->exec, "*", 0, learn_rule_item->rule_num + 1, SR_DIR_SRC);
-	sr_cls_del_ipv4(0, learn_rule_item->exec, "*", 0, learn_rule_item->rule_num + 1, SR_DIR_DST);
-	sr_cls_port_del_rule(0, learn_rule_item->exec, "*", learn_rule_item->rule_num + 1, SR_DIR_SRC, 17); 
-	sr_cls_port_del_rule(0, learn_rule_item->exec, "*", learn_rule_item->rule_num + 1, SR_DIR_DST, 17); 
-	sr_cls_rule_del(SR_NET_RULES, learn_rule_item->rule_num + 1);
 
+	if (redis_mng_del_net_rule(c, learn_rule_item->rule_num, learn_rule_item->rule_num + 1, SR_TRUE) != SR_SUCCESS) {
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+			"%s=redis failed delete IP rules from:%d to:%d ",REASON, learn_rule_item->rule_num, learn_rule_item->rule_num + 1);
+		return SR_ERROR;
+	}
+	
 	return SR_SUCCESS;
 }
 
 SR_32 sr_stat_learn_rule_undeploy(void)
 {
+	SR_32 rc = SR_SUCCESS;
+
+	sr_engine_get_db_lock();
+
+	c = redis_mng_session_start();
+	if (!c) {
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+		"%s=redis session start failed",REASON);
+		rc = SR_ERROR;
+		goto out;
+	}
 	sr_stat_learn_rule_hash_exec_for_all(delete_process_rule_cb);
 
-	return SR_SUCCESS;
+out:
+	if (c)
+		redis_mng_session_end(c);
+	sr_engine_get_db_unlock();
+
+	return rc;
 }
 
 SR_32 sr_stat_learn_rule_deploy(void)

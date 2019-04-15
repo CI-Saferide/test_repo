@@ -823,7 +823,15 @@ int redisBufferWrite(redisContext *c, int *done) {
         return REDIS_ERR;
 
     if (sdslen(c->obuf) > 0) {
+#ifdef DEBUG
+		printf("------- XXXXFFFAAA redisBufferWrite P2 c->fd:%d c->obuf:%p len:%d buf---:%.*s---- \n", c->fd,c->obuf,sdslen(c->obuf), sdslen(c->obuf), c->obuf);
+		fflush(stdout);
+#endif
         nwritten = write(c->fd,c->obuf,sdslen(c->obuf));
+#ifdef DEBUG
+		printf("XXXXAAA redisBufferWrite P3 nwritten=%d \n", nwritten);
+		fflush(stdout);
+#endif
         if (nwritten == -1) {
             if ((errno == EAGAIN && !(c->flags & REDIS_BLOCK)) || (errno == EINTR)) {
                 /* Try again later */

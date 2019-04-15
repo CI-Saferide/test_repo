@@ -2264,7 +2264,13 @@ SR_32 redis_mng_update_net_rule(redisContext *c, SR_32 rule_id, redis_mng_net_ru
 		len += sprintf(cmd + len, " %s %s", DOWN_RL, rule->down_rl);
 	//printf("4.1.2\n");fflush(stdout);
 
+#ifdef DEBUG
+	printf(">>>>>  cmd:%s: \n", cmd);
+#endif
 	reply = redisCommand(c, cmd);
+#ifdef DEBUG
+	printf(">>> reply type:%d \n", reply ? reply->type : -1);
+#endif
 	//printf("4.1.3\n");fflush(stdout);
 	free(cmd);
 	//printf("4.1.4\n");fflush(stdout);
