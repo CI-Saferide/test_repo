@@ -55,10 +55,10 @@ int sr_stat_port_init(void)
 {
 	sr_stat_port_table = sr_hash_new_table(STST_PORT_HASH_TABLE_SIZE);
 	if (!sr_stat_port_table) {
-		sal_kernel_print_err("Failed to allocate hash table!\n");
+		sal_kernel_print_err("[vsentry]: failed to allocate hash table!\n");
 		return SR_ERROR;
 	}
-	sal_kernel_print_info("Successfully initialized process table!\n");
+	//sal_kernel_print_info("Successfully initialized process table!\n");
 
 	return SR_SUCCESS;
 }
@@ -93,6 +93,6 @@ void sr_stat_port_uninit(void)
 	}
 	SR_FREE(sr_stat_port_table);
 	sr_stat_port_table = NULL;
-	sal_kernel_print_info("[%s]: Successfully removed stat portr hash!\n", MODULE_NAME);
+	sal_kernel_print_info("[%s]: successfully removed stat portr hash!\n", MODULE_NAME);
 }
 

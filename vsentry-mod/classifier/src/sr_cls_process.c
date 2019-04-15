@@ -79,7 +79,7 @@ int sr_cls_process_init(void)
 		sal_kernel_print_err("failed to allocate hash table for cls_process\n");
 		return SR_ERROR;
 	}
-	sal_kernel_print_info("successfully initialized process table\n");
+	//sal_kernel_print_info("successfully initialized process table\n");
 	return SR_SUCCESS;
 }
 

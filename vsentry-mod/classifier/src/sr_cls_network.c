@@ -84,7 +84,7 @@ void sr_cls_network_init(void)
 			sr_cls_src_ipv4 = NULL;
 			sal_kernel_print_err("error Initializing dst radix tree\n");
 		} else {
-			sal_kernel_print_info("successfully initialized radix tree\n");
+			//sal_kernel_print_info("successfully initialized radix tree\n");
 		}
 	}
 

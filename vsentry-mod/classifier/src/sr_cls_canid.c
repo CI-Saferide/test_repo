@@ -44,7 +44,7 @@ int sr_cls_canid_init(void)
 		}
 		
 	}
-	sal_kernel_print_info("[%s]: successfully initialized can mid classifier\n", MODULE_NAME);
+	//sal_kernel_print_info("[%s]: successfully initialized can mid classifier\n", MODULE_NAME);
 	
 	return SR_SUCCESS;
 }

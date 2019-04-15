@@ -96,7 +96,7 @@ static SR_8 get_path(struct dentry *dentry, SR_8 *buffer, SR_32 len)
 	return SR_SUCCESS;
 }
 
-#if 1
+#if 0
 static SR_32 sr_get_full_path(struct file * file, char *file_full_path, SR_U32 max_len)
 {
 	SR_32 mount_point_length = 0;

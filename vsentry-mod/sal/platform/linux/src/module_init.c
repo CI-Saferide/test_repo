@@ -64,34 +64,34 @@ static int vsentry_drv_mmap(struct file *file, struct vm_area_struct *vma)
 	if (!vsentry_get_pid())
 		vsentry_set_pid(current->pid);
 		
-	pr_info("vsentry PID = %d\n", vsentry_get_pid());
-	pr_info("vsentry_drv_mmap length = %ld, vm_start 0x%p\n", length, (void *) vma->vm_start);
+	//pr_info("[vsentry]: vsentry pid = %d\n", vsentry_get_pid());
+	//pr_info("[vsentry]: drv_mmap length = %ld, vm_start 0x%p\n", length, (void *) vma->vm_start);
 
 	switch (vma->vm_pgoff) {
 		case ENG2MOD_PAGE_OFFSET:
 			type = ENG2MOD_BUF;
-			pr_info("vsentry_drv_mmap: initializing ENG2MOD_BUF\n");
+			//pr_info("vsentry_drv_mmap: initializing ENG2MOD_BUF\n");
 			thread = sr_task_get_data(SR_MODULE_TASK);
-			pr_info("vsentry_drv_mmap: thread 0x%p\n", thread);
+			//pr_info("vsentry_drv_mmap: thread 0x%p\n", thread);
 			break;
 		case MOD2ENG_PAGE_OFFSET:
 			type = MOD2ENG_BUF;
-			pr_info("vsentry_drv_mmap: initializing MOD2ENG_BUF\n");
+			//pr_info("vsentry_drv_mmap: initializing MOD2ENG_BUF\n");
 			break;
 		case ENG2LOG_PAGE_OFFSET:
 			type = ENG2LOG_BUF;
-			pr_info("vsentry_drv_mmap: initializing ENG2LOG_BUF\n");
+			//pr_info("vsentry_drv_mmap: initializing ENG2LOG_BUF\n");
 			break;
 		case MOD2LOG_PAGE_OFFSET:
 			type = MOD2LOG_BUF;
-			pr_info("vsentry_drv_mmap: initializing MOD2LOG_BUF\n");
+			//pr_info("vsentry_drv_mmap: initializing MOD2LOG_BUF\n");
 			break;
 		case MOD2STAT_PAGE_OFFSET:
 			type = MOD2STAT_BUF;
-			pr_info("vsentry_drv_mmap: initializing MOD2STAT_BUF\n");
+			//pr_info("vsentry_drv_mmap: initializing MOD2STAT_BUF\n");
 			break;
 		default:
-			pr_err("wrong offset %lu\n", vma->vm_pgoff);
+			//pr_err("wrong offset %lu\n", vma->vm_pgoff);
 			return -EINVAL;
 	}
 
@@ -129,7 +129,7 @@ int vsentry_drv_release (struct inode *inode, struct file *file)
 	int i;
 	sr_shmem* vsshmem;
 
-	pr_info("vsentry_drv_release ... freeing all allocated memory\n");
+	pr_info("[vsentry]: drv_release, freeing all allocated memory\n");
 
 	for (i=0; i<TOTAL_BUFS; i++) {
 		vsshmem = sr_msg_get_buf(i);

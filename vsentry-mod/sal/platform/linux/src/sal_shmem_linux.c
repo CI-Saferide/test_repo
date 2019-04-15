@@ -49,8 +49,8 @@ SR_32 sal_shmem_alloc(sr_shmem *sr_shmem_ptr, SR_32 length, SR_32 type)
 		SetPageReserved(virt_to_page(sr_shmem_ptr->buffer + i));
 	}
 
-	sal_kernel_print_info("sal_shmem_alloc allocated 0x%p size 0x%08x\n",
-		sr_shmem_ptr->buffer, sr_shmem_ptr->buffer_size);
+	//sal_kernel_print_info("sal_shmem_alloc allocated 0x%p size 0x%08x\n",
+	//	sr_shmem_ptr->buffer, sr_shmem_ptr->buffer_size);
 
 	return 0;
 }

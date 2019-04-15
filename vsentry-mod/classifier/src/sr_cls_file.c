@@ -279,7 +279,7 @@ int sr_cls_fs_init(void)
 		return SR_ERROR;
 	}
 	memset(&sr_cls_file_any_rules, 0, sizeof(bit_array));
-	sal_kernel_print_info("successfully initialized cls_file\n");
+	//sal_kernel_print_info("successfully initialized cls_file\n");
 	return SR_SUCCESS;
 }
 

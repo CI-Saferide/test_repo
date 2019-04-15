@@ -13,7 +13,7 @@ SR_32 sal_vsentry_fd_open(void)
 {
 	if ((fd_vsentry = open(VS_FILE_NAME, O_RDWR|O_SYNC)) < 0) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_LOW,
-				"%s=sal_shmem_alloc: faield to open %s", REASON, VS_FILE_NAME);
+				"%s=sal_shmem_alloc: failed to open %s", REASON, VS_FILE_NAME);
 				return SR_ERROR;
 	}
 	return SR_SUCCESS;
@@ -75,8 +75,8 @@ SR_32 sal_task_start(void **data, SR_32 (*task_func)(void *data))
 
 	*data = (void*)thread;
 
-	CEF_log_event(SR_CEF_CID_SYSTEM, "info", SEVERITY_LOW,
-		"%s=sal_task_start: new task was created", MESSAGE);
+	//CEF_log_event(SR_CEF_CID_SYSTEM, "info", SEVERITY_LOW,
+	//	"%s=sal_task_start: new task was created", MESSAGE);
 
 	return SR_SUCCESS;
 }

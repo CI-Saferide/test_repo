@@ -254,7 +254,8 @@ result:
 	return SR_CLS_ACTION_ALLOW;
 }
 
-static int wa_cnt = 0;
+static int wa_all_zero_cnt = 0;
+static int wa_pid_zero_cnt = 0;
 SR_32 sr_classifier_file(disp_info_t* info)
 {
 	disp_info_t* tmp_info;
@@ -386,12 +387,19 @@ defaultConf:
 	is_def = SR_TRUE;
 	if(config_params->def_file_action)
 		def_action = config_params->def_file_action;
+#if 0	
 	if ((info->fileinfo.id.pid == 0) && (info->fileinfo.current_inode == 0)) {
-		wa_cnt++;
+		wa_all_zero_cnt++;
 		//CEF_log_event(SR_CEF_CID_SYSTEM, "work-arround", SEVERITY_HIGH,
-		//		"%s=inode and pid are zero wa_cnt=%d",REASON, wa_cnt);
+		//		"%s=inode and pid are zero wa_all_zero_cnt=%d",REASON, wa_all_zero_cnt);
+		return SR_CLS_ACTION_ALLOW;
+	} else if ((info->fileinfo.id.pid == 0) && (strlen(info->fileinfo.fullpath) == 0)) {
+		wa_pid_zero_cnt++;
+		//CEF_log_event(SR_CEF_CID_SYSTEM, "work-arround", SEVERITY_HIGH,
+		//		"%s=pid is zero wa_pid_zero_cnt=%d",REASON, wa_pid_zero_cnt);
 		return SR_CLS_ACTION_ALLOW;
 	}
+#endif
 	
 result:	
 	while ((rule = find_next_rule (&ba_res)) != SR_CLS_NO_MATCH) {

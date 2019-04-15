@@ -72,9 +72,9 @@ SR_32 sal_shmem_alloc(sr_shmem *sr_shmem_ptr, SR_32 length, SR_32 type)
 
 	sr_shmem_ptr->buffer_size = length;
 
-	CEF_log_event(SR_CEF_CID_SYSTEM, "info", SEVERITY_LOW,
-		"%s=sal_shmem_alloc: allocated 0x%p size 0x%08x",
-		MESSAGE, sr_shmem_ptr->buffer, sr_shmem_ptr->buffer_size);
+	//CEF_log_event(SR_CEF_CID_SYSTEM, "info", SEVERITY_LOW,
+	//	"%s=sal_shmem_alloc: allocated 0x%p size 0x%08x",
+	//	MESSAGE, sr_shmem_ptr->buffer, sr_shmem_ptr->buffer_size);
 
 	return SR_SUCCESS;
 }

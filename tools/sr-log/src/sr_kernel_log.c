@@ -32,11 +32,9 @@ void CEF_log_event(const SR_U32 class, const char *event_name,enum SR_CEF_SEVERI
 		sr_send_msg(MOD2LOG_BUF, sizeof(payload));
 		sal_linux_mng_readbuf_up(SYNC_INFO_GATHER);
 	}else{
-		sal_kernel_print_err ("Failed to CEF log: %s|%s|%s=%s %s=%s %s\n",
+		sal_kernel_print_err ("[vsentry]: %s|%s|%s\n",
 			(char*)event_name,
 			severity_strings[severity],
-			DEVICE_EXTERNAL_ID,"N/A", 			//this is only available to sr_engine atm...
-			DEVICE_FACILITY,LOG_FROM_KERNEL,
 			msg );	
 	}
 	

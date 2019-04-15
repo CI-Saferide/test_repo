@@ -236,7 +236,7 @@ int sr_netfilter_init(void)
 	nfh_tx.priority = NF_IP_PRI_FIRST;    
 	nf_register_hook(&nfh_tx);         // Register the hook
 
-    sal_kernel_print_info("Registering netfilter hooks!\n");
+    sal_kernel_print_info("[vsentry]: registration to netfilter succeedded\n");
     return 0;
 }
 
@@ -244,7 +244,7 @@ void sr_netfilter_uninit(void)
 {
 	nf_unregister_hook(&nfho);
 	nf_unregister_hook(&nfh_tx);
-    sal_kernel_print_info("Unregistering netfilter hooks!\n");
+    sal_kernel_print_info("[vsentry]: unregistering netfilter hooks\n");
 }
 
 #endif

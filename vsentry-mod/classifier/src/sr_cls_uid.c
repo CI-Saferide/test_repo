@@ -23,7 +23,7 @@ int sr_cls_uid_init(void)
 			return SR_ERROR;
 		}
 	}
-	sal_kernel_print_info("[%s]: Successfully initialized UID classifier!\n", MODULE_NAME);
+	//sal_kernel_print_info("[%s]: Successfully initialized UID classifier!\n", MODULE_NAME);
 
 	return SR_SUCCESS;
 }
