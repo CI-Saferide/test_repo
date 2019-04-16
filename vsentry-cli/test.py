@@ -9,6 +9,7 @@ def run_cmd(cmd):
 	return reply.split()
 
 def create_group(group_type, group_name, values):
+	global errs
 	delete_cmd = cli_cmd + ' delete group ' + group_type + ' ' + group_name
 	update_cmd = cli_cmd + ' update group ' + group_type + ' ' + group_name + ' ' + values
 	show_cmd = cli_cmd + ' show group ' + group_type + ' ' + group_name
@@ -16,8 +17,20 @@ def create_group(group_type, group_name, values):
 		run_cmd(delete_cmd)
 	except subprocess.CalledProcessError, e:
 		print 'Failed delete group: ' + group_name
-	run_cmd(update_cmd)
-	reply = run_cmd(show_cmd)
+	try:
+		run_cmd(update_cmd)
+	except subprocess.CalledProcessError, e:
+		print 'Failed update group: ' + group_name
+		print '>>>>', update_cmd
+		errs += 1
+		return
+	try:
+		reply = run_cmd(show_cmd)
+	except subprocess.CalledProcessError, e:
+		print 'Failed show group: ' + group_name
+		print '>>>>', show_cmd
+		errs += 1
+		return
 	list_values = values.split()
 	ind = 4
 	print list_values
