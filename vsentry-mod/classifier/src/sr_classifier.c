@@ -256,8 +256,6 @@ result:
 	return SR_CLS_ACTION_ALLOW;
 }
 
-static int wa_all_zero_cnt = 0;
-static int wa_pid_zero_cnt = 0;
 SR_32 sr_classifier_file(disp_info_t* info)
 {
 	disp_info_t* tmp_info;
