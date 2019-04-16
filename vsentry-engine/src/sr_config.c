@@ -194,15 +194,17 @@ static SR_32 update_ip_rule(ip_rule_t *rule)
 		strncpy(old_rule->action_name, rule->action_name, ACTION_STR_SIZE);
 	}
 
-	if (old_rule->tuple.srcport != rule->tuple.srcport) {
+	if (old_rule->tuple.srcport != rule->tuple.srcport || old_rule->tuple.proto != rule->tuple.proto) {
 		sr_cls_port_del_rule(old_rule->tuple.srcport, old_program, old_user, old_rule->rulenum, SR_DIR_SRC, old_rule->tuple.proto);
 		sr_cls_port_add_rule(rule->tuple.srcport, program, user, rule->rulenum, SR_DIR_SRC, rule->tuple.proto);
 		old_rule->tuple.srcport = rule->tuple.srcport;
+		old_rule->tuple.proto = rule->tuple.proto;
 	}	
-	if (old_rule->tuple.dstport != rule->tuple.dstport) {
+	if (old_rule->tuple.dstport != rule->tuple.dstport || old_rule->tuple.proto != rule->tuple.proto) {
 		sr_cls_port_del_rule(old_rule->tuple.dstport, old_program, old_user, old_rule->rulenum, SR_DIR_DST, old_rule->tuple.proto);
 		sr_cls_port_add_rule(rule->tuple.dstport, program, user, rule->rulenum, SR_DIR_DST, rule->tuple.proto);
 		old_rule->tuple.dstport = rule->tuple.dstport;
+		old_rule->tuple.proto = rule->tuple.proto;
 	}	
 	if (old_rule->tuple.srcaddr.s_addr != rule->tuple.srcaddr.s_addr ||
 	    old_rule->tuple.srcnetmask.s_addr != rule->tuple.srcnetmask.s_addr) {
