@@ -231,14 +231,16 @@ result:
 			
 			sprintf(sip, "%d.%d.%d.%d", (sip_t&0xff000000)>>24, (sip_t&0x00ff0000)>>16, (sip_t&0xff00)>> 8, sip_t&0xff);
 			sprintf(dip, "%d.%d.%d.%d", (dip_t&0xff000000)>>24, (dip_t&0x00ff0000)>>16, (dip_t&0xff00)>> 8, dip_t&0xff);
-			sprintf(ext, "%s=%d%s %s=%s %s=%s %s=%s %s=%d %s=%s %s=%d",
+			sprintf(ext, "%s=%d%s %s=%s %s=%s %s=%s %s=%d %s=%s %s=%d %s=%d %s=%s",
 				RULE_NUM_KEY,rule, rule == SR_CLS_DEFAULT_RULE ? "(default)" : "",
 				DEVICE_ACTION,actionstring,
 				TRANSPORT_PROTOCOL,info->tuple_info.ip_proto == IPPROTO_TCP?"tcp":"udp",
 				DEVICE_SRC_IP,sip,
 				DEVICE_SRC_PORT,info->tuple_info.sport,
 				DEVICE_DEST_IP,dip,
-				DEVICE_DEST_PORT,info->tuple_info.dport);
+				DEVICE_DEST_PORT,info->tuple_info.dport,
+				"pid",info->tuple_info.id.pid,
+				"exec",info->tuple_info.id.exec);
 			if (action & SR_CLS_ACTION_DROP) {
 				CEF_log_event(SR_CEF_CID_NETWORK, "connection drop" , SEVERITY_HIGH, ext);
 				return SR_CLS_ACTION_DROP;

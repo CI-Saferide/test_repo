@@ -256,7 +256,7 @@ static void update_process_info (identifier *id, struct sock *sk, struct task_st
 		if ((process_info_p = sr_cls_sk_process_hash_get(sk))) {
 			id->pid = process_info_p->process_info.pid;
 			id->uid = process_info_p->process_info.uid;
-			if (get_collector_state() == SR_TRUE) {
+			/*if (get_collector_state() == SR_TRUE)*/ {
 				/* we are in learn mode, resolve exec fullpath */
 				strncpy(id->exec, process_info_p->process_info.exec, SR_MAX_PATH_SIZE);
 			}
@@ -283,7 +283,7 @@ static void update_process_info (identifier *id, struct sock *sk, struct task_st
 
 		id->pid = task->tgid;
 		id->uid = (int)rcred->uid.val;
-		if (get_collector_state() == SR_TRUE) {
+		/*if (get_collector_state() == SR_TRUE)*/ {
 			/* we are in learn mode, resolve exec fullpath */
 			if ((get_process_name(id->pid, id->exec, SR_MAX_PATH_SIZE)) != SR_SUCCESS) {
 				CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_MEDIUM, "%s=failed to get process name for pid %d ", REASON, id->pid);
@@ -652,7 +652,7 @@ SR_32 vsentry_incoming_connection(struct sk_buff *skb)
 					(unsigned long)disp.tuple_info.daddr.v4addr.s_addr,
 					disp.tuple_info.dport);
 //#endif /* DEBUG_EVENT_MEDIATOR */
-
+	
 	/* call dispatcher */
 	return (disp_incoming_connection(&disp));
 }
@@ -802,7 +802,7 @@ static SR_32 vsentry_file_open_task(struct file *file, const struct cred *credv,
 	
 	//shay - temp start
 	sr_get_full_path(file, disp.fileinfo.fullpath, SR_MAX_PATH_SIZE);
-	get_process_name(disp.fileinfo.id.pid, disp.fileinfo.id.exec, SR_MAX_PATH_SIZE);
+	//get_process_name(disp.fileinfo.id.pid, disp.fileinfo.id.exec, SR_MAX_PATH_SIZE);
 	//shay - temp end
 
 #ifdef DEBUG_EVENT_MEDIATOR
