@@ -355,12 +355,22 @@ static SR_32 create_learn_rl_action()
 	char str_bm[32] = {}, str_rl_bm[32] = {};
 	SR_U32 rl_bm = SR_CLS_ACTION_DROP | SR_CLS_ACTION_LOG; 
 	SR_U32 bm = SR_CLS_ACTION_RATE;
+	SR_32 rc;
 
 	snprintf(str_bm, sizeof(str_bm), "%d", bm);
 	snprintf(str_rl_bm, sizeof(str_rl_bm), "%d", rl_bm);
 	action_info.action_bm = str_bm;
 	action_info.rl_bm = str_rl_bm;
 	action_info.rl_log = "vsentry";
+
+	if ((rc = redis_mng_has_action(c, ACTION_RL)) == SR_ERROR) {
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+				"%s=redis atrion delete failed",REASON);
+		return SR_ERROR;
+	}
+
+	if (rc == 1) // Action exists
+		return SR_SUCCESS;
 
 	if (redis_mng_add_action(c, ACTION_RL , &action_info)) {
 		printf("add action failed \n");
