@@ -2000,7 +2000,7 @@ SR_32 redis_mng_add_action(redisContext *c, char *name, redis_mng_action_t *acti
 			ACTION_LOG, action->action_log ? action->action_log : "NULL",
 			RL_BITMAP, action->rl_bm ? action->rl_bm : "NULL", RL_LOG, action->rl_log ? action->rl_log : "NULL");
 	if (reply == NULL || reply->type != REDIS_REPLY_STATUS) {
-		printf("ERROR: redis_mng_add_file_rule failed, %d\n", reply ? reply->type : -1);
+		printf("ERROR: Redis mng add action failed, %d\n", reply ? reply->type : -1);
 		freeReplyObject(reply);
 		return SR_ERROR;
 	}
@@ -2014,7 +2014,7 @@ SR_32 redis_mng_del_action(redisContext *c, char *name)
 
 	reply = redisCommand(c,"%s %s%s", DEL, ACTION_PREFIX, name);
 	if (reply == NULL || reply->type != REDIS_REPLY_INTEGER || reply->integer != 1) {
-		printf("ERROR: redis_mng_del_file_rule failed, type %d, i %d\n", reply ? reply->type : -1, reply ? (int)reply->integer : 0);
+		printf("ERROR: Redis mng delete action failed, type %d, i %d\n", reply ? reply->type : -1, reply ? (int)reply->integer : 0);
 		freeReplyObject(reply);
 		return SR_ERROR;
 	}
