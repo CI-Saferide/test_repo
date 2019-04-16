@@ -274,12 +274,12 @@ static void update_process_info (identifier *id, struct sock *sk, struct task_st
 
 		if (ts)
 			task = ts;
-		else
-			return;
 		if (task)
 			rcred = task->real_cred;
-		else
+		else {
+			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_MEDIUM, "%s=failed to get process info task stuct is null", REASON);
 			return;
+		}
 
 		id->pid = task->tgid;
 		id->uid = (int)rcred->uid.val;
