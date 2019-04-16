@@ -1332,13 +1332,16 @@ SR_32 main(int argc, char **argv)
 	}
 
 	if (!strcmp(argv[1], "update"))
-		return handle_update(argc - 2, argv + 2);
-	if (!strcmp(argv[1], "show"))
-		return handle_show(argc - 2, argv + 2);
-	if (!strcmp(argv[1], "delete"))
-		return handle_delete(argc - 2, argv + 2);
-	if (!strcmp(argv[1], "control"))
-		return handle_control(argc - 2, argv + 2);
+		 handle_update(argc - 2, argv + 2);
+	else if (!strcmp(argv[1], "show"))
+		handle_show(argc - 2, argv + 2);
+	else if (!strcmp(argv[1], "delete"))
+		handle_delete(argc - 2, argv + 2);
+	else if (!strcmp(argv[1], "control"))
+		handle_control(argc - 2, argv + 2);
+
+	if (c)
+		redis_mng_session_end(c);
 
 	return SR_SUCCESS;
 }
