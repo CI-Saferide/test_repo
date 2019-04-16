@@ -217,6 +217,10 @@ result:
 		} else {
 			action = sr_cls_network_rule_match(rule, info->tuple_info.size);
 		}
+
+		if ((info->tuple_info.saddr.v4addr.s_addr == 0) && (info->tuple_info.daddr.v4addr.s_addr == 0)) {
+			return SR_CLS_ACTION_ALLOW; /* shay - skip this event */
+		}
 		if (action & SR_CLS_ACTION_LOG) {
 			
 			char ext[256],sip[16],dip[16], actionstring[16];
