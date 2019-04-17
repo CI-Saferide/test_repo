@@ -1280,6 +1280,13 @@ SR_32 vsentry_bprm_check_security(struct linux_binprm *bprm)
 	disp.fileinfo.id.uid = (int)rcred->uid.val;
 	disp.fileinfo.id.pid = current->tgid;
 	disp.fileinfo.fileop = SR_FILEOPS_EXEC; // open requires exec access
+	if ((bprm->file->f_path.dentry->d_parent) && (bprm->file->f_path.dentry->d_parent->d_inode)){
+		disp.fileinfo.parent_inode = bprm->file->f_path.dentry->d_parent->d_inode->i_ino;
+		disp.fileinfo.parent_info = bprm->file->f_path.dentry->d_parent;
+	}
+	
+	/* here we cannot use sk based update as it is not created yet */
+	update_process_info(&disp.fileinfo.id, NULL, NULL);
     
 #ifdef DEBUG_EVENT_MEDIATOR
 #pragma GCC diagnostic ignored "-Wdeclaration-after-statement"
@@ -1293,6 +1300,10 @@ SR_32 vsentry_bprm_check_security(struct linux_binprm *bprm)
 			disp.fileinfo.id.uid);
 #endif     
     
+	//shay - temp start
+	sr_get_full_path(bprm->file, disp.fileinfo.fullpath, SR_MAX_PATH_SIZE);
+	//get_process_name(disp.fileinfo.id.pid, disp.fileinfo.id.exec, SR_MAX_PATH_SIZE);
+	//shay - temp end
 	rc =  disp_file_exec(&disp);
 	if (rc == 0 && get_collector_state() == SR_TRUE) {
 		if (sr_get_full_path(bprm->file, disp.fileinfo.fullpath, SR_MAX_PATH_SIZE) != SR_SUCCESS)
