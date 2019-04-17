@@ -436,7 +436,26 @@ result:
 		}
 	}
 
-	return SR_CLS_ACTION_ALLOW;
+	if(config_params->def_file_action)
+		def_action = config_params->def_file_action;
+
+	if (def_action & SR_CLS_ACTION_LOG) {
+			char ext[1024];
+
+			snprintf(ext, 1024, "%s=%d%s %s=%s %s=%s %s=%d %s=%u %s=%s",
+				RULE_NUM_KEY, SR_CLS_DEFAULT_RULE, "(default)",
+				"file",info->fileinfo.fullpath,
+				"exec",info->fileinfo.id.exec,
+				"pid",info->fileinfo.id.pid,
+				"fileinode",info->fileinfo.current_inode,
+				FILE_PERMISSION,(info->fileinfo.fileop&SR_FILEOPS_WRITE)?"write":(info->fileinfo.fileop&SR_FILEOPS_READ)?"read":"execute");
+
+			if (action & SR_CLS_ACTION_DROP)
+				CEF_log_event(SR_CEF_CID_FILE, "file operation drop" , SEVERITY_HIGH, ext);
+			else
+				CEF_log_event(SR_CEF_CID_FILE, "file operation allow" , SEVERITY_LOW, ext);
+	}
+	return (def_action & SR_CLS_ACTION_DROP) ? SR_CLS_ACTION_DROP : SR_CLS_ACTION_ALLOW;
 }
 
 // CAN-BUS events classifier
