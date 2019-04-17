@@ -47,12 +47,21 @@ static static_file_rule_t static_wl [] = {
 	{1,        "/customer_persistent/YAS",                        "rw",      "root",  "/oldroot/usr/bin/telemetry"},
 	{1,        "/customer_persistent/YAS",                        "rw",      "root",  "/oldroot/usr/bin/ugkp"},
 	{1,        "/customer_persistent/YAS",                        "rw",      "root",  "/oldroot/usr/bin/unionfs"},
-	{1,        "/customer_persistent/YAS",                        "rw",      "root",  "/oldroot/usr/bin/vproxy"},
-	{1,        "/customer_persistent/YAS",                        "rw",      "root",  "/oldroot/usr/bin/qa_client"},
-	{1,        "/customer_persistent/YAS",                        "rw",      "root",  "/oldroot/usr/bin/qa_server"},
+	//{1,        "/customer_persistent/YAS",                        "rw",      "root",  "/oldroot/usr/bin/vproxy"},
+	//{1,        "/customer_persistent/YAS",                        "rw",      "root",  "/oldroot/usr/bin/qa_client"},
+	//{1,        "/customer_persistent/YAS",                        "rw",      "root",  "/oldroot/usr/bin/qa_server"},
+	{1,        "/customer_persistent/YAS",                        "rw",      "root",  "/usr/bin/cmb_drvc"},
+	{1,        "/customer_persistent/YAS",                        "rw",      "root",  "/usr/bin/cmb_main"},
+	{1,        "/customer_persistent/YAS",                        "rw",      "root",  "/usr/bin/dpa"},
+	{1,        "/customer_persistent/YAS",                        "rw",      "root",  "/usr/bin/init"},
+	{1,        "/customer_persistent/YAS",                        "rw",      "root",  "/usr/bin/ivs"},
+	{1,        "/customer_persistent/YAS",                        "rw",      "root",  "/usr/bin/sswa_agent"},
+	{1,        "/customer_persistent/YAS",                        "rw",      "root",  "/usr/bin/telemetry"},
+	{1,        "/customer_persistent/YAS",                        "rw",      "root",  "/usr/bin/ugkp"},
+	{1,        "/customer_persistent/YAS",                        "rw",      "root",  "/usr/bin/unionfs"},
 	{2,        "/oldroot/pivot/underlay",                         "rw",      "root",  "/oldroot/usr/bin/unionfs"},
-	{3,        "*",                        						  "rw",      "root",  "/lib/systemd/systemd-journald"},
-	{2, ""},  // Must be the last entry.
+	{3,        "/",                        						  "rw",      "root",  "/lib/systemd/systemd-journald"},
+	{3, ""},  // Must be the last entry.
 };
 #endif /* PRODUCTION_MODE */
 
