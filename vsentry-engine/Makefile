@@ -138,7 +138,7 @@ build_ver:
 	@echo "/*@unused@*/ static const char SR_GIT_BUILD[] = \"`git log --pretty=format:'%h' -n 1`\"; " > $(TOP_DIR)/../common/include/sr_build_ver.h
 
 ifdef BIN_CLS_DB
-$(TARGET): libsr_log libsr_hash libjsmn libsysrepo_mng libdb_tools libbin_cls lib$(TARGET)
+$(TARGET): libsr_log libsr_hash libjsmn libsysrepo_mng libredis_mng libdb_tools libbin_cls lib$(TARGET)
 else
 $(TARGET): libsr_log libsr_hash libjsmn libsysrepo_mng libredis_mng libdb_tools lib$(TARGET)
 endif
