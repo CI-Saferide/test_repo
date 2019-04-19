@@ -60,6 +60,13 @@ static group_info_t group_info[MAX_GROUP + 1] = {
 	{.group_name = "proto-group", .valid_cb = is_valid_ip_proto, .list_type = LIST_PROTOCOLS},
 };
 
+static void close_session(void)
+{
+	if (c)
+		redis_mng_session_end(c);
+	c = NULL;
+}
+
 static SR_32 get_group_index(char *type)
 {
 	SR_U32 i;
@@ -483,11 +490,18 @@ static SR_32 handle_update_can(SR_U32 rule_id, SR_BOOL is_wl, int argc, char **a
 	int i;
 	char mid[GROUP_NAME_SIZE], interface[GROUP_NAME_SIZE], dir[16], user[GROUP_NAME_SIZE], program[GROUP_NAME_SIZE], action[ACTION_STR_SIZE];
 	SR_BOOL is_program_list = SR_FALSE, is_user_list = SR_FALSE, is_mid_list = SR_FALSE, is_interface_list = SR_FALSE;
-	SR_32 ret, is_update;
+	SR_32 rc = SR_SUCCESS, is_update;
 	redis_mng_can_rule_t rule_info = {};
 
-	if ((is_update = redis_mng_has_can_rule(c, rule_id)) == SR_ERROR)
- 		return SR_ERROR;
+	if (!(c = redis_mng_session_start())) {
+		printf("ERROR: redis_mng_session_start failed\n");
+		return SR_ERROR;
+	}
+
+	if ((is_update = redis_mng_has_can_rule(c, rule_id)) == SR_ERROR) {
+ 		rc = SR_ERROR;
+		goto out;
+	}
 
 	*dir = *interface = *mid = 0;
 	if (!is_update) {
@@ -511,7 +525,8 @@ static SR_32 handle_update_can(SR_U32 rule_id, SR_BOOL is_wl, int argc, char **a
 			continue;
 		HANDLE_COMMON_PARAMS
 		printf("Invalid paramter:%s \n", argv[i]);
-		return SR_ERROR;
+		rc = SR_ERROR;
+		goto out;
 	}
 	if (!is_wl) {
 		CHECK_MISSING_PARAM(action, "action")
@@ -528,16 +543,19 @@ static SR_32 handle_update_can(SR_U32 rule_id, SR_BOOL is_wl, int argc, char **a
 	rule_info.interfaces_list = is_interface_list;
 	rule_info.dir = EMPTY2NULL(dir);
 	rule_info.action = action;
-	ret = redis_mng_update_can_rule(c, rule_id, &rule_info);
-	if (ret != SR_SUCCESS) {
+	if (redis_mng_update_can_rule(c, rule_id, &rule_info) != SR_SUCCESS) {
 		printf("update rule failed");
-		return ret;
+		rc = SR_ERROR;
+		goto out;
 	}
 #ifdef DEBUG
 	printf("handle can %d %d mid:%s interface:%s program:%s user:%s action:%s ret:%d \n", rule_id, is_wl, mid, interface, program, user, action, ret); 
 #endif
 
-	return SR_SUCCESS;
+out:
+	close_session();
+
+	return rc;
 } 
 
 static SR_32 handle_update_file(SR_U32 rule_id, SR_BOOL is_wl, int argc, char **argv)
@@ -546,11 +564,18 @@ static SR_32 handle_update_file(SR_U32 rule_id, SR_BOOL is_wl, int argc, char **
 	char filename[GROUP_NAME_SIZE], perm[16];
 	char user[GROUP_NAME_SIZE], program[GROUP_NAME_SIZE], action[ACTION_STR_SIZE];
 	SR_BOOL is_filename_list = SR_FALSE, is_program_list = SR_FALSE, is_user_list = SR_FALSE;
-	SR_32 ret, is_update;
+	SR_32 is_update, rc = SR_SUCCESS;
 	redis_mng_file_rule_t rule_info = {};
 
-	if ((is_update = redis_mng_has_file_rule(c, rule_id)) == SR_ERROR)
- 		return SR_ERROR;
+	if (!(c = redis_mng_session_start())) {
+		printf("ERROR: redis_mng_session_start failed\n");
+		return SR_ERROR;
+	}
+
+	if ((is_update = redis_mng_has_file_rule(c, rule_id)) == SR_ERROR) {
+ 		rc = SR_ERROR;
+		goto out;
+	}
 
 	*filename = *perm = 0;
 	if (!is_update) {
@@ -568,7 +593,8 @@ static SR_32 handle_update_file(SR_U32 rule_id, SR_BOOL is_wl, int argc, char **
 			continue;
 		HANDLE_COMMON_PARAMS
 		printf("Invalid paramter:%s \n", argv[i]);
-		return SR_ERROR;
+		rc = SR_ERROR;
+		goto out;
 	}
 	if (!is_wl) {
 		CHECK_MISSING_PARAM(action, "action")
@@ -584,16 +610,19 @@ static SR_32 handle_update_file(SR_U32 rule_id, SR_BOOL is_wl, int argc, char **
 	rule_info.file_names_list = is_filename_list;
 	rule_info.file_op = EMPTY2NULL(perm);
 	rule_info.action = action;
-	ret = redis_mng_update_file_rule(c, rule_id, &rule_info);
-	if (ret != SR_SUCCESS) {
+	if (redis_mng_update_file_rule(c, rule_id, &rule_info) != SR_SUCCESS) {
 		printf("update rule failed");
-		return ret;
+		rc = SR_ERROR;
+		goto out;
 	}
 #ifdef DEBUG
 	printf("handle file rule %d %d filename:%s perm:%s program:%s user:%s action:%s ret:%d \n", rule_id, is_wl, filename, perm_cli_to_db(perm), program, user, action, ret); 
 #endif
 
-	return SR_SUCCESS;
+out:
+	close_session();
+
+	return rc;
 } 
 
 static SR_32 handle_update_ip(SR_U32 rule_id, SR_BOOL is_wl, int argc, char **argv)
@@ -604,11 +633,18 @@ static SR_32 handle_update_ip(SR_U32 rule_id, SR_BOOL is_wl, int argc, char **ar
 	char user[GROUP_NAME_SIZE], program[GROUP_NAME_SIZE], action[ACTION_STR_SIZE];
 	SR_BOOL is_src_addr_list = SR_FALSE, is_dst_addr_list = SR_FALSE, is_proto_list = SR_FALSE,
 		 is_src_port_list = SR_FALSE, is_dst_port_list = SR_FALSE, is_program_list = SR_FALSE, is_user_list = SR_FALSE;
-	SR_32 ret, is_update;
+	SR_32 is_update, rc = SR_SUCCESS;
 	redis_mng_net_rule_t rule_info = {};
 
-	if ((is_update = redis_mng_has_net_rule(c, rule_id)) == SR_ERROR)
- 		return SR_ERROR;
+	if (!(c = redis_mng_session_start())) {
+		printf("ERROR: redis_mng_session_start failed\n");
+		return SR_ERROR;
+	}
+
+	if ((is_update = redis_mng_has_net_rule(c, rule_id)) == SR_ERROR) {
+ 		rc = SR_ERROR;
+		goto out;
+	}
 
 	if (!is_update) {
 		INIT_COMMON_PARAMS
@@ -650,7 +686,8 @@ static SR_32 handle_update_ip(SR_U32 rule_id, SR_BOOL is_wl, int argc, char **ar
 			continue;
 		HANDLE_COMMON_PARAMS
 		printf("Invalid paramter:%s \n", argv[i]);
-		return SR_ERROR;
+		rc = SR_ERROR;
+		goto out;
 	}
 
 	if (!is_wl) {
@@ -676,17 +713,20 @@ static SR_32 handle_update_ip(SR_U32 rule_id, SR_BOOL is_wl, int argc, char **ar
 	rule_info.down_rl = EMPTY2NULL(down_rl);
 	rule_info.up_rl = EMPTY2NULL(up_rl);
 	rule_info.action = action;
-	ret = redis_mng_update_net_rule(c, rule_id, &rule_info);
- 	if (ret != SR_SUCCESS) {
+	if (redis_mng_update_net_rule(c, rule_id, &rule_info) != SR_SUCCESS) {
 		printf("update rule failed");
-		return ret;
+		rc = SR_ERROR;
+		goto out;
 	}
 #ifdef DEBUG
 	printf("handle ip rule %d %d src_addr:%s dst_addr:%s proto:%s sport:%s dport:%s program:%s user:%s downrl:%s uprl:%s action:%s ret:%d \n",
 		rule_id, is_wl, src_addr, dst_addr, proto, src_port, dst_port, program, user, down_rl, up_rl, action, ret); 
 #endif
 
-	return SR_SUCCESS;
+out:
+	close_session();
+
+	return rc;
 } 
 
 static void print_groups_types(void)
@@ -716,16 +756,23 @@ static SR_32 handle_update_group(int argc, char **argv)
 	}
 	name = argv[1];
 
+	if (!(c = redis_mng_session_start())) {
+		printf("ERROR: redis_mng_session_start failed\n");
+		return SR_ERROR;
+	}
+
 	// If list exits, delete it, the recreate it
 	if ((ret = redis_mng_has_list(c, group_info[group_id].list_type, name)) == SR_ERROR){
 		printf("redis_mng_has_list failed\n");
-		return SR_ERROR;
+		rc = SR_ERROR;
+		goto out_session;
 	}
 	if (ret == 1) {	
 		// Delete list
 		if (redis_mng_destroy_list(c, group_info[group_id].list_type, name) != SR_SUCCESS) {
 			printf("Delete failed\n");
-			return SR_ERROR;
+			rc = SR_ERROR;
+			goto out_session;
 		}
 	}
 
@@ -740,28 +787,32 @@ static SR_32 handle_update_group(int argc, char **argv)
 		if (strlen(argv[i]) > MAX_LIST_VAL_LEN) {
 			printf("Item %s exceed maximun length of %d \n", argv[i], MAX_LIST_VAL_LEN);
 			rc = SR_ERROR;
-			goto out;
+			goto out_session;
 		}
 		if (group_info[group_id].valid_cb && !group_info[group_id].valid_cb(argv[i])) {
 			printf("Value %s is invalid \n", argv[i]);
-			return SR_ERROR;
+			rc = SR_ERROR;
+			goto out_session;
 		}
 		if (!(list_values[i - 2] = strdup(argv[i]))) {
 			printf("Failed allocating memory\n");
-			return SR_ERROR;
+			rc = SR_ERROR;
+			goto out_session;
 		}
 	}
 
 	if (redis_mng_add_list(c, group_info[group_id].list_type, name, n, list_values)) {
 		printf("Redis list add Failed !!\n");
 		rc = SR_ERROR;
+		goto out;
 	}
 
 out:
 	for (i = 0; i < MAX_LIST_VALUES && list_values[i]; i++) {
 		free(list_values[i]);
 	}
-	fflush(stdout);
+out_session:
+	close_session();
 
 	return rc;
 }
@@ -773,7 +824,7 @@ static SR_32 handle_update_action(int argc, char **argv)
 	char rl_action[ACTION_STR_SIZE] = {}, action[ACTION_STR_SIZE] = {};
 	char str_bm[32] = {}, str_rl_bm[32] = {};
 	SR_U32 bm = 0, rl_bm = 0;
-	SR_32 i;
+	SR_32 i, rc = SR_SUCCESS;
 	redis_mng_action_t action_info = {};
 
 	if (argc < 3) {
@@ -821,16 +872,25 @@ static SR_32 handle_update_action(int argc, char **argv)
 	action_info.action_log = log;
 	action_info.rl_log = rl_log;
 
-	if (redis_mng_add_action(c, name, &action_info)) {
-		printf("add action failed \n");
+	if (!(c = redis_mng_session_start())) {
+  		printf("ERROR: redis_mng_session_start failed\n");
 		return SR_ERROR;
+	}
+
+	if (redis_mng_add_action(c, name, &action_info) != SR_SUCCESS) {
+		printf("add action failed \n");
+		rc = SR_ERROR;
+		goto out;
 	}
 
 #ifdef DEBUG
 	printf("action updated: name:%s: bm:%s: log_facility:%s: rl_bm:%s rl_log:%s  \n", name, action_info.action_bm, action_info.action_log, action_info.rl_bm, action_info.rl_log);
 #endif
+	
+out:
+	close_session();
 
-	return SR_SUCCESS;
+	return rc;
 }
 
 static SR_32 handle_update(int argc, char **argv)
@@ -905,18 +965,40 @@ static SR_32 show_version(void)
 
 static SR_32 show_action(int argc, char **argv)
 {
-	return redis_mng_print_actions(c);
+	SR_32 rc = SR_SUCCESS;
+
+	if (!(c = redis_mng_session_start())) {
+		printf("ERROR: redis_mng_session_start failed\n");
+		return SR_ERROR;
+	}
+
+	rc = redis_mng_print_actions(c);
+
+	close_session();
+
+	return rc;
 }
 
 static SR_32 show_sp(int argc, char **argv)
 {
-	return redis_mng_print_system_policer(c);
+	SR_32 rc = SR_SUCCESS;
+
+	if (!(c = redis_mng_session_start())) {
+		printf("ERROR: redis_mng_session_start failed\n");
+		return SR_ERROR;
+	}
+
+	rc = redis_mng_print_system_policer(c);
+
+	close_session();
+
+	return rc;
 }
 
 static SR_32 show_group(int argc, char **argv)
 {
 	char *type, *name;
-	SR_32 group_id;
+	SR_32 group_id, rc = SR_SUCCESS;
 
 	if (!argc) {
 		printf("Show all the list types:\n");
@@ -924,22 +1006,31 @@ static SR_32 show_group(int argc, char **argv)
 		return SR_SUCCESS;
 	}
 
+	if (!(c = redis_mng_session_start())) {
+		printf("ERROR: redis_mng_session_start failed\n");
+		return SR_ERROR;
+	}
+
 	type = argv[0];
 	if ((group_id = get_group_index(type)) < 0) {
 		printf(" group type %s is not valid \n", type);
-		return SR_ERROR;
+		rc = SR_ERROR;
+		goto out;
 	}
 
 	if (argc == 1) {
 		redis_mng_print_all_list_names(c, group_info[group_id].list_type);
-		return SR_SUCCESS;
+		goto out;
 	}
 
 	name = argv[1];
 	printf("Showing group type:%d name:%s:\n", group_info[group_id].list_type, name);
 	redis_mng_print_list(c, group_info[group_id].list_type, name);
 
-	return SR_SUCCESS;
+out:
+	close_session();
+
+	return rc;
 }
 
 static SR_32 handle_show(int argc, char **argv)
@@ -975,6 +1066,11 @@ static SR_32 handle_show(int argc, char **argv)
 	if (argc == 4 && !strcmp(argv[2], "rule_number"))
 		from = to = atoi(argv[3]);
 print:
+	if (!(c = redis_mng_session_start())) {
+		printf("ERROR: redis_mng_session_start failed\n");
+  		return SR_ERROR;
+	}
+
 	if (is_can) {
 		printf("Can rules :\n");
 		redis_mng_print_rules(c, RULE_TYPE_CAN, from, to);
@@ -988,36 +1084,50 @@ print:
 		redis_mng_print_rules(c, RULE_TYPE_IP, from, to);
 	}
 
+	close_session();
+
 	return SR_SUCCESS;
 }
 
 static SR_32 handle_delete_group(int argc, char **argv)
 {
 	char *type, *name;
-	SR_32 group_id;
+	SR_32 rc = SR_SUCCESS, group_id;
 
 	if (argc < 2) {
 		print_delete_group_usage();
 		return SR_ERROR;
 	}
 
+	if (!(c = redis_mng_session_start())) {
+		printf("ERROR: redis_mng_session_start failed\n");
+		return SR_ERROR;
+	}
+
 	type = argv[0];
 	if ((group_id = get_group_index(type)) < 0) {
 		printf(" group type %s is not valid \n", type);
-		return SR_ERROR;
+		rc = SR_ERROR;
+		goto out;
 	}
 	name = argv[1];
 
 	if (redis_mng_destroy_list(c, group_info[group_id].list_type, name) != SR_SUCCESS) {
 		printf("Delete failed\n");
-		return SR_ERROR;
+		rc = SR_ERROR;
+		goto out;
 	}
 
-	return SR_SUCCESS;
+out:
+	close_session();
+
+	return rc;
 }
 
 static SR_32 handle_delete_action(int argc, char **argv)
 {
+	SR_32 rc;
+
 	if (!argc) {
 		printf("Enter action name\n");
 		return SR_ERROR;
@@ -1025,13 +1135,21 @@ static SR_32 handle_delete_action(int argc, char **argv)
 
 	printf("deleteing action :%s \n", argv[0]);
 
-	return redis_mng_del_action(c, argv[0]);
+	if (!(c = redis_mng_session_start())) {
+		printf("ERROR: redis_mng_session_start failed\n");
+		return SR_ERROR;
+	}
+	rc = redis_mng_del_action(c, argv[0]);
+
+	close_session();
+
+	return rc;
 }
 
 static SR_32 handle_delete(int argc, char **argv)
 {
 	char *type, *section;
-	SR_U32 from_rule = -1, to_rule = -1;
+	SR_U32 rc = SR_SUCCESS, from_rule = -1, to_rule = -1;
 	SR_BOOL is_can = SR_FALSE, is_file = SR_FALSE, is_ip = SR_FALSE, is_force = SR_TRUE;
 
 	if (argc < 2) {
@@ -1108,26 +1226,37 @@ delete:
 #if DEBUG
 	printf("deleting can:%d file:%d ip:%d from:%d to:%d force:%d \n", is_can, is_file, is_ip, from_rule, to_rule, is_force);
 #endif
+	if (!(c = redis_mng_session_start())) {
+		printf("ERROR: redis_mng_session_start failed\n");
+		return SR_ERROR;
+	}
+
 	if (is_file) {
 		if (redis_mng_del_file_rule(c, from_rule, to_rule, is_force) != SR_SUCCESS) {
 			printf("File rules %d-%d failed\n", from_rule, to_rule);
-			return SR_ERROR;
+			rc = SR_ERROR;
+			goto out;
 		}
 	}
 	if (is_ip) {
 		if (redis_mng_del_net_rule(c, from_rule, to_rule, is_force) != SR_SUCCESS) {
 			printf("IP rules %d-%d failed\n", from_rule, to_rule);
-			return SR_ERROR;
+			rc = SR_ERROR;
+			goto out;
 		}
 	}
 	if (is_can) {
 		if (redis_mng_del_can_rule(c, from_rule, to_rule, is_force) != SR_SUCCESS) {
 			printf("CAN rules %d-%d failed\n", from_rule, to_rule);
-			return SR_ERROR;
+			rc = SR_ERROR;
+			goto out;
 		}
 	}
 
-	return SR_SUCCESS;
+out:
+	close_session();
+
+	return rc;
 
 }
 
@@ -1320,12 +1449,6 @@ static SR_32 handle_control(int argc, char **argv)
 
 SR_32 main(int argc, char **argv)
 {
-	if (!(c = redis_mng_session_start())) {
-                printf("ERROR: redis_mng_session_start failed\n");
-                redis_mng_session_end(c);
-                return SR_ERROR;
-        }
-
 	if (argc < 2) {
 		print_usage();
 		return SR_SUCCESS;
@@ -1339,9 +1462,6 @@ SR_32 main(int argc, char **argv)
 		handle_delete(argc - 2, argv + 2);
 	else if (!strcmp(argv[1], "control"))
 		handle_control(argc - 2, argv + 2);
-
-	if (c)
-		redis_mng_session_end(c);
 
 	return SR_SUCCESS;
 }
