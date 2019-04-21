@@ -136,27 +136,28 @@ void file_op_convert(SR_U8 file_op, char *perms)
 	//sprintf(perms, "77%d", res);
 }
 
-#define ADD_FILE_FIELD(fieldname, fieldvalue) \
-	sprintf(str_param, "%snum='%d']/%s[id='%d']/%s", FILE_PREFIX, rule_id, TUPLE, tuple, fieldname); \
-        if (um_set_value(handler->sess, str_param, fieldvalue) != SR_SUCCESS) { \
-                CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, \
-                        "%s=after um_set_value str_param:%s: ", REASON, str_param); \
-                return SR_ERROR; \
-        }
+SR_32 print_action(char *name, redis_mng_action_t *action)
+{
+	if (!action) return SR_ERROR;
 
-#define ADD_NET_FIELD(tuple, fieldname, fieldvalue) \
-	sprintf(str_param, "%snum='%d']/%s[id='%d']/%s", NET_PREFIX, rule_id, TUPLE, tuple, fieldname); \
-        if (um_set_value(handler->sess, str_param, fieldvalue) != SR_SUCCESS) { \
-                CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH, \
-                        "%s=after um_set_value str_param:%s: ", REASON, str_param); \
-                return SR_ERROR; \
-        }
+	printf("%-10s %-6s %-6s %-6s %s \n",
+		name,
+		action->action_bm,
+		action->action_log,
+		action->rl_bm,
+		action->rl_log);
 
-SR_32 redis_mng_print_actions(redisContext *c)
+	return SR_SUCCESS;
+}
+
+SR_32 redis_mng_exec_all_actions(redisContext *c, SR_32 (*cb)(char *name, redis_mng_action_t *action))
 {
 	int i, j;
 	redisReply *reply;
 	redisReply **replies;
+	redis_mng_action_t action = {};
+
+	if (!cb) return SR_ERROR;
 
 	// get all keys
 	reply = redisCommand(c,"KEYS %s*", ACTION_PREFIX);
@@ -204,12 +205,13 @@ SR_32 redis_mng_print_actions(redisContext *c)
 
 		// action has no number so all are printed
 		// ACTION_BITMAP, action->action_bm, ACTION_LOG, action->action_log, RL_BITMAP, action->rl_bm, RL_LOG, action->rl_log
-		printf("%-10s %-6s %-6s %-6s %s \n",
-				reply->element[i]->str + strlen(ACTION_PREFIX), /* name */
-				replies[i]->element[1]->str, /* action_bm */
-				replies[i]->element[3]->str, /* action_log */
-				replies[i]->element[5]->str, /* rl_mb */
-				replies[i]->element[7]->str /* rl_log */);
+		action.action_bm = replies[i]->element[1]->str;
+		action.action_log = replies[i]->element[3]->str;
+		action.rl_bm = replies[i]->element[5]->str;
+		action.rl_log = replies[i]->element[7]->str;
+		if (cb(reply->element[i]->str + strlen(ACTION_PREFIX), &action) != SR_SUCCESS) {
+			printf("ERROR: Failed run cb for action :%s \n", reply->element[i]->str + strlen(ACTION_PREFIX));
+		}
 	}
 
 	// free replies
@@ -217,7 +219,12 @@ SR_32 redis_mng_print_actions(redisContext *c)
 		freeReplyObject(replies[i]);
 	free(replies);
 	freeReplyObject(reply);
+
 	return SR_SUCCESS;
+}
+
+SR_32 redis_mng_print_actions(redisContext *c) {
+	return redis_mng_exec_all_actions(c, print_action);
 }
 
 SR_32 redis_mng_print_list(redisContext *c, list_type_e type, char *name)
