@@ -292,7 +292,41 @@ static SR_32 print_can(SR_32 num, void *rule)
 {
 	redis_mng_can_rule_t *can_rule = (redis_mng_can_rule_t *)rule;
 
-	printf("%d %s %s %s %s %s %s \n", num, can_rule->mid, can_rule->interface, can_rule->dir, can_rule->exec, can_rule->user, can_rule->action);
+	printf("%d %s %s %s %s %s %s \n", num, can_rule->mid, can_rule->dir, can_rule->interface, can_rule->exec, can_rule->user, can_rule->action);
+
+	return SR_SUCCESS;
+}
+
+static SR_32 print_ip(SR_32 num, void *rule)
+{
+	redis_mng_net_rule_t *net_rule = (redis_mng_net_rule_t *)rule;
+
+	printf("%d %-32s %-32s %s %s %s %-24.24s %-24.24s %s %s %s \n",
+		num, 
+		net_rule->src_addr_netmask,
+		net_rule->dst_addr_netmask,
+		net_rule->proto,
+		net_rule->src_port,
+		net_rule->dst_port,
+		net_rule->exec,
+		net_rule->user,
+		net_rule->up_rl,
+		net_rule->down_rl,
+		net_rule->action);
+
+	return SR_SUCCESS;
+}
+
+static SR_32 print_file(SR_32 num, void *rule)
+{
+	redis_mng_file_rule_t *file_rule = (redis_mng_file_rule_t *)rule;
+	printf("%-6d %-88.88s %-4s %-24.24s %-24.24s %-24.24s\n",
+		num,
+		file_rule->file_name,
+		file_rule->file_op,
+		file_rule->exec,
+		file_rule->user,
+		file_rule->action);
 
 	return SR_SUCCESS;
 }
@@ -302,6 +336,10 @@ SR_32 redis_mng_print_rules(redisContext *c, rule_type_t type, SR_32 rule_id_sta
 	switch (type) {
 		case RULE_TYPE_CAN:
 			return redis_mng_exec_all_rules(c, type, rule_id_start, rule_id_end, print_can);
+		case RULE_TYPE_IP:
+			return redis_mng_exec_all_rules(c, type, rule_id_start, rule_id_end, print_ip);
+		case RULE_TYPE_FILE:
+			return redis_mng_exec_all_rules(c, type, rule_id_start, rule_id_end, print_file);
 		default:
 			printf("ERROR: exec all rules - invalid rule type :%d \n", type);
 			return SR_ERROR;
@@ -318,6 +356,8 @@ SR_32 redis_mng_exec_all_rules(redisContext *c, rule_type_t type, SR_32 rule_id_
 	redisReply **replies;
 	void *rule;
 	redis_mng_can_rule_t can_rule;
+	redis_mng_net_rule_t ip_rule;
+	redis_mng_file_rule_t file_rule;
 
 	if (!cb) return SR_ERROR;
 
@@ -369,67 +409,38 @@ SR_32 redis_mng_exec_all_rules(redisContext *c, rule_type_t type, SR_32 rule_id_
 				can_rule.action = get_field(ACTION, replies[i]->elements, replies[i]);
 				rule = &can_rule;
 				break;
+			case RULE_TYPE_IP:
+				num = atoi(reply->element[i]->str + strlen(NET_PREFIX));
+				ip_rule.src_addr_netmask = get_field(SRC_ADDR, replies[i]->elements, replies[i]);
+				ip_rule.dst_addr_netmask = get_field(DST_ADDR, replies[i]->elements, replies[i]);
+				ip_rule.proto = get_field(PROTOCOL, replies[i]->elements, replies[i]);
+				ip_rule.src_port = get_field(SRC_PORT, replies[i]->elements, replies[i]);
+				ip_rule.dst_port = get_field(DST_PORT, replies[i]->elements, replies[i]);
+				ip_rule.exec = get_field(PROGRAM_ID, replies[i]->elements, replies[i]);
+				ip_rule.user = get_field(USER_ID, replies[i]->elements, replies[i]);
+				ip_rule.up_rl = get_field(UP_RL, replies[i]->elements, replies[i]);
+				ip_rule.down_rl = get_field(DOWN_RL, replies[i]->elements, replies[i]);
+				ip_rule.action = get_field(ACTION, replies[i]->elements, replies[i]);
+				rule = &ip_rule;
+				break;
+			case RULE_TYPE_FILE:
+				num = atoi(reply->element[i]->str + strlen(FILE_PREFIX));
+				file_rule.file_name = get_field(FILENAME, replies[i]->elements, replies[i]);
+				file_rule.file_op = get_field(PERMISSION, replies[i]->elements, replies[i]);
+				file_rule.exec = get_field(PROGRAM_ID, replies[i]->elements, replies[i]);
+				file_rule.user = get_field(USER_ID, replies[i]->elements, replies[i]);
+				file_rule.action = get_field(ACTION, replies[i]->elements, replies[i]);
+				rule = &file_rule;
+				break;
 			default:
 				printf("ERROR: exec all rules - invalid rule type :%d \n", type);
 				return SR_ERROR;
 		}
-		if (!((rule_id_start == -1) && (rule_id_end == -1)) || ((num >= rule_id_start) && (num <= rule_id_end)))
+		if (!(((rule_id_start == -1) && (rule_id_end == -1)) || ((num >= rule_id_start) && (num <= rule_id_end))))
 			continue;
 		if (cb(num, rule) != SR_SUCCESS) {
 			printf("ERROR: exec all rules - failed for  rule :%d \n", num);
 		}
-
-#if 0
-			if ((type == RULE_TYPE_IP)/* && strstr(reply->element[i]->str, NET_PREFIX)*/) { // net rule
-
-				/*if (replies[i]->elements != NET_RULE_FIELDS) {
-					printf("ERROR: redisGetReply %d length is wrong %d instead of %d\n", i, (int)replies[i]->elements, NET_RULE_FIELDS);
-					for (j = 0; j < i; j++)
-						freeReplyObject(replies[j]);
-					free(replies);
-					freeReplyObject(reply);
-					return SR_ERROR;
-				}*/
-
-				num = atoi(reply->element[i]->str + strlen(NET_PREFIX));
-				if (((rule_id_start == -1) && (rule_id_end == -1)) || ((num >= rule_id_start) && (num <= rule_id_end))) {
-					printf("%-6d ", num);
-					print_field(SRC_ADDR, "%-32s ", replies[i]->elements, replies[i]);
-					print_field(DST_ADDR, "%-32s ", replies[i]->elements, replies[i]);
-					print_field(PROTOCOL, "%s ", replies[i]->elements, replies[i]);
-					print_field(SRC_PORT, "%s ", replies[i]->elements, replies[i]);
-					print_field(DST_PORT, "%s ", replies[i]->elements, replies[i]);
-					print_field(PROGRAM_ID, "%-24.24s ", replies[i]->elements, replies[i]);
-					print_field(USER_ID, "%-24.24s ", replies[i]->elements, replies[i]);
-					print_field(UP_RL, "%s ", replies[i]->elements, replies[i]);
-					print_field(DOWN_RL, "%s ", replies[i]->elements, replies[i]);
-					print_field(ACTION, "%s ", replies[i]->elements, replies[i]);
-					printf("\n");
-				}
-
-			} else if ((type == RULE_TYPE_FILE)/* && strstr(reply->element[i]->str, FILE_PREFIX)*/) { // file rule
-
-				/*if (replies[i]->elements != FILE_RULE_FIELDS) {
-					printf("ERROR: redisGetReply %d length is wrong %d instead of %d\n", i, (int)replies[i]->elements, FILE_RULE_FIELDS);
-					for (j = 0; j < i; j++)
-						freeReplyObject(replies[j]);
-					free(replies);
-					freeReplyObject(reply);
-					return SR_ERROR;
-				}*/
-
-				num = atoi(reply->element[i]->str + strlen(FILE_PREFIX));
-				if (((rule_id_start == -1) && (rule_id_end == -1)) || ((num >= rule_id_start) && (num <= rule_id_end))) {
-						printf("%-6d %-88.88s %-4s %-24.24s %-24.24s %-24.24s\n",
-								num,
-								replies[i]->elements > 3 ? replies[i]->element[3]->str : "NA", /* filename */
-								replies[i]->elements > 5 ? replies[i]->element[5]->str : "NA", /* permission */
-								replies[i]->elements > 7 ? replies[i]->element[7]->str : "NA", /* program */
-								replies[i]->elements > 9 ? replies[i]->element[9]->str : "NA", /* user */
-								replies[i]->elements > 1 ? replies[i]->element[1]->str : "NA" /* action */);
-				}
-			}
-#endif
 	}
 
 	// free replies
