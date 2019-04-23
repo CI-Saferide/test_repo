@@ -106,23 +106,65 @@ static void handle_action(sr_action_record_t *action, SR_32 *status)
 	*status = SR_SUCCESS;
 }
 
+static void handle_net_rule(sr_net_record_t *net_rule, SR_32 *status)
+{
+	switch (net_rule->net_item.net_item_type) {
+		case NET_ITEM_ACTION:
+			printf(">>>>>>>>>> Add rule rule:%d action:%s \n", net_rule->rulenum, net_rule->net_item.u.action); 
+			break;
+		case NET_ITEM_SRC_ADDR:
+			printf("   >>>>> SRC addr :%s \n", net_rule->net_item.u.src_addr); 
+			break;
+		case NET_ITEM_DST_ADDR:
+			printf("   >>>>>> DST addr :%s \n", net_rule->net_item.u.dst_addr); 
+			break;
+		case NET_ITEM_PROTO:
+			printf("   >>>>>> Proto :%d \n", net_rule->net_item.u.proto); 
+			break;
+		case NET_ITEM_SRC_PORT:
+			printf("   >>>>>>>>> SRC Port :%d \n", net_rule->net_item.u.src_port); 
+			break;
+		case NET_ITEM_DST_PORT:
+			printf("   >>>>>>>>> DST Port :%d \n", net_rule->net_item.u.dst_port); 
+			break;
+		case NET_ITEM_UP_RL:
+			printf("   >>>>>>>>> UP RL :%d \n", net_rule->net_item.u.up_rl); 
+			break;
+		case NET_ITEM_DOWN_RL:
+			printf("   >>>>>>>>> DOWN RL :%d \n", net_rule->net_item.u.up_rl); 
+			break;
+		default:
+			break;
+	}
+}
+
 static void handle_entity(void *data, redis_entity_type_t type, SR_32 *status)
 {
 	sr_action_record_t *action;
+	sr_net_record_t  *net_rule;
+
+	*status = SR_SUCCESS;
 
 	switch (type) { 
 		case  ENTITY_TYPE_ACTION:
 			action = (sr_action_record_t *)data;
-			handle_action(action, status);
-#ifndef DEBUG
+#ifdef DEBUG
 		 	printf("XXXXXXXXXX handle_entity ACTION name :%s \n", action->name);
 #endif
+			handle_action(action, status);
 			break;
 		case  ENTITY_TYPE_IP_RULE:
-#ifndef DEBUG
+			net_rule = (sr_net_record_t *)data;
+#ifdef DEBUG
 		 	printf("XXXXXXXXXX handle_entity IP rule \n");
 #endif
-			*status = SR_SUCCESS;
+			handle_net_rule(net_rule, status);
+			break;
+		case  ENTITY_TYPE_FILE_RULE:
+#ifdef DEBUG
+		 	printf("XXXXXXXXXX handle_entity FILE rule \n");
+#endif
+			break;
 		default:
 			*status = SR_ERROR;
 			printf("ERROR: entity UNKOWN type :%d \n", type);

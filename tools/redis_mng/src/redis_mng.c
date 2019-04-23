@@ -511,24 +511,55 @@ static SR_32 load_net(SR_32 rule_id, SR_32 n, redisReply *reply, handle_rule_f_t
 {
 	SR_32 rc = SR_SUCCESS;
 	sr_net_record_t net_rule = {};
+	char *field;
 
-#if 0
-				net_rule.rulenum = atoi(reply->element[i]->str + strlen(NET_PREFIX));
-				memcpy(net_rule.action_name, replies[i]->element[1]->str, strlen(replies[i]->element[1]->str));
-				net_rule.tuple.id = 1; // todo remove
-				sscanf(replies[i]->element[5]->str, "%d.%d.%d.%d/%d", &a1, &a2, &a3, &a4, &len);
-				net_rule.tuple.dstaddr.s_addr = a1 << 24 | a2 << 16 | a3 << 8 | a4;
-				net_rule.tuple.dstnetmasklen = len;
-				sscanf(replies[i]->element[3]->str, "%d.%d.%d.%d/%d", &a1, &a2, &a3, &a4, &len);
-				net_rule.tuple.srcaddr.s_addr = a1 << 24 | a2 << 16 | a3 << 8 | a4;
-				net_rule.tuple.srcnetmasklen = len;
-				net_rule.tuple.proto = atoi(replies[i]->element[11]->str);
-				net_rule.tuple.srcport = atoi(replies[i]->element[13]->str);
-				net_rule.tuple.dstport = atoi(replies[i]->element[15]->str);
-				net_rule.tuple.max_rate = 100; // todo add rl to can rule
-				memcpy(net_rule.tuple.program, replies[i]->element[7]->str, strlen(replies[i]->element[7]->str));
-				memcpy(net_rule.tuple.user, replies[i]->element[9]->str, strlen(replies[i]->element[9]->str));
-#endif
+	// XXXX Should handle groups 
+
+	net_rule.rulenum = rule_id;
+
+	field = get_field(ACTION, n, reply);
+	net_rule.net_item.net_item_type = NET_ITEM_ACTION;
+	strncpy(net_rule.net_item.u.action, field, MAX_ACTION_NAME);
+	cb(&net_rule, ENTITY_TYPE_IP_RULE, &rc);
+
+	field = get_field(SRC_ADDR, n, reply);
+	net_rule.net_item.net_item_type = NET_ITEM_SRC_ADDR;
+	strncpy(net_rule.net_item.u.src_addr, field, MAX_ADDR_LEN);
+	cb(&net_rule, ENTITY_TYPE_IP_RULE, &rc);
+
+	field = get_field(DST_ADDR, n, reply);
+	net_rule.net_item.net_item_type = NET_ITEM_DST_ADDR;
+	strncpy(net_rule.net_item.u.dst_addr, field, MAX_ADDR_LEN);
+	cb(&net_rule, ENTITY_TYPE_IP_RULE, &rc);
+
+	field = get_field(PROTOCOL, n, reply);
+	net_rule.net_item.net_item_type = NET_ITEM_PROTO;
+	if (!strcmp(field, "tcp"))
+		net_rule.net_item.u.proto = 8;
+	else if (!strcmp(field, "udp"))
+		net_rule.net_item.u.proto = 17;
+	else
+		net_rule.net_item.u.proto = 0;
+	cb(&net_rule, ENTITY_TYPE_IP_RULE, &rc);
+
+	field = get_field(SRC_PORT, n, reply);
+	net_rule.net_item.net_item_type = NET_ITEM_SRC_PORT;
+	net_rule.net_item.u.src_port = atoi(field);
+	cb(&net_rule, ENTITY_TYPE_IP_RULE, &rc);
+
+	field = get_field(DST_PORT, n, reply);
+	net_rule.net_item.net_item_type = NET_ITEM_DST_PORT;
+	net_rule.net_item.u.dst_port = atoi(field);
+	cb(&net_rule, ENTITY_TYPE_IP_RULE, &rc);
+
+	field = get_field(UP_RL, n, reply);
+	net_rule.net_item.net_item_type = NET_ITEM_UP_RL;
+	net_rule.net_item.u.up_rl = atoi(field);
+	cb(&net_rule, ENTITY_TYPE_IP_RULE, &rc);
+
+	field = get_field(DOWN_RL, n, reply);
+	net_rule.net_item.net_item_type = NET_ITEM_DOWN_RL;
+	net_rule.net_item.u.down_rl = atoi(field);
 	cb(&net_rule, ENTITY_TYPE_IP_RULE, &rc);
 
 	return rc;
