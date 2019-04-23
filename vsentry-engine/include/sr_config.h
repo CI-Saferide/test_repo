@@ -10,6 +10,8 @@
 #define MAX_ADDR_LEN 128
 #define MAX_PATH 512
 #define MAX_USER_NAME 32
+#define DIR_LEN 16
+#define	INTERFACE_LEN 64
 
 typedef struct sr_action_record {
 	char             name[MAX_ACTION_NAME];
@@ -31,6 +33,15 @@ typedef enum {
 	NET_ITEM_PROGRAM,
 	NET_ITEM_USER,
 } sr_net_item_type_t;
+
+typedef enum {
+	CAN_ITEM_ACTION,
+	CAN_ITEM_MSG_ID,
+	CAN_ITEM_INF,
+	CAN_ITEM_DIR,
+	CAN_ITEM_PROGRAM,
+	CAN_ITEM_USER,
+} sr_can_item_type_t;
 
 typedef struct {
 	sr_net_item_type_t net_item_type;
@@ -63,16 +74,24 @@ struct sr_file_record{
 	SR_8*						process;						/* process name */
 };
 
-struct sr_can_record{		
-	SR_U16						rulenum;						/* rule number */
-	SR_U32						msg_id;							/* can msg id */
-	SR_8						direction;							/* can inbount/outbound */
-	SR_U16						rate_action;					/* bitmap of rate exceed actions */
-	SR_U32 						max_rate;						/* maximum rate */
-	SR_32						uid;							/* user id */
-	SR_U16						process_size;					/* process name size in bytes */
-	SR_8*						process;						/* process name */
-};
+typedef struct {
+	sr_can_item_type_t can_item_type;
+	union {
+		char    action[MAX_ACTION_NAME];
+		char	src_addr[MAX_ADDR_LEN];
+		char	dst_addr[MAX_ADDR_LEN];
+		SR_U32	msg_id;
+		char    dir[DIR_LEN];
+		char    inf[INTERFACE_LEN];
+		char    program[MAX_PATH];
+		char    user[MAX_USER_NAME];
+	} u;
+} can_item_t;
+
+typedef struct sr_can_record {
+	SR_U16	rulenum;
+	can_item_t can_item;
+} sr_can_record_t;
 
 SR_32 sr_create_filter_paths(void);
 void sr_config_vsentry_db_cb(int type, int op, void *entry);

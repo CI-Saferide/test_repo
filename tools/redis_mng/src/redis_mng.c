@@ -485,24 +485,45 @@ static SR_32 load_action(char *name, SR_32 n, redisReply *reply, handle_rule_f_t
 	return rc;
 }
 
-static SR_32 load_can(char *name, SR_32 n, redisReply *reply, handle_rule_f_t cb)
+static SR_32 load_can(SR_32 rule_id, SR_32 n, redisReply *reply, handle_rule_f_t cb)
 {
 	SR_32 rc = SR_SUCCESS;
-#if 0
-				can_rule.rulenum = atoi(reply->element[i]->str + strlen(CAN_PREFIX));
-				memcpy(can_rule.action_name, replies[i]->element[1]->str, strlen(replies[i]->element[1]->str));
-				can_rule.tuple.id = 1; // todo remove
-				can_rule.tuple.direction = atoi(replies[i]->element[5]->str);
-				memcpy(can_rule.tuple.interface, replies[i]->element[7]->str, strlen(replies[i]->element[7]->str));
-				can_rule.tuple.max_rate = 100; // todo add rl to can rule
-				can_rule.tuple.msg_id = atoi(replies[i]->element[3]->str);
-				memcpy(can_rule.tuple.program, replies[i]->element[9]->str, strlen(replies[i]->element[9]->str));
-				memcpy(can_rule.tuple.user, replies[i]->element[11]->str, strlen(replies[i]->element[11]->str));
+	sr_can_record_t can_rule = {};
+	char *field;
 
-				cb_func(reply->element[i]->str + strlen(CAN_PREFIX), &can_rule, ENTITY_TYPE_CAN_RULE, &rc);
+	// XXXX Should handle groups 
 
-	cb(name, &can_rule, ENTITY_TYPE_CAN_RULE, &rc);
-#endif
+	can_rule.rulenum = rule_id;
+
+	field = get_field(ACTION, n, reply);
+	can_rule.can_item.can_item_type = CAN_ITEM_ACTION;
+	strncpy(can_rule.can_item.u.action, field, MAX_ACTION_NAME);
+	cb(&can_rule, ENTITY_TYPE_CAN_RULE, &rc);
+
+	field = get_field(MID, n, reply);
+	can_rule.can_item.can_item_type = CAN_ITEM_MSG_ID;
+	can_rule.can_item.u.msg_id = strtol(field, NULL, 16);
+	cb(&can_rule, ENTITY_TYPE_CAN_RULE, &rc);
+
+	field = get_field(DIRECTION, n, reply);
+	can_rule.can_item.can_item_type = CAN_ITEM_DIR;
+	strncpy(can_rule.can_item.u.dir, field, DIR_LEN);
+	cb(&can_rule, ENTITY_TYPE_CAN_RULE, &rc);
+
+	field = get_field(INTERFACE, n, reply);
+	can_rule.can_item.can_item_type = CAN_ITEM_INF;
+	strncpy(can_rule.can_item.u.inf, field, INTERFACE_LEN);
+	cb(&can_rule, ENTITY_TYPE_CAN_RULE, &rc);
+
+	field = get_field(PROGRAM_ID, n, reply);
+	can_rule.can_item.can_item_type = CAN_ITEM_PROGRAM;
+	strncpy(can_rule.can_item.u.program, field, MAX_PATH);
+	cb(&can_rule, ENTITY_TYPE_CAN_RULE, &rc);
+
+	field = get_field(USER_ID, n, reply);
+	can_rule.can_item.can_item_type = CAN_ITEM_USER;
+	strncpy(can_rule.can_item.u.user, field, MAX_USER_NAME);
+	cb(&can_rule, ENTITY_TYPE_CAN_RULE, &rc);
 
 	return rc;
 }
@@ -560,6 +581,16 @@ static SR_32 load_net(SR_32 rule_id, SR_32 n, redisReply *reply, handle_rule_f_t
 	field = get_field(DOWN_RL, n, reply);
 	net_rule.net_item.net_item_type = NET_ITEM_DOWN_RL;
 	net_rule.net_item.u.down_rl = atoi(field);
+	cb(&net_rule, ENTITY_TYPE_IP_RULE, &rc);
+
+	field = get_field(PROGRAM_ID, n, reply);
+	net_rule.net_item.net_item_type = NET_ITEM_PROGRAM;
+	strncpy(net_rule.net_item.u.program, field, MAX_PATH);
+	cb(&net_rule, ENTITY_TYPE_IP_RULE, &rc);
+
+	field = get_field(USER_ID, n, reply);
+	net_rule.net_item.net_item_type = NET_ITEM_USER;
+	strncpy(net_rule.net_item.u.user, field, MAX_USER_NAME);
 	cb(&net_rule, ENTITY_TYPE_IP_RULE, &rc);
 
 	return rc;
@@ -645,7 +676,7 @@ SR_32 redis_mng_load_db(redisContext *c, int pipelined, handle_rule_f_t cb_func)
 					freeReplyObject(reply);
 					return SR_ERROR;
 				}
-				if (load_can(reply->element[i]->str + strlen(CAN_PREFIX), replies[i]->elements, replies[i], cb_func) != SR_SUCCESS) {
+				if (load_can(atoi(reply->element[i]->str + strlen(CAN_PREFIX)), replies[i]->elements, replies[i], cb_func) != SR_SUCCESS) {
 					printf("ERROR: handle CAN %s failed \n", reply->element[i]->str + strlen(ACTION_PREFIX));
 					for (j = 0; j < i; j++)
 						freeReplyObject(replies[j]);
