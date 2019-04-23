@@ -12,6 +12,7 @@
 #define MAX_USER_NAME 32
 #define DIR_LEN 16
 #define	INTERFACE_LEN 64
+#define PERM_LEN 4
 
 typedef struct sr_action_record {
 	char             name[MAX_ACTION_NAME];
@@ -43,6 +44,14 @@ typedef enum {
 	CAN_ITEM_USER,
 } sr_can_item_type_t;
 
+typedef enum {
+	FILE_ITEM_ACTION,
+	FILE_ITEM_FILENAME,
+	FILE_ITEM_PERM,
+	FILE_ITEM_PROGRAM,
+	FILE_ITEM_USER,
+} sr_file_item_type_t;
+
 typedef struct {
 	sr_net_item_type_t net_item_type;
 	union {
@@ -64,16 +73,6 @@ typedef struct sr_net_record {
 	net_item_t net_item;
 } sr_net_record_t;
 
-struct sr_file_record{
-	SR_U16						rulenum;						/* rule number */
-	SR_U16						rate_action;					/* bitmap of rate exceed actions */
-	SR_U32 						max_rate;						/* maximum rate */
-	SR_32						uid;							/* user id */
-	SR_U16						process_size;					/* process name size in bytes */
-	SR_U16						filename_size;					/* filename size in bytes */
-	SR_8*						process;						/* process name */
-};
-
 typedef struct {
 	sr_can_item_type_t can_item_type;
 	union {
@@ -92,6 +91,22 @@ typedef struct sr_can_record {
 	SR_U16	rulenum;
 	can_item_t can_item;
 } sr_can_record_t;
+
+typedef struct {
+	sr_file_item_type_t file_item_type;
+	union {
+		char    action[MAX_ACTION_NAME];
+		char	filename[MAX_PATH];
+		char	perm[PERM_LEN];
+		char    program[MAX_PATH];
+		char    user[MAX_USER_NAME];
+	} u;
+} file_item_t;
+
+typedef struct sr_file_record {
+	SR_U16	rulenum;
+	file_item_t file_item;
+} sr_file_record_t;
 
 SR_32 sr_create_filter_paths(void);
 void sr_config_vsentry_db_cb(int type, int op, void *entry);

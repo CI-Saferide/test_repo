@@ -528,6 +528,44 @@ static SR_32 load_can(SR_32 rule_id, SR_32 n, redisReply *reply, handle_rule_f_t
 	return rc;
 }
 
+static SR_32 load_file(SR_32 rule_id, SR_32 n, redisReply *reply, handle_rule_f_t cb)
+{
+	SR_32 rc = SR_SUCCESS;
+	sr_file_record_t file_rule = {};
+	char *field;
+
+	// XXXX Should handle groups 
+
+	file_rule.rulenum = rule_id;
+
+	field = get_field(ACTION, n, reply);
+	file_rule.file_item.file_item_type = FILE_ITEM_ACTION;
+	strncpy(file_rule.file_item.u.action, field, MAX_ACTION_NAME);
+	cb(&file_rule, ENTITY_TYPE_FILE_RULE, &rc);
+
+	field = get_field(FILENAME, n, reply);
+	file_rule.file_item.file_item_type = FILE_ITEM_FILENAME;
+	strncpy(file_rule.file_item.u.filename, field, MAX_PATH);
+	cb(&file_rule, ENTITY_TYPE_FILE_RULE, &rc);
+
+	field = get_field(PERMISSION, n, reply);
+	file_rule.file_item.file_item_type = FILE_ITEM_PERM;
+	strncpy(file_rule.file_item.u.perm, field, MAX_PATH);
+	cb(&file_rule, ENTITY_TYPE_FILE_RULE, &rc);
+
+	field = get_field(PROGRAM_ID, n, reply);
+	file_rule.file_item.file_item_type = FILE_ITEM_PROGRAM;
+	strncpy(file_rule.file_item.u.program, field, MAX_PATH);
+	cb(&file_rule, ENTITY_TYPE_FILE_RULE, &rc);
+
+	field = get_field(USER_ID, n, reply);
+	file_rule.file_item.file_item_type = FILE_ITEM_USER;
+	strncpy(file_rule.file_item.u.user, field, MAX_USER_NAME);
+	cb(&file_rule, ENTITY_TYPE_FILE_RULE, &rc);
+
+	return rc;
+}
+
 static SR_32 load_net(SR_32 rule_id, SR_32 n, redisReply *reply, handle_rule_f_t cb)
 {
 	SR_32 rc = SR_SUCCESS;
@@ -677,7 +715,7 @@ SR_32 redis_mng_load_db(redisContext *c, int pipelined, handle_rule_f_t cb_func)
 					return SR_ERROR;
 				}
 				if (load_can(atoi(reply->element[i]->str + strlen(CAN_PREFIX)), replies[i]->elements, replies[i], cb_func) != SR_SUCCESS) {
-					printf("ERROR: handle CAN %s failed \n", reply->element[i]->str + strlen(ACTION_PREFIX));
+					printf("ERROR: handle CAN rule %s failed \n", reply->element[i]->str + strlen(CAN_PREFIX));
 					for (j = 0; j < i; j++)
 						freeReplyObject(replies[j]);
 					free(replies);
@@ -699,7 +737,7 @@ SR_32 redis_mng_load_db(redisContext *c, int pipelined, handle_rule_f_t cb_func)
 					return SR_ERROR;
 				}
 				if (load_net(atoi(reply->element[i]->str + strlen(NET_PREFIX)), replies[i]->elements, replies[i], cb_func) != SR_SUCCESS) {
-					printf("ERROR: handle CAN %s failed \n", reply->element[i]->str + strlen(ACTION_PREFIX));
+					printf("ERROR: handle NET rule %s failed \n", reply->element[i]->str + strlen(NET_PREFIX));
 					for (j = 0; j < i; j++)
 						freeReplyObject(replies[j]);
 					free(replies);
@@ -717,19 +755,8 @@ SR_32 redis_mng_load_db(redisContext *c, int pipelined, handle_rule_f_t cb_func)
 					freeReplyObject(reply);
 					return SR_ERROR;
 				}
-				memset(&file_rule, 0, sizeof(file_rule));
-				file_rule.rulenum = atoi(reply->element[i]->str + strlen(FILE_PREFIX));
-				memcpy(file_rule.action_name, replies[i]->element[1]->str, strlen(replies[i]->element[1]->str));
-				file_rule.tuple.id = 1; // todo remove
-				memcpy(file_rule.tuple.filename ,replies[i]->element[3]->str, strlen(replies[i]->element[3]->str));
-				file_rule.tuple.max_rate = 100; // todo add rl to can rule
-				memcpy(file_rule.tuple.permission, replies[i]->element[5]->str, strlen(replies[i]->element[5]->str));
-				memcpy(file_rule.tuple.program, replies[i]->element[7]->str, strlen(replies[i]->element[7]->str));
-				memcpy(file_rule.tuple.user, replies[i]->element[9]->str, strlen(replies[i]->element[9]->str));
-
-				cb_func(&file_rule, ENTITY_TYPE_FILE_RULE, &rc);
-				if (rc) {
-					printf("ERROR: cb func failed to add file rule %d, ret %d\n", i, rc);
+				if (load_file(atoi(reply->element[i]->str + strlen(FILE_PREFIX)), replies[i]->elements, replies[i], cb_func) != SR_SUCCESS) {
+					printf("ERROR: handle CAN rule %s failed \n", reply->element[i]->str + strlen(FILE_PREFIX));
 					for (j = 0; j < i; j++)
 						freeReplyObject(replies[j]);
 					free(replies);

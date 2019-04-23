@@ -170,11 +170,35 @@ static void handle_can_rule(sr_can_record_t *can_rule, SR_32 *status)
 	}
 }
 
+static void handle_file_rule(sr_file_record_t *file_rule, SR_32 *status)
+{
+	switch (file_rule->file_item.file_item_type) {
+		case FILE_ITEM_ACTION:
+			printf(">>>>>>>>>> Add FILE rule:%d action:%s \n", file_rule->rulenum, file_rule->file_item.u.action); 
+			break;
+		case FILE_ITEM_FILENAME:
+			printf("   >>>>> FILENAME :%s \n", file_rule->file_item.u.filename); 
+			break;
+		case FILE_ITEM_PERM:
+			printf("   >>>>> PERM :%s \n", file_rule->file_item.u.perm); 
+			break;
+		case FILE_ITEM_PROGRAM:
+			printf("   >>>>>>>>> PROGRAM :%s \n", file_rule->file_item.u.program); 
+			break;
+		case FILE_ITEM_USER:
+			printf("   >>>>>>>>> USER :%s \n", file_rule->file_item.u.user); 
+			break;
+		default:
+			break;
+	}
+}
+
 static void handle_entity(void *data, redis_entity_type_t type, SR_32 *status)
 {
 	sr_action_record_t *action;
 	sr_net_record_t  *net_rule;
 	sr_can_record_t  *can_rule;
+	sr_file_record_t  *file_rule;
 
 	*status = SR_SUCCESS;
 
@@ -194,9 +218,11 @@ static void handle_entity(void *data, redis_entity_type_t type, SR_32 *status)
 			handle_net_rule(net_rule, status);
 			break;
 		case  ENTITY_TYPE_FILE_RULE:
+			file_rule = (sr_file_record_t *)data;
 #ifdef DEBUG
 		 	printf("XXXXXXXXXX handle_entity FILE rule \n");
 #endif
+			handle_file_rule(file_rule, status);
 			break;
 		case  ENTITY_TYPE_CAN_RULE:
 			can_rule = (sr_can_record_t *)data;
