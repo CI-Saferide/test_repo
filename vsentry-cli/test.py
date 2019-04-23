@@ -17,6 +17,7 @@ def create_group(group_type, group_name, values):
 		run_cmd(delete_cmd)
 	except subprocess.CalledProcessError, e:
 		print 'Failed delete group: ' + group_name
+		return
 	try:
 		run_cmd(update_cmd)
 	except subprocess.CalledProcessError, e:
