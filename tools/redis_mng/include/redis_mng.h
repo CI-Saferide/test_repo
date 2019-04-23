@@ -26,6 +26,13 @@ typedef enum redis_mng_list_type {
 	LIST_TYPE_MAX,
 } list_type_e;
 
+typedef enum {
+	ENTITY_TYPE_CAN_RULE,
+	ENTITY_TYPE_IP_RULE,
+	ENTITY_TYPE_FILE_RULE,
+	ENTITY_TYPE_ACTION,
+} redis_entity_type_t;
+
 typedef struct redis_mng_reply {
 	SR_U8	num_fields;
     char	feilds[MAX_RULE_FIELDS][MAX_LIST_NAME_LEN];
@@ -101,7 +108,7 @@ typedef struct redis_system_policer {
  * params:	rule - rule or action pointer
  * 			type - action / rule type
  * 			status - retval */
-typedef void handle_rule_f_t(void *rule, SR_8 type, SR_32 *status);
+typedef void handle_rule_f_t(void *data, redis_entity_type_t type, SR_32 *status);
 
 void file_op_convert(SR_U8 file_op, char *perms);
 

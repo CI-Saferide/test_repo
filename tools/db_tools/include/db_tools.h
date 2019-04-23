@@ -10,6 +10,11 @@ typedef enum {
         RULE_TYPE_IP,
 } rule_type_t;
 
+typedef enum {
+        LOG_TARGET_SYSLOG,
+        LOG_TARGET_FILE,
+} sr_log_target_t;
+
 #define MAX_RULE_TYPE 20
 
 char *get_rule_string(rule_type_t rule_type);
@@ -25,5 +30,6 @@ SR_8 get_ip_proto_code(char *ip_proto);
 char *prem_db_to_cli(char *prem_str);
 char *perm_cli_to_db(char *perm_str);
 SR_BOOL is_valid_ip(char *ip_addr);
+SR_32 get_log_facility_enum(char *log);
 
 #endif

@@ -12,6 +12,8 @@
 #include "sr_engine_cli.h"
 #include "sr_ver.h"
 #include "sr_config.h"
+#include "redis_mng.h"
+#include "sr_engine_main.h"
 
 static SR_BOOL is_run;
 static pthread_t t;

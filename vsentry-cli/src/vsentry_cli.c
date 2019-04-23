@@ -431,7 +431,9 @@ static SR_BOOL is_valid_action_type(char *type)
 
 static SR_BOOL is_valid_log_facility(char *log)
 {
-	return (!strcmp(log, "syslog") || !strcmp(log, "vsentry"));
+	if (get_log_facility_enum(log) > -1)
+		return SR_TRUE;
+	return SR_FALSE;
 }
 
 static SR_U32 handle_param(char *param, char *field, int field_size, int argc, int *i, char **argv, SR_BOOL (*is_valid_cb)(char *value), SR_BOOL *is_list_var, SR_BOOL is_list) 
@@ -1447,6 +1449,13 @@ static SR_32 handle_control(int argc, char **argv)
 	return SR_SUCCESS;
 }
 
+static SR_32 handle_commit(int argc, char **argv)
+{
+	handle_cmd_gen("cli_commit", "commiting...", SR_FALSE);
+
+	return SR_SUCCESS;
+}
+
 SR_32 main(int argc, char **argv)
 {
 	if (argc < 2) {
@@ -1462,6 +1471,8 @@ SR_32 main(int argc, char **argv)
 		handle_delete(argc - 2, argv + 2);
 	else if (!strcmp(argv[1], "control"))
 		handle_control(argc - 2, argv + 2);
+	else if (!strcmp(argv[1], "commit"))
+		handle_commit(argc - 2, argv + 2);
 
 	return SR_SUCCESS;
 }

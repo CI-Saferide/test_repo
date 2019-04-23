@@ -238,3 +238,13 @@ SR_BOOL is_valid_ip(char *ip_addr)
 		return SR_FALSE;
 	return (atoi(buf) <= 255);
 }
+
+SR_32 get_log_facility_enum(char *log)
+{
+        if (!strcmp(log, "syslog"))
+                return LOG_TARGET_SYSLOG;
+        if (!strcmp(log, "vsentry"))
+                return LOG_TARGET_FILE;
+        return -1;
+}
+

@@ -195,7 +195,7 @@ SR_32 redis_mng_exec_all_actions(redisContext *c, SR_32 (*cb)(char *name, redis_
 			return SR_ERROR;
 		}
 		if (replies[i]->elements != ACTION_FIELDS) {
-			printf("ERROR: redisGetReply %d length is wrong %d instead of 8\n", i, (int)replies[i]->elements);
+			printf("ERROR: ACTION redisGetReply %d length is wrong %d instead of 8\n", i, (int)replies[i]->elements);
 			for (j = 0; j < i; j++)
 				freeReplyObject(replies[j]);
 			free(replies);
@@ -464,6 +464,56 @@ SR_32 redis_mng_clean_db(redisContext *c)
 	return SR_SUCCESS;
 }
 
+static SR_32 load_action(char *name, SR_32 n, redisReply *reply, handle_rule_f_t cb)
+{
+	sr_action_record_t action = {};
+	SR_32 rc;
+	char *field;
+
+	strncpy(action.name, name, MAX_ACTION_NAME);
+	field = get_field(ACTION_BITMAP, n, reply);
+	action.actions_bitmap = field ? atoi(field) : 0;
+	field = get_field(ACTION_LOG, n, reply);
+	action.log_target = get_log_facility_enum(field);
+	field = get_field(RL_BITMAP, n, reply);
+	action.rl_actions_bitmap = field ? atoi(field) : 0;
+	field = get_field(RL_LOG, n, reply);
+	action.rl_log_target = get_log_facility_enum(field);
+	
+	cb(&action, ENTITY_TYPE_ACTION, &rc);
+
+	return rc;
+}
+
+static SR_32 load_can(char *name, SR_32 n, redisReply *reply, handle_rule_f_t cb)
+{
+	SR_32 rc = SR_SUCCESS;
+#if 0
+				can_rule.rulenum = atoi(reply->element[i]->str + strlen(CAN_PREFIX));
+				memcpy(can_rule.action_name, replies[i]->element[1]->str, strlen(replies[i]->element[1]->str));
+				can_rule.tuple.id = 1; // todo remove
+				can_rule.tuple.direction = atoi(replies[i]->element[5]->str);
+				memcpy(can_rule.tuple.interface, replies[i]->element[7]->str, strlen(replies[i]->element[7]->str));
+				can_rule.tuple.max_rate = 100; // todo add rl to can rule
+				can_rule.tuple.msg_id = atoi(replies[i]->element[3]->str);
+				memcpy(can_rule.tuple.program, replies[i]->element[9]->str, strlen(replies[i]->element[9]->str));
+				memcpy(can_rule.tuple.user, replies[i]->element[11]->str, strlen(replies[i]->element[11]->str));
+
+				cb_func(reply->element[i]->str + strlen(CAN_PREFIX), &can_rule, ENTITY_TYPE_CAN_RULE, &rc);
+
+	cb(name, &can_rule, ENTITY_TYPE_CAN_RULE, &rc);
+#endif
+
+	return rc;
+}
+
+static SR_BOOL is_supported(char *name) {
+	return (!memcmp(name, CAN_PREFIX, strlen(CAN_PREFIX)) ||
+		!memcmp(name, NET_PREFIX, strlen(NET_PREFIX)) ||
+		!memcmp(name, FILE_PREFIX, strlen(FILE_PREFIX)) ||
+		!memcmp(name, ACTION_PREFIX, strlen(ACTION_PREFIX)));
+}
+
 SR_32 redis_mng_load_db(redisContext *c, int pipelined, handle_rule_f_t cb_func)
 {
 	int i, j;
@@ -483,7 +533,9 @@ SR_32 redis_mng_load_db(redisContext *c, int pipelined, handle_rule_f_t cb_func)
 		freeReplyObject(reply);
 		return SR_ERROR;
 	}
+#ifdef DEBUG
 	printf("Redis has %d keys\n", (int)reply->elements);
+#endif
 
 	if (pipelined) {
 		replies = malloc(sizeof(redisReply*) * reply->elements);
@@ -493,10 +545,18 @@ SR_32 redis_mng_load_db(redisContext *c, int pipelined, handle_rule_f_t cb_func)
 			return SR_ERROR;
 		}
 
-		for (i = 0; i < reply->elements; i++)
+		for (i = 0; i < reply->elements; i++) {
+#ifdef DEBUG
+			printf("i>>>>>> i:%d str:%s: \n", i, reply->element[i]->str);
+#endif
+			if (!is_supported(reply->element[i]->str))
+				continue;
 			redisAppendCommand(c,"HGETALL %s", reply->element[i]->str);
+		}
 
 		for (i = 0; i < (int)reply->elements; i++) {
+			if (!is_supported(reply->element[i]->str))
+				continue;
 			if (redisGetReply(c, (void*)&replies[i]) != REDIS_OK) {
 				printf("ERROR: redisGetReply %d failed\n", i);
 				for (j = 0; j < i; j++)
@@ -506,7 +566,7 @@ SR_32 redis_mng_load_db(redisContext *c, int pipelined, handle_rule_f_t cb_func)
 				return SR_ERROR;
 			}
 			if (replies[i]->type != REDIS_REPLY_ARRAY) {
-				printf("ERROR: redisGetReply %d type is wrong %d\n", i, replies[i]->type);
+				printf("e1 ERROR: redisGetReply %d type is wrong %d\n", i, replies[i]->type);
 				for (j = 0; j < i; j++)
 					freeReplyObject(replies[j]);
 				free(replies);
@@ -515,11 +575,11 @@ SR_32 redis_mng_load_db(redisContext *c, int pipelined, handle_rule_f_t cb_func)
 			}
 			// check type and call cb func
 			// todo change to new struct without tuples
-			if (strstr(reply->element[i]->str, CAN_PREFIX)) { // can rule
+			if (!memcmp(reply->element[i]->str, CAN_PREFIX, strlen(CAN_PREFIX))) { // can rule
 
 				// ACTION, action, MID, mid, DIRECTIN, dir_str, INTERFACE, interface, PROGRAM_ID, exec, USER_ID, user
 				if (replies[i]->elements != CAN_RULE_FIELDS) {
-					printf("ERROR: redisGetReply %d length is wrong %d instead of %d\n", i, (int)replies[i]->elements,
+					printf("ERROR: CAN redisGetReply %d length is wrong %d instead of %d\n", i, (int)replies[i]->elements,
 							CAN_RULE_FIELDS);
 					for (j = 0; j < i; j++)
 						freeReplyObject(replies[j]);
@@ -527,20 +587,8 @@ SR_32 redis_mng_load_db(redisContext *c, int pipelined, handle_rule_f_t cb_func)
 					freeReplyObject(reply);
 					return SR_ERROR;
 				}
-				memset(&can_rule, 0, sizeof(can_rule));
-				can_rule.rulenum = atoi(reply->element[i]->str + strlen(CAN_PREFIX));
-				memcpy(can_rule.action_name, replies[i]->element[1]->str, strlen(replies[i]->element[1]->str));
-				can_rule.tuple.id = 1; // todo remove
-				can_rule.tuple.direction = atoi(replies[i]->element[5]->str);
-				memcpy(can_rule.tuple.interface, replies[i]->element[7]->str, strlen(replies[i]->element[7]->str));
-				can_rule.tuple.max_rate = 100; // todo add rl to can rule
-				can_rule.tuple.msg_id = atoi(replies[i]->element[3]->str);
-				memcpy(can_rule.tuple.program, replies[i]->element[9]->str, strlen(replies[i]->element[9]->str));
-				memcpy(can_rule.tuple.user, replies[i]->element[11]->str, strlen(replies[i]->element[11]->str));
-
-				cb_func(&can_rule, CONFIG_CAN_RULE, &rc);
-				if (rc) {
-					printf("ERROR: cb func failed to add CAN rule %d, ret %d\n", i, rc);
+				if (load_can(reply->element[i]->str + strlen(CAN_PREFIX), replies[i]->elements, replies[i], cb_func) != SR_SUCCESS) {
+					printf("ERROR: handle CAN %s failed \n", reply->element[i]->str + strlen(ACTION_PREFIX));
 					for (j = 0; j < i; j++)
 						freeReplyObject(replies[j]);
 					free(replies);
@@ -548,12 +596,12 @@ SR_32 redis_mng_load_db(redisContext *c, int pipelined, handle_rule_f_t cb_func)
 					return SR_ERROR;
 				}
 
-			} else if (strstr(reply->element[i]->str, NET_PREFIX)) { // net rule
+			} else if (!memcmp(reply->element[i]->str, NET_PREFIX, strlen(NET_PREFIX))) { // net rule
 
 				// ACTION, action, SRC_ADDR, src_addr_netmask, DST_ADDR, dst_addr_netmask, PROGRAM_ID, exec, USER_ID, user,
 				// PROTOCOL, proto, SRC_PORT, src_port, DST_PORT, dst_port
 				if (replies[i]->elements != NET_RULE_FIELDS) {
-					printf("ERROR: redisGetReply %d length is wrong %d instead of %d\n", i, (int)replies[i]->elements,
+					printf("ERROR: NET redisGetReply %d length is wrong %d instead of %d\n", i, (int)replies[i]->elements,
 							NET_RULE_FIELDS);
 					for (j = 0; j < i; j++)
 						freeReplyObject(replies[j]);
@@ -573,16 +621,12 @@ SR_32 redis_mng_load_db(redisContext *c, int pipelined, handle_rule_f_t cb_func)
 				net_rule.tuple.srcnetmasklen = len;
 				net_rule.tuple.proto = atoi(replies[i]->element[11]->str);
 				net_rule.tuple.srcport = atoi(replies[i]->element[13]->str);
-//				if (net_rule.rulenum == 1) {
-//					printf("*** DBG *** LOAD: dstport %s %s\n", replies[i]->element[14]->str, replies[i]->element[15]->str);
-//					printf("*** DBG *** LOAD: srcport %s %s\n", replies[i]->element[12]->str, replies[i]->element[13]->str);
-//				}
 				net_rule.tuple.dstport = atoi(replies[i]->element[15]->str);
 				net_rule.tuple.max_rate = 100; // todo add rl to can rule
 				memcpy(net_rule.tuple.program, replies[i]->element[7]->str, strlen(replies[i]->element[7]->str));
 				memcpy(net_rule.tuple.user, replies[i]->element[9]->str, strlen(replies[i]->element[9]->str));
 
-				cb_func(&net_rule, CONFIG_NET_RULE, &rc);
+				cb_func(&net_rule, ENTITY_TYPE_IP_RULE, &rc);
 				if (rc) {
 					printf("ERROR: cb func failed to add net rule %d, ret %d\n", i, rc);
 					for (j = 0; j < i; j++)
@@ -592,11 +636,11 @@ SR_32 redis_mng_load_db(redisContext *c, int pipelined, handle_rule_f_t cb_func)
 					return SR_ERROR;
 				}
 
-			} else if (strstr(reply->element[i]->str, FILE_PREFIX)) { // file rule
+			} else if (!memcmp(reply->element[i]->str, FILE_PREFIX, strlen(FILE_PREFIX))) { // file rule
 
 				// ACTION, action, FILENAME, file_name, PERMISSION, perms, PROGRAM_ID, exec, USER_ID, user
 				if (replies[i]->elements != FILE_RULE_FIELDS) {
-					printf("ERROR: redisGetReply %d length is wrong %d instead of %d\n", i, (int)replies[i]->elements, FILE_RULE_FIELDS);
+					printf("ERROR: FILE redisGetReply %d length is wrong %d instead of %d\n", i, (int)replies[i]->elements, FILE_RULE_FIELDS);
 					for (j = 0; j < i; j++)
 						freeReplyObject(replies[j]);
 					free(replies);
@@ -613,7 +657,7 @@ SR_32 redis_mng_load_db(redisContext *c, int pipelined, handle_rule_f_t cb_func)
 				memcpy(file_rule.tuple.program, replies[i]->element[7]->str, strlen(replies[i]->element[7]->str));
 				memcpy(file_rule.tuple.user, replies[i]->element[9]->str, strlen(replies[i]->element[9]->str));
 
-				cb_func(&file_rule, CONFIG_FILE_RULE, &rc);
+				cb_func(&file_rule, ENTITY_TYPE_FILE_RULE, &rc);
 				if (rc) {
 					printf("ERROR: cb func failed to add file rule %d, ret %d\n", i, rc);
 					for (j = 0; j < i; j++)
@@ -623,63 +667,28 @@ SR_32 redis_mng_load_db(redisContext *c, int pipelined, handle_rule_f_t cb_func)
 					return SR_ERROR;
 				}
 
-			} else { // action
+			} else if (!memcmp(reply->element[i]->str, ACTION_PREFIX, strlen(ACTION_PREFIX))) { // action
 
-				// BITMAP, bm, LOG_FACILITY, log_facility, LOG_SEVERITY, log_severity, RL, rl, SMS, sms, EMAIL, mail
 				if (replies[i]->elements != ACTION_FIELDS) {
-					printf("ERROR: redisGetReply %d length is wrong %d instead of %d\n", i, (int)replies[i]->elements, ACTION_FIELDS);
+					printf("ERROR: ACTION redisGetReply %d length is wrong %d instead of %d\n", i, (int)replies[i]->elements, ACTION_FIELDS);
+					for (j = 0; j < replies[i]->elements; j++) 
+						printf("%s ", replies[i]->element[j]->str);
 					for (j = 0; j < i; j++)
 						freeReplyObject(replies[j]);
 					free(replies);
 					freeReplyObject(reply);
 					return SR_ERROR;
 				}
-				action.black_list = 0; // fixme
-				action.terminate = 0; // fixme
-				// todo replies[i]->element[7]->str - rate limit
-				memcpy(action.action_name, reply->element[i]->str + strlen(ACTION_PREFIX),
-						strlen(reply->element[i]->str) - strlen(ACTION_PREFIX));
-
-				if (strstr(replies[i]->element[1]->str, "drop"))
-					action.action = ACTION_DROP;
-				else if (strstr(replies[i]->element[1]->str, "none"))
-					action.action = ACTION_NONE;
-				else if (strstr(replies[i]->element[1]->str, "allow"))
-					action.action = ACTION_ALLOW;
-				else
-					action.action = ACTION_INVALID;
-
-				if (strstr(replies[i]->element[3]->str, "file"))
-					action.log_facility = LOG_TO_FILE;
-				else if (strstr(replies[i]->element[3]->str, "none"))
-					action.log_facility = LOG_NONE;
-				else if (strstr(replies[i]->element[3]->str, "sys"))
-					action.log_facility = LOG_TO_SYSLOG;
-				else
-					action.log_facility = LOG_INVALID;
-
-				if (strstr(replies[i]->element[5]->str, "crt"))
-					action.log_severity = LOG_SEVERITY_CRT;
-				else if (strstr(replies[i]->element[5]->str, "err"))
-					action.log_severity = LOG_SEVERITY_ERR;
-				else if (strstr(replies[i]->element[5]->str, "warn"))
-					action.log_severity = LOG_SEVERITY_WARN;
-				else if (strstr(replies[i]->element[5]->str, "info"))
-					action.log_severity = LOG_SEVERITY_INFO;
-				else if (strstr(replies[i]->element[5]->str, "debug"))
-					action.log_severity = LOG_SEVERITY_DEBUG;
-				else
-					action.log_severity = LOG_SEVERITY_NONE;
-
-				cb_func(&action, CONFIG_LOG_TARGET, &rc);
-				if (rc) {
-					printf("ERROR: cb func failed to add action %d, ret %d\n", i, rc);
+				if (load_action(reply->element[i]->str + strlen(ACTION_PREFIX), replies[i]->elements, replies[i], cb_func) != SR_SUCCESS) {
+					printf("ERROR: handle ACTION %s failed \n", reply->element[i]->str + strlen(ACTION_PREFIX));
 					for (j = 0; j < i; j++)
 						freeReplyObject(replies[j]);
 					free(replies);
 					freeReplyObject(reply);
 					return SR_ERROR;
 				}
+			} else {
+				printf(">>>>>>>>>>>>>>>>>>>>>>>>>>>>> default !!!!\n");
 			}
 		}
 
@@ -707,7 +716,7 @@ SR_32 redis_mng_load_db(redisContext *c, int pipelined, handle_rule_f_t cb_func)
 
 				// ACTION, action, MID, mid, DIRECTION, dir_str, INTERFACE, interface, PROGRAM_ID, exec, USER_ID, user
 				if (reply2->elements != CAN_RULE_FIELDS) {
-					printf("ERROR: redisGetReply %d length is wrong %d instead of %d\n", i, (int)reply2->elements, CAN_RULE_FIELDS);
+					printf("ERROR: CAN redisGetReply %d length is wrong %d instead of %d\n", i, (int)reply2->elements, CAN_RULE_FIELDS);
 					freeReplyObject(reply);
 					freeReplyObject(reply2);
 					return SR_ERROR;
@@ -723,7 +732,7 @@ SR_32 redis_mng_load_db(redisContext *c, int pipelined, handle_rule_f_t cb_func)
 				memcpy(can_rule.tuple.program, reply2->element[9]->str, strlen(reply2->element[9]->str));
 				memcpy(can_rule.tuple.user, reply2->element[11]->str, strlen(reply2->element[11]->str));
 
-				cb_func(&can_rule, CONFIG_CAN_RULE, &rc);
+				cb_func(&can_rule, ENTITY_TYPE_CAN_RULE, &rc);
 				if (rc) {
 					printf("ERROR: cb func failed to add CAN rule %d, ret %d\n", i, rc);
 					freeReplyObject(reply);
@@ -736,7 +745,7 @@ SR_32 redis_mng_load_db(redisContext *c, int pipelined, handle_rule_f_t cb_func)
 				// ACTION, action, SRC_ADDR, src_addr_netmask, DST_ADDR, dst_addr_netmask, PROGRAM_ID, exec, USER_ID, user,
 				// PROTOCOL, proto, SRC_PORT, src_port, DST_PORT, dst_port
 				if (reply2->elements != NET_RULE_FIELDS) {
-					printf("ERROR: redisGetReply %d length is wrong %d instead of %d\n", i, (int)reply2->elements, NET_RULE_FIELDS);
+					printf("ERROR: NET redisGetReply %d length is wrong %d instead of %d\n", i, (int)reply2->elements, NET_RULE_FIELDS);
 					freeReplyObject(reply);
 					freeReplyObject(reply2);
 					return SR_ERROR;
@@ -759,7 +768,7 @@ SR_32 redis_mng_load_db(redisContext *c, int pipelined, handle_rule_f_t cb_func)
 				memcpy(net_rule.tuple.program, reply2->element[7]->str, strlen(reply2->element[7]->str));
 				memcpy(net_rule.tuple.user, reply2->element[9]->str, strlen(reply2->element[9]->str));
 
-				cb_func(&net_rule, CONFIG_NET_RULE, &rc);
+				cb_func(&net_rule, ENTITY_TYPE_IP_RULE, &rc);
 				if (rc) {
 					printf("ERROR: cb func failed to add net rule %d, ret %d\n", i, rc);
 					freeReplyObject(reply);
@@ -771,7 +780,7 @@ SR_32 redis_mng_load_db(redisContext *c, int pipelined, handle_rule_f_t cb_func)
 
 				// ACTION, action, FILENAME, file_name, PERMISSION, perms, PROGRAM_ID, exec, USER_ID, user
 				if (reply2->elements != FILE_RULE_FIELDS) {
-					printf("ERROR: redisGetReply %d length is wrong %d instead of %d\n", i, (int)reply2->elements, FILE_RULE_FIELDS);
+					printf("ERROR: FILE redisGetReply %d length is wrong %d instead of %d\n", i, (int)reply2->elements, FILE_RULE_FIELDS);
 					freeReplyObject(reply);
 					freeReplyObject(reply2);
 					return SR_ERROR;
@@ -786,7 +795,7 @@ SR_32 redis_mng_load_db(redisContext *c, int pipelined, handle_rule_f_t cb_func)
 				memcpy(file_rule.tuple.program, reply2->element[7]->str, strlen(reply2->element[7]->str));
 				memcpy(file_rule.tuple.user, reply2->element[9]->str, strlen(reply2->element[9]->str));
 
-				cb_func(&file_rule, CONFIG_FILE_RULE, &rc);
+				cb_func(&file_rule, ENTITY_TYPE_FILE_RULE, &rc);
 				if (rc) {
 					printf("ERROR: cb func failed to add file rule %d, ret %d\n", i, rc);
 					freeReplyObject(reply);
@@ -797,7 +806,7 @@ SR_32 redis_mng_load_db(redisContext *c, int pipelined, handle_rule_f_t cb_func)
 
 				// BITMAP, bm, LOG, log, SMS, sms, EMAIL, mail
 				if (reply2->elements != ACTION_FIELDS) {
-					printf("ERROR: redisGetReply %d length is wrong %d instead of %d\n", i, (int)reply2->elements, ACTION_FIELDS);
+					printf("ERROR: ACTION redisGetReply %d length is wrong %d instead of %d\n", i, (int)reply2->elements, ACTION_FIELDS);
 					freeReplyObject(reply);
 					freeReplyObject(reply2);
 					return SR_ERROR;
@@ -838,7 +847,7 @@ SR_32 redis_mng_load_db(redisContext *c, int pipelined, handle_rule_f_t cb_func)
 				else
 					action.log_severity = LOG_SEVERITY_NONE;
 
-				cb_func(&action, CONFIG_LOG_TARGET, &rc);
+				cb_func(&action, ENTITY_TYPE_ACTION, &rc);
 				if (rc) {
 					printf("ERROR: cb func failed to add action %d, ret %d\n", i, rc);
 					freeReplyObject(reply);
