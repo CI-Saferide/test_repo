@@ -118,6 +118,11 @@ static void handle_entity(void *data, redis_entity_type_t type, SR_32 *status)
 		 	printf("XXXXXXXXXX handle_entity ACTION name :%s \n", action->name);
 #endif
 			break;
+		case  ENTITY_TYPE_IP_RULE:
+#ifndef DEBUG
+		 	printf("XXXXXXXXXX handle_entity IP rule \n");
+#endif
+			*status = SR_SUCCESS;
 		default:
 			*status = SR_ERROR;
 			printf("ERROR: entity UNKOWN type :%d \n", type);

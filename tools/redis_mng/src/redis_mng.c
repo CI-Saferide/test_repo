@@ -507,6 +507,33 @@ static SR_32 load_can(char *name, SR_32 n, redisReply *reply, handle_rule_f_t cb
 	return rc;
 }
 
+static SR_32 load_net(SR_32 rule_id, SR_32 n, redisReply *reply, handle_rule_f_t cb)
+{
+	SR_32 rc = SR_SUCCESS;
+	sr_net_record_t net_rule = {};
+
+#if 0
+				net_rule.rulenum = atoi(reply->element[i]->str + strlen(NET_PREFIX));
+				memcpy(net_rule.action_name, replies[i]->element[1]->str, strlen(replies[i]->element[1]->str));
+				net_rule.tuple.id = 1; // todo remove
+				sscanf(replies[i]->element[5]->str, "%d.%d.%d.%d/%d", &a1, &a2, &a3, &a4, &len);
+				net_rule.tuple.dstaddr.s_addr = a1 << 24 | a2 << 16 | a3 << 8 | a4;
+				net_rule.tuple.dstnetmasklen = len;
+				sscanf(replies[i]->element[3]->str, "%d.%d.%d.%d/%d", &a1, &a2, &a3, &a4, &len);
+				net_rule.tuple.srcaddr.s_addr = a1 << 24 | a2 << 16 | a3 << 8 | a4;
+				net_rule.tuple.srcnetmasklen = len;
+				net_rule.tuple.proto = atoi(replies[i]->element[11]->str);
+				net_rule.tuple.srcport = atoi(replies[i]->element[13]->str);
+				net_rule.tuple.dstport = atoi(replies[i]->element[15]->str);
+				net_rule.tuple.max_rate = 100; // todo add rl to can rule
+				memcpy(net_rule.tuple.program, replies[i]->element[7]->str, strlen(replies[i]->element[7]->str));
+				memcpy(net_rule.tuple.user, replies[i]->element[9]->str, strlen(replies[i]->element[9]->str));
+#endif
+	cb(&net_rule, ENTITY_TYPE_IP_RULE, &rc);
+
+	return rc;
+}
+
 static SR_BOOL is_supported(char *name) {
 	return (!memcmp(name, CAN_PREFIX, strlen(CAN_PREFIX)) ||
 		!memcmp(name, NET_PREFIX, strlen(NET_PREFIX)) ||
@@ -609,33 +636,14 @@ SR_32 redis_mng_load_db(redisContext *c, int pipelined, handle_rule_f_t cb_func)
 					freeReplyObject(reply);
 					return SR_ERROR;
 				}
-				memset(&net_rule, 0, sizeof(net_rule));
-				net_rule.rulenum = atoi(reply->element[i]->str + strlen(NET_PREFIX));
-				memcpy(net_rule.action_name, replies[i]->element[1]->str, strlen(replies[i]->element[1]->str));
-				net_rule.tuple.id = 1; // todo remove
-				sscanf(replies[i]->element[5]->str, "%d.%d.%d.%d/%d", &a1, &a2, &a3, &a4, &len);
-				net_rule.tuple.dstaddr.s_addr = a1 << 24 | a2 << 16 | a3 << 8 | a4;
-				net_rule.tuple.dstnetmasklen = len;
-				sscanf(replies[i]->element[3]->str, "%d.%d.%d.%d/%d", &a1, &a2, &a3, &a4, &len);
-				net_rule.tuple.srcaddr.s_addr = a1 << 24 | a2 << 16 | a3 << 8 | a4;
-				net_rule.tuple.srcnetmasklen = len;
-				net_rule.tuple.proto = atoi(replies[i]->element[11]->str);
-				net_rule.tuple.srcport = atoi(replies[i]->element[13]->str);
-				net_rule.tuple.dstport = atoi(replies[i]->element[15]->str);
-				net_rule.tuple.max_rate = 100; // todo add rl to can rule
-				memcpy(net_rule.tuple.program, replies[i]->element[7]->str, strlen(replies[i]->element[7]->str));
-				memcpy(net_rule.tuple.user, replies[i]->element[9]->str, strlen(replies[i]->element[9]->str));
-
-				cb_func(&net_rule, ENTITY_TYPE_IP_RULE, &rc);
-				if (rc) {
-					printf("ERROR: cb func failed to add net rule %d, ret %d\n", i, rc);
+				if (load_net(atoi(reply->element[i]->str + strlen(NET_PREFIX)), replies[i]->elements, replies[i], cb_func) != SR_SUCCESS) {
+					printf("ERROR: handle CAN %s failed \n", reply->element[i]->str + strlen(ACTION_PREFIX));
 					for (j = 0; j < i; j++)
 						freeReplyObject(replies[j]);
 					free(replies);
 					freeReplyObject(reply);
 					return SR_ERROR;
 				}
-
 			} else if (!memcmp(reply->element[i]->str, FILE_PREFIX, strlen(FILE_PREFIX))) { // file rule
 
 				// ACTION, action, FILENAME, file_name, PERMISSION, perms, PROGRAM_ID, exec, USER_ID, user

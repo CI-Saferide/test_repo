@@ -7,6 +7,9 @@
 
 #define MAX_PATH_LEN	4096
 #define MAX_ACTION_NAME 64
+#define MAX_ADDR_LEN 128
+#define MAX_PATH 512
+#define MAX_USER_NAME 32
 
 typedef struct sr_action_record {
 	char             name[MAX_ACTION_NAME];
@@ -16,18 +19,16 @@ typedef struct sr_action_record {
 	sr_log_target_t  rl_log_target;
 } sr_action_record_t;
 
-struct sr_net_record{
-	SR_U16						rulenum;						/* rule number */
-	SR_U32						src_addr;						/* source IPv4 address */
-	SR_U32						dst_addr;						/* destination IPv4 address */
-	SR_U32  					src_netmask;					/* source IPv4 netmask */
-	SR_U32  					dst_netmask;					/* destination IPv4 netmask */
-	SR_U32  					src_port;						/* source port */
-	SR_U32  					dst_port;						/* destination port */
-	SR_8						proto;							/* protocol */
-	SR_32						uid;							/* user id */
-	char 		*process;
-};
+typedef struct sr_net_record {
+	SR_U16	rulenum;
+	char	src_addr[MAX_ADDR_LEN];
+	char	dst_addr[MAX_ADDR_LEN];
+	SR_8	proto;
+	SR_U16  src_port;
+	SR_U16  dst_port;
+	char    program[MAX_PATH];
+	char    user[MAX_USER_NAME];
+} sr_net_record_t;
 
 struct sr_file_record{
 	SR_U16						rulenum;						/* rule number */
