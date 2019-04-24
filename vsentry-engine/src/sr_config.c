@@ -1024,17 +1024,6 @@ SR_32 sr_create_filter_paths(void)
 	return SR_SUCCESS;
 }
 
-static void handle_action_entity(sr_action_record_t *action, SR_32 *status)
-{
-	printf(">>>>>> Handle action :%s bm:%d log:%d rl bm:%d rl log:%d \n", action->name,
-		action->actions_bitmap,
-		action->log_target,
-		action->rl_actions_bitmap,
-		action->rl_log_target);
-
-	*status = SR_SUCCESS;
-}
-
 static void handle_net_rule(sr_net_record_t *net_rule, SR_32 *status)
 {
 	switch (net_rule->net_item.net_item_type) {
@@ -1122,9 +1111,37 @@ static void handle_file_rule(sr_file_record_t *file_rule, SR_32 *status)
 	}
 }
 
-void sr_config_handle_entity(void *data, redis_entity_type_t type, SR_32 *status)
+SR_32 sr_config_handle_action(void *data) 
 {
-	sr_action_record_t *action;
+	sr_action_record_t *action = (sr_action_record_t *)data;
+/*
+#ifdef BIN_CLS_DB
+	if (cls_action(true, (bool)!!(action->actions_bitmap && SR_CLS_ACTION_ALLOW),
+		(action->log_target != LOG_TARGET_NONE), action->name) == SR_ERROR) {
+		printf("XXXXX EEEEEEEEEEE Failed add action !!!\n");
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+			"%s=handle action failed act=%s",REASON,
+			action->name);
+		*status = SR_ERROR;
+		return;
+        }
+#endif
+*/
+
+#ifndef DEBUG
+	printf(">>>>>> Handle action :%s bm:%d log:%d rl bm:%d rl log:%d \n", action->name,
+		action->actions_bitmap,
+		action->log_target,
+		action->rl_actions_bitmap,
+		action->rl_log_target);
+#endif
+
+	return SR_SUCCESS;
+	
+}
+
+void sr_config_handle_rule(void *data, redis_entity_type_t type, SR_32 *status)
+{
 	sr_net_record_t  *net_rule;
 	sr_can_record_t  *can_rule;
 	sr_file_record_t  *file_rule;
@@ -1132,13 +1149,6 @@ void sr_config_handle_entity(void *data, redis_entity_type_t type, SR_32 *status
 	*status = SR_SUCCESS;
 
 	switch (type) { 
-		case  ENTITY_TYPE_ACTION:
-			action = (sr_action_record_t *)data;
-#ifdef DEBUG
-		 	printf("XXXXXXXXXX handle_entity ACTION name :%s \n", action->name);
-#endif
-			handle_action_entity(action, status);
-			break;
 		case  ENTITY_TYPE_IP_RULE:
 			net_rule = (sr_net_record_t *)data;
 #ifdef DEBUG

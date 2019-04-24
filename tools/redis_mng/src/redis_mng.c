@@ -83,6 +83,18 @@
 
 static int redis_changes;
 
+static char *get_field(char *field, int n, redisReply *reply)
+{
+	int i;
+
+	for (i = 0; i < n - 1; i += 2) {
+		if (!strcmp(reply->element[i]->str, field))
+			return reply->element[i + 1]->str;
+	}
+	
+	return NULL;
+}
+
 redisContext *redis_mng_session_start(void/*SR_BOOL is_tcp*/)
 { 
 	redisContext *c;
@@ -136,26 +148,29 @@ void file_op_convert(SR_U8 file_op, char *perms)
 	//sprintf(perms, "77%d", res);
 }
 
-SR_32 print_action(char *name, redis_mng_action_t *action)
+SR_32 print_action(void *data)
 {
+	sr_action_record_t *action = (sr_action_record_t *)data;
+	
 	if (!action) return SR_ERROR;
 
-	printf("%-10s %-6s %-6s %-6s %s \n",
-		name,
-		action->action_bm,
-		action->action_log,
-		action->rl_bm,
-		action->rl_log);
+	printf("%s %d %d %d %d \n",
+		action->name,
+		action->actions_bitmap,
+		action->log_target,
+		action->rl_actions_bitmap,
+		action->rl_log_target);
 
 	return SR_SUCCESS;
 }
 
-SR_32 redis_mng_exec_all_actions(redisContext *c, SR_32 (*cb)(char *name, redis_mng_action_t *action))
+SR_32 redis_mng_exec_all_actions(redisContext *c, SR_32 (*cb)(void *data))
 {
 	int i, j;
 	redisReply *reply;
 	redisReply **replies;
-	redis_mng_action_t action = {};
+	sr_action_record_t action = {};
+	char *field;
 
 	if (!cb) return SR_ERROR;
 
@@ -203,13 +218,16 @@ SR_32 redis_mng_exec_all_actions(redisContext *c, SR_32 (*cb)(char *name, redis_
 			return SR_ERROR;
 		}
 
-		// action has no number so all are printed
-		// ACTION_BITMAP, action->action_bm, ACTION_LOG, action->action_log, RL_BITMAP, action->rl_bm, RL_LOG, action->rl_log
-		action.action_bm = replies[i]->element[1]->str;
-		action.action_log = replies[i]->element[3]->str;
-		action.rl_bm = replies[i]->element[5]->str;
-		action.rl_log = replies[i]->element[7]->str;
-		if (cb(reply->element[i]->str + strlen(ACTION_PREFIX), &action) != SR_SUCCESS) {
+		strncpy(action.name, reply->element[i]->str + strlen(ACTION_PREFIX), MAX_ACTION_NAME);
+		field = get_field(ACTION_BITMAP, replies[i]->elements, replies[i]);
+		action.actions_bitmap = field ? atoi(field) : 0;
+		field = get_field(ACTION_LOG, replies[i]->elements, replies[i]);
+		action.log_target = get_log_facility_enum(field);
+		field = get_field(RL_BITMAP, replies[i]->elements, replies[i]);
+		action.rl_actions_bitmap = field ? atoi(field) : 0;
+		field = get_field(RL_LOG, replies[i]->elements, replies[i]);
+		action.rl_log_target = get_log_facility_enum(field);
+		if (cb(&action) != SR_SUCCESS) {
 			printf("ERROR: Failed run cb for action :%s \n", reply->element[i]->str + strlen(ACTION_PREFIX));
 		}
 	}
@@ -274,18 +292,6 @@ SR_32 redis_mng_print_all_list_names(redisContext *c, list_type_e type)
 
 	freeReplyObject(reply);
 	return SR_SUCCESS;
-}
-
-static char *get_field(char *field, int n, redisReply *reply)
-{
-	int i;
-
-	for (i = 0; i < n - 1; i += 2) {
-		if (!strcmp(reply->element[i]->str, field))
-			return reply->element[i + 1]->str;
-	}
-	
-	return NULL;
 }
 
 static SR_32 print_can(SR_32 num, void *rule)
@@ -462,27 +468,6 @@ SR_32 redis_mng_clean_db(redisContext *c)
 	}
 	freeReplyObject(reply);
 	return SR_SUCCESS;
-}
-
-static SR_32 load_action(char *name, SR_32 n, redisReply *reply, handle_rule_f_t cb)
-{
-	sr_action_record_t action = {};
-	SR_32 rc;
-	char *field;
-
-	strncpy(action.name, name, MAX_ACTION_NAME);
-	field = get_field(ACTION_BITMAP, n, reply);
-	action.actions_bitmap = field ? atoi(field) : 0;
-	field = get_field(ACTION_LOG, n, reply);
-	action.log_target = get_log_facility_enum(field);
-	field = get_field(RL_BITMAP, n, reply);
-	action.rl_actions_bitmap = field ? atoi(field) : 0;
-	field = get_field(RL_LOG, n, reply);
-	action.rl_log_target = get_log_facility_enum(field);
-	
-	cb(&action, ENTITY_TYPE_ACTION, &rc);
-
-	return rc;
 }
 
 static SR_32 load_can(SR_32 rule_id, SR_32 n, redisReply *reply, handle_rule_f_t cb)
@@ -763,29 +748,10 @@ SR_32 redis_mng_load_db(redisContext *c, int pipelined, handle_rule_f_t cb_func)
 					freeReplyObject(reply);
 					return SR_ERROR;
 				}
-
-			} else if (!memcmp(reply->element[i]->str, ACTION_PREFIX, strlen(ACTION_PREFIX))) { // action
-
-				if (replies[i]->elements != ACTION_FIELDS) {
-					printf("ERROR: ACTION redisGetReply %d length is wrong %d instead of %d\n", i, (int)replies[i]->elements, ACTION_FIELDS);
-					for (j = 0; j < replies[i]->elements; j++) 
-						printf("%s ", replies[i]->element[j]->str);
-					for (j = 0; j < i; j++)
-						freeReplyObject(replies[j]);
-					free(replies);
-					freeReplyObject(reply);
-					return SR_ERROR;
-				}
-				if (load_action(reply->element[i]->str + strlen(ACTION_PREFIX), replies[i]->elements, replies[i], cb_func) != SR_SUCCESS) {
-					printf("ERROR: handle ACTION %s failed \n", reply->element[i]->str + strlen(ACTION_PREFIX));
-					for (j = 0; j < i; j++)
-						freeReplyObject(replies[j]);
-					free(replies);
-					freeReplyObject(reply);
-					return SR_ERROR;
-				}
 			} else {
+#ifdef DEBUG
 				printf(">>>>>>>>>>>>>>>>>>>>>>>>>>>>> default !!!!\n");
+#endif
 			}
 		}
 

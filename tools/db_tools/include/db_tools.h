@@ -11,6 +11,7 @@ typedef enum {
 } rule_type_t;
 
 typedef enum {
+        LOG_TARGET_NONE,
         LOG_TARGET_SYSLOG,
         LOG_TARGET_FILE,
 } sr_log_target_t;

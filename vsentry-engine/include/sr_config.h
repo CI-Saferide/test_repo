@@ -112,6 +112,7 @@ typedef struct sr_file_record {
 SR_32 sr_create_filter_paths(void);
 void sr_config_vsentry_db_cb(int type, int op, void *entry);
 SR_U32 sr_config_get_mod_state(void);
-void sr_config_handle_entity(void *data, redis_entity_type_t type, SR_32 *status);
+void sr_config_handle_rule(void *data, redis_entity_type_t type, SR_32 *status);
+SR_32 sr_config_handle_action(void *data);
 
 #endif /* SR_CONFIG_H */

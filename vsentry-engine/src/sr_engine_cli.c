@@ -108,9 +108,16 @@ SR_32 sr_engine_cli_commit(SR_32 fd)
                 goto out;
         }
 
-	if (redis_mng_load_db(c, SR_TRUE, sr_config_handle_entity) != SR_SUCCESS) {
+	if (redis_mng_exec_all_actions(c, sr_config_handle_action)) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 			"%s=exec for all actions failed",REASON);
+		rc = SR_ERROR;
+		goto out;
+	}
+
+	if (redis_mng_load_db(c, SR_TRUE, sr_config_handle_rule) != SR_SUCCESS) {
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+			"%s=load db failed",REASON);
 		rc = SR_ERROR;
 		goto out;
 	}

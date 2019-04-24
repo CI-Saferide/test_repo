@@ -189,7 +189,7 @@ SR_32 redis_mng_update_engine_state(redisContext *c, SR_BOOL is_on);
 SR_32 redis_mng_add_system_policer(redisContext *c, char *exec, redis_system_policer_t *system_policer_info);
 SR_32 redis_mng_print_system_policer(redisContext *c);
 SR_32 redis_mng_exec_all_system_policer(redisContext *c, SR_32 (*cb)(char *exec, redis_system_policer_t *sp));
-SR_32 redis_mng_exec_all_actions(redisContext *c, SR_32 (*cb)(char *name, redis_mng_action_t *action));
+SR_32 redis_mng_exec_all_actions(redisContext *c, SR_32 (*cb)(void *action));
 SR_32 redis_mng_exec_all_rules(redisContext *c, rule_type_t type, SR_32 rule_id_start, SR_32 rule_id_end, SR_32 (*cb)(SR_32 rule_num, void *rule));
 
 
