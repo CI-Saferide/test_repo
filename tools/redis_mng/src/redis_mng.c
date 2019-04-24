@@ -487,20 +487,12 @@ static SR_32 load_can(SR_32 rule_id, SR_32 n, redisReply *reply, handle_rule_f_t
 	if (rc != SR_SUCCESS) return rc;
 
 	field = get_field(MID, n, reply);
-	can_rule.can_item.can_item_type = CAN_ITEM_MSG_ID;
-	can_rule.can_item.u.msg_id = strtol(field, NULL, 16);
-	cb(&can_rule, ENTITY_TYPE_CAN_RULE, &rc);
-	if (rc != SR_SUCCESS) return rc;
-
+	can_rule.can_item.can_item_type = CAN_ITEM_MSG;
+	can_rule.can_item.u.msg.id = strtol(field, NULL, 16);
 	field = get_field(DIRECTION, n, reply);
-	can_rule.can_item.can_item_type = CAN_ITEM_DIR;
-	strncpy(can_rule.can_item.u.dir, field, DIR_LEN);
-	cb(&can_rule, ENTITY_TYPE_CAN_RULE, &rc);
-	if (rc != SR_SUCCESS) return rc;
-
+	strncpy(can_rule.can_item.u.msg.dir, field, DIR_LEN);
 	field = get_field(INTERFACE, n, reply);
-	can_rule.can_item.can_item_type = CAN_ITEM_INF;
-	strncpy(can_rule.can_item.u.inf, field, INTERFACE_LEN);
+	strncpy(can_rule.can_item.u.msg.inf, field, INTERFACE_LEN);
 	cb(&can_rule, ENTITY_TYPE_CAN_RULE, &rc);
 	if (rc != SR_SUCCESS) return rc;
 

@@ -38,9 +38,7 @@ typedef enum {
 
 typedef enum {
 	CAN_ITEM_ACTION,
-	CAN_ITEM_MSG_ID,
-	CAN_ITEM_INF,
-	CAN_ITEM_DIR,
+	CAN_ITEM_MSG,
 	CAN_ITEM_PROGRAM,
 	CAN_ITEM_USER,
 } sr_can_item_type_t;
@@ -80,14 +78,16 @@ typedef struct sr_net_record {
 } sr_net_record_t;
 
 typedef struct {
+	SR_U32	id;
+	char    dir[DIR_LEN];
+	char    inf[INTERFACE_LEN];
+} can_msg_t;
+
+typedef struct {
 	sr_can_item_type_t can_item_type;
 	union {
 		char    action[MAX_ACTION_NAME];
-		char	src_addr[MAX_ADDR_LEN];
-		char	dst_addr[MAX_ADDR_LEN];
-		SR_U32	msg_id;
-		char    dir[DIR_LEN];
-		char    inf[INTERFACE_LEN];
+		can_msg_t msg;
 		char    program[MAX_PATH];
 		char    user[MAX_USER_NAME];
 	} u;

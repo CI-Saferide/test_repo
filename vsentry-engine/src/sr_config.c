@@ -1058,19 +1058,64 @@ out:
 	if (tmp)
 		free(tmp);
 	return rc;
+} 
+
+#ifdef BIN_CLS_DB
+static SR_32 create_program_rule(char *program, SR_U16 rule_num, SR_U32 type) 
+{  
+        SR_U32 exec_ino = INODE_ANY;
+        SR_32 ret;
+
+	if (*(program)) {
+		ret = sr_get_inode(program, &exec_ino);
+		if (ret != SR_SUCCESS) {
+			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+				"%s=failed to get prog %s inode",REASON, program);
+			return SR_ERROR;
+    		}
+	}
+
+	ret = cls_prog_rule(true, type, rule_num, exec_ino);
+	if (ret != SR_SUCCESS) {
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+			"%s=failed to add exec_ino %u for ip rule %d",REASON,
+					exec_ino, rule_num);
+		return SR_ERROR;
+	}
+
+	return SR_SUCCESS;
 }
+#endif
+
+#ifdef BIN_CLS_DB
+static SR_32 create_user_rule(char *user, SR_U16 rule_num, SR_U32 type) 
+{  
+	unsigned int uid = UID_ANY;
+	SR_32 ret;
+
+	if (*(user))
+		uid = sal_get_uid(user);
+
+	ret = cls_uid_rule(true, type, rule_num, uid);
+	if (ret != SR_SUCCESS) {
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+		"%s=failed to add uid %u for ip rule %d",REASON,uid, rule_num);
+		return SR_ERROR;
+	}
+
+	return SR_SUCCESS;
+}
+#endif
 
 static void handle_net_rule(sr_net_record_t *net_rule, SR_32 *status)
 {
 #ifdef BIN_CLS_DB
-        unsigned int uid = UID_ANY, exec_ino = INODE_ANY;
 	SR_U32 src_addr, dst_addr, src_netmask, dst_netmask;
         SR_32 ret;
 #endif
 	switch (net_rule->net_item.net_item_type) {
 		case NET_ITEM_ACTION:
 #ifdef BIN_CLS_DB
-
 			/* create the rule */
 			ret = cls_rule(true, CLS_IP_RULE_TYPE, net_rule->rulenum, net_rule->net_item.u.action, 0);
 			if (ret != SR_SUCCESS) {
@@ -1169,40 +1214,17 @@ static void handle_net_rule(sr_net_record_t *net_rule, SR_32 *status)
 			break;
 		case NET_ITEM_PROGRAM:
 #ifdef BIN_CLS_DB
-			 /* create the exec rule */
-			if (*(net_rule->net_item.u.program)) {
-				ret = sr_get_inode(net_rule->net_item.u.program, &exec_ino);
-				if (ret != SR_SUCCESS) {
-					CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-					"%s=failed to get prog %s inode",REASON,
-						net_rule->net_item.u.program);
-                        		*status = SR_ERROR;
-					return;
-                		}
-        		}
-
-			ret = cls_prog_rule(true, CLS_IP_RULE_TYPE, net_rule->rulenum, exec_ino);
-			if (ret != SR_SUCCESS) {
-				CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-					"%s=failed to add exec_ino %u for ip rule %d",REASON,
-					exec_ino, net_rule->rulenum);
+			/* create the exec rule */
+			if (create_program_rule(net_rule->net_item.u.program, net_rule->rulenum, CLS_IP_RULE_TYPE) != SR_SUCCESS) {
 				*status = SR_ERROR;
 				return;
-			}
-
+        		}
 #endif
 			break;
 		case NET_ITEM_USER:
 #ifdef BIN_CLS_DB
         		/* create the uid rule */
-			if (*(net_rule->net_item.u.user))
-				uid = sal_get_uid(net_rule->net_item.u.user);
-
-			ret = cls_uid_rule(true, CLS_IP_RULE_TYPE, net_rule->rulenum, uid);
-			if (ret != SR_SUCCESS) {
-				CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-					"%s=failed to add uid %u for ip rule %d",REASON,
-					uid, net_rule->rulenum);
+			if (create_user_rule(net_rule->net_item.u.user, net_rule->rulenum, CLS_IP_RULE_TYPE) != SR_SUCCESS) { 
 				*status = SR_ERROR;
 				return;
         		}
@@ -1215,24 +1237,66 @@ static void handle_net_rule(sr_net_record_t *net_rule, SR_32 *status)
 
 static void handle_can_rule(sr_can_record_t *can_rule, SR_32 *status)
 {
+#ifdef BIN_CLS_DB
+        unsigned int if_index = (unsigned int)(-1);
+        int ret;
+#endif
+
 	switch (can_rule->can_item.can_item_type) {
 		case CAN_ITEM_ACTION:
 			printf(">>>>>>>>>> Add CAN rule rule:%d action:%s \n", can_rule->rulenum, can_rule->can_item.u.action); 
+#ifdef BIN_CLS_DB
+			ret = cls_rule(true, CLS_CAN_RULE_TYPE, can_rule->rulenum, can_rule->can_item.u.action, 0);
+    			if (ret != SR_SUCCESS) {
+				CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+					"%s=failed to create can rule %u with action %s",REASON,
+					can_rule->rulenum, can_rule->can_item.u.action);
+				*status = SR_ERROR;
+				return;
+        		}
+#endif
 			break;
-		case CAN_ITEM_MSG_ID:
-			printf("   >>>>> MSG ID :%x \n", can_rule->can_item.u.msg_id); 
-			break;
-		case CAN_ITEM_DIR:
-			printf("   >>>>> CAN_ITEM_DIR :%s \n", can_rule->can_item.u.dir); 
-			break;
-		case CAN_ITEM_INF:
-			printf("   >>>>> CAN_ITEM_INF :%s \n", can_rule->can_item.u.inf); 
+		case CAN_ITEM_MSG:
+			printf("   >>>>> MSG ID :%x DIR:%s inf:%s \n", can_rule->can_item.u.msg.id, can_rule->can_item.u.msg.dir,  can_rule->can_item.u.msg.inf); 
+#if 0
+ /* create the can rule */
+        ret = sal_get_interface_id(rule->tuple.interface, (SR_32*)&if_index);
+        if (ret != SR_SUCCESS) {
+                CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+                        "%s=failed to get if_index for can %s",REASON,
+                        rule->tuple.interface);
+                return ret;
+        }
+
+        if (rule->tuple.direction & SENTRY_DIR_IN) {
+                ret = cls_can_rule(true, rule->rulenum, rule->tuple.msg_id, DIR_IN, if_index);
+                if (ret != SR_SUCCESS) {
+                        CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+                                "%s=failed to add can rule in",REASON);
+                        return ret;
+                }
+        }
+#endif
 			break;
 		case CAN_ITEM_PROGRAM:
 			printf("   >>>>>>>>> PROGRAM :%s \n", can_rule->can_item.u.program); 
+#ifdef BIN_CLS_DB
+			/* create the exec rule */
+			if (create_program_rule(can_rule->can_item.u.program, can_rule->rulenum, CLS_CAN_RULE_TYPE) != SR_SUCCESS) {
+				*status = SR_ERROR;
+				return;
+        		}
+#endif
 			break;
 		case CAN_ITEM_USER:
 			printf("   >>>>>>>>> USER :%s \n", can_rule->can_item.u.user); 
+#ifdef BIN_CLS_DB
+        		/* create the uid rule */
+			if (create_user_rule(can_rule->can_item.u.user, can_rule->rulenum, CLS_CAN_RULE_TYPE) != SR_SUCCESS) { 
+				*status = SR_ERROR;
+				return;
+        		}
+#endif
 			break;
 		default:
 			break;
@@ -1300,23 +1364,14 @@ void sr_config_handle_rule(void *data, redis_entity_type_t type, SR_32 *status)
 	switch (type) { 
 		case  ENTITY_TYPE_IP_RULE:
 			net_rule = (sr_net_record_t *)data;
-#ifdef DEBUG
-		 	printf("XXXXXXXXXX handle_entity IP rule \n");
-#endif
 			handle_net_rule(net_rule, status);
 			break;
 		case  ENTITY_TYPE_FILE_RULE:
 			file_rule = (sr_file_record_t *)data;
-#ifdef DEBUG
-		 	printf("XXXXXXXXXX handle_entity FILE rule \n");
-#endif
 			handle_file_rule(file_rule, status);
 			break;
 		case  ENTITY_TYPE_CAN_RULE:
 			can_rule = (sr_can_record_t *)data;
-#ifdef DEBUG
-		 	printf("XXXXXXXXXX handle_entity CAN rule \n");
-#endif
 			handle_can_rule(can_rule, status);
 			break;
 		default:
