@@ -4,6 +4,7 @@
 #include "sr_actions_common.h"
 #include "sr_sal_common.h"
 #include "db_tools.h"
+#include "redis_mng.h"
 
 #define MAX_PATH_LEN	4096
 #define MAX_ACTION_NAME 64
@@ -111,5 +112,6 @@ typedef struct sr_file_record {
 SR_32 sr_create_filter_paths(void);
 void sr_config_vsentry_db_cb(int type, int op, void *entry);
 SR_U32 sr_config_get_mod_state(void);
+void sr_config_handle_entity(void *data, redis_entity_type_t type, SR_32 *status);
 
 #endif /* SR_CONFIG_H */

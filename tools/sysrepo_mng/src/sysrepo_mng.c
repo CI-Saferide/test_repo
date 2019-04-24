@@ -1089,7 +1089,7 @@ SR_U8 sys_repo_mng_perm_get_code(char *perms)
 	return res;
 }
 
-static void file_op_convert(SR_U8 file_op, char *perms)
+static void __file_op_convert(SR_U8 file_op, char *perms)
 {
 	SR_U8 res = 0;
 
@@ -1124,7 +1124,7 @@ SR_32 sys_repo_mng_create_file_rule(sysrepo_mng_handler_t *handler, SR_32 rule_i
 	char str_param[MAX_STR_SIZE];
 	char perms[4];
 
-	file_op_convert(file_op, perms);
+	__file_op_convert(file_op, perms);
 	sprintf(str_param, "%snum='%d']", FILE_PREFIX, rule_id);
 	if (um_set_param(handler->sess, str_param) != SR_SUCCESS) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
