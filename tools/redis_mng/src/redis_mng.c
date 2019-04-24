@@ -484,31 +484,37 @@ static SR_32 load_can(SR_32 rule_id, SR_32 n, redisReply *reply, handle_rule_f_t
 	can_rule.can_item.can_item_type = CAN_ITEM_ACTION;
 	strncpy(can_rule.can_item.u.action, field, MAX_ACTION_NAME);
 	cb(&can_rule, ENTITY_TYPE_CAN_RULE, &rc);
+	if (rc != SR_SUCCESS) return rc;
 
 	field = get_field(MID, n, reply);
 	can_rule.can_item.can_item_type = CAN_ITEM_MSG_ID;
 	can_rule.can_item.u.msg_id = strtol(field, NULL, 16);
 	cb(&can_rule, ENTITY_TYPE_CAN_RULE, &rc);
+	if (rc != SR_SUCCESS) return rc;
 
 	field = get_field(DIRECTION, n, reply);
 	can_rule.can_item.can_item_type = CAN_ITEM_DIR;
 	strncpy(can_rule.can_item.u.dir, field, DIR_LEN);
 	cb(&can_rule, ENTITY_TYPE_CAN_RULE, &rc);
+	if (rc != SR_SUCCESS) return rc;
 
 	field = get_field(INTERFACE, n, reply);
 	can_rule.can_item.can_item_type = CAN_ITEM_INF;
 	strncpy(can_rule.can_item.u.inf, field, INTERFACE_LEN);
 	cb(&can_rule, ENTITY_TYPE_CAN_RULE, &rc);
+	if (rc != SR_SUCCESS) return rc;
 
 	field = get_field(PROGRAM_ID, n, reply);
 	can_rule.can_item.can_item_type = CAN_ITEM_PROGRAM;
 	strncpy(can_rule.can_item.u.program, field, MAX_PATH);
 	cb(&can_rule, ENTITY_TYPE_CAN_RULE, &rc);
+	if (rc != SR_SUCCESS) return rc;
 
 	field = get_field(USER_ID, n, reply);
 	can_rule.can_item.can_item_type = CAN_ITEM_USER;
 	strncpy(can_rule.can_item.u.user, field, MAX_USER_NAME);
 	cb(&can_rule, ENTITY_TYPE_CAN_RULE, &rc);
+	if (rc != SR_SUCCESS) return rc;
 
 	return rc;
 }
@@ -527,26 +533,31 @@ static SR_32 load_file(SR_32 rule_id, SR_32 n, redisReply *reply, handle_rule_f_
 	file_rule.file_item.file_item_type = FILE_ITEM_ACTION;
 	strncpy(file_rule.file_item.u.action, field, MAX_ACTION_NAME);
 	cb(&file_rule, ENTITY_TYPE_FILE_RULE, &rc);
+	if (rc != SR_SUCCESS) return rc;
 
 	field = get_field(FILENAME, n, reply);
 	file_rule.file_item.file_item_type = FILE_ITEM_FILENAME;
 	strncpy(file_rule.file_item.u.filename, field, MAX_PATH);
 	cb(&file_rule, ENTITY_TYPE_FILE_RULE, &rc);
+	if (rc != SR_SUCCESS) return rc;
 
 	field = get_field(PERMISSION, n, reply);
 	file_rule.file_item.file_item_type = FILE_ITEM_PERM;
 	strncpy(file_rule.file_item.u.perm, field, MAX_PATH);
 	cb(&file_rule, ENTITY_TYPE_FILE_RULE, &rc);
+	if (rc != SR_SUCCESS) return rc;
 
 	field = get_field(PROGRAM_ID, n, reply);
 	file_rule.file_item.file_item_type = FILE_ITEM_PROGRAM;
 	strncpy(file_rule.file_item.u.program, field, MAX_PATH);
 	cb(&file_rule, ENTITY_TYPE_FILE_RULE, &rc);
+	if (rc != SR_SUCCESS) return rc;
 
 	field = get_field(USER_ID, n, reply);
 	file_rule.file_item.file_item_type = FILE_ITEM_USER;
 	strncpy(file_rule.file_item.u.user, field, MAX_USER_NAME);
 	cb(&file_rule, ENTITY_TYPE_FILE_RULE, &rc);
+	if (rc != SR_SUCCESS) return rc;
 
 	return rc;
 }
@@ -556,6 +567,7 @@ static SR_32 load_net(SR_32 rule_id, SR_32 n, redisReply *reply, handle_rule_f_t
 	SR_32 rc = SR_SUCCESS;
 	sr_net_record_t net_rule = {};
 	char *field;
+	SR_U8 proto;
 
 	// XXXX Should handle groups 
 
@@ -565,56 +577,69 @@ static SR_32 load_net(SR_32 rule_id, SR_32 n, redisReply *reply, handle_rule_f_t
 	net_rule.net_item.net_item_type = NET_ITEM_ACTION;
 	strncpy(net_rule.net_item.u.action, field, MAX_ACTION_NAME);
 	cb(&net_rule, ENTITY_TYPE_IP_RULE, &rc);
+	if (rc != SR_SUCCESS) return rc;
 
 	field = get_field(SRC_ADDR, n, reply);
 	net_rule.net_item.net_item_type = NET_ITEM_SRC_ADDR;
 	strncpy(net_rule.net_item.u.src_addr, field, MAX_ADDR_LEN);
 	cb(&net_rule, ENTITY_TYPE_IP_RULE, &rc);
+	if (rc != SR_SUCCESS) return rc;
 
 	field = get_field(DST_ADDR, n, reply);
 	net_rule.net_item.net_item_type = NET_ITEM_DST_ADDR;
 	strncpy(net_rule.net_item.u.dst_addr, field, MAX_ADDR_LEN);
 	cb(&net_rule, ENTITY_TYPE_IP_RULE, &rc);
+	if (rc != SR_SUCCESS) return rc;
 
 	field = get_field(PROTOCOL, n, reply);
 	net_rule.net_item.net_item_type = NET_ITEM_PROTO;
 	if (!strcmp(field, "tcp"))
-		net_rule.net_item.u.proto = 8;
+		net_rule.net_item.u.proto = 6;
 	else if (!strcmp(field, "udp"))
 		net_rule.net_item.u.proto = 17;
 	else
 		net_rule.net_item.u.proto = 0;
+	proto = net_rule.net_item.u.proto;
 	cb(&net_rule, ENTITY_TYPE_IP_RULE, &rc);
+	if (rc != SR_SUCCESS) return rc;
 
 	field = get_field(SRC_PORT, n, reply);
 	net_rule.net_item.net_item_type = NET_ITEM_SRC_PORT;
-	net_rule.net_item.u.src_port = atoi(field);
+	net_rule.net_item.u.src_port.proto = proto;
+	net_rule.net_item.u.src_port.port = atoi(field);
 	cb(&net_rule, ENTITY_TYPE_IP_RULE, &rc);
+	if (rc != SR_SUCCESS) return rc;
 
 	field = get_field(DST_PORT, n, reply);
 	net_rule.net_item.net_item_type = NET_ITEM_DST_PORT;
-	net_rule.net_item.u.dst_port = atoi(field);
+	net_rule.net_item.u.dst_port.proto = proto;
+	net_rule.net_item.u.dst_port.port = atoi(field);
 	cb(&net_rule, ENTITY_TYPE_IP_RULE, &rc);
+	if (rc != SR_SUCCESS) return rc;
 
 	field = get_field(UP_RL, n, reply);
 	net_rule.net_item.net_item_type = NET_ITEM_UP_RL;
 	net_rule.net_item.u.up_rl = atoi(field);
 	cb(&net_rule, ENTITY_TYPE_IP_RULE, &rc);
+	if (rc != SR_SUCCESS) return rc;
 
 	field = get_field(DOWN_RL, n, reply);
 	net_rule.net_item.net_item_type = NET_ITEM_DOWN_RL;
 	net_rule.net_item.u.down_rl = atoi(field);
 	cb(&net_rule, ENTITY_TYPE_IP_RULE, &rc);
+	if (rc != SR_SUCCESS) return rc;
 
 	field = get_field(PROGRAM_ID, n, reply);
 	net_rule.net_item.net_item_type = NET_ITEM_PROGRAM;
 	strncpy(net_rule.net_item.u.program, field, MAX_PATH);
 	cb(&net_rule, ENTITY_TYPE_IP_RULE, &rc);
+	if (rc != SR_SUCCESS) return rc;
 
 	field = get_field(USER_ID, n, reply);
 	net_rule.net_item.net_item_type = NET_ITEM_USER;
 	strncpy(net_rule.net_item.u.user, field, MAX_USER_NAME);
 	cb(&net_rule, ENTITY_TYPE_IP_RULE, &rc);
+	if (rc != SR_SUCCESS) return rc;
 
 	return rc;
 }
@@ -748,10 +773,6 @@ SR_32 redis_mng_load_db(redisContext *c, int pipelined, handle_rule_f_t cb_func)
 					freeReplyObject(reply);
 					return SR_ERROR;
 				}
-			} else {
-#ifdef DEBUG
-				printf(">>>>>>>>>>>>>>>>>>>>>>>>>>>>> default !!!!\n");
-#endif
 			}
 		}
 

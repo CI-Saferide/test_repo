@@ -54,14 +54,19 @@ typedef enum {
 } sr_file_item_type_t;
 
 typedef struct {
+	SR_8 proto;
+	SR_U16 port;
+} port_t;
+
+typedef struct {
 	sr_net_item_type_t net_item_type;
 	union {
 		char    action[MAX_ACTION_NAME];
 		char	src_addr[MAX_ADDR_LEN];
 		char	dst_addr[MAX_ADDR_LEN];
 		SR_8	proto;
-		SR_U16  src_port;
-		SR_U16  dst_port;
+		port_t  src_port;
+		port_t  dst_port;
 		SR_U32  up_rl;
 		SR_U32  down_rl;
 		char    program[MAX_PATH];

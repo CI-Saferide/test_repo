@@ -1024,38 +1024,189 @@ SR_32 sr_create_filter_paths(void)
 	return SR_SUCCESS;
 }
 
+static SR_32 parse_addr(char *addr_str, SR_U32 *addr, SR_U32 *netmask)
+{
+	char *p, *tmp = NULL;
+	SR_32 rc = SR_SUCCESS;
+	SR_U32 i, n;
+
+	if (!(tmp = strdup(addr_str)))
+		return SR_ERROR;
+
+	p = strtok(tmp, "/");
+	if (!p) {
+		rc = SR_ERROR;
+		goto out;
+	}
+	p = strtok(NULL, "/");
+	if (!p) {
+		rc = SR_ERROR;
+		goto out;
+	}
+	sal_get_ip_address_from_str(tmp, addr);
+
+	n = atoi(p);
+
+	*netmask = 0;
+	for (i = 0 ;i < n; i++) {
+		(*netmask) >>= 1;
+		(*netmask) |= (1 << 31);
+	} 
+	sal_to_network_order(netmask);
+
+out:
+	if (tmp)
+		free(tmp);
+	return rc;
+}
+
 static void handle_net_rule(sr_net_record_t *net_rule, SR_32 *status)
 {
+#ifdef BIN_CLS_DB
+        unsigned int uid = UID_ANY, exec_ino = INODE_ANY;
+	SR_U32 src_addr, dst_addr, src_netmask, dst_netmask;
+        SR_32 ret;
+#endif
 	switch (net_rule->net_item.net_item_type) {
 		case NET_ITEM_ACTION:
-			printf(">>>>>>>>>> Add IP rule rule:%d action:%s \n", net_rule->rulenum, net_rule->net_item.u.action); 
+#ifdef BIN_CLS_DB
+
+			/* create the rule */
+			ret = cls_rule(true, CLS_IP_RULE_TYPE, net_rule->rulenum, net_rule->net_item.u.action, 0);
+			if (ret != SR_SUCCESS) {
+				CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+					"%s=failed to create ip rule %u with action %s",REASON,
+       					net_rule->rulenum, net_rule->net_item.u.action);
+				*status = ret;
+				return;
+        		}
+#endif
 			break;
 		case NET_ITEM_SRC_ADDR:
-			printf("   >>>>> SRC addr :%s \n", net_rule->net_item.u.src_addr); 
+#ifdef BIN_CLS_DB
+			if (parse_addr(net_rule->net_item.u.src_addr, &src_addr, &src_netmask) != SR_SUCCESS) {
+				CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+					"%s=invalid src address rule %u ",REASON, net_rule->rulenum);
+				*status = SR_ERROR;
+				return;
+			}
+			/* create the src ip rule */
+			ret = cls_ip_rule(true, net_rule->rulenum, src_addr, src_netmask, CLS_NET_DIR_SRC);
+			if (ret != SR_SUCCESS) {
+				CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+				"%s=failed to add src ip rule %d",REASON, net_rule->rulenum);
+				*status = ret;
+				return;
+			}
+#endif
 			break;
 		case NET_ITEM_DST_ADDR:
-			printf("   >>>>>> DST addr :%s \n", net_rule->net_item.u.dst_addr); 
+#ifdef BIN_CLS_DB
+			if (parse_addr(net_rule->net_item.u.dst_addr, &dst_addr, &dst_netmask) != SR_SUCCESS) {
+				CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+					"%s=invalid dst address rule %u ",REASON, net_rule->rulenum);
+				*status = SR_ERROR;
+				return;
+			}
+			/* create the dst ip rule */
+			ret = cls_ip_rule(true, net_rule->rulenum, dst_addr, dst_netmask, CLS_NET_DIR_DST);
+			if (ret != SR_SUCCESS) {
+				CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+				"%s=failed to add dst ip rule %d",REASON, net_rule->rulenum);
+				*status = ret;
+				return;
+			}
+#endif
 			break;
 		case NET_ITEM_PROTO:
-			printf("   >>>>>> Proto :%d \n", net_rule->net_item.u.proto); 
+#ifdef BIN_CLS_DB
+			/* create the ip_proto rule */
+			ret = cls_ip_porto_rule(true, net_rule->rulenum, net_rule->net_item.u.proto); 
+			if (ret != SR_SUCCESS) {
+				CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+					"%s=failed to add ipproto %u rule %d",REASON,
+					net_rule->net_item.u.proto, net_rule->rulenum);
+				*status = ret;
+				return;
+			}
+#endif
 			break;
 		case NET_ITEM_SRC_PORT:
-			printf("   >>>>>>>>> SRC Port :%d \n", net_rule->net_item.u.src_port); 
+#ifdef BIN_CLS_DB
+			/* create the src port rule */
+			ret = cls_port_rule(true, net_rule->rulenum, net_rule->net_item.u.src_port.port,
+				net_rule->net_item.u.src_port.proto, CLS_NET_DIR_SRC);
+			if (ret != SR_SUCCESS) {
+				CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+					"%s=failed to add src port %u rule %d",REASON,
+					net_rule->net_item.u.src_port.port, net_rule->rulenum);
+				printf("EEEEEEEEEEee failed to add src port %u rule %d\n",
+					net_rule->net_item.u.src_port.port, net_rule->rulenum);
+				*status = ret;
+				return;
+			}
+#endif
 			break;
 		case NET_ITEM_DST_PORT:
-			printf("   >>>>>>>>> DST Port :%d \n", net_rule->net_item.u.dst_port); 
+#ifdef BIN_CLS_DB
+			/* create the src port rule */
+			ret = cls_port_rule(true, net_rule->rulenum, net_rule->net_item.u.dst_port.port,
+				net_rule->net_item.u.dst_port.proto, CLS_NET_DIR_SRC);
+			if (ret != SR_SUCCESS) {
+				CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+					"%s=failed to add dst port %u rule %d",REASON,
+					net_rule->net_item.u.dst_port.port, net_rule->rulenum);
+				printf("EEEEEEEEEEee failed to add dst port %u rule %d\n",
+					net_rule->net_item.u.dst_port.port, net_rule->rulenum);
+				*status = ret;
+				return;
+			}
+#endif
 			break;
 		case NET_ITEM_UP_RL:
-			printf("   >>>>>>>>> UP RL :%d \n", net_rule->net_item.u.up_rl); 
 			break;
 		case NET_ITEM_DOWN_RL:
-			printf("   >>>>>>>>> DOWN RL :%d \n", net_rule->net_item.u.up_rl); 
 			break;
 		case NET_ITEM_PROGRAM:
-			printf("   >>>>>>>>> PROGRAM :%s \n", net_rule->net_item.u.program); 
+#ifdef BIN_CLS_DB
+			 /* create the exec rule */
+			if (*(net_rule->net_item.u.program)) {
+				ret = sr_get_inode(net_rule->net_item.u.program, &exec_ino);
+				if (ret != SR_SUCCESS) {
+					CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+					"%s=failed to get prog %s inode",REASON,
+						net_rule->net_item.u.program);
+                        		*status = SR_ERROR;
+					return;
+                		}
+        		}
+
+			ret = cls_prog_rule(true, CLS_IP_RULE_TYPE, net_rule->rulenum, exec_ino);
+			if (ret != SR_SUCCESS) {
+				CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+					"%s=failed to add exec_ino %u for ip rule %d",REASON,
+					exec_ino, net_rule->rulenum);
+				*status = SR_ERROR;
+				return;
+			}
+
+#endif
 			break;
 		case NET_ITEM_USER:
-			printf("   >>>>>>>>> USER :%s \n", net_rule->net_item.u.user); 
+#ifdef BIN_CLS_DB
+        		/* create the uid rule */
+			if (*(net_rule->net_item.u.user))
+				uid = sal_get_uid(net_rule->net_item.u.user);
+
+			ret = cls_uid_rule(true, CLS_IP_RULE_TYPE, net_rule->rulenum, uid);
+			if (ret != SR_SUCCESS) {
+				CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+					"%s=failed to add uid %u for ip rule %d",REASON,
+					uid, net_rule->rulenum);
+				*status = SR_ERROR;
+				return;
+        		}
+#endif
 			break;
 		default:
 			break;
@@ -1114,7 +1265,7 @@ static void handle_file_rule(sr_file_record_t *file_rule, SR_32 *status)
 SR_32 sr_config_handle_action(void *data) 
 {
 	sr_action_record_t *action = (sr_action_record_t *)data;
-/*
+
 #ifdef BIN_CLS_DB
 	if (cls_action(true, (bool)!!(action->actions_bitmap && SR_CLS_ACTION_ALLOW),
 		(action->log_target != LOG_TARGET_NONE), action->name) == SR_ERROR) {
@@ -1122,11 +1273,9 @@ SR_32 sr_config_handle_action(void *data)
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 			"%s=handle action failed act=%s",REASON,
 			action->name);
-		*status = SR_ERROR;
-		return;
+		return SR_ERROR;
         }
 #endif
-*/
 
 #ifndef DEBUG
 	printf(">>>>>> Handle action :%s bm:%d log:%d rl bm:%d rl log:%d \n", action->name,
