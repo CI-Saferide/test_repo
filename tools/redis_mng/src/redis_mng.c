@@ -151,15 +151,19 @@ void file_op_convert(SR_U8 file_op, char *perms)
 SR_32 print_action(void *data)
 {
 	sr_action_record_t *action = (sr_action_record_t *)data;
+	char log_target[LOG_TARGET_LEN], rl_log_target[LOG_TARGET_LEN];
 	
 	if (!action) return SR_ERROR;
 
-	printf("%s %d %d %d %d \n",
+	strncpy(log_target, get_action_log_facility_string(action->log_target), LOG_TARGET_LEN);
+	strncpy(rl_log_target, get_action_log_facility_string(action->rl_log_target), LOG_TARGET_LEN);
+
+	printf("%s %d %s %d %s \n",
 		action->name,
 		action->actions_bitmap,
-		action->log_target,
+		log_target,
 		action->rl_actions_bitmap,
-		action->rl_log_target);
+		rl_log_target);
 
 	return SR_SUCCESS;
 }

@@ -69,13 +69,13 @@ char *get_action_log_facility_string(log_facility_e log_facility)
         static char log_facility_string[LOG_FACILITY_SIZE];
 
         switch (log_facility) {
-                case LOG_NONE:
+                case LOG_TARGET_NONE:
                         strcpy(log_facility_string, "none");
                         break;
-                case LOG_TO_SYSLOG:
+                case LOG_TARGET_SYSLOG:
                         strcpy(log_facility_string, "syslog");
                         break;
-                case LOG_TO_FILE:
+                case LOG_TARGET_FILE:
                         strcpy(log_facility_string, "file");
                         break;
                 default:
@@ -243,8 +243,10 @@ SR_32 get_log_facility_enum(char *log)
 {
         if (!strcmp(log, "syslog"))
                 return LOG_TARGET_SYSLOG;
-        if (!strcmp(log, "vsentry"))
+        if (!strcmp(log, "file"))
                 return LOG_TARGET_FILE;
+        if (!strcmp(log, "none"))
+                return LOG_TARGET_NONE;
         return -1;
 }
 

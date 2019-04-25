@@ -14,6 +14,7 @@
 #define DIR_LEN 16
 #define	INTERFACE_LEN 64
 #define PERM_LEN 4
+#define LOG_TARGET_LEN 32
 
 typedef struct sr_action_record {
 	char             name[MAX_ACTION_NAME];

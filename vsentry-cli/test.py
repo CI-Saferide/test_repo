@@ -67,6 +67,7 @@ def is_bm_valid(bm, atype, log, rl):
 	return False
 
 def create_action(name, atype, log, rl, rl_log):
+	global errs
 	delete_cmd =  cli_cmd + ' delete action ' + name
 	update_cmd = cli_cmd + ' update action ' + name + ' action ' + atype
 	if log != 'none':
@@ -80,9 +81,13 @@ def create_action(name, atype, log, rl, rl_log):
 		run_cmd(delete_cmd)
 	except subprocess.CalledProcessError, e:
 		print 'Failed delete action: ' + name
-	run_cmd(update_cmd)
+	try:
+		run_cmd(update_cmd)
+	except subprocess.CalledProcessError, e:
+		print 'Failed update action: ' + name
+		errs += 1
+		return
 	reply = run_cmd(show_cmd)
-	print reply
 	found = False
 	for i in range(0, len(reply)):
 		if reply[i] == name:
@@ -96,10 +101,12 @@ def create_action(name, atype, log, rl, rl_log):
 				break;
 			if reply[i + 2] != log:
 				print 'ERROR in log', reply[i]
-				break;
 				errs += 1
+				break;
 			if reply[i + 4] != rl_log:
 				print 'ERROR in rl log', reply[i]
+				errs += 1
+				break;
 			found = True
 			break;
 
@@ -107,7 +114,7 @@ def check_actions():
 	create_action('action1', 'allow', 'syslog', 'none', 'none')
 	create_action('action1', 'drop', 'syslog', 'none', 'none')
 	create_action('action1', 'allow', 'none', 'none', 'none')
-	create_action('action1', 'allow', 'vsentry', 'drop', 'syslog')
+	create_action('action1', 'allow', 'file', 'drop', 'syslog')
 
 def delete_rule(rule_type, section, rule_number):
 	delete_cmd = cli_cmd + ' delete ' + rule_type + ' ' + section + ' rule_number ' + str(rule_number)

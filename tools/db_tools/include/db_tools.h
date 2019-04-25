@@ -8,12 +8,16 @@ typedef enum {
         RULE_TYPE_CAN,
         RULE_TYPE_FILE,
         RULE_TYPE_IP,
+		RULE_TYPE_MAX = RULE_TYPE_IP,
+		RULE_TYPE_TOTAL = (RULE_TYPE_MAX + 1),
 } rule_type_t;
 
 typedef enum {
         LOG_TARGET_NONE,
         LOG_TARGET_SYSLOG,
         LOG_TARGET_FILE,
+		LOG_TARGET_MAX = LOG_TARGET_FILE,
+		LOG_TARGET_TOTAL = (LOG_TARGET_MAX + 1),
 } sr_log_target_t;
 
 #define MAX_RULE_TYPE 20

@@ -1238,7 +1238,7 @@ static void handle_net_rule(sr_net_record_t *net_rule, SR_32 *status)
 static void handle_can_rule(sr_can_record_t *can_rule, SR_32 *status)
 {
 #ifdef BIN_CLS_DB
-        unsigned int if_index = (unsigned int)(-1);
+        SR_U32 if_index = (unsigned int)(-1);
         int ret;
 #endif
 
@@ -1257,25 +1257,34 @@ static void handle_can_rule(sr_can_record_t *can_rule, SR_32 *status)
 #endif
 			break;
 		case CAN_ITEM_MSG:
-			printf("   >>>>> MSG ID :%x DIR:%s inf:%s \n", can_rule->can_item.u.msg.id, can_rule->can_item.u.msg.dir,  can_rule->can_item.u.msg.inf); 
-#if 0
- /* create the can rule */
-        ret = sal_get_interface_id(rule->tuple.interface, (SR_32*)&if_index);
-        if (ret != SR_SUCCESS) {
-                CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-                        "%s=failed to get if_index for can %s",REASON,
-                        rule->tuple.interface);
-                return ret;
-        }
-
-        if (rule->tuple.direction & SENTRY_DIR_IN) {
-                ret = cls_can_rule(true, rule->rulenum, rule->tuple.msg_id, DIR_IN, if_index);
-                if (ret != SR_SUCCESS) {
-                        CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-                                "%s=failed to add can rule in",REASON);
-                        return ret;
-                }
-        }
+#ifdef BIN_CLS_DB
+ 			/* create the can rule */
+			ret = sal_get_interface_id(can_rule->can_item.u.msg.inf, (SR_32*)&if_index);
+			if (ret != SR_SUCCESS) {
+				CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+					"%s=failed to get if_index for can %s",REASON,
+						can_rule->can_item.u.msg.inf);
+				*status = SR_ERROR;
+				return;
+        		}
+			if (!strcmp(can_rule->can_item.u.msg.dir, "in") || !strcmp(can_rule->can_item.u.msg.dir, "both")) {
+				ret = cls_can_rule(true, can_rule->rulenum, can_rule->can_item.u.msg.id, DIR_IN, if_index);
+				if (ret != SR_SUCCESS) {
+					CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+					"%s=failed to add can rule in",REASON);
+					*status = SR_ERROR;
+					return;
+				}
+			}
+			if (!strcmp(can_rule->can_item.u.msg.dir, "out") || !strcmp(can_rule->can_item.u.msg.dir, "both")) {
+				ret = cls_can_rule(true, can_rule->rulenum, can_rule->can_item.u.msg.id, DIR_OUT, if_index);
+				if (ret != SR_SUCCESS) {
+					CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+					"%s=failed to add can rule in",REASON);
+					*status = SR_ERROR;
+					return;
+				}
+			}
 #endif
 			break;
 		case CAN_ITEM_PROGRAM:

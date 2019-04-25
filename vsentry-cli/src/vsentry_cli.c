@@ -101,7 +101,7 @@ static int engine_connect(void)
 
 static void print_update_action_usage(void)
 {
-	printf("action update action action_name [action allow | drop] [log vasentry | syslog] [rate_limit_action allow | drop] [rate_limit_log vsentry | syslog] \n");
+	printf("action update action action_name [action allow | drop] [log file | syslog] [rate_limit_action allow | drop] [rate_limit_log vsentry | syslog] \n");
 }
 
 static void print_show_action_usage(void)
@@ -1464,15 +1464,15 @@ SR_32 main(int argc, char **argv)
 	}
 
 	if (!strcmp(argv[1], "update"))
-		 handle_update(argc - 2, argv + 2);
+		 return handle_update(argc - 2, argv + 2);
 	else if (!strcmp(argv[1], "show"))
-		handle_show(argc - 2, argv + 2);
+		return handle_show(argc - 2, argv + 2);
 	else if (!strcmp(argv[1], "delete"))
-		handle_delete(argc - 2, argv + 2);
+		return handle_delete(argc - 2, argv + 2);
 	else if (!strcmp(argv[1], "control"))
-		handle_control(argc - 2, argv + 2);
+		return handle_control(argc - 2, argv + 2);
 	else if (!strcmp(argv[1], "commit"))
-		handle_commit(argc - 2, argv + 2);
+		return handle_commit(argc - 2, argv + 2);
 
 	return SR_SUCCESS;
 }
