@@ -8,7 +8,7 @@
 int sr_cls_add_ipv4(SR_U32 addr, char *exec, char *user, SR_U32 netmask, int rulenum, SR_U8 dir)
 {							
 	sr_network_msg_cls_t *msg;
-	SR_U32 inode;
+	unsigned long inode;
 	SR_32 uid, st;
 
 	if ((st = sr_get_inode(exec, &inode)) != SR_SUCCESS) {
@@ -38,7 +38,7 @@ int sr_cls_add_ipv4(SR_U32 addr, char *exec, char *user, SR_U32 netmask, int rul
 int sr_cls_del_ipv4(SR_U32 addr, char *exec, char *user, SR_U32 netmask, SR_U16 rulenum, SR_U8 dir)
 {
 	sr_network_msg_cls_t *msg;
-	SR_U32 inode;
+	unsigned long inode;
 	SR_32 uid;
 	int st;
 	

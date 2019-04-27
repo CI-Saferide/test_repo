@@ -25,6 +25,7 @@ typedef struct node_t {
 
 typedef struct {
 	unsigned int header;
+	unsigned int pad; /* this pas will make sure all addresses are aligned to 8 */
 } footer_t;
 
 #define OVERHEAD (sizeof(footer_t) + sizeof(node_t))
@@ -196,6 +197,12 @@ void *heap_alloc(unsigned int size)
 	if (heap.heap_size == 0)
 		return NULL;
 
+	/* make sure all addresses are aligned to 8 */
+	if (size & 0x7) {
+		size &= ~0x7;
+		size += 0x8;
+	}
+
 	index = get_bin_index(size);
 
 	while (index < BIN_COUNT) {
@@ -241,6 +248,12 @@ void *heap_calloc(unsigned int size)
 	if (ptr)
 		vs_memset(ptr, 0 , size);
 
+	if ((unsigned long)ptr & 0x7) {
+		cls_dbg("address is not aligned\n");
+		heap_free(ptr);
+		return NULL;
+	}
+
 	return ptr;
 }
 
@@ -250,6 +263,9 @@ void heap_free(void *p)
 	footer_t *old_foot, *curr_foot;
 	node_t *next, *prev;
 	node_t *head = (node_t *)((unsigned char*)p - sizeof(node_t));
+
+	/* for testing */
+	vs_memset(p, 0, 4);
 
 	if (head == heap.start) {
 		head->hole = 1;
@@ -291,14 +307,14 @@ void heap_print(void)
 	bin_t *bin;
 	node_t *temp;
 
-	cls_printf("heap allocator status:\n");
+//	cls_printf("heap allocator status:\n");
 	for (i = 0; i < BIN_COUNT; i++) {
 		bin = heap.bins + i;
-		cls_printf("bin %u: head 0x%x\n", i, bin->head);
+//		cls_printf("bin %u: head 0x%x\n", i, bin->head);
 
 		temp = get_pointer(bin->head);
 		while (temp != NULL) {
-			cls_printf("  size %u, prev 0x%x, next 0x%x\n", temp->size, temp->prev, temp->next);
+//			cls_printf("  size %u, prev 0x%x, next 0x%x\n", temp->size, temp->prev, temp->next);
 			if (temp->hole)
 				size += temp->size;
 			temp = get_pointer(temp->next);

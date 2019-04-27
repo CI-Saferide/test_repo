@@ -9,10 +9,17 @@
 #define can_dbg cls_dbg
 #define can_err cls_err
 
-static char *can_dir_name[DIR_TOTAL] = {
-	"in",
-	"out",
-};
+static char *get_can_dir_str(unsigned int dir)
+{
+	switch (dir) {
+	case DIR_IN:
+		return "in";
+	case DIR_OUT:
+		return "out";
+	default:
+		return "n\a";
+	}
+}
 
 #else
 #define can_dbg(...)
@@ -22,20 +29,20 @@ static char *can_dir_name[DIR_TOTAL] = {
 #define CAN_HASH_NUM_OF_BITS 	10
 
 /* hash item for CAN */
-typedef struct __attribute__ ((packed, aligned(8))) {
+typedef struct __attribute__ ((aligned(8))) {
 	can_header_t can_data;
 	unsigned int counter;
 	bit_array_t rules;
 } can_hash_item_t;
 
 /* the default rules data struct */
-typedef struct __attribute__ ((packed, aligned(8))) {
+typedef struct __attribute__ ((aligned(8))) {
 	bit_array_t	any_rules[DIR_TOTAL];
 } any_rules_t;
 
 /* the below struct will hold the hash buckets offsets on the persistent
  * database */
-typedef struct __attribute__ ((packed, aligned(8))) {
+typedef struct __attribute__ ((aligned(8))) {
 	unsigned int 	buckets_offsets[DIR_TOTAL];
 } can_buckets_array_t;
 
@@ -145,7 +152,7 @@ int can_cls_init(cls_hash_params_t *hash_params)
 	if (hash_params->hash_offset == 0 || hash_params->bits != CAN_HASH_NUM_OF_BITS) {
 		/* hash was not prev allocated. lets allocate.
 		 * first we allocate memory to preserve the buckets offsets */
-		can_buckets = heap_alloc(sizeof(can_buckets_array_t));
+		can_buckets = heap_calloc(sizeof(can_buckets_array_t));
 		if (!can_buckets) {
 			can_err("failed to allocate can_buckets\n");
 			return VSENTRY_ERROR;
@@ -197,7 +204,7 @@ int can_cls_add_rule(unsigned int rule, can_header_t *data, unsigned int dir)
 		return VSENTRY_ERROR;
 
 	can_dbg("add can rule mid 0x%x dir %s if_index %u\n",
-			data->msg_id , can_dir_name[dir], data->if_index);
+			data->msg_id , get_can_dir_str(dir), data->if_index);
 
 	if (rule >= MAX_RULES)
 		return VSENTRY_ERROR;
@@ -213,18 +220,21 @@ int can_cls_add_rule(unsigned int rule, can_header_t *data, unsigned int dir)
 			if (!can_item)
 				return VSENTRY_ERROR;
 
+			can_item->rules.empty = true;
 			vs_memcpy(&can_item->can_data, data, sizeof(can_header_t));
 			hash_insert_data(&can_hash_array[dir], can_item);
 			can_dbg("created new can rule mid 0x%x dir %s if_index %u\n",
-				data->msg_id , can_dir_name[dir], data->if_index);
+				data->msg_id , get_can_dir_str(dir), data->if_index);
 		}
 
 		arr = &can_item->rules;
 	}
 
-	ba_set_bit(rule, arr);
-	can_dbg("set bit %u on can rule mid 0x%x dir %s if_index %u\n",
-		rule, data->msg_id , can_dir_name[dir], data->if_index);
+	if (!ba_is_set(rule, arr)) {
+		ba_set_bit(rule, arr);
+		can_dbg("set bit %u on can rule mid 0x%x dir %s if_index %u\n",
+			rule, data->msg_id , get_can_dir_str(dir), data->if_index);
+	}
 
 	return VSENTRY_SUCCESS;
 }
@@ -247,7 +257,7 @@ int can_cls_del_rule(unsigned int rule, can_header_t *data, unsigned int dir)
 		can_item = hash_get_data(&can_hash_array[dir], data);
 		if (!can_item) {
 			can_err("could not find mid 0x%x dir %s if %u\n",
-				data->msg_id, can_dir_name[dir], data->if_index);
+				data->msg_id, get_can_dir_str(dir), data->if_index);
 			return VSENTRY_NONE_EXISTS;
 		}
 
@@ -260,12 +270,12 @@ int can_cls_del_rule(unsigned int rule, can_header_t *data, unsigned int dir)
 	/* clear the rule bit */
 	ba_clear_bit(rule, arr);
 	can_dbg("clear bit %u on can rule mid 0x%x dir %s if_index %u\n",
-		rule, data->msg_id , can_dir_name[dir], data->if_index);
+		rule, data->msg_id , get_can_dir_str(dir), data->if_index);
 
 	/* if no more bit are set delete the entry */
 	if (can_item && ba_is_empty(arr)) {
 		can_dbg("deleting can rule mid 0x%x dir %s if_index %u\n",
-			data->msg_id , can_dir_name[dir], data->if_index);
+			data->msg_id , get_can_dir_str(dir), data->if_index);
 		hash_delete_data(&can_hash_array[dir], data);
 	}
 
@@ -299,7 +309,7 @@ int can_cls_search(vsentry_event_t *can_ev, bit_array_t *verdict)
 	}
 
 #ifdef ENABLE_LEARN
-	if (cls_get_mode() == CLS_MODE_LEARN) {
+	if (cls_get_mode() == VSENTRY_MODE_LEARN) {
 		/* in learn mode we dont want to get the default rule
 		 * since we want to learn this event, so we clear the
 		 * verdict bitmap to signal no match */
@@ -313,6 +323,38 @@ int can_cls_search(vsentry_event_t *can_ev, bit_array_t *verdict)
 	ba_and(verdict, verdict, arr_any);
 
 	return VSENTRY_SUCCESS;
+}
+
+typedef struct {
+	int start;
+	int end;
+	int dir;
+} can_rules_limit_t;
+
+static void check_can_rule(void *data, void* param)
+{
+	int i;
+	can_hash_item_t *can_item = data;
+	can_rules_limit_t* limit = param;
+
+	for (i=limit->start; i<limit->end; i++) {
+		if (ba_is_set(i, &can_item->rules))
+			can_cls_del_rule(i, &can_item->can_data, limit->dir);
+	}
+}
+
+void can_cls_clear_rules(int start, int end)
+{
+	int i;
+	can_rules_limit_t limit = {
+		.start = start,
+		.end = end,
+	};
+
+	for (i=0; i<DIR_TOTAL; i++) {
+		limit.dir = i;
+		hash_walk(&can_hash_array[i], check_can_rule, &limit);
+	}
 }
 
 #ifdef CLS_DEBUG

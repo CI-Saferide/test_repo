@@ -6,16 +6,13 @@
 #include <stdbool.h>
 #include "aux.h"
 
-#define min(x, y) ((x < y) ? x : y)
-#define max(x, y) ((x >= y) ? x : y)
-
 #define MAX_RULES 	4096
 #define BITS_IN_SUMMARY 	64
 
-typedef struct __attribute__((packed, aligned(8))) {
+typedef struct __attribute__((aligned(8))) {
+	unsigned long 		bitmap[MAX_RULES/__BITS_PER_LONG]; /* 4096 bits */
 	unsigned long long	summary; /* 64 bit, each bit represent 64 bit in bitmap */
-	bool 		empty;
-	unsigned long 	bitmap[MAX_RULES/__BITS_PER_LONG]; /* 4096 bits */
+	bool 			empty;
 } bit_array_t;
 
 #define ba_set(arr) \
@@ -40,6 +37,5 @@ void ba_or(bit_array_t *dst, bit_array_t *src1, bit_array_t *src2);
 void ba_and_or(bit_array_t *dst, bit_array_t *and1, bit_array_t *or1, bit_array_t *or2);
 #ifdef CLS_DEBUG
 void ba_print_set_bits(bit_array_t *arr);
-unsigned int ba_count_set_bits(bit_array_t *arr);
 #endif
 #endif /* __BITOPS_H__ */

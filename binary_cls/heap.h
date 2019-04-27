@@ -10,6 +10,7 @@
 
 typedef struct {
 	unsigned int head;
+	unsigned int pad;  /* this pas will make sure all addresses are aligned to 8 */
 } bin_t;
 
 typedef struct {

@@ -16,7 +16,7 @@
 #define NET_STAT_HASH_NUM_OF_BITS 	10
 
 /* hash item for NET_STAT */
-typedef struct __attribute__ ((packed, aligned(8))) {
+typedef struct __attribute__ ((aligned(8))) {
 	ip_event_t 		net_connection;
 	unsigned long long	in_counter, out_counter;
 	unsigned long long 	in_timestamp, out_timestamp;
@@ -24,7 +24,7 @@ typedef struct __attribute__ ((packed, aligned(8))) {
 
 /* the below struct will hold the hash buckets offsets on the persistent
  * database */
-typedef struct __attribute__ ((packed, aligned(8))) {
+typedef struct __attribute__ ((aligned(8))) {
 	unsigned int 	buckets_offsets;
 } net_stat_buckets_array_t;
 
@@ -121,7 +121,7 @@ int net_stat_cls_init(cls_hash_params_t *hash_params)
 	if (hash_params->hash_offset == 0 || hash_params->bits != NET_STAT_HASH_NUM_OF_BITS) {
 		/* hash was not prev allocated. lets allocate.
 		 * first we allocate memory to preserve the buckets offsets */
-		net_stat_buckets = heap_alloc(sizeof(net_stat_buckets_array_t));
+		net_stat_buckets = heap_calloc(sizeof(net_stat_buckets_array_t));
 		if (!net_stat_buckets) {
 			net_stat_err("failed to allocte net_stat_buckets\n");
 			return VSENTRY_ERROR;
