@@ -63,7 +63,7 @@ typedef struct {
 		char    action[MAX_ACTION_NAME];
 		char	src_addr[MAX_ADDR_LEN];
 		char	dst_addr[MAX_ADDR_LEN];
-		SR_8	proto;
+		SR_U8	proto;
 		port_t  src_port;
 		port_t  dst_port;
 		SR_U32  up_rl;

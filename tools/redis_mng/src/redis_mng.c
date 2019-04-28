@@ -80,8 +80,40 @@
 #define SP_BYTES_WRITE 		"bw"
 #define SP_VM_ALLOC 		"vma"
 #define SP_THREADS_NO 		"tn"
+#define GROUP_NAME_LEN 32
+#define PROTO_MAX 8
+#define PROTO_NAME_MAX 32
 
 static int redis_changes;
+
+typedef struct group_item {
+	char *name;
+	struct group_item *next;
+} group_item_t;
+
+typedef struct group_db_group {
+	char name[GROUP_NAME_LEN];
+	struct group_db_group *next;
+	group_item_t *items;
+} group_db_group_t;
+
+typedef struct {
+	SR_U16  rulenum;
+	//handle_rule_f_t cb;
+	void (*cb)(void *data, redis_entity_type_t type, SR_32 *status);
+	sr_net_item_type_t net_item_type;
+	SR_U8 proto;
+	SR_32 *rc;
+} net_rule_cb_params_t;
+
+typedef struct {
+	SR_32 num_of_protos;
+	char protocols[PROTO_MAX][PROTO_NAME_MAX];
+} handle_proto_group_cb_params_t;
+
+static group_db_group_t *group_db[LIST_TYPE_MAX + 1];
+
+static SR_32 exec_for_all_group(list_type_e type, char *group, SR_32 (*cb)(char *item, void *data), void *param);
 
 static char *get_field(char *field, int n, redisReply *reply)
 {
@@ -249,38 +281,62 @@ SR_32 redis_mng_print_actions(redisContext *c) {
 	return redis_mng_exec_all_actions(c, print_action);
 }
 
-SR_32 redis_mng_print_list(redisContext *c, list_type_e type, char *name)
+static SR_32 print_value(char *val)
 {
-	int j;
-	redisReply *reply;
-
-	if (name) {
-		// get specific key
-		reply = redisCommand(c,"LRANGE %d%s%s 0 -1", type, LIST_PREFIX, name);
-		if (reply == NULL || reply->type != REDIS_REPLY_ARRAY) {
-			printf("ERROR: redis_mng_print_list failed, %d\n", reply ? reply->type : -1);
-			freeReplyObject(reply);
-			return SR_ERROR;
-		}
-
-		for (j = 0; j < reply->elements; j++)
-			printf("%-64s ", reply->element[j]->str);
-		printf("\n");
-
-		freeReplyObject(reply);
-
-	} else {
-		printf("ERROR: redis_mng_print_list list name is NULL\n");
-		return SR_ERROR;
-	}
+	printf("%-64s ", val);
 
 	return SR_SUCCESS;
 }
 
-SR_32 redis_mng_print_all_list_names(redisContext *c, list_type_e type)
+SR_32 redis_mng_exec_list(redisContext *c, list_type_e type, char *name, SR_32 (*cb)(char *val))
+{
+	int j;
+	redisReply *reply;
+
+	if (!name) {
+		printf("ERROR: redis_mng_print_list list name is NULL\n");
+		return SR_ERROR;
+	}
+	if (!cb) return SR_ERROR;
+
+	// get specific key
+	reply = redisCommand(c,"LRANGE %d%s%s 0 -1", type, LIST_PREFIX, name);
+	if (reply == NULL || reply->type != REDIS_REPLY_ARRAY) {
+		printf("ERROR: redis_mng_print_list failed, %d\n", reply ? reply->type : -1);
+		freeReplyObject(reply);
+		return SR_ERROR;
+	}
+
+	for (j = 0; j < reply->elements; j++) {
+		cb(reply->element[j]->str);
+	}
+
+	freeReplyObject(reply);
+
+	return SR_SUCCESS;
+}
+
+SR_32 redis_mng_print_list(redisContext *c, list_type_e type, char *name)
+{
+	redis_mng_exec_list(c, type, name, print_value);
+	printf("\n");
+
+	return SR_SUCCESS;
+}
+
+static SR_32 print_list_name(list_type_e type, char *name)
+{
+	printf("%s\n", name);
+
+	return SR_SUCCESS;
+}
+
+SR_32 redis_mng_exec_all_list_names(redisContext *c, list_type_e type, SR_32 (*cb)(list_type_e type, char *name))
 {
 	int i;
 	redisReply *reply;
+
+	if (!cb) return SR_ERROR;
 
 	// get all keys
 	reply = redisCommand(c,"KEYS %d%s*", type, LIST_PREFIX);
@@ -291,11 +347,15 @@ SR_32 redis_mng_print_all_list_names(redisContext *c, list_type_e type)
 	}
 
 	for (i = 0; i < reply->elements; i++)
-		printf("%-64s ", reply->element[i]->str);
-	printf("\n");
+		cb(type, reply->element[i]->str);
 
 	freeReplyObject(reply);
 	return SR_SUCCESS;
+}
+
+SR_32 redis_mng_print_all_list_names(redisContext *c, list_type_e type)
+{
+	return redis_mng_exec_all_list_names(c, type, print_list_name);
 }
 
 static SR_32 print_can(SR_32 num, void *rule)
@@ -474,6 +534,21 @@ SR_32 redis_mng_clean_db(redisContext *c)
 	return SR_SUCCESS;
 }
 
+static char *get_group_name(char *field)
+{
+	SR_U32 i, n;
+
+	if (!field) return NULL;
+	
+	n = strlen(field) - strlen(LIST_PREFIX);
+	for (i = 1; i < n; i++) {
+		if (!memcmp(field + 1, LIST_PREFIX, strlen(LIST_PREFIX)))
+			return field + i + strlen(LIST_PREFIX);
+	}
+	
+	return NULL;
+}
+
 static SR_32 load_can(SR_32 rule_id, SR_32 n, redisReply *reply, handle_rule_f_t cb)
 {
 	SR_32 rc = SR_SUCCESS;
@@ -558,14 +633,138 @@ static SR_32 load_file(SR_32 rule_id, SR_32 n, redisReply *reply, handle_rule_f_
 	return rc;
 }
 
+static list_type_e get_list_id(char *field)
+{
+	char list_id[8] = {}, i;
+	int id;
+	
+	if (!field) return LIST_NONE;
+
+	for (i = 1; i < strlen(field) - strlen(LIST_PREFIX); i++) {
+		if (!memcmp(field + i, LIST_PREFIX, strlen(LIST_PREFIX))) {
+			memcpy(list_id, field, i);
+			break;
+		}
+	}
+	
+	if (!*list_id) return LIST_NONE;
+	id = atoi(list_id);
+
+	return id < LIST_TYPE_MAX + 1 ? id : LIST_NONE;
+} 
+
+static SR_32 load_net_cb(char *item, void *param)
+{
+	net_rule_cb_params_t *net_rule_params = (net_rule_cb_params_t *)param;
+	sr_net_record_t net_rule = {};
+
+	net_rule.rulenum = net_rule_params->rulenum;
+	net_rule.net_item.net_item_type = net_rule_params->net_item_type;
+	switch (net_rule_params->net_item_type) {
+		case NET_ITEM_SRC_ADDR:
+			strncpy(net_rule.net_item.u.src_addr, item, MAX_ADDR_LEN);
+			break;
+		case NET_ITEM_DST_ADDR:
+			strncpy(net_rule.net_item.u.dst_addr, item, MAX_ADDR_LEN);
+			break;
+		case NET_ITEM_PROTO:
+			net_rule.net_item.u.proto = get_ip_proto_code(item);
+			break;
+		case NET_ITEM_SRC_PORT:
+			net_rule.net_item.u.src_port.proto = net_rule_params->proto;
+			net_rule.net_item.u.src_port.port = atoi(item);
+			break;
+		case NET_ITEM_DST_PORT:
+			net_rule.net_item.u.dst_port.proto = net_rule_params->proto;
+			net_rule.net_item.u.dst_port.port = atoi(item);
+			break;
+		case NET_ITEM_PROGRAM:
+			strncpy(net_rule.net_item.u.program, item, MAX_PATH);
+			break;
+		case NET_ITEM_USER:
+			strncpy(net_rule.net_item.u.program, item, MAX_USER_NAME);
+			break;
+		default:
+			printf("ERROR load_net_cb invalid item type:%d \n", net_rule_params->net_item_type);
+			return SR_ERROR;
+	}
+	net_rule_params->cb(&net_rule, ENTITY_TYPE_IP_RULE, net_rule_params->rc);
+#ifdef DEBUG
+	printf("-------------ZZZZZZZZZZZZZZZZZZZZZZZZZZz in load_net_cb rule:%d type:%d proto:%d item:%s rc:%d \n", net_rule.rulenum, net_rule_params->net_item_type, net_rule_params->proto, 
+			item, *(net_rule_params->rc));
+#endif
+
+	return SR_SUCCESS;
+}
+
+static SR_32 handle_port_group_cb(char *item, void *param)
+{
+	handle_proto_group_cb_params_t *cb_params = (handle_proto_group_cb_params_t *)param;
+
+	strncpy(cb_params->protocols[cb_params->num_of_protos], item, PROTO_NAME_MAX);
+	++(cb_params->num_of_protos);
+
+	return SR_SUCCESS;
+}
+
+static SR_32 handle_list_net(SR_32 rule_id, sr_net_item_type_t type, handle_rule_f_t cb, SR_32 list_id, char *group, SR_U8 proto)
+{
+	net_rule_cb_params_t params;
+	SR_32 rc = SR_SUCCESS;
+
+	params.proto = proto;
+	params.rulenum = rule_id;
+	params.cb = cb;
+	params.net_item_type = type;
+	params.rc = &rc;
+	exec_for_all_group(list_id, get_group_name(group), load_net_cb, &params);
+
+	if (rc != SR_SUCCESS) {
+		printf("ERROR: handle_list_net field for list:%d group:%s\n", list_id, group);
+	}
+
+	return rc;
+}
+
+static SR_32 handle_list_port(SR_32 rule_id, char *ip_proto, sr_net_item_type_t type, char *port, handle_rule_f_t cb) 
+{
+	SR_32 list_id, i, rc;
+	handle_proto_group_cb_params_t proto_params = {};
+	sr_net_record_t net_rule = {};
+
+	list_id = get_list_id(ip_proto);
+        if (list_id == LIST_NONE) {
+		proto_params.num_of_protos = 1;
+		strncpy(proto_params.protocols[0], ip_proto, PROTO_NAME_MAX);
+	} else {
+		exec_for_all_group(list_id, get_group_name(ip_proto), handle_port_group_cb, &proto_params);
+	}
+	
+	/* Process port for all the proros */
+	for (i = 0; i < proto_params.num_of_protos; i++) {
+		list_id = get_list_id(port);
+		if (list_id == LIST_NONE) {
+			net_rule.rulenum = rule_id;
+			net_rule.net_item.net_item_type = type;
+			net_rule.net_item.u.src_port.proto = get_ip_proto_code(proto_params.protocols[i]);
+			net_rule.net_item.u.src_port.port = atoi(port);
+			cb(&net_rule, ENTITY_TYPE_IP_RULE, &rc);
+			if (rc != SR_SUCCESS) return rc;
+		} else {
+			if ((rc = handle_list_net(rule_id, type, cb, list_id, port, get_ip_proto_code(proto_params.protocols[i]))) != SR_SUCCESS)
+				return rc;
+		}
+	}
+
+	return SR_SUCCESS;
+}
+
 static SR_32 load_net(SR_32 rule_id, SR_32 n, redisReply *reply, handle_rule_f_t cb)
 {
-	SR_32 rc = SR_SUCCESS;
+	SR_32 rc = SR_SUCCESS, list_id;
 	sr_net_record_t net_rule = {};
-	char *field;
+	char *field, ip_proto_name[GROUP_NAME_LEN];
 	SR_U8 proto;
-
-	// XXXX Should handle groups 
 
 	net_rule.rulenum = rule_id;
 
@@ -576,42 +775,72 @@ static SR_32 load_net(SR_32 rule_id, SR_32 n, redisReply *reply, handle_rule_f_t
 	if (rc != SR_SUCCESS) return rc;
 
 	field = get_field(SRC_ADDR, n, reply);
-	net_rule.net_item.net_item_type = NET_ITEM_SRC_ADDR;
-	strncpy(net_rule.net_item.u.src_addr, field, MAX_ADDR_LEN);
-	cb(&net_rule, ENTITY_TYPE_IP_RULE, &rc);
-	if (rc != SR_SUCCESS) return rc;
+	list_id = get_list_id(field);
+	if (list_id == LIST_NONE) {
+		net_rule.net_item.net_item_type = NET_ITEM_SRC_ADDR;
+		strncpy(net_rule.net_item.u.src_addr, field, MAX_ADDR_LEN);
+		cb(&net_rule, ENTITY_TYPE_IP_RULE, &rc);
+		if (rc != SR_SUCCESS) return rc;
+	} else {
+		if ((rc = handle_list_net(rule_id, NET_ITEM_SRC_ADDR, cb, list_id, field, 0)) != SR_SUCCESS)
+			return rc;
+	}
 
 	field = get_field(DST_ADDR, n, reply);
-	net_rule.net_item.net_item_type = NET_ITEM_DST_ADDR;
-	strncpy(net_rule.net_item.u.dst_addr, field, MAX_ADDR_LEN);
-	cb(&net_rule, ENTITY_TYPE_IP_RULE, &rc);
-	if (rc != SR_SUCCESS) return rc;
+	list_id = get_list_id(field);
+	if (list_id == LIST_NONE) {
+		net_rule.net_item.net_item_type = NET_ITEM_DST_ADDR;
+		strncpy(net_rule.net_item.u.dst_addr, field, MAX_ADDR_LEN);
+		cb(&net_rule, ENTITY_TYPE_IP_RULE, &rc);
+		if (rc != SR_SUCCESS) return rc;
+	} else  {
+		if ((rc = handle_list_net(rule_id, NET_ITEM_DST_ADDR, cb, list_id, field, 0)) != SR_SUCCESS)
+			return rc;
+	}
 
 	field = get_field(PROTOCOL, n, reply);
-	net_rule.net_item.net_item_type = NET_ITEM_PROTO;
-	if (!strcmp(field, "tcp"))
-		net_rule.net_item.u.proto = 6;
-	else if (!strcmp(field, "udp"))
-		net_rule.net_item.u.proto = 17;
-	else
-		net_rule.net_item.u.proto = 0;
-	proto = net_rule.net_item.u.proto;
-	cb(&net_rule, ENTITY_TYPE_IP_RULE, &rc);
-	if (rc != SR_SUCCESS) return rc;
+	strncpy(ip_proto_name, field, sizeof(ip_proto_name));
+	list_id = get_list_id(field);
+	if (list_id == LIST_NONE) {
+		net_rule.net_item.net_item_type = NET_ITEM_PROTO;
+		net_rule.net_item.u.proto = get_ip_proto_code(field);
+		proto = net_rule.net_item.u.proto;
+		cb(&net_rule, ENTITY_TYPE_IP_RULE, &rc);
+		if (rc != SR_SUCCESS) return rc;
+	} else {
+		if ((rc = handle_list_net(rule_id, NET_ITEM_PROTO, cb, list_id, field, 0)) != SR_SUCCESS)
+			return rc;
+	}
 
 	field = get_field(SRC_PORT, n, reply);
-	net_rule.net_item.net_item_type = NET_ITEM_SRC_PORT;
-	net_rule.net_item.u.src_port.proto = proto;
-	net_rule.net_item.u.src_port.port = atoi(field);
-	cb(&net_rule, ENTITY_TYPE_IP_RULE, &rc);
-	if (rc != SR_SUCCESS) return rc;
+	list_id = get_list_id(field);
+	if (list_id == LIST_NONE) {
+		net_rule.net_item.net_item_type = NET_ITEM_SRC_PORT;
+		net_rule.net_item.u.src_port.proto = proto;
+		net_rule.net_item.u.src_port.port = atoi(field);
+		cb(&net_rule, ENTITY_TYPE_IP_RULE, &rc);
+		if (rc != SR_SUCCESS) return rc;
+	} else {
+		if ((rc = handle_list_port(rule_id, ip_proto_name, NET_ITEM_SRC_PORT, field, cb)) != SR_SUCCESS) {	
+			printf("ERROR : handle_list_port faield \n");
+			return rc;
+		}
+	}
 
 	field = get_field(DST_PORT, n, reply);
-	net_rule.net_item.net_item_type = NET_ITEM_DST_PORT;
-	net_rule.net_item.u.dst_port.proto = proto;
-	net_rule.net_item.u.dst_port.port = atoi(field);
-	cb(&net_rule, ENTITY_TYPE_IP_RULE, &rc);
-	if (rc != SR_SUCCESS) return rc;
+	list_id = get_list_id(field);
+	if (list_id == LIST_NONE) {
+		net_rule.net_item.net_item_type = NET_ITEM_DST_PORT;
+		net_rule.net_item.u.dst_port.proto = proto;
+		net_rule.net_item.u.dst_port.port = atoi(field);
+		cb(&net_rule, ENTITY_TYPE_IP_RULE, &rc);
+		if (rc != SR_SUCCESS) return rc;
+	} else {
+		if ((rc = handle_list_port(rule_id, ip_proto_name, NET_ITEM_DST_PORT, field, cb)) != SR_SUCCESS) {	
+			printf("ERROR : handle_list_port faield \n");
+			return rc;
+		}
+	}
 
 	field = get_field(UP_RL, n, reply);
 	net_rule.net_item.net_item_type = NET_ITEM_UP_RL;
@@ -626,16 +855,28 @@ static SR_32 load_net(SR_32 rule_id, SR_32 n, redisReply *reply, handle_rule_f_t
 	if (rc != SR_SUCCESS) return rc;
 
 	field = get_field(PROGRAM_ID, n, reply);
-	net_rule.net_item.net_item_type = NET_ITEM_PROGRAM;
-	strncpy(net_rule.net_item.u.program, field, MAX_PATH);
-	cb(&net_rule, ENTITY_TYPE_IP_RULE, &rc);
-	if (rc != SR_SUCCESS) return rc;
+	list_id = get_list_id(field);
+	if (list_id == LIST_NONE) {
+		net_rule.net_item.net_item_type = NET_ITEM_PROGRAM;
+		strncpy(net_rule.net_item.u.program, field, MAX_PATH);
+		cb(&net_rule, ENTITY_TYPE_IP_RULE, &rc);
+		if (rc != SR_SUCCESS) return rc;
+	} else {
+		if ((rc = handle_list_net(rule_id, NET_ITEM_PROGRAM, cb, list_id, field, 0)) != SR_SUCCESS)
+			return rc;
+	}
 
 	field = get_field(USER_ID, n, reply);
-	net_rule.net_item.net_item_type = NET_ITEM_USER;
-	strncpy(net_rule.net_item.u.user, field, MAX_USER_NAME);
-	cb(&net_rule, ENTITY_TYPE_IP_RULE, &rc);
-	if (rc != SR_SUCCESS) return rc;
+	list_id = get_list_id(field);
+	if (list_id == LIST_NONE) {
+		net_rule.net_item.net_item_type = NET_ITEM_USER;
+		strncpy(net_rule.net_item.u.user, field, MAX_USER_NAME);
+		cb(&net_rule, ENTITY_TYPE_IP_RULE, &rc);
+		if (rc != SR_SUCCESS) return rc;
+	} else {
+		if ((rc = handle_list_net(rule_id, NET_ITEM_USER, cb, list_id, field, 0)) != SR_SUCCESS)
+			return rc;
+	}
 
 	return rc;
 }
@@ -647,17 +888,148 @@ static SR_BOOL is_supported(char *name) {
 		!memcmp(name, ACTION_PREFIX, strlen(ACTION_PREFIX)));
 }
 
+/*
+typedef struct group_item {
+	char *name;
+	struct group_db *next;
+} group_item_t;
+
+typedef struct group_db_group {
+	char name[GROUP_NAME_LEN];
+	struct group_db_group *next;
+	group_item_t *items;
+} group_db_group_t;
+
+*/
+
+static void print_groups_db(void)
+{
+	list_type_e type;
+	group_db_group_t *group_iter;
+	group_item_t *item_iter;
+
+	for (type = LIST_TYPE_MIN; type <= LIST_TYPE_MAX; type++) {
+		printf(" Type:%d \n", type);
+		for (group_iter = group_db[type]; group_iter; group_iter = group_iter->next)  {
+			printf("  group :%s \n", group_iter->name);
+			for (item_iter = group_iter->items; item_iter; item_iter = item_iter->next)
+				printf("      item :%s: \n", item_iter->name);
+		}
+	}
+}
+
+static SR_32 load_list_names(list_type_e type, char *name)
+{
+	group_db_group_t *new_group;
+	char type_str[16];
+
+	snprintf(type_str, sizeof(type_str), "%d", type);
+	if (!(new_group = calloc(sizeof(group_db_group_t), 1))) {
+		printf("Error malloc got new group!\n");
+		return SR_ERROR;
+	}
+	strncpy(new_group->name, name + strlen(type_str) + strlen(LIST_PREFIX), GROUP_NAME_LEN);
+	new_group->next = group_db[type];
+	group_db[type] = new_group;
+	
+	return SR_SUCCESS;
+}
+
+static group_item_t **g_item_p;
+
+static SR_32 add_value_to_list(char *value)
+{
+	group_item_t *new_item;
+
+	if (!(new_item = calloc(sizeof(group_item_t), 1))) {
+		printf("Error malloc new item!\n");
+		return SR_ERROR;
+	}
+
+	if (!(new_item->name = strdup(value))) {
+		free(new_item);
+		printf("Error strdup got new item!\n");
+		return SR_ERROR;
+	}
+	new_item->next = *g_item_p;
+	*g_item_p = new_item;
+	g_item_p = &(new_item->next);
+
+	return SR_SUCCESS;
+}
+
+static SR_32 load_all_groups(redisContext *c)
+{
+	list_type_e type;
+	group_db_group_t *g_iter;
+
+	for (type = LIST_TYPE_MIN; type <= LIST_TYPE_MAX; type++) {
+		if (redis_mng_exec_all_list_names(c, type, load_list_names)) {
+			printf("Error redis_mng_exec_all_list_names\n");
+			return SR_ERROR;
+		}
+	}
+
+	for (type = LIST_TYPE_MIN; type <= LIST_TYPE_MAX; type++) {
+		for (g_iter = group_db[type]; g_iter; g_iter = g_iter->next)  {
+			g_item_p = &(g_iter->items);
+			redis_mng_exec_list(c, type, g_iter->name, add_value_to_list);
+		}
+	}
+	
+	return SR_SUCCESS;
+}
+
+static void cleanup_groups()
+{
+	list_type_e type;
+	group_db_group_t *group_iter, *del_group;
+	group_item_t *item_iter, *del_item;
+
+	for (type = LIST_TYPE_MIN; type <= LIST_TYPE_MAX; type++) {
+		for (group_iter = group_db[type]; group_iter; )  {
+			for (item_iter = group_iter->items; item_iter; ) {
+				free(item_iter->name);
+				del_item = item_iter;
+				item_iter = item_iter->next;
+				free(del_item);
+			}
+			del_group = group_iter;
+			group_iter = group_iter->next;
+			free(del_group);
+		}
+	}
+}
+
+static SR_32 exec_for_all_group(list_type_e type, char *group, SR_32 (*cb)(char *item, void *data), void *param)
+{
+	group_db_group_t *group_iter;
+	group_item_t *item_iter;
+
+	if (!cb) return SR_ERROR;
+
+	for (group_iter = group_db[type]; group_iter && strcmp(group_iter->name, group); group_iter = group_iter->next);
+	if (!group_iter) {
+		printf("Error: group name not found\n");
+		return SR_ERROR;
+	}
+	
+	for (item_iter = group_iter->items; item_iter; item_iter = item_iter->next) {
+		if (cb(item_iter->name, param) != SR_SUCCESS) {	
+			printf("ERROR : exec_for_all_group cb failed \n");
+			return SR_ERROR;
+		}
+	}
+
+	return SR_SUCCESS;
+}
+
 SR_32 redis_mng_load_db(redisContext *c, int pipelined, handle_rule_f_t cb_func)
 {
 	int i, j;
-	redisReply *reply, *reply2;
+	redisReply *reply;
 	redisReply **replies;
-	can_rule_t can_rule;
-	ip_rule_t net_rule;
-	file_rule_t file_rule;
-	action_t action;
-	SR_32 rc;
-	int a1, a2, a3, a4, len;
+	SR_32 rc = SR_SUCCESS;
 
 	// get all keys
 	reply = redisCommand(c,"KEYS *");
@@ -670,278 +1042,137 @@ SR_32 redis_mng_load_db(redisContext *c, int pipelined, handle_rule_f_t cb_func)
 	printf("Redis has %d keys\n", (int)reply->elements);
 #endif
 
-	if (pipelined) {
-		replies = malloc(sizeof(redisReply*) * reply->elements);
-		if (!replies) {
-			printf("ERROR: redis_mng_load_db allocation failed\n");
-			freeReplyObject(reply);
-			return SR_ERROR;
-		}
-
-		for (i = 0; i < reply->elements; i++) {
+	load_all_groups(c);
 #ifdef DEBUG
-			printf("i>>>>>> i:%d str:%s: \n", i, reply->element[i]->str);
+	printf(">>> print group db !!:\n");
+	print_groups_db();
 #endif
-			if (!is_supported(reply->element[i]->str))
-				continue;
-			redisAppendCommand(c,"HGETALL %s", reply->element[i]->str);
-		}
 
-		for (i = 0; i < (int)reply->elements; i++) {
-			if (!is_supported(reply->element[i]->str))
-				continue;
-			if (redisGetReply(c, (void*)&replies[i]) != REDIS_OK) {
-				printf("ERROR: redisGetReply %d failed\n", i);
+	if (!pipelined) {
+		printf("ERROR : only pipelin is supprted\n");
+		rc = SR_ERROR;
+		goto out;
+	}
+	
+	replies = calloc(sizeof(redisReply*) * reply->elements, 1);
+	if (!replies) {
+		printf("ERROR: redis_mng_load_db allocation failed\n");
+		freeReplyObject(reply);
+		rc = SR_ERROR;
+		goto out;
+	}
+
+	for (i = 0; i < reply->elements; i++) {
+		if (!is_supported(reply->element[i]->str))
+			continue;
+		redisAppendCommand(c,"HGETALL %s", reply->element[i]->str);
+	}
+
+	for (i = 0; i < (int)reply->elements; i++) {
+		if (!is_supported(reply->element[i]->str))
+			continue;
+		if (redisGetReply(c, (void*)&replies[i]) != REDIS_OK) {
+			printf("ERROR: redisGetReply %d failed\n", i);
+			for (j = 0; j < i; j++)
+				freeReplyObject(replies[j]);
+			free(replies);
+			freeReplyObject(reply);
+			rc = SR_ERROR;
+			goto out;
+		}
+		if (replies[i]->type != REDIS_REPLY_ARRAY) {
+			printf("e1 ERROR: redisGetReply %d type is wrong %d\n", i, replies[i]->type);
+			for (j = 0; j < i; j++)
+				freeReplyObject(replies[j]);
+			free(replies);
+			freeReplyObject(reply);
+			rc = SR_ERROR;
+			goto out;
+		}
+		// check type and call cb func
+		// todo change to new struct without tuples
+		if (!memcmp(reply->element[i]->str, CAN_PREFIX, strlen(CAN_PREFIX))) { // can rule
+
+			// ACTION, action, MID, mid, DIRECTIN, dir_str, INTERFACE, interface, PROGRAM_ID, exec, USER_ID, user
+			if (replies[i]->elements != CAN_RULE_FIELDS) {
+				printf("ERROR: CAN redisGetReply %d length is wrong %d instead of %d\n", i, (int)replies[i]->elements,
+						CAN_RULE_FIELDS);
 				for (j = 0; j < i; j++)
 					freeReplyObject(replies[j]);
 				free(replies);
 				freeReplyObject(reply);
-				return SR_ERROR;
+				rc = SR_ERROR;
+				goto out;
 			}
-			if (replies[i]->type != REDIS_REPLY_ARRAY) {
-				printf("e1 ERROR: redisGetReply %d type is wrong %d\n", i, replies[i]->type);
+			if (load_can(atoi(reply->element[i]->str + strlen(CAN_PREFIX)), replies[i]->elements, replies[i], cb_func) != SR_SUCCESS) {
+				printf("ERROR: handle CAN rule %s failed \n", reply->element[i]->str + strlen(CAN_PREFIX));
 				for (j = 0; j < i; j++)
 					freeReplyObject(replies[j]);
 				free(replies);
 				freeReplyObject(reply);
-				return SR_ERROR;
+				rc = SR_ERROR;
+				goto out;
 			}
-			// check type and call cb func
-			// todo change to new struct without tuples
-			if (!memcmp(reply->element[i]->str, CAN_PREFIX, strlen(CAN_PREFIX))) { // can rule
 
-				// ACTION, action, MID, mid, DIRECTIN, dir_str, INTERFACE, interface, PROGRAM_ID, exec, USER_ID, user
-				if (replies[i]->elements != CAN_RULE_FIELDS) {
-					printf("ERROR: CAN redisGetReply %d length is wrong %d instead of %d\n", i, (int)replies[i]->elements,
-							CAN_RULE_FIELDS);
-					for (j = 0; j < i; j++)
-						freeReplyObject(replies[j]);
-					free(replies);
-					freeReplyObject(reply);
-					return SR_ERROR;
-				}
-				if (load_can(atoi(reply->element[i]->str + strlen(CAN_PREFIX)), replies[i]->elements, replies[i], cb_func) != SR_SUCCESS) {
-					printf("ERROR: handle CAN rule %s failed \n", reply->element[i]->str + strlen(CAN_PREFIX));
-					for (j = 0; j < i; j++)
-						freeReplyObject(replies[j]);
-					free(replies);
-					freeReplyObject(reply);
-					return SR_ERROR;
-				}
+		} else if (!memcmp(reply->element[i]->str, NET_PREFIX, strlen(NET_PREFIX))) { // net rule
 
-			} else if (!memcmp(reply->element[i]->str, NET_PREFIX, strlen(NET_PREFIX))) { // net rule
-
-				// ACTION, action, SRC_ADDR, src_addr_netmask, DST_ADDR, dst_addr_netmask, PROGRAM_ID, exec, USER_ID, user,
-				// PROTOCOL, proto, SRC_PORT, src_port, DST_PORT, dst_port
-				if (replies[i]->elements != NET_RULE_FIELDS) {
-					printf("ERROR: NET redisGetReply %d length is wrong %d instead of %d\n", i, (int)replies[i]->elements,
-							NET_RULE_FIELDS);
-					for (j = 0; j < i; j++)
-						freeReplyObject(replies[j]);
-					free(replies);
-					freeReplyObject(reply);
-					return SR_ERROR;
-				}
-				if (load_net(atoi(reply->element[i]->str + strlen(NET_PREFIX)), replies[i]->elements, replies[i], cb_func) != SR_SUCCESS) {
-					printf("ERROR: handle NET rule %s failed \n", reply->element[i]->str + strlen(NET_PREFIX));
-					for (j = 0; j < i; j++)
-						freeReplyObject(replies[j]);
-					free(replies);
-					freeReplyObject(reply);
-					return SR_ERROR;
-				}
-			} else if (!memcmp(reply->element[i]->str, FILE_PREFIX, strlen(FILE_PREFIX))) { // file rule
-
-				// ACTION, action, FILENAME, file_name, PERMISSION, perms, PROGRAM_ID, exec, USER_ID, user
-				if (replies[i]->elements != FILE_RULE_FIELDS) {
-					printf("ERROR: FILE redisGetReply %d length is wrong %d instead of %d\n", i, (int)replies[i]->elements, FILE_RULE_FIELDS);
-					for (j = 0; j < i; j++)
-						freeReplyObject(replies[j]);
-					free(replies);
-					freeReplyObject(reply);
-					return SR_ERROR;
-				}
-				if (load_file(atoi(reply->element[i]->str + strlen(FILE_PREFIX)), replies[i]->elements, replies[i], cb_func) != SR_SUCCESS) {
-					printf("ERROR: handle CAN rule %s failed \n", reply->element[i]->str + strlen(FILE_PREFIX));
-					for (j = 0; j < i; j++)
-						freeReplyObject(replies[j]);
-					free(replies);
-					freeReplyObject(reply);
-					return SR_ERROR;
-				}
-			}
-		}
-
-		// free replies
-		for (i = 0; i < reply->elements; i++)
-			freeReplyObject(replies[i]);
-		free(replies);
-
-	} else {
-		// same NOT pipelined
-
-		for (i = 0; i < reply->elements; i++) {
-			reply2 = redisCommand(c,"HGETALL %s", reply->element[i]->str);
-			if (reply2 == NULL || reply2->type != REDIS_REPLY_ARRAY) {
-				printf("ERROR: redis_mng_load_db failed, %d\n", reply2 ? reply2->type : -1);
+			// ACTION, action, SRC_ADDR, src_addr_netmask, DST_ADDR, dst_addr_netmask, PROGRAM_ID, exec, USER_ID, user,
+			// PROTOCOL, proto, SRC_PORT, src_port, DST_PORT, dst_port
+			if (replies[i]->elements != NET_RULE_FIELDS) {
+				printf("ERROR: NET redisGetReply %d length is wrong %d instead of %d\n", i, (int)replies[i]->elements,
+						NET_RULE_FIELDS);
+				for (j = 0; j < i; j++)
+					freeReplyObject(replies[j]);
+				free(replies);
 				freeReplyObject(reply);
-				if (reply2)
-					freeReplyObject(reply2);
-				return SR_ERROR;
+				rc = SR_ERROR;
+				goto out;
 			}
-
-			// check type and call cb func
-			// todo change to new struct without tuples
-			if (strstr(reply->element[i]->str, CAN_PREFIX)) { // can rule
-
-				// ACTION, action, MID, mid, DIRECTION, dir_str, INTERFACE, interface, PROGRAM_ID, exec, USER_ID, user
-				if (reply2->elements != CAN_RULE_FIELDS) {
-					printf("ERROR: CAN redisGetReply %d length is wrong %d instead of %d\n", i, (int)reply2->elements, CAN_RULE_FIELDS);
-					freeReplyObject(reply);
-					freeReplyObject(reply2);
-					return SR_ERROR;
+			if (load_net(atoi(reply->element[i]->str + strlen(NET_PREFIX)), replies[i]->elements, replies[i], cb_func) != SR_SUCCESS) {
+				printf("ERROR: handle NET rule %s failed \n", reply->element[i]->str + strlen(NET_PREFIX));
+				for (j = 0; j < i; j++) {
+					if (replies[j])
+						freeReplyObject(replies[j]);
 				}
-				memset(&can_rule, 0, sizeof(can_rule));
-				can_rule.rulenum = atoi(reply->element[i]->str + strlen(CAN_PREFIX));
-				memcpy(can_rule.action_name, reply2->element[1]->str, strlen(reply2->element[1]->str));
-				can_rule.tuple.id = 1; // todo remove
-				can_rule.tuple.direction = atoi(reply2->element[5]->str);
-				memcpy(can_rule.tuple.interface, reply2->element[7]->str, strlen(reply2->element[7]->str));
-				can_rule.tuple.max_rate = 100; // todo add rl to can rule
-				can_rule.tuple.msg_id = atoi(reply2->element[3]->str);
-				memcpy(can_rule.tuple.program, reply2->element[9]->str, strlen(reply2->element[9]->str));
-				memcpy(can_rule.tuple.user, reply2->element[11]->str, strlen(reply2->element[11]->str));
-
-				cb_func(&can_rule, ENTITY_TYPE_CAN_RULE, &rc);
-				if (rc) {
-					printf("ERROR: cb func failed to add CAN rule %d, ret %d\n", i, rc);
-					freeReplyObject(reply);
-					freeReplyObject(reply2);
-					return SR_ERROR;
-				}
-
-			} else if (strstr(reply->element[i]->str, NET_PREFIX)) { // net rule
-
-				// ACTION, action, SRC_ADDR, src_addr_netmask, DST_ADDR, dst_addr_netmask, PROGRAM_ID, exec, USER_ID, user,
-				// PROTOCOL, proto, SRC_PORT, src_port, DST_PORT, dst_port
-				if (reply2->elements != NET_RULE_FIELDS) {
-					printf("ERROR: NET redisGetReply %d length is wrong %d instead of %d\n", i, (int)reply2->elements, NET_RULE_FIELDS);
-					freeReplyObject(reply);
-					freeReplyObject(reply2);
-					return SR_ERROR;
-				}
-
-				memset(&net_rule, 0, sizeof(net_rule));
-				net_rule.rulenum = atoi(reply->element[i]->str + strlen(NET_PREFIX));
-				memcpy(net_rule.action_name, reply2->element[1]->str, strlen(reply2->element[1]->str));
-				net_rule.tuple.id = 1; // todo remove
-				sscanf(reply2->element[5]->str, "%d.%d.%d.%d/%d", &a1, &a2, &a3, &a4, &len);
-				net_rule.tuple.dstaddr.s_addr = a1 << 24 | a2 << 16 | a3 << 8 | a4;
-				net_rule.tuple.dstnetmasklen = len;
-				sscanf(reply2->element[3]->str, "%d.%d.%d.%d/%d", &a1, &a2, &a3, &a4, &len);
-				net_rule.tuple.srcaddr.s_addr = a1 << 24 | a2 << 16 | a3 << 8 | a4;
-				net_rule.tuple.srcnetmasklen = len;
-				net_rule.tuple.proto = atoi(reply2->element[11]->str);
-				net_rule.tuple.srcport = atoi(reply2->element[13]->str);
-				net_rule.tuple.dstport = atoi(reply2->element[15]->str);
-				net_rule.tuple.max_rate = 100; // todo add rl to can rule
-				memcpy(net_rule.tuple.program, reply2->element[7]->str, strlen(reply2->element[7]->str));
-				memcpy(net_rule.tuple.user, reply2->element[9]->str, strlen(reply2->element[9]->str));
-
-				cb_func(&net_rule, ENTITY_TYPE_IP_RULE, &rc);
-				if (rc) {
-					printf("ERROR: cb func failed to add net rule %d, ret %d\n", i, rc);
-					freeReplyObject(reply);
-					freeReplyObject(reply2);
-					return SR_ERROR;
-				}
-
-			} else if (strstr(reply->element[i]->str, FILE_PREFIX)) { // file rule
-
-				// ACTION, action, FILENAME, file_name, PERMISSION, perms, PROGRAM_ID, exec, USER_ID, user
-				if (reply2->elements != FILE_RULE_FIELDS) {
-					printf("ERROR: FILE redisGetReply %d length is wrong %d instead of %d\n", i, (int)reply2->elements, FILE_RULE_FIELDS);
-					freeReplyObject(reply);
-					freeReplyObject(reply2);
-					return SR_ERROR;
-				}
-				memset(&file_rule, 0, sizeof(file_rule));
-				file_rule.rulenum = atoi(reply->element[i]->str + strlen(FILE_PREFIX));
-				memcpy(file_rule.action_name, reply2->element[1]->str, strlen(reply2->element[1]->str));
-				file_rule.tuple.id = 1; // todo remove
-				memcpy(file_rule.tuple.filename ,reply2->element[3]->str, strlen(reply2->element[3]->str));
-				file_rule.tuple.max_rate = 100; // todo add rl to can rule
-				memcpy(file_rule.tuple.permission, reply2->element[5]->str, strlen(reply2->element[5]->str));
-				memcpy(file_rule.tuple.program, reply2->element[7]->str, strlen(reply2->element[7]->str));
-				memcpy(file_rule.tuple.user, reply2->element[9]->str, strlen(reply2->element[9]->str));
-
-				cb_func(&file_rule, ENTITY_TYPE_FILE_RULE, &rc);
-				if (rc) {
-					printf("ERROR: cb func failed to add file rule %d, ret %d\n", i, rc);
-					freeReplyObject(reply);
-					freeReplyObject(reply2);
-					return SR_ERROR;
-				}
-			} else { // action
-
-				// BITMAP, bm, LOG, log, SMS, sms, EMAIL, mail
-				if (reply2->elements != ACTION_FIELDS) {
-					printf("ERROR: ACTION redisGetReply %d length is wrong %d instead of %d\n", i, (int)reply2->elements, ACTION_FIELDS);
-					freeReplyObject(reply);
-					freeReplyObject(reply2);
-					return SR_ERROR;
-				}
-				action.black_list = 0; // fixme
-				action.terminate = 0; // fixme
-				memcpy(action.action_name, reply->element[i]->str + strlen(ACTION_PREFIX),
-						strlen(reply->element[i]->str) - strlen(ACTION_PREFIX));
-
-				if (strstr(reply2->element[1]->str, "drop"))
-					action.action = ACTION_DROP;
-				else if (strstr(reply2->element[1]->str, "none"))
-					action.action = ACTION_NONE;
-				else if (strstr(reply2->element[1]->str, "allow"))
-					action.action = ACTION_ALLOW;
-				else
-					action.action = ACTION_INVALID;
-
-				if (strstr(reply2->element[3]->str, "file"))
-					action.log_facility = LOG_TO_FILE;
-				else if (strstr(reply2->element[3]->str, "none"))
-					action.log_facility = LOG_NONE;
-				else if (strstr(reply2->element[3]->str, "sys"))
-					action.log_facility = LOG_TO_SYSLOG;
-				else
-					action.log_facility = LOG_INVALID;
-
-				if (strstr(reply2->element[3]->str, "crt"))
-					action.log_severity = LOG_SEVERITY_CRT;
-				else if (strstr(reply2->element[3]->str, "err"))
-					action.log_severity = LOG_SEVERITY_ERR;
-				else if (strstr(reply2->element[3]->str, "warn"))
-					action.log_severity = LOG_SEVERITY_WARN;
-				else if (strstr(reply2->element[3]->str, "info"))
-					action.log_severity = LOG_SEVERITY_INFO;
-				else if (strstr(reply2->element[3]->str, "debug"))
-					action.log_severity = LOG_SEVERITY_DEBUG;
-				else
-					action.log_severity = LOG_SEVERITY_NONE;
-
-				cb_func(&action, ENTITY_TYPE_ACTION, &rc);
-				if (rc) {
-					printf("ERROR: cb func failed to add action %d, ret %d\n", i, rc);
-					freeReplyObject(reply);
-					freeReplyObject(reply2);
-					return SR_ERROR;
-				}
+				free(replies);
+				freeReplyObject(reply);
+				rc = SR_ERROR;
+				goto out;
 			}
+		} else if (!memcmp(reply->element[i]->str, FILE_PREFIX, strlen(FILE_PREFIX))) { // file rule
 
-			freeReplyObject(reply2);
+			// ACTION, action, FILENAME, file_name, PERMISSION, perms, PROGRAM_ID, exec, USER_ID, user
+			if (replies[i]->elements != FILE_RULE_FIELDS) {
+				printf("ERROR: FILE redisGetReply %d length is wrong %d instead of %d\n", i, (int)replies[i]->elements, FILE_RULE_FIELDS);
+				for (j = 0; j < i; j++)
+					freeReplyObject(replies[j]);
+				free(replies);
+				freeReplyObject(reply);
+				rc = SR_ERROR;
+				goto out;
+			}
+			if (load_file(atoi(reply->element[i]->str + strlen(FILE_PREFIX)), replies[i]->elements, replies[i], cb_func) != SR_SUCCESS) {
+				printf("ERROR: handle CAN rule %s failed \n", reply->element[i]->str + strlen(FILE_PREFIX));
+				for (j = 0; j < i; j++)
+					freeReplyObject(replies[j]);
+				free(replies);
+				freeReplyObject(reply);
+				rc = SR_ERROR;
+				goto out;
+			}
 		}
 	}
 
+	// free replies
+	for (i = 0; i < reply->elements; i++)
+		freeReplyObject(replies[i]);
+	free(replies);
+
 	freeReplyObject(reply);
-	return SR_SUCCESS;
+out:
+	cleanup_groups();
+
+	return rc;
 }
 
 SR_32 redis_mng_add_action(redisContext *c, char *name, redis_mng_action_t *action)
@@ -975,6 +1206,7 @@ SR_32 redis_mng_del_action(redisContext *c, char *name)
 	return SR_SUCCESS;
 }
 
+/*
 SR_32 redis_mng_add_list(redisContext *c, list_type_e type, char *name, SR_U32 length, char **values)
 {
 	redisReply *reply;
@@ -994,6 +1226,7 @@ SR_32 redis_mng_add_list(redisContext *c, list_type_e type, char *name, SR_U32 l
 		len += sprintf(cmd + len, " %s", values[i]);
 
 	reply = redisCommand(c,"LPUSH %d%s%s %s", type, LIST_PREFIX, name, cmd);
+	printf(">>>>>>>>>> list cmd:LPUSH %d%s%s %s: reply:%d \n", type, LIST_PREFIX, name, cmd, reply ? reply->integer : -1);
 	free(cmd);
 	if (reply == NULL || reply->type != REDIS_REPLY_INTEGER || reply->integer != 1) {
 		printf("ERROR: redis_mng_add_list failed, type %d, i %d\n", reply ? reply->type : -1, reply ? (int)reply->integer : 0);
@@ -1001,6 +1234,29 @@ SR_32 redis_mng_add_list(redisContext *c, list_type_e type, char *name, SR_U32 l
 		return SR_ERROR;
 	}
 	freeReplyObject(reply);
+	return SR_SUCCESS;
+}
+*/
+SR_32 redis_mng_add_list(redisContext *c, list_type_e type, char *name, SR_U32 length, char **values)
+{
+	redisReply *reply;
+	int i;
+
+	if (length < 1) {
+		printf("ERROR: redis_mng_add_list failed, invalid length %d\n", length);
+		return SR_ERROR;
+	}
+
+	for (i = 0 ; i < length; i++) {
+		reply = redisCommand(c,"LPUSH %d%s%s %s", type, LIST_PREFIX, name, values[i]);
+		if (reply == NULL || reply->type != REDIS_REPLY_INTEGER || reply->integer < 1) {
+			printf("ERROR: redis_mng_add_list failed, type %d, i %d\n", reply ? reply->type : -1, reply ? (int)reply->integer : 0);
+			freeReplyObject(reply);
+			return SR_ERROR;
+		}
+		freeReplyObject(reply);
+	}
+
 	return SR_SUCCESS;
 }
 

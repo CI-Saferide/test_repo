@@ -152,15 +152,13 @@ char *get_ip_proto_name(SR_U8 ip_proto)
 	return proto_name;
 }
 
-SR_8 get_ip_proto_code(char *ip_proto)
+SR_U8 get_ip_proto_code(char *ip_proto)
 {
 	if (!strcmp(ip_proto, "tcp"))
 		return 6;
 	if (!strcmp(ip_proto, "udp"))
 		return 17;
-	if (!strcmp(ip_proto, "any"))
-		return 0;
-	return -1;
+	return 0;
 }
 
 SR_U8 can_dir_convert(SR_U8 dir)

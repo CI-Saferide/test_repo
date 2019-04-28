@@ -15,7 +15,8 @@
 #define MAX_RULE_FIELDS		20
 
 typedef enum redis_mng_list_type {
-	LIST_FILES = 1,
+	LIST_NONE,
+	LIST_FILES,
 	LIST_PROGRAMS,
 	LIST_USERS,
 	LIST_MIDS,
@@ -23,7 +24,8 @@ typedef enum redis_mng_list_type {
 	LIST_ADDRS,
 	LIST_PORTS,
 	LIST_PROTOCOLS,
-	LIST_TYPE_MAX,
+	LIST_TYPE_MAX = LIST_PROTOCOLS,
+	LIST_TYPE_MIN = LIST_FILES,
 } list_type_e;
 
 typedef enum {
@@ -191,6 +193,7 @@ SR_32 redis_mng_print_system_policer(redisContext *c);
 SR_32 redis_mng_exec_all_system_policer(redisContext *c, SR_32 (*cb)(char *exec, redis_system_policer_t *sp));
 SR_32 redis_mng_exec_all_actions(redisContext *c, SR_32 (*cb)(void *action));
 SR_32 redis_mng_exec_all_rules(redisContext *c, rule_type_t type, SR_32 rule_id_start, SR_32 rule_id_end, SR_32 (*cb)(SR_32 rule_num, void *rule));
-
+SR_32 redis_mng_exec_list(redisContext *c, list_type_e type, char *name, SR_32 (*cb)(char *val));
+SR_32 redis_mng_exec_all_list_names(redisContext *c, list_type_e type, SR_32 (*cb)(list_type_e type, char *name));
 
 #endif
