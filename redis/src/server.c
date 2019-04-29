@@ -4226,12 +4226,16 @@ int main(int argc, char **argv) {
      * "hash-max-ziplist-value 64" */
 
     // back-ups:
+#if 0
     /* after 900 sec (15 min) if at least 1 key changed
      * after 300 sec (5 min) if at least 10 keys changed
      * after 60 sec if at least 10000 keys changed */
     appendServerSaveParams(900, 1);
     appendServerSaveParams(300, 10);
     appendServerSaveParams(60, 1000);
+#endif
+    // no scheduled saving (on background) when database change, only when commit is called
+    resetServerSaveParams();
     server.stop_writes_on_bgsave_err = 1;
     server.rdb_compression = 1;
     server.rdb_encrypt = 1;
@@ -4263,11 +4267,13 @@ int main(int argc, char **argv) {
 #endif
 
     // connection:
+#ifndef DEBUG
     // removed TCP, should connect only through Unix socket
-    //server.port = 6379;
-    //server.tcp_backlog = 511;
-    //server.bindaddr = NULL;
-    //server.bindaddr_count = 0;
+    server.port = 0;
+    server.tcp_backlog = 0;
+    server.bindaddr = NULL;
+    server.bindaddr_count = 0;
+#endif
     zfree(server.unixsocket);
     server.unixsocket = zstrdup("/dev/redis.sock");
     server.unixsocketperm = 448/*(mode_t)strtol("700", NULL, 8)*/;

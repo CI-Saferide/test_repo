@@ -1951,8 +1951,20 @@ SR_32 redis_mng_exec_all_system_policer(redisContext *c, SR_32 (*cb)(char *exec,
 
 SR_32 redis_mng_commit(redisContext *c)
 {
-	if (rename(REDIS_SERVER_RUNNING_FILENAME, REDIS_SERVER_STARTUP_FILENAME) == -1) {
-		printf("Error: failed to commit, rename return %s", strerror(errno));
+	/* synchronous save of the dataset:
+	 * producing a point in time snapshot of all the data inside the Redis instance, in the form of an RDB file.
+	 * it will block all the other clients
+	 */
+	redisReply *reply = redisCommand(c,"SAVE");
+	if (reply == NULL || reply->type != REDIS_REPLY_STATUS || strcmp(reply->str, "OK")) {
+		printf("ERROR: redis_mng_commit failed, %d, %s\n", reply ? reply->type : -1, reply ? reply->str : "NULL");
+		freeReplyObject(reply);
+		return SR_ERROR;
+	}
+	freeReplyObject(reply);
+
+	if (rename(REDIS_SERVER_RUNNING_FILENAME, REDIS_SERVER_STARTUP_FILENAME)) {
+		printf("ERROR: redis_mng_commit failed to rename, %s", strerror(errno));
 		return SR_ERROR;
 	}
 	return SR_SUCCESS;
