@@ -83,6 +83,7 @@
 #define GROUP_NAME_LEN 32
 #define PROTO_MAX 8
 #define PROTO_NAME_MAX 32
+#define INF_MAX 8
 
 static int redis_changes;
 
@@ -107,9 +108,24 @@ typedef struct {
 } net_rule_cb_params_t;
 
 typedef struct {
+	SR_U16  rulenum;
+	//handle_rule_f_t cb;
+	void (*cb)(void *data, redis_entity_type_t type, SR_32 *status);
+	sr_can_item_type_t can_item_type;
+	char inf[INTERFACE_LEN];
+	char dir[8];
+	SR_32 *rc;
+} can_rule_cb_params_t;
+
+typedef struct {
 	SR_32 num_of_protos;
 	char protocols[PROTO_MAX][PROTO_NAME_MAX];
 } handle_proto_group_cb_params_t;
+
+typedef struct {
+	SR_32 num_of_interfaces;
+	char interfaces[INF_MAX][INTERFACE_LEN];
+} handle_inf_group_cb_params_t;
 
 static group_db_group_t *group_db[LIST_TYPE_MAX + 1];
 
@@ -549,13 +565,131 @@ static char *get_group_name(char *field)
 	return NULL;
 }
 
-static SR_32 load_can(SR_32 rule_id, SR_32 n, redisReply *reply, handle_rule_f_t cb)
+static list_type_e get_list_id(char *field)
+{
+	char list_id[8] = {}, i;
+	int id;
+	
+	if (!field) return LIST_NONE;
+
+	for (i = 1; i < strlen(field) - strlen(LIST_PREFIX); i++) {
+		if (!memcmp(field + i, LIST_PREFIX, strlen(LIST_PREFIX))) {
+			memcpy(list_id, field, i);
+			break;
+		}
+	}
+	
+	if (!*list_id) return LIST_NONE;
+	id = atoi(list_id);
+
+	return id < LIST_TYPE_MAX + 1 ? id : LIST_NONE;
+} 
+
+static SR_32 load_can_cb(char *item, void *param)
+{
+	can_rule_cb_params_t *can_rule_params = (can_rule_cb_params_t *)param;
+	sr_can_record_t can_rule = {};
+
+
+	can_rule.rulenum = can_rule_params->rulenum;
+	can_rule.can_item.can_item_type = can_rule_params->can_item_type;
+	switch (can_rule_params->can_item_type) {
+		case CAN_ITEM_MSG:
+			can_rule.can_item.u.msg.id = strtol(item, NULL, 16);
+			strncpy(can_rule.can_item.u.msg.dir, can_rule_params->dir, sizeof(can_rule.can_item.u.msg.dir));
+			strncpy(can_rule.can_item.u.msg.inf, can_rule_params->inf, sizeof(can_rule.can_item.u.msg.inf));
+			break;
+		case CAN_ITEM_PROGRAM:
+			strncpy(can_rule.can_item.u.program, item, MAX_PATH);
+			break;
+		case CAN_ITEM_USER:
+			strncpy(can_rule.can_item.u.program, item, MAX_USER_NAME);
+			break;
+		default:
+			printf("ERROR load_can_cb invalid item type:%d \n", can_rule_params->can_item_type);
+			return SR_ERROR;
+	}
+	can_rule_params->cb(&can_rule, ENTITY_TYPE_CAN_RULE, can_rule_params->rc);
+#ifdef DEBUG
+	printf("-------------ZZZZZZZZZZZZZZZZZZZZZZZZZZz in load_can_cb rule:%d type:%d item:%s dir:%s: inf:%s:  rc:%d \n",
+			can_rule.rulenum, can_rule_params->can_item_type, item, can_rule.can_item.u.msg.dir, can_rule.can_item.u.msg.inf, *(can_rule_params->rc));
+			
+#endif
+
+	return SR_SUCCESS;
+}
+
+static SR_32 handle_list_can(SR_32 rule_id, sr_can_item_type_t type, handle_rule_f_t cb, SR_32 list_id, char *group, char *inf, char *dir)
 {
 	SR_32 rc = SR_SUCCESS;
+	can_rule_cb_params_t params;
+
+	params.rulenum = rule_id;
+	params.cb = cb;
+	params.can_item_type = type;
+	if (inf)
+		strncpy(params.inf, inf, sizeof(params.inf));
+	if (dir)
+		strncpy(params.dir, dir, sizeof(params.dir));
+	params.rc = &rc;
+	exec_for_all_group(list_id, group, load_can_cb, &params);
+
+	if (rc != SR_SUCCESS) {
+		printf("ERROR: handle_list_net field for list:%d group:%s\n", list_id, group);
+	}
+
+	return rc;
+}
+
+static SR_32 handle_inf_group_cb(char *item, void *param)
+{
+	handle_inf_group_cb_params_t *cb_params = (handle_inf_group_cb_params_t *)param;
+
+	strncpy(cb_params->interfaces[cb_params->num_of_interfaces], item, INTERFACE_LEN);
+	++(cb_params->num_of_interfaces);
+
+	return SR_SUCCESS;
+}
+
+static SR_32 handle_can_ids(SR_U16 rule_id, char *mid, char *dir, char *inf, handle_rule_f_t cb)
+{
+	SR_32 list_id, i, rc;
+	handle_inf_group_cb_params_t inf_params = {};
+	sr_can_record_t can_rule = {};
+
+	can_rule.rulenum = rule_id;
+	can_rule.can_item.can_item_type = CAN_ITEM_MSG;
+
+	list_id = get_list_id(inf);
+	if (list_id == LIST_NONE) {
+		inf_params.num_of_interfaces = 1;
+		strncpy(inf_params.interfaces[0], inf, INTERFACE_LEN);
+	} else {
+		exec_for_all_group(list_id, get_group_name(inf), handle_inf_group_cb, &inf_params);
+	}
+	
+	for (i = 0; i < inf_params.num_of_interfaces; i++) {
+		list_id = get_list_id(mid);
+		if (list_id == LIST_NONE) {
+			can_rule.can_item.u.msg.id = strtol(mid, NULL, 16);
+			strncpy(can_rule.can_item.u.msg.dir, dir, DIR_LEN);
+			strncpy(can_rule.can_item.u.msg.inf, inf_params.interfaces[i], INTERFACE_LEN);
+			cb(&can_rule, ENTITY_TYPE_CAN_RULE, &rc);
+			if (rc != SR_SUCCESS) return rc;
+		} else {
+			if ((rc = handle_list_can(rule_id, CAN_ITEM_MSG, cb, list_id, get_group_name(mid), inf_params.interfaces[i], dir)) != SR_SUCCESS)
+				return rc;
+		}
+	}
+
+	return SR_SUCCESS;
+}
+
+static SR_32 load_can(SR_32 rule_id, SR_32 n, redisReply *reply, handle_rule_f_t cb)
+{
+	SR_32 rc = SR_SUCCESS, list_id;
 	sr_can_record_t can_rule = {};
 	char *field;
-
-	// XXXX Should handle groups 
 
 	can_rule.rulenum = rule_id;
 
@@ -565,27 +699,32 @@ static SR_32 load_can(SR_32 rule_id, SR_32 n, redisReply *reply, handle_rule_f_t
 	cb(&can_rule, ENTITY_TYPE_CAN_RULE, &rc);
 	if (rc != SR_SUCCESS) return rc;
 
-	field = get_field(MID, n, reply);
-	can_rule.can_item.can_item_type = CAN_ITEM_MSG;
-	can_rule.can_item.u.msg.id = strtol(field, NULL, 16);
-	field = get_field(DIRECTION, n, reply);
-	strncpy(can_rule.can_item.u.msg.dir, field, DIR_LEN);
-	field = get_field(INTERFACE, n, reply);
-	strncpy(can_rule.can_item.u.msg.inf, field, INTERFACE_LEN);
-	cb(&can_rule, ENTITY_TYPE_CAN_RULE, &rc);
-	if (rc != SR_SUCCESS) return rc;
+	if ((rc = handle_can_ids(rule_id, get_field(MID, n, reply), get_field(DIRECTION, n, reply), get_field(INTERFACE, n, reply), cb)) != SR_SUCCESS) 
+		return rc;
 
 	field = get_field(PROGRAM_ID, n, reply);
-	can_rule.can_item.can_item_type = CAN_ITEM_PROGRAM;
-	strncpy(can_rule.can_item.u.program, field, MAX_PATH);
-	cb(&can_rule, ENTITY_TYPE_CAN_RULE, &rc);
-	if (rc != SR_SUCCESS) return rc;
+	list_id = get_list_id(field);
+	if (list_id == LIST_NONE) {
+		can_rule.can_item.can_item_type = CAN_ITEM_PROGRAM;
+		strncpy(can_rule.can_item.u.program, field, MAX_PATH);
+		cb(&can_rule, ENTITY_TYPE_CAN_RULE, &rc);
+		if (rc != SR_SUCCESS) return rc;
+	} else {
+		if ((rc = handle_list_can(rule_id, CAN_ITEM_PROGRAM, cb, list_id, field, NULL, NULL)) != SR_SUCCESS)
+			return rc;
+	}
 
 	field = get_field(USER_ID, n, reply);
-	can_rule.can_item.can_item_type = CAN_ITEM_USER;
-	strncpy(can_rule.can_item.u.user, field, MAX_USER_NAME);
-	cb(&can_rule, ENTITY_TYPE_CAN_RULE, &rc);
-	if (rc != SR_SUCCESS) return rc;
+	list_id = get_list_id(field);
+	if (list_id == LIST_NONE) {
+		can_rule.can_item.can_item_type = CAN_ITEM_USER;
+		strncpy(can_rule.can_item.u.user, field, MAX_USER_NAME);
+		cb(&can_rule, ENTITY_TYPE_CAN_RULE, &rc);
+		if (rc != SR_SUCCESS) return rc;
+	} else {
+		if ((rc = handle_list_can(rule_id, CAN_ITEM_USER, cb, list_id, field, NULL, NULL)) != SR_SUCCESS)
+			return rc;
+	}
 
 	return rc;
 }
@@ -632,26 +771,6 @@ static SR_32 load_file(SR_32 rule_id, SR_32 n, redisReply *reply, handle_rule_f_
 
 	return rc;
 }
-
-static list_type_e get_list_id(char *field)
-{
-	char list_id[8] = {}, i;
-	int id;
-	
-	if (!field) return LIST_NONE;
-
-	for (i = 1; i < strlen(field) - strlen(LIST_PREFIX); i++) {
-		if (!memcmp(field + i, LIST_PREFIX, strlen(LIST_PREFIX))) {
-			memcpy(list_id, field, i);
-			break;
-		}
-	}
-	
-	if (!*list_id) return LIST_NONE;
-	id = atoi(list_id);
-
-	return id < LIST_TYPE_MAX + 1 ? id : LIST_NONE;
-} 
 
 static SR_32 load_net_cb(char *item, void *param)
 {
@@ -830,6 +949,7 @@ static SR_32 load_net(SR_32 rule_id, SR_32 n, redisReply *reply, handle_rule_f_t
 	field = get_field(DST_PORT, n, reply);
 	list_id = get_list_id(field);
 	if (list_id == LIST_NONE) {
+		// XXXAAA hanle llist of protos !!
 		net_rule.net_item.net_item_type = NET_ITEM_DST_PORT;
 		net_rule.net_item.u.dst_port.proto = proto;
 		net_rule.net_item.u.dst_port.port = atoi(field);
@@ -998,6 +1118,7 @@ static void cleanup_groups()
 			group_iter = group_iter->next;
 			free(del_group);
 		}
+		group_db[type] = NULL;
 	}
 }
 
