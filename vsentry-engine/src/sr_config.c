@@ -1209,7 +1209,7 @@ out:
 #ifdef BIN_CLS_DB
 static SR_32 create_program_rule(char *program, SR_U16 rule_num, SR_U32 type) 
 {  
-        SR_U32 exec_ino = INODE_ANY;
+        unsigned long exec_ino = INODE_ANY;
         SR_32 ret;
 
 	if (*(program)) {
@@ -1221,7 +1221,7 @@ static SR_32 create_program_rule(char *program, SR_U16 rule_num, SR_U32 type)
     		}
 	}
 
-	ret = cls_prog_rule(true, type, rule_num, exec_ino);
+	ret = cls_prog_rule(true, type, rule_num, exec_ino, program);
 	if (ret != SR_SUCCESS) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 			"%s=failed to add exec_ino %u for ip rule %d",REASON,
