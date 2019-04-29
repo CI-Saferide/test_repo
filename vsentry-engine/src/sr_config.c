@@ -1285,10 +1285,13 @@ static void handle_can_rule(sr_can_record_t *can_rule, SR_32 *status)
 					return;
 				}
 			}
+#if DEBUG
+			printf("   >>>>>>>>>CCCCCCCCCCCCCCCCCAAN rule createdu rule:%d mid:%x dir:%s if:%s  \n",
+				can_rule->rulenum, can_rule->can_item.u.msg.id, can_rule->can_item.u.msg.dir, can_rule->can_item.u.msg.inf);
+#endif
 #endif
 			break;
 		case CAN_ITEM_PROGRAM:
-			printf("   >>>>>>>>> PROGRAM :%s \n", can_rule->can_item.u.program); 
 #ifdef BIN_CLS_DB
 			/* create the exec rule */
 			if (create_program_rule(can_rule->can_item.u.program, can_rule->rulenum, CLS_CAN_RULE_TYPE) != SR_SUCCESS) {
