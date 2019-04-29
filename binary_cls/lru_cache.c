@@ -7,16 +7,15 @@
 #include "aux.h"
 
 #ifdef CACHE_UNIT_TEST
-#define LRU_CACHE_MAX_ENTRIES		10 /*16*/
+#define LRU_CACHE_MAX_ENTRIES		10
 #else
-#define LRU_CACHE_MAX_ENTRIES		10240 /*16384*/
+#define LRU_CACHE_MAX_ENTRIES		10240
 #endif
 #define LRU_CACHE_HASH_NUM_OF_BITS	10
 #define LRU_CACHE_HASH_SIZE		(1 << LRU_CACHE_HASH_NUM_OF_BITS)
 #define LRU_CACHE_TOTAL_SIZE		((LRU_CACHE_MAX_ENTRIES * sizeof(node_t)) + sizeof(cls_lru_cache_t))
 
 //#define CACHE_DEBUG
-
 #ifdef CACHE_DEBUG
 #include "classifier.h"
 #define cache_dbg cls_dbg
@@ -24,15 +23,6 @@
 #else
 #define cache_dbg(...)
 #define cache_err(...)
-#endif
-
-#if 0
-#define MAX_ENTRIES 	4096
-
-typedef struct __attribute__((packed, aligned(8))) {
-	unsigned int summary; /* 32 bits, each bit represent todo remove or change to unsigned char (4 bits) ? */
-	bit_array_t	 level2[4];
-} bit_array_16k_mgmt_t;
 #endif
 
 // Free list Node (single linked list)
@@ -56,6 +46,7 @@ typedef struct node
 
 typedef struct {
 	unsigned int free_head_offset;					// Free list for internal memory management
+	unsigned int free_last_offset;					// Last free offset (used in case free list is empty)
 	unsigned int head_offset;						// head_offset of the queue to maintain LRU
 	unsigned int tail_offset;						// tail_offset of the queue to maintain LRU
 	unsigned int hash_offset[LRU_CACHE_HASH_SIZE];	// A hash offset (array) of nodes for search
@@ -82,32 +73,28 @@ static void *cache_get_pointer(unsigned int offset)
 	return (((unsigned char*)cache) + offset - 1);
 }
 
+/* Avoid the big up-front work of going one-by-one and initializing the free list:
+ * Store the offset of the last free node.
+ * To allocate, move this pointer one node back.
+ * Free doesn't change - add the node to the free list.
+*/
 void cache_clear(void)
 {
-	int i;
-	free_node_t *free_node;
-	free_node_t *next = NULL;
+	node_t *ptr;
 
 	vs_spin_lock(&cache_lock);
 
 	vs_memset(cache, 0 , sizeof(cls_lru_cache_t));
 
-	/* initialize the free list */
-	// todo replace this with fast reset
-	for (i = 0; i < LRU_CACHE_MAX_ENTRIES; i++) {
-		// the free nodes are used to hold the list od frees (so no extra space is required for its management)
-		// each free node is the size of node_t, since it will be used as a node_t
-		free_node = (free_node_t *)((((unsigned char *)cache) + sizeof(cls_lru_cache_t) + (i * sizeof(node_t))));
-		free_node->next_free_offset = cache_get_offset(next);
-		next = free_node; // for next time
-	}
-	cache->free_head_offset = cache_get_offset(next);
+	/* initialize only free last offset */
+	ptr = (node_t *)(((unsigned char *)cache) + LRU_CACHE_TOTAL_SIZE);
+	cache->free_last_offset = cache_get_offset(ptr - 1);
 
 	vs_spin_unlock(&cache_lock);
 
-	cache_dbg("*** DBG *** cache (with %d entries) total size = %d (%d), mng is %d, node size = %d\n",
-			LRU_CACHE_MAX_ENTRIES, sizeof(cls_lru_cache_t) + (i * sizeof(node_t)), LRU_CACHE_TOTAL_SIZE,
-			sizeof(cls_lru_cache_t), sizeof(node_t));
+	cache_dbg("*** DBG *** cache (with %d entries) total size = %d, mng is %d, node size = %d, cache %p, last free %p (%d)\n",
+			LRU_CACHE_MAX_ENTRIES, LRU_CACHE_TOTAL_SIZE, sizeof(cls_lru_cache_t), sizeof(node_t), cache,
+			cache_get_pointer(cache->free_last_offset), cache->free_last_offset);
 }
 
 int cache_init(unsigned int *cache_offset)
@@ -135,9 +122,22 @@ int cache_init(unsigned int *cache_offset)
 
 // always allocate a node_t so size parameter is not needed
 static void *cache_malloc(void) {
-	free_node_t *ptr = cache_get_pointer(cache->free_head_offset);
-	cache->free_head_offset = ptr ? ptr->next_free_offset : 0;
-	return ptr;
+	free_node_t *ptr1;
+	node_t *ptr2;
+
+	// check if we have something in free list, else use the last block
+	if (cache->free_head_offset) {
+//		cache_dbg("*** DBG *** free_head_offset = %d\n",cache->free_head_offset);
+		ptr1 = cache_get_pointer(cache->free_head_offset);
+		cache->free_head_offset = ptr1->next_free_offset;
+		return ptr1;
+	}
+//	cache_dbg("*** DBG *** free_last_offset = %d\n",cache->free_last_offset);
+	ptr2 = cache_get_pointer(cache->free_last_offset);
+	cache->free_last_offset = cache_get_offset(ptr2 - 1);
+	/* malloc cannot fail becasue we already checked the size, so if we just used the last free offset,
+	 * new free_last_offset is invalid, but from next time only free_head_offset will used */
+	return ptr2;
 }
 
 static void cache_free(node_t *ptr) {
@@ -360,3 +360,4 @@ unsigned int cache_lookup(unsigned long key)
 
 	return ret;
 }
+
