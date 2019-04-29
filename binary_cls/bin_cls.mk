@@ -2,16 +2,6 @@ ifndef TOP_DIR
 TOP_DIR 	:= $(shell pwd)
 endif
 
-ifdef CROSS_COMPILE
-CC			:= $(CROSS_COMPILE)gcc
-OBJCOPY 	:= $(CROSS_COMPILE)objcopy
-AR 			:= $(CROSS_COMPILE)ar
-else
-CC 			:= gcc
-OBJCOPY 	:= objcopy
-AR 			:= ar
-endif
-
 BUILD_DIR 	:= $(TOP_DIR)/build
 OBJDIR 		:= $(BUILD_DIR)/clsbin/objs
 BINDIR 		:= $(BUILD_DIR)/bin
@@ -59,11 +49,10 @@ CFLAGS 		+= -Wall -Wundef -Wstrict-prototypes -Wno-trigraphs
 CFLAGS 		+= -fno-strict-aliasing -fno-common -Werror-implicit-function-declaration
 CFLAGS 		+= -Wno-format-security -std=gnu89 -fno-delete-null-pointer-checks
 CFLAGS 		+= -Wframe-larger-than=1024 -fno-stack-protector
-CFLAGS 		+= -Wno-unused-but-set-variable -Wno-unused-const-variable
+CFLAGS 		+= -Wno-unused-but-set-variable
 CFLAGS 		+= -Wno-pointer-sign -Werror=implicit-int -Wdeclaration-after-statement
 CFLAGS 		+= -fno-strict-overflow -fconserve-stack -fno-var-tracking-assignments
 CFLAGS 		+= -fno-asynchronous-unwind-tables -fno-stack-check -fshort-wchar
-CFLAGS 		+= -Werror=incompatible-pointer-types
 
 # additional common cflags if debug is enabled
 ifeq ($(DEBUG),1)
@@ -82,7 +71,7 @@ ARM_ARCH 	= $(shell $(CC) -dM -E -< /dev/null | grep "__ARM_ARCH " | awk {'print
 ifeq ($(ARM_ARCH),7)
 # ARMv7 (32 bit) additional common cflags. in this case the flags
 # are the same for binary classifier and unitests programs
-CFLAGS 		+= -marm
+CFLAGS 		+= -marm -mfloat-abi=soft
 LDFLAGS 	+= -Wl,-no-wchar-size-warning
 endif
 

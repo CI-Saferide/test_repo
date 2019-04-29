@@ -2,16 +2,6 @@ ifndef TOP_DIR
 TOP_DIR 	:= $(shell pwd)
 endif
 
-ifdef CROSS_COMPILE
-CC			:= $(CROSS_COMPILE)gcc
-OBJCOPY 	:= $(CROSS_COMPILE)objcopy
-AR 			:= $(CROSS_COMPILE)ar
-else
-CC 			:= gcc
-OBJCOPY 	:= objcopy
-AR 			:= ar
-endif
-
 BUILD_DIR 	:= $(TOP_DIR)/build
 OBJDIR 		:= $(BUILD_DIR)/cls/objs
 BINDIR 		:= $(BUILD_DIR)/bin
@@ -63,11 +53,10 @@ CFLAGS 		+= -Wall -Wundef -Wstrict-prototypes -Wno-trigraphs
 CFLAGS 		+= -fno-strict-aliasing -fno-common -Werror-implicit-function-declaration
 CFLAGS 		+= -Wno-format-security -std=gnu89 -fno-delete-null-pointer-checks
 CFLAGS 		+= -fno-stack-protector
-CFLAGS 		+= -Wno-unused-but-set-variable -Wno-unused-const-variable
+CFLAGS 		+= -Wno-unused-but-set-variable
 CFLAGS 		+= -Wno-pointer-sign -Werror=implicit-int -Wdeclaration-after-statement
 CFLAGS 		+= -fno-strict-overflow -fconserve-stack -fno-var-tracking-assignments
 CFLAGS 		+= -fno-asynchronous-unwind-tables -fno-stack-check -fshort-wchar
-CFLAGS 		+= -Werror=incompatible-pointer-types
 
 # additional common cflags if debug is enabled
 ifeq ($(DEBUG),1)
