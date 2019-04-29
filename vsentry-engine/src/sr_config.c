@@ -1301,7 +1301,6 @@ static void handle_can_rule(sr_can_record_t *can_rule, SR_32 *status)
 #endif
 			break;
 		case CAN_ITEM_USER:
-			printf("   >>>>>>>>> USER :%s \n", can_rule->can_item.u.user); 
 #ifdef BIN_CLS_DB
         		/* create the uid rule */
 			if (create_user_rule(can_rule->can_item.u.user, can_rule->rulenum, CLS_CAN_RULE_TYPE) != SR_SUCCESS) { 
@@ -1336,6 +1335,8 @@ static void handle_file_rule(sr_file_record_t *file_rule, SR_32 *status)
 		default:
 			break;
 	}
+
+	*status = SR_SUCCESS;
 }
 
 SR_32 sr_config_handle_action(void *data) 

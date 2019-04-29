@@ -118,6 +118,14 @@ typedef struct {
 } can_rule_cb_params_t;
 
 typedef struct {
+	SR_U16  rulenum;
+	//handle_rule_f_t cb;
+	void (*cb)(void *data, redis_entity_type_t type, SR_32 *status);
+	sr_file_item_type_t file_item_type;
+	SR_32 *rc;
+} file_rule_cb_params_t;
+
+typedef struct {
 	SR_32 num_of_protos;
 	char protocols[PROTO_MAX][PROTO_NAME_MAX];
 } handle_proto_group_cb_params_t;
@@ -600,10 +608,10 @@ static SR_32 load_can_cb(char *item, void *param)
 			strncpy(can_rule.can_item.u.msg.inf, can_rule_params->inf, sizeof(can_rule.can_item.u.msg.inf));
 			break;
 		case CAN_ITEM_PROGRAM:
-			strncpy(can_rule.can_item.u.program, item, MAX_PATH);
+			strncpy(can_rule.can_item.u.program, item, sizeof(can_rule.can_item.u.program));
 			break;
 		case CAN_ITEM_USER:
-			strncpy(can_rule.can_item.u.program, item, MAX_USER_NAME);
+			strncpy(can_rule.can_item.u.user, item, sizeof(can_rule.can_item.u.user));
 			break;
 		default:
 			printf("ERROR load_can_cb invalid item type:%d \n", can_rule_params->can_item_type);
@@ -632,7 +640,7 @@ static SR_32 handle_list_can(SR_32 rule_id, sr_can_item_type_t type, handle_rule
 	if (dir)
 		strncpy(params.dir, dir, sizeof(params.dir));
 	params.rc = &rc;
-	exec_for_all_group(list_id, group, load_can_cb, &params);
+	exec_for_all_group(list_id, get_group_name(group), load_can_cb, &params);
 
 	if (rc != SR_SUCCESS) {
 		printf("ERROR: handle_list_net field for list:%d group:%s\n", list_id, group);
@@ -677,7 +685,7 @@ static SR_32 handle_can_ids(SR_U16 rule_id, char *mid, char *dir, char *inf, han
 			cb(&can_rule, ENTITY_TYPE_CAN_RULE, &rc);
 			if (rc != SR_SUCCESS) return rc;
 		} else {
-			if ((rc = handle_list_can(rule_id, CAN_ITEM_MSG, cb, list_id, get_group_name(mid), inf_params.interfaces[i], dir)) != SR_SUCCESS)
+			if ((rc = handle_list_can(rule_id, CAN_ITEM_MSG, cb, list_id, mid, inf_params.interfaces[i], dir)) != SR_SUCCESS)
 				return rc;
 		}
 	}
@@ -729,13 +737,61 @@ static SR_32 load_can(SR_32 rule_id, SR_32 n, redisReply *reply, handle_rule_f_t
 	return rc;
 }
 
-static SR_32 load_file(SR_32 rule_id, SR_32 n, redisReply *reply, handle_rule_f_t cb)
+static SR_32 load_file_cb(char *item, void *param)
+{
+	file_rule_cb_params_t *file_rule_params = (file_rule_cb_params_t *)param;
+	sr_file_record_t file_rule = {};
+
+	file_rule.rulenum = file_rule_params->rulenum;
+	file_rule.file_item.file_item_type = file_rule_params->file_item_type;
+	switch (file_rule_params->file_item_type) {
+		case FILE_ITEM_FILENAME:
+			strncpy(file_rule.file_item.u.filename, item, sizeof(file_rule.file_item.u.filename));
+			break;
+		case FILE_ITEM_PROGRAM:
+			strncpy(file_rule.file_item.u.program, item, sizeof(file_rule.file_item.u.program));
+			break;
+		case FILE_ITEM_USER:
+			strncpy(file_rule.file_item.u.user, item, sizeof(file_rule.file_item.u.user));
+			break;
+		default:
+			printf("ERROR load_file_cb invalid item type:%d \n", file_rule_params->file_item_type);
+			return SR_ERROR;
+	}
+	file_rule_params->cb(&file_rule, ENTITY_TYPE_FILE_RULE, file_rule_params->rc);
+#ifdef DEBUG
+	printf("-------------ZZZZZZZZZZZZZZZZZZZZZZZZZZz in load_file_cb rule:%d type:%d item:%s rc:%d \n",
+			file_rule.rulenum, file_rule_params->file_item_type, item, *(file_rule_params->rc));
+			
+#endif
+
+	return *(file_rule_params->rc);
+}
+
+
+static SR_32 handle_list_file(SR_32 rule_id, sr_file_item_type_t type, handle_rule_f_t cb, SR_32 list_id, char *group)
 {
 	SR_32 rc = SR_SUCCESS;
+	file_rule_cb_params_t params;
+
+	params.rulenum = rule_id;
+	params.cb = cb;
+	params.file_item_type = type;
+	params.rc = &rc;
+	exec_for_all_group(list_id, get_group_name(group), load_file_cb, &params);
+
+	if (rc != SR_SUCCESS) {
+		printf("ERROR: handle_list_net field for list:%d group:%s\n", list_id, group);
+	}
+
+	return rc;
+}
+
+static SR_32 load_file(SR_32 rule_id, SR_32 n, redisReply *reply, handle_rule_f_t cb)
+{
+	SR_32 rc = SR_SUCCESS, list_id;
 	sr_file_record_t file_rule = {};
 	char *field;
-
-	// XXXX Should handle groups 
 
 	file_rule.rulenum = rule_id;
 
@@ -746,10 +802,16 @@ static SR_32 load_file(SR_32 rule_id, SR_32 n, redisReply *reply, handle_rule_f_
 	if (rc != SR_SUCCESS) return rc;
 
 	field = get_field(FILENAME, n, reply);
-	file_rule.file_item.file_item_type = FILE_ITEM_FILENAME;
-	strncpy(file_rule.file_item.u.filename, field, MAX_PATH);
-	cb(&file_rule, ENTITY_TYPE_FILE_RULE, &rc);
-	if (rc != SR_SUCCESS) return rc;
+	list_id = get_list_id(field);
+	if (list_id == LIST_NONE) {
+		file_rule.file_item.file_item_type = FILE_ITEM_FILENAME;
+		strncpy(file_rule.file_item.u.filename, field, MAX_PATH);
+		cb(&file_rule, ENTITY_TYPE_FILE_RULE, &rc);
+		if (rc != SR_SUCCESS) return rc;
+	} else {
+		if ((rc = handle_list_file(rule_id, FILE_ITEM_FILENAME, cb, list_id, field)) != SR_SUCCESS)
+			return rc;
+	}
 
 	field = get_field(PERMISSION, n, reply);
 	file_rule.file_item.file_item_type = FILE_ITEM_PERM;
@@ -758,16 +820,28 @@ static SR_32 load_file(SR_32 rule_id, SR_32 n, redisReply *reply, handle_rule_f_
 	if (rc != SR_SUCCESS) return rc;
 
 	field = get_field(PROGRAM_ID, n, reply);
-	file_rule.file_item.file_item_type = FILE_ITEM_PROGRAM;
-	strncpy(file_rule.file_item.u.program, field, MAX_PATH);
-	cb(&file_rule, ENTITY_TYPE_FILE_RULE, &rc);
-	if (rc != SR_SUCCESS) return rc;
+	list_id = get_list_id(field);
+	if (list_id == LIST_NONE) {
+		file_rule.file_item.file_item_type = FILE_ITEM_PROGRAM;
+		strncpy(file_rule.file_item.u.program, field, MAX_PATH);
+		cb(&file_rule, ENTITY_TYPE_FILE_RULE, &rc);
+		if (rc != SR_SUCCESS) return rc;
+	} else {
+		if ((rc = handle_list_file(rule_id, FILE_ITEM_PROGRAM, cb, list_id, field)) != SR_SUCCESS)
+			return rc;
+	}
 
 	field = get_field(USER_ID, n, reply);
-	file_rule.file_item.file_item_type = FILE_ITEM_USER;
-	strncpy(file_rule.file_item.u.user, field, MAX_USER_NAME);
-	cb(&file_rule, ENTITY_TYPE_FILE_RULE, &rc);
-	if (rc != SR_SUCCESS) return rc;
+	list_id = get_list_id(field);
+	if (list_id == LIST_NONE) {
+		file_rule.file_item.file_item_type = FILE_ITEM_USER;
+		strncpy(file_rule.file_item.u.user, field, MAX_USER_NAME);
+		cb(&file_rule, ENTITY_TYPE_FILE_RULE, &rc);
+		if (rc != SR_SUCCESS) return rc;
+	} else {
+		if ((rc = handle_list_file(rule_id, FILE_ITEM_USER, cb, list_id, field)) != SR_SUCCESS)
+			return rc;
+	}
 
 	return rc;
 }
