@@ -1024,7 +1024,7 @@ SR_32 sr_create_filter_paths(void)
 	return SR_SUCCESS;
 }
 
-#if 0
+#ifdef BIN_CLS_DB
 static SR_32 parse_addr(char *addr_str, SR_U32 *addr, SR_U32 *netmask)
 {
 	char *p, *tmp = NULL;
