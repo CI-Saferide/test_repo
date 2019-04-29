@@ -2,61 +2,103 @@ ifndef TOP_DIR
 TOP_DIR 	:= $(shell pwd)
 endif
 
+ifdef CROSS_COMPILE
+CC			:= $(CROSS_COMPILE)gcc
+OBJCOPY 	:= $(CROSS_COMPILE)objcopy
+AR 			:= $(CROSS_COMPILE)ar
+else
+CC 			:= gcc
+OBJCOPY 	:= objcopy
+AR 			:= ar
+endif
+
 BUILD_DIR 	:= $(TOP_DIR)/build
 OBJDIR 		:= $(BUILD_DIR)/clsbin/objs
 BINDIR 		:= $(BUILD_DIR)/bin
 LIBDIR 		:= $(BUILD_DIR)/lib
 
-TARGET 		:= $(BINDIR)/vsentry_classifier
+TARGET	 	:= $(BINDIR)/cls.bin
 OBJS 		:= $(addprefix $(OBJDIR)/,$(SRCS:.c=.o))
 VPATH 		:= $(TOP_DIR)/classifier
-INCLUDES 	:= -I/usr/include/linux/vsentry
-
-CFLAGS 		+= -MMD -O2 -ffreestanding -fpie
-CFLAGS 		+= -Wall -Wundef -Wstrict-prototypes -Wno-trigraphs
-CFLAGS 		+= -fno-strict-aliasing -fno-common -fshort-wchar
-CFLAGS 		+= -Werror-implicit-function-declaration -Wno-format-security
-CFLAGS 		+= -std=gnu89 -falign-jumps=1 -falign-loops=1 -funit-at-a-time
-CFLAGS 		+= -pipe -Wno-sign-compare -fno-asynchronous-unwind-tables
-CFLAGS 		+= -fno-delete-null-pointer-checks -Wno-maybe-uninitialized
-CFLAGS 		+= -Wframe-larger-than=1024 -fno-stack-protector
-CFLAGS 		+= -Wno-unused-but-set-variable -fno-var-tracking-assignments
-CFLAGS 		+= -gdwarf-4 -Wdeclaration-after-statement -Wno-pointer-sign
-CFLAGS 		+= -fno-strict-overflow -fno-stack-check -fconserve-stack
-CFLAGS 		+= -Werror=implicit-int -Werror=strict-prototypes
-
-ifeq ($(DEBUG),1)
-CFLAGS 		+= -DDEBUG -DCLS_DEBUG -DCAN_DEBUG -DUID_DEBUG
-CFLAGS 		+= -DPROG_DEBUG -DNET_DEBUG -DHEAP_DEBUG -DPORT_DEBUG
-CFLAGS 		+= -DNET_STAT_DEBUG -DIP_PROTO_DEBUG -DLEARN_DEBUG
-CFLAGS 		+= -g
-endif
-
-LDFLAGS 	+= -nostdlib -Wl,--build-id=none --entry cls_handle_event \
-			-T ./cls.lds
 
 SRCS 		:= 	main.c \
-			act.c \
-			classifier.c \
-			bitops.c \
-			hash.c \
-			can_cls.c \
-			uid_cls.c \
-			prog_cls.c \
-			heap.c \
-			aux.c \
-			radix.c \
-			net_cls.c \
-			printf.c \
-			port_cls.c \
-			net_stat_cls.c \
-			ip_proto_cls.c \
-			learn.c \
+				act.c \
+				classifier.c \
+				bitops.c \
+				heap.c \
+				hash.c \
+				str_tree.c \
+				aux.c \
+				uid_cls.c \
+				prog_cls.c \
+				can_cls.c \
+				radix.c \
+				net_cls.c \
+				ip_proto_cls.c \
+				port_cls.c \
+				file_cls.c \
+				printf.c \
+				lru_cache.c \
+
+ifeq ($(ENABLE_LEARN),1)
+SRCS 			+= learn.c
+endif
 
 OBJS 		:= $(addprefix $(OBJDIR)/,$(SRCS:.c=.o))
 DEPS 		:= $(OBJS:.o=.d)
 
-all: $(TARGET).bin
+all: $(TARGET)
+
+# common cflags for all platforms (x86-32/64, arm32/64) to compile
+# both the binary classifier and the unitests programs (they need to be aligned)
+# those flags are taken from kernel compilation since the binary classifier is
+# running as part of the kernel execution env, it need to be aligned with the
+# flags the kernel uses.
+CFLAGS 		+= -O2 -MMD -ffreestanding -fpie
+CFLAGS 		+= -Wall -Wundef -Wstrict-prototypes -Wno-trigraphs
+CFLAGS 		+= -fno-strict-aliasing -fno-common -Werror-implicit-function-declaration
+CFLAGS 		+= -Wno-format-security -std=gnu89 -fno-delete-null-pointer-checks
+CFLAGS 		+= -Wframe-larger-than=1024 -fno-stack-protector
+CFLAGS 		+= -Wno-unused-but-set-variable -Wno-unused-const-variable
+CFLAGS 		+= -Wno-pointer-sign -Werror=implicit-int -Wdeclaration-after-statement
+CFLAGS 		+= -fno-strict-overflow -fconserve-stack -fno-var-tracking-assignments
+CFLAGS 		+= -fno-asynchronous-unwind-tables -fno-stack-check -fshort-wchar
+CFLAGS 		+= -Werror=incompatible-pointer-types
+
+# additional common cflags if debug is enabled
+ifeq ($(DEBUG),1)
+CFLAGS += -DDEBUG -DCLS_DEBUG -DCAN_DEBUG -DUID_DEBUG -DACT_DEBUG
+CFLAGS += -DPROG_DEBUG -DNET_DEBUG -DHEAP_DEBUG -DPORT_DEBUG -DFILE_DEBUG
+CFLAGS += -DNET_STAT_DEBUG -DIP_PROTO_DEBUG -DLEARN_DEBUG -DSTR_TREE_DEBUG
+CFLAGS += -g
+endif
+
+# binary classifier specific ldflags
+CLS_LDFLAGS += -nostartfiles -lgcc -fpie -Wl,--build-id=none --entry cls_handle_event \
+				-T ./cls.lds
+
+# detect if target is ARMv7
+ARM_ARCH 	= $(shell $(CC) -dM -E -< /dev/null | grep "__ARM_ARCH " | awk {'printf $$3'})
+ifeq ($(ARM_ARCH),7)
+# ARMv7 (32 bit) additional common cflags. in this case the flags
+# are the same for binary classifier and unitests programs
+CFLAGS 		+= -marm
+LDFLAGS 	+= -Wl,-no-wchar-size-warning
+endif
+
+# detect if target is i386
+X86_ARCH 	= $(shell $(CC) -dM -E -< /dev/null | grep " i386 " | awk {'printf $$2'})
+ifeq ($(X86_ARCH),i386)
+# i386 (32 bit) classifier binary cflags.
+# should not be used for unitest programs !!!. for some reason
+# the way user space is compiled is not the same as kernel.
+CFLAGS += -m32 -mregparm=3 -freg-struct-return -msoft-float
+CFLAGS += -march=i686 -mtune=generic -maccumulate-outgoing-args -Wa,-mtune=generic32
+endif
+
+ifeq ($(ENABLE_LEARN),1)
+CFLAGS 		+= -DENABLE_LEARN
+endif
 
 OBJSDIR:
 	@mkdir -p $(OBJDIR)
@@ -65,19 +107,21 @@ OBJSDIR:
 	
 $(OBJDIR)/%.o: %.c Makefile
 	@echo "compiling $(notdir $<)"
-	@$(CC) $(CFLAGS) $(INCLUDES) -c $< -o $@
+	@$(CC) $(ARCH_CFLAGS) $(CFLAGS) $(INCLUDES) -c $< -o $@
 
-$(TARGET): $(OBJS)
+$(BINDIR)/cls: OBJSDIR $(OBJS)
 	@echo "linking $(notdir $@)"
-	@$(CC) $(LDFLAGS) -o $@ $(OBJS)
-	@echo "creating $(notdir $(TARGET).bin.tmp)"
-	@objcopy -O binary $(TARGET) $(TARGET).bin.tmp
+	@$(CC) $(CLS_LDFLAGS) $(LDFLAGS) -o $@ $(OBJS)
 
-$(TARGET).bin: OBJSDIR $(TARGET)
-	@echo "creating clean $(notdir $(TARGET).bin) size 65536"
-	@$(shell dd of=$(TARGET).bin if=/dev/zero count=65536 bs=1 status=none)
-	@echo "copy $(notdir $(TARGET).bin.tmp) to $(notdir $(TARGET).bin)"
-	@$(shell dd of=$(TARGET).bin if=$(TARGET).bin.tmp conv=notrunc status=none)
+$(BINDIR)/cls.bin.tmp: $(BINDIR)/cls
+	@echo "creating $(notdir $@)"
+	@$(OBJCOPY) -O binary $(BINDIR)/cls $@
+
+$(TARGET): $(BINDIR)/cls.bin.tmp
+	@echo "creating clean $@ size 131072"
+	@$(shell dd of=$@ if=/dev/zero count=131072 bs=1 status=none)
+	@echo "copy $(notdir $@.tmp) to $(notdir $@)"
+	@$(shell dd of=$@ if=$@.tmp conv=notrunc status=none)
 
 clean:
 	@rm -fr $(BUILD_DIR)

@@ -1198,11 +1198,11 @@ SR_32 sys_repo_mng_create_net_rule(sysrepo_mng_handler_t *handler, SR_32 rule_id
 static void can_packet_convert(SR_32 msg_id,SR_U8 dir, char * msgid_str,char * dir_str)
 {
 	if (msg_id > 0)
-		sprintf(msgid_str, "%08x", msg_id);
+		snprintf(msgid_str, 32, "%08x", msg_id);
 	else
-		strcpy(msgid_str, "any");
+		strncpy(msgid_str, "any",32);
 
-	strcpy(dir_str, get_dir_desc(dir));
+	strncpy(dir_str, get_dir_desc(dir), 32);
 }
 
 #define ADD_CAN_FIELD(fieldname, fieldvalue, tuple) \
@@ -1218,8 +1218,8 @@ static void can_packet_convert(SR_32 msg_id,SR_U8 dir, char * msgid_str,char * d
 SR_32 sys_repo_mng_create_canbus_rule(sysrepo_mng_handler_t *handler, SR_32 rule_id, SR_U32 tuple_id, SR_U32 msg_id, char *interface, char *exec, char *user, char *action, SR_U8 dir)
 {
 	char str_param[MAX_STR_SIZE];
-	char msgid_str[9];
-	char dir_str[4];
+	char msgid_str[32];
+	char dir_str[32];
 	can_packet_convert(msg_id,dir, msgid_str,dir_str);
 	
 	sprintf(str_param, "%snum='%d']", CAN_PREFIX, rule_id);

@@ -1,5 +1,5 @@
-#include <netinet/in.h>
 #include <sys/socket.h>
+#include <netinet/in.h>
 #include <linux/vsentry/vsentry.h>
 #include "net_cls.h"
 #include "radix.h"
@@ -14,23 +14,13 @@
 #define net_err(...)
 #endif
 
-#undef htonl
-#if BYTE_ORDER == BIG_ENDIAN
-#define htonl(x) (unsigned int)(x)
-#else
-//#define htonl(x) __builtin_bswap32((unsigned int)(x))
-#define htonl(x) \
-	((((x) & 0xff000000u) >> 24) | (((x) & 0x00ff0000u) >> 8) \
-	| (((x) & 0x0000ff00u) << 8) | (((x) & 0x000000ffu) << 24))
-#endif
-
 /* the default rules data struct */
-typedef struct __attribute__ ((packed, aligned(8))) {
+typedef struct __attribute__ ((aligned(8))) {
 	bit_array_t	any_rules[CLS_NET_DIR_TOTAL];
 } any_rules_t;
 
 /* the below struct will hold the radix trees offsets */
-typedef struct __attribute__ ((packed, aligned(8))) {
+typedef struct __attribute__ ((aligned(8))) {
 	unsigned int 	radix_heads_offsets[CLS_NET_DIR_TOTAL];
 } radix_tree_array_t;
 
@@ -57,6 +47,10 @@ int net_cls_init(cls_hash_params_t *hash_params)
 			net_err("failed to allocate net any_rules\n");
 			return VSENTRY_ERROR;
 		}
+
+		/* mark as empty */
+		any_rules_array->any_rules[CLS_NET_DIR_SRC].empty = true;
+		any_rules_array->any_rules[CLS_NET_DIR_DST].empty = true;
 
 		/* update the global database, will be used in the next boot */
 		hash_params->any_offset = get_offset(any_rules_array);
@@ -379,25 +373,6 @@ int net_cls_del_rule(unsigned int rule, unsigned int addr, unsigned int netmask,
 	return VSENTRY_SUCCESS;
 }
 
-#ifdef CLS_DEBUG
-static int net_print_node(struct radix_node *node, void *data)
-{
-	char *addr, *mask;
-
-	addr = ((char *)get_pointer(node->rn_u.rn_leaf.rn_Key) + 4);
-	mask = ((char *)get_pointer(node->rn_u.rn_leaf.rn_Mask) + 4);
-
-	cls_printf("    address %hhu.%hhu.%hhu.%hhu mask %hhu.%hhu.%hhu.%hhu. rules: ",
-		*addr, *(addr+1), *(addr+2), *(addr+3),
-		(unsigned char)*mask, (unsigned char)*(mask+1),
-		(unsigned char)*(mask+2), (unsigned char)*(mask+3));
-
-	ba_print_set_bits(&node->private.rules);
-
-	return VSENTRY_SUCCESS;
-}
-#endif
-
 static int ip_cls_search_addr(unsigned int address, int dir, bit_array_t *verdict)
 {
 	struct radix_node *node = NULL;
@@ -431,7 +406,7 @@ static int ip_cls_search_addr(unsigned int address, int dir, bit_array_t *verdic
 	}
 
 #ifdef ENABLE_LEARN
-	if (cls_get_mode() == CLS_MODE_LEARN && dir == CLS_NET_DIR_DST) {
+	if (cls_get_mode() == VSENTRY_MODE_LEARN && dir == CLS_NET_DIR_DST) {
 		/* in learn mode we dont want to get the default rule
 		 * since we want to learn this event, so we clear the
 		 * verdict bitmap to signal no match */
@@ -460,7 +435,64 @@ int net_cls_search(ip_event_t *ev, bit_array_t *verdict)
 	return VSENTRY_SUCCESS;
 }
 
+typedef struct {
+	int start;
+	int end;
+	int dir;
+} net_rules_limit_t;
+
+static int net_check_node(struct radix_node *node, void *data)
+{
+	int i;
+	net_rules_limit_t* limit = data;
+	char *addr, *mask;
+	unsigned int net_addr, netmask;
+
+	addr = ((char *)get_pointer(node->rn_u.rn_leaf.rn_Key) + 4);
+	vs_memcpy(&net_addr, addr, sizeof(unsigned int));
+	mask = ((char *)get_pointer(node->rn_u.rn_leaf.rn_Mask) + 4);
+	vs_memcpy(&netmask, mask, sizeof(unsigned int));
+
+	cls_dbg("deleting addr 0x%08X mask 0x%08X\n", net_addr, netmask);
+	for (i=limit->start; i<limit->end; i++) {
+		if (ba_is_set(i, &node->private.rules))
+			net_cls_del_rule(i, net_addr, netmask, limit->dir);
+	}
+
+	return 0;
+}
+
+void net_cls_clear_rules(int start, int end)
+{
+	net_rules_limit_t limit = {
+		.start = start,
+		.end = end,
+		.dir = CLS_NET_DIR_SRC,
+	};
+
+	bin_rn_walktree(src_tree, net_check_node, &limit);
+	limit.dir = CLS_NET_DIR_DST,
+	bin_rn_walktree(dst_tree, net_check_node, &limit);
+}
+
 #ifdef CLS_DEBUG
+static int net_print_node(struct radix_node *node, void *data)
+{
+	char *addr, *mask;
+
+	addr = ((char *)get_pointer(node->rn_u.rn_leaf.rn_Key) + 4);
+	mask = ((char *)get_pointer(node->rn_u.rn_leaf.rn_Mask) + 4);
+
+	cls_printf("    address %hhu.%hhu.%hhu.%hhu mask %hhu.%hhu.%hhu.%hhu. rules: ",
+		*addr, *(addr+1), *(addr+2), *(addr+3),
+		(unsigned char)*mask, (unsigned char)*(mask+1),
+		(unsigned char)*(mask+2), (unsigned char)*(mask+3));
+
+	ba_print_set_bits(&node->private.rules);
+
+	return VSENTRY_SUCCESS;
+}
+
 void net_print_tree(void)
 {
 	cls_printf("ip db:\n");

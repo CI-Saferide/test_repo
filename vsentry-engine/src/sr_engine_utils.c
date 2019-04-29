@@ -4,7 +4,7 @@
 #include "sr_cls_uid_common.h"
 #include "sr_cls_file_common.h"
 
-SR_32 sr_get_inode(char *file_name, SR_U32 *inode)
+SR_32 sr_get_inode(char *file_name, unsigned long *inode)
 {
 	struct stat buf = {};
 
