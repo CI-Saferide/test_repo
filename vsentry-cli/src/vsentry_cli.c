@@ -551,7 +551,7 @@ static SR_32 handle_update_can(SR_U32 rule_id, SR_BOOL is_wl, int argc, char **a
 		goto out;
 	}
 #ifdef DEBUG
-	printf("handle can %d %d mid:%s interface:%s program:%s user:%s action:%s ret:%d \n", rule_id, is_wl, mid, interface, program, user, action, ret); 
+	printf("handle can %d %d mid:%s interface:%s program:%s user:%s action:%s \n", rule_id, is_wl, mid, interface, program, user, action); 
 #endif
 
 out:
@@ -618,7 +618,7 @@ static SR_32 handle_update_file(SR_U32 rule_id, SR_BOOL is_wl, int argc, char **
 		goto out;
 	}
 #ifdef DEBUG
-	printf("handle file rule %d %d filename:%s perm:%s program:%s user:%s action:%s ret:%d \n", rule_id, is_wl, filename, perm_cli_to_db(perm), program, user, action, ret); 
+	printf("handle file rule %d %d filename:%s perm:%s program:%s user:%s action:%s\n", rule_id, is_wl, filename, perm_cli_to_db(perm), program, user, action);
 #endif
 
 out:
@@ -721,8 +721,8 @@ static SR_32 handle_update_ip(SR_U32 rule_id, SR_BOOL is_wl, int argc, char **ar
 		goto out;
 	}
 #ifdef DEBUG
-	printf("handle ip rule %d %d src_addr:%s dst_addr:%s proto:%s sport:%s dport:%s program:%s user:%s downrl:%s uprl:%s action:%s ret:%d \n",
-		rule_id, is_wl, src_addr, dst_addr, proto, src_port, dst_port, program, user, down_rl, up_rl, action, ret); 
+	printf("handle ip rule %d %d src_addr:%s dst_addr:%s proto:%s sport:%s dport:%s program:%s user:%s downrl:%s uprl:%s action:%s \n",
+		rule_id, is_wl, src_addr, dst_addr, proto, src_port, dst_port, program, user, down_rl, up_rl, action);
 #endif
 
 out:

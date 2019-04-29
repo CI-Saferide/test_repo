@@ -1181,14 +1181,14 @@ static void handle_net_rule(sr_net_record_t *net_rule, SR_32 *status)
 		case NET_ITEM_SRC_PORT:
 #ifdef BIN_CLS_DB
 			/* create the src port rule */
-			ret = cls_port_rule(true, net_rule->rulenum, net_rule->net_item.u.src_port.port,
-				net_rule->net_item.u.src_port.proto, CLS_NET_DIR_SRC);
+			ret = cls_port_rule(true, net_rule->rulenum, net_rule->net_item.u.port.port,
+				net_rule->net_item.u.port.proto, CLS_NET_DIR_SRC);
 			if (ret != SR_SUCCESS) {
 				CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 					"%s=failed to add src port %u rule %d",REASON,
-					net_rule->net_item.u.src_port.port, net_rule->rulenum);
+					net_rule->net_item.u.port.port, net_rule->rulenum);
 				printf("EEEEEEEEEEee failed to add src port %u rule %d\n",
-					net_rule->net_item.u.src_port.port, net_rule->rulenum);
+					net_rule->net_item.u.port.port, net_rule->rulenum);
 				*status = ret;
 				return;
 			}
@@ -1197,14 +1197,14 @@ static void handle_net_rule(sr_net_record_t *net_rule, SR_32 *status)
 		case NET_ITEM_DST_PORT:
 #ifdef BIN_CLS_DB
 			/* create the src port rule */
-			ret = cls_port_rule(true, net_rule->rulenum, net_rule->net_item.u.dst_port.port,
-				net_rule->net_item.u.dst_port.proto, CLS_NET_DIR_SRC);
+			ret = cls_port_rule(true, net_rule->rulenum, net_rule->net_item.u.port.port,
+				net_rule->net_item.u.port.proto, CLS_NET_DIR_SRC);
 			if (ret != SR_SUCCESS) {
 				CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 					"%s=failed to add dst port %u rule %d",REASON,
-					net_rule->net_item.u.dst_port.port, net_rule->rulenum);
+					net_rule->net_item.u.port.port, net_rule->rulenum);
 				printf("EEEEEEEEEEee failed to add dst port %u rule %d\n",
-					net_rule->net_item.u.dst_port.port, net_rule->rulenum);
+					net_rule->net_item.u.port.port, net_rule->rulenum);
 				*status = ret;
 				return;
 			}
@@ -1303,7 +1303,6 @@ static void handle_can_rule(sr_can_record_t *can_rule, SR_32 *status)
 #endif
 			break;
 		case CAN_ITEM_USER:
-			printf("   >>>>>>>>> USER :%s \n", can_rule->can_item.u.user); 
 #ifdef BIN_CLS_DB
         		/* create the uid rule */
 			if (create_user_rule(can_rule->can_item.u.user, can_rule->rulenum, CLS_CAN_RULE_TYPE) != SR_SUCCESS) { 
@@ -1338,6 +1337,8 @@ static void handle_file_rule(sr_file_record_t *file_rule, SR_32 *status)
 		default:
 			break;
 	}
+
+	*status = SR_SUCCESS;
 }
 
 SR_32 sr_config_handle_action(void *data) 
