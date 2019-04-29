@@ -2,6 +2,10 @@ ifndef TOP_DIR
 TOP_DIR 	:= $(shell pwd)
 endif
 
+ifndef OBJCOPY
+OBJCOPY        := objcopy
+endif
+
 BUILD_DIR 	:= $(TOP_DIR)/build
 OBJDIR 		:= $(BUILD_DIR)/clsbin/objs
 BINDIR 		:= $(BUILD_DIR)/bin
@@ -71,7 +75,7 @@ ARM_ARCH 	= $(shell $(CC) -dM -E -< /dev/null | grep "__ARM_ARCH " | awk {'print
 ifeq ($(ARM_ARCH),7)
 # ARMv7 (32 bit) additional common cflags. in this case the flags
 # are the same for binary classifier and unitests programs
-CFLAGS 		+= -marm -mfloat-abi=soft
+CFLAGS 		+= -marm -mno-thumb-interwork -mfpu=vfp
 LDFLAGS 	+= -Wl,-no-wchar-size-warning
 endif
 
