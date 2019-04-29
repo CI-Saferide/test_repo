@@ -540,8 +540,8 @@ void loadServerConfigFromString(char *config) {
                 err = "dbfilename can't be a path, just a filename";
                 goto loaderr;
             }
-            zfree(server.rdb_filename);
-            server.rdb_filename = zstrdup(argv[1]);
+            zfree(server.rdb_startup_filename);
+            server.rdb_startup_filename = zstrdup(argv[1]);
         } else if (!strcasecmp(argv[0],"active-defrag-threshold-lower") && argc == 2) {
             server.active_defrag_threshold_lower = atoi(argv[1]);
             if (server.active_defrag_threshold_lower < 0 ||
@@ -915,8 +915,8 @@ void configSetCommand(client *c) {
             addReplyError(c, "dbfilename can't be a path, just a filename");
             return;
         }
-        zfree(server.rdb_filename);
-        server.rdb_filename = zstrdup(o->ptr);
+        zfree(server.rdb_startup_filename);
+        server.rdb_startup_filename = zstrdup(o->ptr);
     } config_set_special_field("requirepass") {
         if (sdslen(o->ptr) > CONFIG_AUTHPASS_MAX_LEN) goto badfmt;
         zfree(server.requirepass);
@@ -1331,7 +1331,7 @@ void configGetCommand(client *c) {
     serverAssertWithInfo(c,o,sdsEncodedObject(o));
 
     /* String values */
-    config_get_string_field("dbfilename",server.rdb_filename);
+    config_get_string_field("dbfilename",server.rdb_startup_filename);
     config_get_string_field("requirepass",server.requirepass);
     config_get_string_field("masterauth",server.masterauth);
     config_get_string_field("cluster-announce-ip",server.cluster_announce_ip);
@@ -2142,7 +2142,8 @@ int rewriteConfig(char *path) {
     rewriteConfigYesNoOption(state,"stop-writes-on-bgsave-error",server.stop_writes_on_bgsave_err,CONFIG_DEFAULT_STOP_WRITES_ON_BGSAVE_ERROR);
     rewriteConfigYesNoOption(state,"rdbcompression",server.rdb_compression,CONFIG_DEFAULT_RDB_COMPRESSION);
     rewriteConfigYesNoOption(state,"rdbchecksum",server.rdb_checksum,CONFIG_DEFAULT_RDB_CHECKSUM);
-    rewriteConfigStringOption(state,"dbfilename",server.rdb_filename,CONFIG_DEFAULT_RDB_FILENAME);
+    rewriteConfigStringOption(state,"dbfilename",server.rdb_startup_filename,CONFIG_DEFAULT_RDB_STARTUP_FILENAME);
+    rewriteConfigStringOption(state,"dbfilename",server.rdb_running_filename,CONFIG_DEFAULT_RDB_RUNNING_FILENAME);
     rewriteConfigDirOption(state);
     rewriteConfigSlaveofOption(state,"replicaof");
     rewriteConfigStringOption(state,"replica-announce-ip",server.slave_announce_ip,CONFIG_DEFAULT_SLAVE_ANNOUNCE_IP);

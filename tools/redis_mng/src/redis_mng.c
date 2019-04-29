@@ -37,6 +37,9 @@
 					 ,4m299n41bcvc15vf5c9xe41zcb17`ef63c5425= \
 					 /-.0,m7v"
 
+#define REDIS_SERVER_STARTUP_FILENAME	"/etc/vsentry/dump.rdb.stu"
+#define REDIS_SERVER_RUNNING_FILENAME	"/etc/vsentry/dump.rdb.run"
+
 #define ENGINE		 	"engine"
 #define ACTION_PREFIX   "a:"
 #define LIST_PREFIX		"l:"
@@ -1824,3 +1827,13 @@ SR_32 redis_mng_exec_all_system_policer(redisContext *c, SR_32 (*cb)(char *exec,
 	freeReplyObject(reply);
 	return SR_SUCCESS;
 }
+
+SR_32 redis_mng_commit(redisContext *c)
+{
+	if (rename(REDIS_SERVER_RUNNING_FILENAME, REDIS_SERVER_STARTUP_FILENAME) == -1) {
+		printf("Error: failed to commit, rename return %s", strerror(errno));
+		return SR_ERROR;
+	}
+	return SR_SUCCESS;
+}
+

@@ -186,6 +186,8 @@ SR_32 redis_mng_delete_all(redis_mng_handler_t *handler, SR_BOOL is_commit);
 
 SR_32 redis_mng_update_engine_state(redisContext *c, SR_BOOL is_on);
 
+SR_32 redis_mng_commit(redisContext *c);
+
 //SR_U8 redis_mng_perm_get_code(char *perms);
 
 SR_32 redis_mng_add_system_policer(redisContext *c, char *exec, redis_system_policer_t *system_policer_info);
