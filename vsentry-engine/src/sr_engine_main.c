@@ -263,16 +263,23 @@ SR_32 sr_engine_start(int argc, char *argv[])
 	SR_32 cmd_line;
 	SR_BOOL run = SR_TRUE;
 	SR_BOOL background = SR_FALSE;
-
+#ifdef BIN_CLS_DB
+	char *cls_file = NULL;
+	char *db_file = NULL;
+#endif
 	sal_set_interrupt_cb(sr_interrupt_cb);
 
-	while ((cmd_line = getopt (argc, argv, "bhc:")) != -1)
+	while ((cmd_line = getopt (argc, argv, "bhc:f:e:")) != -1)
 	switch (cmd_line) {
 		case 'h':
 			printf ("param					description\n");
 			printf ("----------------------------------------------------------------------\n");
 			printf ("-c [path]				specifies configuration file full path\n");        
 			printf ("-b 					run in background\n");
+#ifdef BIN_CLS_DB
+			printf ("-e 					cls file (default %s)\n", CLS_FILE);
+			printf ("-f 					db file (default %s)\n", DB_FILE);
+#endif
 			printf ("\n");
 			return 0;
 			break;
@@ -282,6 +289,14 @@ SR_32 sr_engine_start(int argc, char *argv[])
 		case 'c':
 			config_file = optarg;
 			break;
+#ifdef BIN_CLS_DB
+		case 'e':
+			cls_file = optarg;
+			break;
+		case 'f':
+			db_file = optarg;
+			break;
+#endif
 	}
 
 	if (background && (daemon(0, 0) < 0)) {
@@ -425,7 +440,8 @@ SR_32 sr_engine_start(int argc, char *argv[])
 #endif
 
 #ifdef BIN_CLS_DB
-	bin_cls_init();
+	if (bin_cls_init(cls_file, db_file) != SR_SUCCESS)
+		return SR_ERROR;
 #endif
 	sr_db_init();
 	sentry_init(sr_config_vsentry_db_cb);
@@ -470,15 +486,16 @@ SR_32 sr_engine_start(int argc, char *argv[])
 	if (msg) {
 		msg->msg_type = SR_MSG_TYPE_CONFIG;
 		msg->sub_msg.cef_max_rate = config_params->cef_max_rate; 
-		msg->sub_msg.def_file_action = config_params->default_file_action;
 #ifdef BIN_CLS_DB
 		/* when working with bin cls we need the date to be allowed so
 		 * it could get to the bin cls and not dropped by vsentry cls */
 		msg->sub_msg.def_can_action = SR_CLS_ACTION_ALLOW;
 		msg->sub_msg.def_net_action = SR_CLS_ACTION_ALLOW;
+		msg->sub_msg.def_file_action = SR_CLS_ACTION_ALLOW;
 #else
 		msg->sub_msg.def_can_action = config_params->default_can_action;
 		msg->sub_msg.def_net_action = config_params->default_net_action;
+		msg->sub_msg.def_file_action = config_params->default_file_action;
 #endif
 		msg->sub_msg.system_policer_interval = config_params->system_policer_interval;
 		sr_send_msg(ENG2MOD_BUF, (SR_32)sizeof(msg));
@@ -565,6 +582,12 @@ SR_32 sr_engine_start(int argc, char *argv[])
 			case 'U':
 				bin_cls_update(true);
 				break;
+
+			case 'G':
+			{
+				bin_cls_print_state();
+				break;
+			}
 #endif
 		}
 	}

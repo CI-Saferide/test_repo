@@ -10,7 +10,7 @@
 
 #define ACTION_NAME_SIZE 32
 
-typedef struct __attribute__ ((packed, aligned(8))) {
+typedef struct __attribute__ ((aligned(8))) {
 	unsigned int 	action_bitmap;
 	unsigned int 	log_target;
 	unsigned int 	name_len;
@@ -22,7 +22,9 @@ int    action_cls_add(act_t *act);
 int    action_cls_del(char *act_name, int name_len);
 int    action_cls_ref(bool ref, char *act_name, int name_len);
 act_t *action_cls_search(char *act_name, int name_len);
+int    action_clean_unrefed(void);
+#ifdef CLS_DEBUG
 void   action_print_act(act_t *act);
 void   action_print_list(void);
-
+#endif
 #endif /* __ACTION_H__ */

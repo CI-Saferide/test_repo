@@ -22,58 +22,63 @@ static inline void clear_bit(int nr, volatile unsigned long *addr)
 	__sync_and_and_fetch(p, ~mask);
 }
 
-static inline int test_bit(int nr, const volatile unsigned long *addr)
+static inline int test_bit(unsigned int nr, const volatile unsigned long *addr)
 {
-	return 1UL & (addr[BIT_WORD(nr)] >> (nr & (__BITS_PER_LONG-1)));
+        return ((1UL << (nr % __BITS_PER_LONG)) &
+                (((unsigned long *)addr)[nr / __BITS_PER_LONG])) != 0;
 }
 
-static inline unsigned long __ffs(unsigned long word)
+/* this function return the index of the first set bit in unsigned long long
+ * [0 ... (63)] or 64 if no bit is set */
+static inline int __ffs64(unsigned long long word)
 {
-	return __builtin_ctzl(word);
+	/* __builtin_ctzll/__builtin_ctzl GCC doc state that:
+	 * "If x is 0, the result is undefined." so we need to check
+	 * word value before */
+#if __BITS_PER_LONG == 64
+	if (!word)
+		return BITS_IN_SUMMARY;
+	return min(__builtin_ctzll(word), BITS_IN_SUMMARY);
+#else
+	unsigned int index = BITS_IN_SUMMARY;
+
+	/* search the lower 32 bits */
+	if ((unsigned long)(word))
+		index = __builtin_ctzl((unsigned long)(word));
+	else if ((unsigned long)(word >> __BITS_PER_LONG))
+		index = __builtin_ctzl((unsigned long)(word >> __BITS_PER_LONG)) + __BITS_PER_LONG;
+
+	return index;
+#endif
 }
 
+/* this function return the index of the first set bit in bit_array_t
+ * [0 ... 4095] or 4096 if no bit is set */
 unsigned int ba_ffs(bit_array_t *arr)
 {
-	unsigned int index;
-#if __BITS_PER_LONG != 64
-	unsigned long *address;
-#endif
+	unsigned int index, ffs;
+	unsigned long long *address;
 
 	if (arr->empty)
 		return MAX_RULES;
 
-#if __BITS_PER_LONG == 64
-	index = min(__ffs(arr->summary), __BITS_PER_LONG);
-	if (index == __BITS_PER_LONG)
+	index = __ffs64(arr->summary);
+	if (index == BITS_IN_SUMMARY)
 		return MAX_RULES;
 
-	return min(index * __BITS_PER_LONG + __ffs(arr->bitmap[index]), MAX_RULES);
-#else
-	if (((unsigned long)arr->summary) == 0UL) {
-		/* search the upper 32 bits */
-		index = min(__ffs((unsigned long)(arr->summary >> __BITS_PER_LONG)), __BITS_PER_LONG);
-		if (index == __BITS_PER_LONG)
-			return MAX_RULES;
+	address = (unsigned long long*)&arr->bitmap[index * (sizeof(unsigned long long)/sizeof(unsigned long))];
 
-		/* add to index 32 if we found in the upper bit */
-		index += __BITS_PER_LONG;
-	} else {
-		/* search the lower 32 bits */
-		index = min(__ffs((unsigned long)arr->summary), __BITS_PER_LONG);
-		if (index == __BITS_PER_LONG)
-			return MAX_RULES;
+	ffs = __ffs64(*address);
+	if (ffs == BITS_IN_SUMMARY) {
+		cls_err("summary 0x%016llx but address 0x%016llx (ffs %u)\n",
+				arr->summary, *address, ffs);
+		return MAX_RULES;
 	}
 
-	address = arr->bitmap[index * 2];
-	if (*address)
-		/* search the lower 32 bits */
-		return min((index * __BITS_PER_LONG * 2) +__ffs(*address), MAX_RULES);
-	else
-		/* search the upper 32 bits */
-		return min((index * __BITS_PER_LONG * 2) + __BITS_PER_LONG +__ffs(*(++address)), MAX_RULES);
-#endif
+	return min((index * BITS_IN_SUMMARY) + ffs, MAX_RULES);
 }
 
+/* set a specific bit in bit_array_t */
 void ba_set_bit(unsigned short bit, bit_array_t *arr)
 {
 	if (bit < MAX_RULES) {
@@ -83,6 +88,7 @@ void ba_set_bit(unsigned short bit, bit_array_t *arr)
 	}
 }
 
+/* clear a specific bit in bit_array_t */
 void ba_clear_bit(unsigned short bit, bit_array_t *arr)
 {
 	unsigned int index;
@@ -98,9 +104,9 @@ void ba_clear_bit(unsigned short bit, bit_array_t *arr)
 		if (!arr->bitmap[index])
 			clear_bit(index, (unsigned long*)&arr->summary);
 #else
-		address = arr->bitmap[index * 2];
+		address = &arr->bitmap[index * 2];
 		if (!*address && !*(address+1))
-			clear_bit(index, &arr->summary);
+			clear_bit(index, (unsigned long*)&arr->summary);
 #endif
 		if (!arr->summary)
 			arr->empty = true;
@@ -125,11 +131,19 @@ void ba_and(bit_array_t *dst, bit_array_t *src1, bit_array_t *src2)
 {
 	unsigned int index;
 
-	for (index = 0; index < (MAX_RULES/__BITS_PER_LONG); index++)
-		dst->bitmap[index] = (src1->bitmap[index] & src2->bitmap[index]);
+	dst->summary = 0;
 
-	dst->summary = (src1->summary & src2->summary);
-	dst->empty = (src1->empty | src2->empty);
+	for (index = 0; index < (MAX_RULES/__BITS_PER_LONG); index++) {
+		dst->bitmap[index] = (src1->bitmap[index] & src2->bitmap[index]);
+		if (dst->bitmap[index])
+#if __BITS_PER_LONG == 64
+			set_bit(index, (unsigned long*)&dst->summary);
+#else
+			set_bit(index/2, (unsigned long*)&dst->summary);
+#endif
+	}
+
+	dst->empty = dst->summary?false:true;
 }
 
 /* dst = src1 | src2 */
@@ -141,24 +155,28 @@ void ba_or(bit_array_t *dst, bit_array_t *src1, bit_array_t *src2)
 		dst->bitmap[index] = src1->bitmap[index] | src2->bitmap[index];
 
 	dst->summary = (src1->summary | src2->summary);
-	dst->empty = (src1->empty && src2->empty);
+	dst->empty = (src1->empty & src2->empty);
 }
 
 /* dst = (src1 & (src2 | src3)) */
 void ba_and_or(bit_array_t *dst, bit_array_t *src1, bit_array_t *src2, bit_array_t *src3)
 {
-	unsigned long result = 0;
 	unsigned int index;
 
-	for (index = 0; index < (MAX_RULES/__BITS_PER_LONG); index++)
-		result |= dst->bitmap[index] = (src1->bitmap[index] & (src2->bitmap[index] | src3->bitmap[index]));
+	dst->summary = 0;
 
-	dst->summary = (src1->summary & (src2->summary | src3->summary));
+	for (index = 0; index < (MAX_RULES/__BITS_PER_LONG); index++) {
+		dst->bitmap[index] = (src1->bitmap[index] & (src2->bitmap[index] | src3->bitmap[index]));
+		if (dst->bitmap[index]) {
+#if __BITS_PER_LONG == 64
+			set_bit(index, (unsigned long*)&dst->summary);
+#else
+			set_bit(index/2, (unsigned long*)&dst->summary);
+#endif
+		}
+	}
 
-	if (result)
-		dst->empty = false;
-	else
-		dst->empty = true;
+	dst->empty = dst->summary?false:true;
 }
 
 #ifdef CLS_DEBUG
@@ -173,15 +191,3 @@ void ba_print_set_bits(bit_array_t *arr)
 	cls_printf("\n", index);
 }
 #endif
-
-unsigned int ba_count_set_bits(bit_array_t *arr)
-{
-	unsigned short index;
-	unsigned int res = 0;
-
-	for (index=0; index<MAX_RULES; index++)
-		if (ba_is_set(index, arr))
-			res++;
-
-	return res;
-}

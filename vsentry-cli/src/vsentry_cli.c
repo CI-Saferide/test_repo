@@ -93,7 +93,7 @@ static SR_BOOL is_dirty = SR_FALSE;
 
 static void notify_updated_can_rule(SR_U32 rule_id, rule_info_t *update_rule, char *action_name)
 {
-	char msg[256];
+	char msg[512];
 
 	snprintf(msg, sizeof(msg), "can rule update:\n   rule:%d tuple:%d\n   mid :%x interface :%s direction :%s user:%s program:%s action:%s \n",
 		rule_id, update_rule->tuple_id, 
@@ -124,10 +124,10 @@ static void notify_updated_ip_rule(SR_U32 rule_id, rule_info_t *update_rule, cha
 		
 static void notify_updated_file_rule(SR_U32 rule_id, rule_info_t *update_rule, char *action_name)
 {
-	char msg[256];
+	char msg[5100];
 
 	snprintf(msg, sizeof(msg), "file rule updated: \n  rule:%d tuple:%d \n  file:%s perm:%s user:%s program:%s action:%s\n",
-			rule_id - SR_FILE_START_STATIC_RULE_NO, update_rule->tuple_id,
+			rule_id, update_rule->tuple_id,
 			update_rule->file_rule.tuple.filename, prem_db_to_cli(update_rule->file_rule.tuple.permission),
 			update_rule->file_rule.tuple.user, update_rule->file_rule.tuple.program, action_name);
 

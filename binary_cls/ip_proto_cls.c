@@ -18,19 +18,19 @@
 #define IP_PROTO_HASH_NUM_OF_BITS 	5
 
 /* hash item for IP_PROTO */
-typedef struct __attribute__ ((packed, aligned(8))) {
-	unsigned char ip_proto;
-	bit_array_t rules;
+typedef struct __attribute__ ((aligned(8))) {
+	unsigned char 	ip_proto;
+	bit_array_t 	rules;
 } ip_proto_hash_item_t;
 
 /* the default rules data struct */
-typedef struct __attribute__ ((packed, aligned(8))) {
+typedef struct __attribute__ ((aligned(8))) {
 	bit_array_t	any_rules;
 } ip_proto_any_rules_t;
 
 /* the below struct will hold the hash buckets offsets on the persistent
  * database */
-typedef struct __attribute__ ((packed, aligned(8))) {
+typedef struct __attribute__ ((aligned(8))) {
 	unsigned int 	buckets_offsets;
 } ip_proto_bucket_t;
 
@@ -106,7 +106,6 @@ int ip_proto_cls_init(cls_hash_params_t *hash_params)
 
 		ip_proto_any_rules->any_rules.empty = true;
 		
-
 		/* update the global database, will be used in the next boot */
 		hash_params->any_offset = get_offset(ip_proto_any_rules);
 	} else {
@@ -118,7 +117,7 @@ int ip_proto_cls_init(cls_hash_params_t *hash_params)
 	if (hash_params->hash_offset == 0 || hash_params->bits != IP_PROTO_HASH_NUM_OF_BITS) {
 		/* hash was not prev allocated. lets allocate.
 		 * first we allocate memory to preserve the buckets offsets */
-		ip_proto_buckets = heap_alloc(sizeof(ip_proto_bucket_t));
+		ip_proto_buckets = heap_calloc(sizeof(ip_proto_bucket_t));
 		if (!ip_proto_buckets) {
 			ip_proto_err("failed to allocate ip_proto_buckets\n");
 			return VSENTRY_ERROR;
@@ -160,6 +159,8 @@ int ip_proto_cls_add_rule(unsigned int rule, unsigned int proto)
 		return VSENTRY_INVALID;
 	}
 
+	ip_proto_dbg("add ipproto rule %u\n", proto);
+
 	if (proto == IP_PROTO_ANY) {
 		arr = &ip_proto_any_rules->any_rules;
 	} else {
@@ -178,13 +179,18 @@ int ip_proto_cls_add_rule(unsigned int rule, unsigned int proto)
 
 			/* insert new item to hash */
 			hash_insert_data(&ip_proto_hash_array, ip_proto_item);
+
+			ip_proto_dbg("created new ipproto rule proto %u\n", proto);
 		}
 
 		arr = &ip_proto_item->rules;
 	}
 
 	/* set the rule bit in the relevant bit array */
-	ba_set_bit(rule, arr);
+	if (!ba_is_set(rule, arr)) {
+		ba_set_bit(rule, arr);
+		ip_proto_dbg("set bit %u on ipproto rule proto %u\n", rule, proto);
+	}
 
 	return VSENTRY_SUCCESS;
 }
@@ -255,7 +261,7 @@ int ip_proto_cls_search(ip_event_t *data, bit_array_t *verdict)
 	}
 
 #ifdef ENABLE_LEARN
-	if (cls_get_mode() == CLS_MODE_LEARN) {
+	if (cls_get_mode() == VSENTRY_MODE_LEARN) {
 		/* in learn mode we dont want to get the default rule
 		 * since we want to learn this event, so we clear the
 		 * verdict bitmap to signal no match */
@@ -269,6 +275,33 @@ int ip_proto_cls_search(ip_event_t *data, bit_array_t *verdict)
 	ba_and(verdict, verdict, arr_any);
 
 	return VSENTRY_SUCCESS;
+}
+
+typedef struct {
+	int start;
+	int end;
+} ip_proto_rules_limit_t;
+
+static void check_ip_proto_rule(void *data, void* param)
+{
+	int i;
+	ip_proto_hash_item_t *ip_proto_item = data;
+	ip_proto_rules_limit_t* limit = param;
+
+	for (i=limit->start; i<limit->end; i++) {
+		if (ba_is_set(i, &ip_proto_item->rules))
+			ip_proto_cls_del_rule(i, ip_proto_item->ip_proto);
+	}
+}
+
+void ip_proto_cls_clear_rules(int start, int end)
+{
+	ip_proto_rules_limit_t limit = {
+		.start = start,
+		.end = end,
+	};
+
+	hash_walk(&ip_proto_hash_array, check_ip_proto_rule, &limit);
 }
 
 #ifdef CLS_DEBUG

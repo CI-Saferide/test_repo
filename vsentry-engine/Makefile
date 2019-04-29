@@ -69,9 +69,7 @@ SRCS 		:=  main.c \
 				irdeto_unix_interface.c \
 				sr_engine_static_rules.c 
 
-ifdef BIN_CLS_DB
-SRCS += 			sr_bin_cls_eng.c
-endif
+SRCS 		+= $(if $(BIN_CLS_DB),sr_bin_cls_eng.c)
 
 SRCS +=	$(if $(IRDETO),irdeto_interface.c)
 
@@ -124,6 +122,7 @@ CFLAGS 		+= -D__linux
 #CFLAGS 		+= -DUNIT_TEST
 CFLAGS		+= $(if $(SR_CLI),-DSR_CLI)
 CFLAGS		+= $(if $(BIN_CLS_DB),-DBIN_CLS_DB)
+CFLAGS		+= $(if $(ENABLE_LEARN),-DENABLE_LEARN)
 
 ifdef DEBUG
 CFLAGS		+= -g -O0
@@ -175,8 +174,7 @@ libdb_tools:
 	@$(MAKE) -s -C ../tools/db_tools TOP_DIR=$(TOP_DIR)
 
 libbin_cls:
-	@$(MAKE) -s -C ../binary_cls TOP_DIR=$(TOP_DIR)
-
+	@$(MAKE) -s -C ../binary_cls TOP_DIR=$(TOP_DIR) INCLUDES="-I$(KERNEL_SRC)/usr/include" all unitests
 
 $(OBJDIR)/%.o: %.c
 	@echo "compiling $(notdir $<)"

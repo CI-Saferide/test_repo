@@ -534,6 +534,7 @@ rn_addmask(void *n_arg, struct radix_mask_head *maskhead, int search, int skip)
 	if ((saved_x = x) == NULL) {
 		return (NULL);
 	}
+	x->private.rules.empty = true;
 	netmask = cp = (unsigned char *)(x + 2);
 	vs_memcpy(cp, addmask_key, mlen);
 	x = rn_insert(cp, &maskhead->head, &maskduplicated, x);
@@ -947,11 +948,11 @@ on1:
 		t = tt + 1;
 		if  (t->rn_flags & RNF_ACTIVE) {
 #ifndef RN_DEBUG
-			*++x = *t;
+			vs_memcpy(++x, t, sizeof(struct radix_node));
 			p = R_GET(t->rn_parent);
 #else
 			b = t->rn_info;
-			*++x = *t;
+			vs_memcpy(++x, t, sizeof(struct radix_node));
 			t->rn_info = b;
 			p = t->rn_parent;
 #endif
@@ -1017,10 +1018,10 @@ on1:
 	x = tt + 1;
 	if (t != x) {
 #ifndef RN_DEBUG
-		*t = *x;
+		vs_memcpy(t, x, sizeof(struct radix_node));
 #else
 		b = t->rn_info;
-		*t = *x;
+		vs_memcpy(t, x, sizeof(struct radix_node));
 		t->rn_info = b;
 #endif
 		d = R_GET(t->rn_left);
@@ -1235,7 +1236,7 @@ bin_rn_inithead_internal(struct radix_head *rh, struct radix_node *base_nodes, i
 	tt = R_GET(t->rn_left);	/* ... which in turn is base_nodes */
 	tt->rn_flags = t->rn_flags = RNF_ROOT | RNF_ACTIVE;
 	tt->rn_bit = -1 - off;
-	*ttt = *tt;
+	vs_memcpy(ttt, tt, sizeof(struct radix_node));
 	ttt->rn_key = rh->rn_ones;
 
 	rh->rnh_treetop = R_SET(t);
