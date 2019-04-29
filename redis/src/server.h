@@ -133,7 +133,8 @@ typedef long long mstime_t; /* millisecond time type. */
 #define CONFIG_DEFAULT_STOP_WRITES_ON_BGSAVE_ERROR 1
 #define CONFIG_DEFAULT_RDB_COMPRESSION 1
 #define CONFIG_DEFAULT_RDB_CHECKSUM 1
-#define CONFIG_DEFAULT_RDB_FILENAME "dump.rdb"
+#define CONFIG_DEFAULT_RDB_STARTUP_FILENAME "dump.rdb.stu"
+#define CONFIG_DEFAULT_RDB_RUNNING_FILENAME "dump.rdb.run"
 #define CONFIG_DEFAULT_REPL_DISKLESS_SYNC 0
 #define CONFIG_DEFAULT_REPL_DISKLESS_SYNC_DELAY 5
 #define CONFIG_DEFAULT_SLAVE_SERVE_STALE_DATA 1
@@ -1102,7 +1103,8 @@ struct redisServer {
     pid_t rdb_child_pid;            /* PID of RDB saving child */
     struct saveparam *saveparams;   /* Save points array for RDB */
     int saveparamslen;              /* Number of saving points */
-    char *rdb_filename;             /* Name of RDB file */
+    char *rdb_startup_filename;     /* Name of RDB file to go up with (committed) */
+    char *rdb_running_filename;     /* Name of RDB file holding uncommitted changes */
     int rdb_compression;            /* Use compression in RDB? */
     int rdb_checksum;               /* Use RDB checksum? */
     int rdb_encrypt; 	            /* Encrypt RDB? */

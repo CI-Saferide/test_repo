@@ -356,13 +356,13 @@ NULL
     } else if (!strcasecmp(c->argv[1]->ptr,"reload")) {
         rdbSaveInfo rsi, *rsiptr;
         rsiptr = rdbPopulateSaveInfo(&rsi);
-        if (rdbSave(server.rdb_filename,rsiptr) != C_OK) {
+        if (rdbSave(server.rdb_running_filename,rsiptr) != C_OK) {
             addReply(c,shared.err);
             return;
         }
         emptyDb(-1,EMPTYDB_NO_FLAGS,NULL);
         protectClient(c);
-        int ret = rdbLoad(server.rdb_filename,NULL);
+        int ret = rdbLoad(server.rdb_running_filename,NULL);
         unprotectClient(c);
         if (ret != C_OK) {
             addReplyError(c,"Error trying to load the RDB dump");

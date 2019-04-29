@@ -64,7 +64,7 @@ void rdbCheckThenExit(int linenum, char *reason, ...) {
 
     if (!rdbCheckMode) {
         serverLog(LL_WARNING, "%s", msg);
-        char *argv[2] = {"",server.rdb_filename};
+        char *argv[2] = {"",server.rdb_startup_filename};
         redis_check_rdb_main(2,argv,NULL);
     } else {
         rdbCheckError("%s",msg);
@@ -2670,7 +2670,7 @@ void saveCommand(client *c) {
     }
     rdbSaveInfo rsi, *rsiptr;
     rsiptr = rdbPopulateSaveInfo(&rsi);
-    if (rdbSave(server.rdb_filename,rsiptr) == C_OK) {
+    if (rdbSave(server.rdb_running_filename,rsiptr) == C_OK) {
         addReply(c,shared.ok);
     } else {
         addReply(c,shared.err);
@@ -2707,7 +2707,7 @@ void bgsaveCommand(client *c) {
                 "Use BGSAVE SCHEDULE in order to schedule a BGSAVE whenever "
                 "possible.");
         }
-    } else if (rdbSaveBackground(server.rdb_filename,rsiptr) == C_OK) {
+    } else if (rdbSaveBackground(server.rdb_running_filename,rsiptr) == C_OK) {
         addReplyStatus(c,"Background saving started");
     } else {
         addReply(c,shared.err);

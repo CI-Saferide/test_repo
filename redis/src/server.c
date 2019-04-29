@@ -1279,7 +1279,7 @@ int serverCron(struct aeEventLoop *eventLoop, long long id, void *clientData) {
                     sp->changes, (int)sp->seconds);
                 rdbSaveInfo rsi, *rsiptr;
                 rsiptr = rdbPopulateSaveInfo(&rsi);
-                rdbSaveBackground(server.rdb_filename,rsiptr);
+                rdbSaveBackground(server.rdb_startup_filename,rsiptr); // called from main -> init server
                 break;
             }
         }
@@ -1352,7 +1352,7 @@ int serverCron(struct aeEventLoop *eventLoop, long long id, void *clientData) {
     {
         rdbSaveInfo rsi, *rsiptr;
         rsiptr = rdbPopulateSaveInfo(&rsi);
-        if (rdbSaveBackground(server.rdb_filename,rsiptr) == C_OK)
+        if (rdbSaveBackground(server.rdb_running_filename,rsiptr) == C_OK)
             server.rdb_bgsave_scheduled = 0;
     }
 
@@ -1591,7 +1591,8 @@ void initServerConfig(void) {
     server.aof_load_truncated = CONFIG_DEFAULT_AOF_LOAD_TRUNCATED;
     server.aof_use_rdb_preamble = CONFIG_DEFAULT_AOF_USE_RDB_PREAMBLE;
     server.pidfile = NULL;
-    server.rdb_filename = zstrdup(CONFIG_DEFAULT_RDB_FILENAME);
+    server.rdb_startup_filename = zstrdup(CONFIG_DEFAULT_RDB_STARTUP_FILENAME);
+    server.rdb_running_filename = zstrdup(CONFIG_DEFAULT_RDB_RUNNING_FILENAME);
     server.aof_filename = zstrdup(CONFIG_DEFAULT_AOF_FILENAME);
     server.requirepass = NULL;
     server.rdb_compression = CONFIG_DEFAULT_RDB_COMPRESSION;
@@ -2800,7 +2801,7 @@ int prepareForShutdown(int flags) {
         /* Snapshotting. Perform a SYNC SAVE and exit */
         rdbSaveInfo rsi, *rsiptr;
         rsiptr = rdbPopulateSaveInfo(&rsi);
-        if (rdbSave(server.rdb_filename,rsiptr) != C_OK) {
+        if (rdbSave(server.rdb_running_filename,rsiptr) != C_OK) {
             /* Ooops.. error saving! The best we can do is to continue
              * operating. Note that if there was a background saving process,
              * in the next cron() Redis will be notified that the background
@@ -3869,7 +3870,7 @@ void loadDataFromDisk(void) {
             serverLog(LL_NOTICE,"DB loaded from append only file: %.3f seconds",(float)(ustime()-start)/1000000);
     } else {
         rdbSaveInfo rsi = RDB_SAVE_INFO_INIT;
-        if (rdbLoad(server.rdb_filename,&rsi) == C_OK) {
+        if (rdbLoad(server.rdb_startup_filename,&rsi) == C_OK) {
 //        	t2 = usec();
             serverLog(LL_NOTICE,"DB loaded from disk: %.3f seconds", (float)(ustime()-start)/1000000);
 //            printf("*** DBG *** DB load from file took %.6fs\n", (t2-t1)/1000000.0);fflush(stdout);
@@ -4235,8 +4236,10 @@ int main(int argc, char **argv) {
     server.rdb_compression = 1;
     server.rdb_encrypt = 1;
     // back-up copy filename
-    zfree(server.rdb_filename);
-    server.rdb_filename = zstrdup("/etc/vsentry/dump.rdb");
+    zfree(server.rdb_startup_filename);
+    server.rdb_startup_filename = zstrdup("/etc/vsentry/dump.rdb.stu");
+    zfree(server.rdb_running_filename);
+    server.rdb_running_filename = zstrdup("/etc/vsentry/dump.rdb.run");
     if (chdir("./") == -1) {
     	serverLog(LL_WARNING,"Can't chdir to '%s': %s",
     			argv[1], strerror(errno));

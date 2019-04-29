@@ -577,7 +577,7 @@ int startBgsaveForReplication(int mincapa) {
         if (socket_target)
             retval = rdbSaveToSlavesSockets(rsiptr);
         else
-            retval = rdbSaveBackground(server.rdb_filename,rsiptr);
+            retval = rdbSaveBackground(server.rdb_running_filename,rsiptr);
     } else {
         serverLog(LL_WARNING,"BGSAVE for replication: replication information not available, can't generate the RDB file right now. Try later.");
         retval = C_ERR;
@@ -977,7 +977,7 @@ void updateSlavesWaitingBgsave(int bgsaveerr, int type) {
                     serverLog(LL_WARNING,"SYNC failed. BGSAVE child returned an error");
                     continue;
                 }
-                if ((slave->repldbfd = open(server.rdb_filename,O_RDONLY)) == -1 ||
+                if ((slave->repldbfd = open(server.rdb_running_filename,O_RDONLY)) == -1 ||
                     redis_fstat(slave->repldbfd,&buf) == -1) {
                     freeClient(slave);
                     serverLog(LL_WARNING,"SYNC failed. Can't open/stat DB after BGSAVE: %s", strerror(errno));
@@ -1257,7 +1257,7 @@ void readSyncBulkPayload(aeEventLoop *el, int fd, void *privdata, int mask) {
             rdbRemoveTempFile(server.rdb_child_pid);
         }
 
-        if (rename(server.repl_transfer_tmpfile,server.rdb_filename) == -1) {
+        if (rename(server.repl_transfer_tmpfile,server.rdb_running_filename) == -1) {
             serverLog(LL_WARNING,"Failed trying to rename the temp DB into dump.rdb in MASTER <-> REPLICA synchronization: %s", strerror(errno));
             cancelReplicationHandshake();
             return;
@@ -1278,7 +1278,7 @@ void readSyncBulkPayload(aeEventLoop *el, int fd, void *privdata, int mask) {
         aeDeleteFileEvent(server.el,server.repl_transfer_s,AE_READABLE);
         serverLog(LL_NOTICE, "MASTER <-> REPLICA sync: Loading DB in memory");
         rdbSaveInfo rsi = RDB_SAVE_INFO_INIT;
-        if (rdbLoad(server.rdb_filename,&rsi) != C_OK) {
+        if (rdbLoad(server.rdb_running_filename,&rsi) != C_OK) {
             serverLog(LL_WARNING,"Failed trying to load the MASTER synchronization DB from disk");
             cancelReplicationHandshake();
             /* Re-enable the AOF if we disabled it earlier, in order to restore
