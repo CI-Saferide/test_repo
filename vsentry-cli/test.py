@@ -17,29 +17,24 @@ def create_group(group_type, group_name, values):
 		run_cmd(delete_cmd)
 	except subprocess.CalledProcessError, e:
 		print 'Failed delete group: ' + group_name
-		return
 	try:
 		run_cmd(update_cmd)
 	except subprocess.CalledProcessError, e:
 		print 'Failed update group: ' + group_name
-		print '>>>>', update_cmd
+		print 'update cmd:', update_cmd
 		errs += 1
 		return
 	try:
 		reply = run_cmd(show_cmd)
 	except subprocess.CalledProcessError, e:
 		print 'Failed show group: ' + group_name
-		print '>>>>', show_cmd
+		print 'show cmd:', show_cmd
 		errs += 1
 		return
 	list_values = values.split()
-	ind = 4
-	print list_values
-	for v in list_values:
-		if (reply[ind] != v):
-			print 'ERROR - Create of ' + group_type + ' failed!!!'
-			errs += 1
-		ind += 1
+	if (set(list_values) != set(reply)):
+		print 'ERROR - Create of ' + group_type + ' failed!!!'
+		errs += 1
 
 def check_groups():
 	create_group('file-group', 'file_group1', '/work/file1.txt /work/file2.txt')
@@ -183,6 +178,7 @@ def is_valid_can_rule(reply, is_mid_group, mid, can_dir, is_if_group, interface,
 	return True
 	
 def check_can_rule_add(rule_type, rule_number, is_mid_group, mid, can_dir, is_if_group, interface, is_program_group, program, is_user_group, user, action):
+	global errs
 	delete_rule(rule_type, 'can', rule_number)
 	update_cmd = cli_cmd + ' update ' + rule_type + ' can ' + ' rule_number ' + str(rule_number)
 	update_cmd = add_rule_field(update_cmd, is_mid_group, 'mid', mid)
@@ -196,6 +192,7 @@ def check_can_rule_add(rule_type, rule_number, is_mid_group, mid, can_dir, is_if
 		run_cmd(update_cmd)
 	except subprocess.CalledProcessError, e:
 		print 'Failed add can rule : ' + str(rule_number)
+		errs += 1
 		return
 	reply = get_rule(rule_type, 'can', rule_number)
 	if (not is_valid_can_rule(reply, is_mid_group, mid, can_dir, is_if_group, interface, is_program_group, program, is_user_group, user, action)):
@@ -237,6 +234,7 @@ def is_valid_file_rule(reply, is_file_group, filename, perm, is_program_group, p
 	return True
 
 def check_file_rule_add(rule_type, rule_number, is_file_group, filename, perm, is_program_group, program, is_user_group, user, action):
+	global errs
 	delete_rule(rule_type, 'file', rule_number)
 	update_cmd = cli_cmd + ' update ' + rule_type + ' file ' + ' rule_number ' + str(rule_number)
 	update_cmd = add_rule_field(update_cmd, is_file_group, 'file', filename)
