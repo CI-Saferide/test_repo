@@ -47,7 +47,6 @@ typedef enum {
 typedef enum {
 	FILE_ITEM_ACTION,
 	FILE_ITEM_FILENAME,
-	FILE_ITEM_PERM,
 	FILE_ITEM_PROGRAM,
 	FILE_ITEM_USER,
 } sr_file_item_type_t;
@@ -98,12 +97,16 @@ typedef struct sr_can_record {
 	can_item_t can_item;
 } sr_can_record_t;
 
+typedef struct sr_file {
+	char	name[MAX_PATH];
+	char	perm[PERM_LEN];
+} sr_file_t;
+
 typedef struct {
 	sr_file_item_type_t file_item_type;
 	union {
 		char    action[MAX_ACTION_NAME];
-		char	filename[MAX_PATH];
-		char	perm[PERM_LEN];
+		sr_file_t file;
 		char    program[MAX_PATH];
 		char    user[MAX_USER_NAME];
 	} u;

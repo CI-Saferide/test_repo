@@ -1058,16 +1058,13 @@ int cls_file_rule(bool add, unsigned int rule, char *filename, unsigned long ino
 	}
 
 	if (mode) {
-		/* convert X(0..7) to new classifier permissions */
-		unsigned int tmp = (*mode - '0');
-
 		/* in the new classifier we only look on the user bits.
 		 * other bit are irrelevant */
-		if (tmp & FILE_MODE_READ)
+		if (strchr(mode, 'r'))
 			file_ev.mode |= FILE_MODE_READ;
-		if (tmp & FILE_MODE_WRITE)
+		if (strchr(mode, 'w'))
 			file_ev.mode |= FILE_MODE_WRITE;
-		if (tmp & FILE_MODE_EXEC)
+		if (strchr(mode, 'x'))
 			file_ev.mode |= FILE_MODE_EXEC;
 	}
 

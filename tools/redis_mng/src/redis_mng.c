@@ -125,6 +125,7 @@ typedef struct {
 	//handle_rule_f_t cb;
 	void (*cb)(void *data, redis_entity_type_t type, SR_32 *status);
 	sr_file_item_type_t file_item_type;
+	char perm[PERM_LEN];
 	SR_32 *rc;
 } file_rule_cb_params_t;
 
@@ -749,7 +750,8 @@ static SR_32 load_file_cb(char *item, void *param)
 	file_rule.file_item.file_item_type = file_rule_params->file_item_type;
 	switch (file_rule_params->file_item_type) {
 		case FILE_ITEM_FILENAME:
-			strncpy(file_rule.file_item.u.filename, item, sizeof(file_rule.file_item.u.filename));
+			strncpy(file_rule.file_item.u.file.name, item, sizeof(file_rule.file_item.u.file.name));
+			strncpy(file_rule.file_item.u.file.perm, file_rule_params->perm, sizeof(file_rule.file_item.u.file.perm));
 			break;
 		case FILE_ITEM_PROGRAM:
 			strncpy(file_rule.file_item.u.program, item, sizeof(file_rule.file_item.u.program));
@@ -772,7 +774,7 @@ static SR_32 load_file_cb(char *item, void *param)
 }
 
 
-static SR_32 handle_list_file(SR_32 rule_id, sr_file_item_type_t type, handle_rule_f_t cb, SR_32 list_id, char *group)
+static SR_32 handle_list_file(SR_32 rule_id, sr_file_item_type_t type, handle_rule_f_t cb, SR_32 list_id, char *group, char *perm)
 {
 	SR_32 rc = SR_SUCCESS;
 	file_rule_cb_params_t params;
@@ -781,6 +783,8 @@ static SR_32 handle_list_file(SR_32 rule_id, sr_file_item_type_t type, handle_ru
 	params.cb = cb;
 	params.file_item_type = type;
 	params.rc = &rc;
+	if (perm)
+		strncpy(params.perm, perm, sizeof(params.perm));
 	exec_for_all_group(list_id, get_group_name(group), load_file_cb, &params);
 
 	if (rc != SR_SUCCESS) {
@@ -794,7 +798,7 @@ static SR_32 load_file(SR_32 rule_id, SR_32 n, redisReply *reply, handle_rule_f_
 {
 	SR_32 rc = SR_SUCCESS, list_id;
 	sr_file_record_t file_rule = {};
-	char *field;
+	char *field, perm[PERM_LEN];
 
 	file_rule.rulenum = rule_id;
 
@@ -804,23 +808,19 @@ static SR_32 load_file(SR_32 rule_id, SR_32 n, redisReply *reply, handle_rule_f_
 	cb(&file_rule, ENTITY_TYPE_FILE_RULE, &rc);
 	if (rc != SR_SUCCESS) return rc;
 
+	strncpy(perm, get_field(PERMISSION, n, reply), PERM_LEN);
 	field = get_field(FILENAME, n, reply);
 	list_id = get_list_id(field);
 	if (list_id == LIST_NONE) {
 		file_rule.file_item.file_item_type = FILE_ITEM_FILENAME;
-		strncpy(file_rule.file_item.u.filename, field, MAX_PATH);
+		strncpy(file_rule.file_item.u.file.name, field, sizeof(file_rule.file_item.u.file.name));
+		strncpy(file_rule.file_item.u.file.perm, perm, sizeof(file_rule.file_item.u.file.perm));
 		cb(&file_rule, ENTITY_TYPE_FILE_RULE, &rc);
 		if (rc != SR_SUCCESS) return rc;
 	} else {
-		if ((rc = handle_list_file(rule_id, FILE_ITEM_FILENAME, cb, list_id, field)) != SR_SUCCESS)
+		if ((rc = handle_list_file(rule_id, FILE_ITEM_FILENAME, cb, list_id, field, perm)) != SR_SUCCESS)
 			return rc;
 	}
-
-	field = get_field(PERMISSION, n, reply);
-	file_rule.file_item.file_item_type = FILE_ITEM_PERM;
-	strncpy(file_rule.file_item.u.perm, field, MAX_PATH);
-	cb(&file_rule, ENTITY_TYPE_FILE_RULE, &rc);
-	if (rc != SR_SUCCESS) return rc;
 
 	field = get_field(PROGRAM_ID, n, reply);
 	list_id = get_list_id(field);
@@ -830,7 +830,7 @@ static SR_32 load_file(SR_32 rule_id, SR_32 n, redisReply *reply, handle_rule_f_
 		cb(&file_rule, ENTITY_TYPE_FILE_RULE, &rc);
 		if (rc != SR_SUCCESS) return rc;
 	} else {
-		if ((rc = handle_list_file(rule_id, FILE_ITEM_PROGRAM, cb, list_id, field)) != SR_SUCCESS)
+		if ((rc = handle_list_file(rule_id, FILE_ITEM_PROGRAM, cb, list_id, field, NULL)) != SR_SUCCESS)
 			return rc;
 	}
 
@@ -842,7 +842,7 @@ static SR_32 load_file(SR_32 rule_id, SR_32 n, redisReply *reply, handle_rule_f_
 		cb(&file_rule, ENTITY_TYPE_FILE_RULE, &rc);
 		if (rc != SR_SUCCESS) return rc;
 	} else {
-		if ((rc = handle_list_file(rule_id, FILE_ITEM_USER, cb, list_id, field)) != SR_SUCCESS)
+		if ((rc = handle_list_file(rule_id, FILE_ITEM_USER, cb, list_id, field, NULL)) != SR_SUCCESS)
 			return rc;
 	}
 
@@ -1330,7 +1330,7 @@ SR_32 redis_mng_load_db(redisContext *c, int pipelined, handle_rule_f_t cb_func)
 				goto out;
 			}
 			if (load_file(atoi(reply->element[i]->str + strlen(FILE_PREFIX)), replies[i]->elements, replies[i], cb_func) != SR_SUCCESS) {
-				printf("ERROR: handle CAN rule %s failed \n", reply->element[i]->str + strlen(FILE_PREFIX));
+				printf("ERROR: handle FILE rule %s failed \n", reply->element[i]->str + strlen(FILE_PREFIX));
 				for (j = 0; j < i; j++)
 					freeReplyObject(replies[j]);
 				free(replies);

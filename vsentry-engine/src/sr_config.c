@@ -1390,7 +1390,6 @@ static void handle_can_rule(sr_can_record_t *can_rule, SR_32 *status)
 
 	switch (can_rule->can_item.can_item_type) {
 		case CAN_ITEM_ACTION:
-			printf(">>>>>>>>>> Add CAN rule rule:%d action:%s \n", can_rule->rulenum, can_rule->can_item.u.action); 
 #ifdef BIN_CLS_DB
 			ret = cls_rule(true, CLS_CAN_RULE_TYPE, can_rule->rulenum, can_rule->can_item.u.action, 0);
     			if (ret != SR_SUCCESS) {
@@ -1462,21 +1461,63 @@ static void handle_can_rule(sr_can_record_t *can_rule, SR_32 *status)
 
 static void handle_file_rule(sr_file_record_t *file_rule, SR_32 *status)
 {
+#ifdef BIN_CLS_DB
+        unsigned long file_ino = INODE_ANY;
+	SR_32 ret;
+#endif
+	
 	switch (file_rule->file_item.file_item_type) {
 		case FILE_ITEM_ACTION:
 			printf(">>>>>>>>>> Add FILE rule:%d action:%s \n", file_rule->rulenum, file_rule->file_item.u.action); 
+#ifdef BIN_CLS_DB
+			ret = cls_rule(true, CLS_FILE_RULE_TYPE, file_rule->rulenum, file_rule->file_item.u.action, 0);
+			if (ret != SR_SUCCESS) {
+				CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+					"%s=failed to create file rule %u with action %s",REASON,
+					file_rule->rulenum, file_rule->file_item.u.action);
+				*status = SR_ERROR;
+				return;
+			}
+#endif
 			break;
 		case FILE_ITEM_FILENAME:
-			printf("   >>>>> FILENAME :%s \n", file_rule->file_item.u.filename); 
-			break;
-		case FILE_ITEM_PERM:
-			printf("   >>>>> PERM :%s \n", file_rule->file_item.u.perm); 
+			printf("   >>>>>>>>>> FILENAME :%s perm:%s FILE_MODE_READ:%d FILE_MODE_WRITE:%d :%d \n",
+			file_rule->file_item.u.file.name, file_rule->file_item.u.file.perm, FILE_MODE_READ, FILE_MODE_WRITE, FILE_MODE_EXEC); 
+#ifdef BIN_CLS_DB
+			sr_get_inode(file_rule->file_item.u.file.name, &file_ino);
+			ret = cls_file_rule(true, file_rule->rulenum, file_rule->file_item.u.file.name, file_ino, file_rule->file_item.u.file.perm);
+			if (ret != SR_SUCCESS) {
+				CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+					"%s=failed to add file %s for file rule %d",REASON,
+				file_rule->file_item.u.file.name, file_rule->rulenum);
+				*status = SR_ERROR;
+				return;
+			}
+#endif
 			break;
 		case FILE_ITEM_PROGRAM:
-			printf("   >>>>>>>>> PROGRAM :%s \n", file_rule->file_item.u.program); 
+			printf("   >>>>>>>>> FILE_ITEM_PROGRAM: :%s \n", file_rule->file_item.u.program); 
+#ifdef BIN_CLS_DB
+			if (create_program_rule(file_rule->file_item.u.program, file_rule->rulenum, CLS_FILE_RULE_TYPE) != SR_SUCCESS) {
+				CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+					"%s=failed to add program %s for file rule %d",REASON,
+					file_rule->file_item.u.program, file_rule->rulenum);
+				*status = SR_ERROR;
+				return;
+			}
+#endif
 			break;
 		case FILE_ITEM_USER:
-			printf("   >>>>>>>>> USER :%s \n", file_rule->file_item.u.user); 
+			printf("   >>>>>>>>> FILE_ITEM_USER: :%s \n", file_rule->file_item.u.user); 
+#ifdef BIN_CLS_DB
+			if (create_user_rule(file_rule->file_item.u.user, file_rule->rulenum, CLS_FILE_RULE_TYPE) != SR_SUCCESS) {
+				CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+					"%s=failed to add user %s for file rule %d",REASON,
+					file_rule->file_item.u.user, file_rule->rulenum);
+				*status = SR_ERROR;
+				return;
+ 			}
+#endif
 			break;
 		default:
 			break;
