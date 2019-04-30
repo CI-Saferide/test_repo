@@ -1024,7 +1024,7 @@ SR_32 sr_create_filter_paths(void)
 	return SR_SUCCESS;
 }
 
-#if 0
+#ifdef BIN_CLS_DB
 static SR_32 parse_addr(char *addr_str, SR_U32 *addr, SR_U32 *netmask)
 {
 	char *p, *tmp = NULL;
@@ -1246,7 +1246,9 @@ static void handle_can_rule(sr_can_record_t *can_rule, SR_32 *status)
 
 	switch (can_rule->can_item.can_item_type) {
 		case CAN_ITEM_ACTION:
-			printf(">>>>>>>>>> Add CAN rule rule:%d action:%s \n", can_rule->rulenum, can_rule->can_item.u.action); 
+#ifdef DEBUG_PRINT
+			printf(">>>>>>>>>> Add CAN rule rule:%d action:%s \n", can_rule->rulenum, can_rule->can_item.u.action);
+#endif
 #ifdef BIN_CLS_DB
 			ret = cls_rule(true, CLS_CAN_RULE_TYPE, can_rule->rulenum, can_rule->can_item.u.action, 0);
     			if (ret != SR_SUCCESS) {
@@ -1320,19 +1322,29 @@ static void handle_file_rule(sr_file_record_t *file_rule, SR_32 *status)
 {
 	switch (file_rule->file_item.file_item_type) {
 		case FILE_ITEM_ACTION:
-			printf(">>>>>>>>>> Add FILE rule:%d action:%s \n", file_rule->rulenum, file_rule->file_item.u.action); 
+#ifdef DEBUG_PRINT
+			printf(">>>>>>>>>> Add FILE rule:%d action:%s \n", file_rule->rulenum, file_rule->file_item.u.action);
+#endif
 			break;
 		case FILE_ITEM_FILENAME:
-			printf("   >>>>> FILENAME :%s \n", file_rule->file_item.u.filename); 
+#ifdef DEBUG_PRINT
+			printf("   >>>>> FILENAME :%s \n", file_rule->file_item.u.filename);
+#endif
 			break;
 		case FILE_ITEM_PERM:
-			printf("   >>>>> PERM :%s \n", file_rule->file_item.u.perm); 
+#ifdef DEBUG_PRINT
+			printf("   >>>>> PERM :%s \n", file_rule->file_item.u.perm);
+#endif
 			break;
 		case FILE_ITEM_PROGRAM:
-			printf("   >>>>>>>>> PROGRAM :%s \n", file_rule->file_item.u.program); 
+#ifdef DEBUG_PRINT
+			printf("   >>>>>>>>> PROGRAM :%s \n", file_rule->file_item.u.program);
+#endif
 			break;
 		case FILE_ITEM_USER:
-			printf("   >>>>>>>>> USER :%s \n", file_rule->file_item.u.user); 
+#ifdef DEBUG_PRINT
+			printf("   >>>>>>>>> USER :%s \n", file_rule->file_item.u.user);
+#endif
 			break;
 		default:
 			break;
