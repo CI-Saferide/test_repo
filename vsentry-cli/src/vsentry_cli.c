@@ -99,6 +99,11 @@ static int engine_connect(void)
 	return fd;
 }
 
+static void print_update_engine_usage(void)
+{
+	printf("action update engine [start | stop] \n");
+}
+
 static void print_update_action_usage(void)
 {
 	printf("action update action action_name [action allow | drop] [log file | syslog] [rate_limit_action allow | drop] [rate_limit_log vsentry | syslog] \n");
@@ -819,6 +824,43 @@ out_session:
 	return rc;
 }
 
+static SR_32 handle_update_engine(int argc, char **argv)
+{
+	SR_BOOL is_on;
+	SR_32 rc = SR_SUCCESS;
+
+	if (argc < 1) {
+		print_update_engine_usage();
+		return SR_ERROR;
+	}
+
+	if (!strcmp(argv[0], "start"))
+		is_on = SR_TRUE;
+	else if (!strcmp(argv[0], "stop"))
+		is_on = SR_FALSE;
+	else {
+		printf("Invalid parameter\n");
+		print_update_engine_usage();
+		return SR_ERROR;
+	}
+
+	if (!(c = redis_mng_session_start())) {
+                printf("ERROR: redis_mng_session_start failed\n");
+                return SR_ERROR;
+        }
+
+	if (redis_mng_update_engine_state(c, is_on)) {
+                printf("ERROR: redis_mng_get_engine_state failed\n");
+                rc = SR_ERROR;
+                goto out;
+        }
+
+out:
+        close_session();
+
+	return rc;
+}
+
 static SR_32 handle_update_action(int argc, char **argv)
 {
 	char *name;
@@ -900,12 +942,16 @@ static SR_32 handle_update(int argc, char **argv)
 	char *type, *section;
 	SR_U32 rule_id;
 
+	type = argv[0];
+
+	if (!strcmp(type, "engine"))
+		return handle_update_engine(argc - 1 , argv + 1);
+
 	if (argc < 3) {
 		print_update_usage();
 		return SR_SUCCESS;
 	}
 
-	type = argv[0];
 	if (!strcmp(type, "group"))
 		return handle_update_group(argc - 1 , argv + 1);
 	if (!strcmp(type, "action"))
@@ -997,6 +1043,28 @@ static SR_32 show_sp(int argc, char **argv)
 	return rc;
 }
 
+static SR_32 show_engine(void)
+{
+	SR_32 rc = SR_SUCCESS;
+	SR_BOOL is_on;
+
+	if (!(c = redis_mng_session_start())) {
+		printf("ERROR: redis_mng_session_start failed\n");
+		return SR_ERROR;
+	}
+	if ((rc = redis_mng_get_engine_state(c, &is_on)) != SR_SUCCESS) {
+		printf("ERROR: redis_mng_get_engine_state failed\n");
+		rc = SR_ERROR;
+		goto out;
+	}
+	printf("%s \n", is_on ? "start" : "stop");
+
+out:
+	close_session();
+	
+	return rc;
+}
+
 static SR_32 show_group(int argc, char **argv)
 {
 	char *type, *name;
@@ -1052,6 +1120,8 @@ static SR_32 handle_show(int argc, char **argv)
 		return show_action(argc - 1, argv + 1);
 	if (!strcmp(argv[0], "sp"))
 		return show_sp(argc - 1, argv + 1);
+	if (!strcmp(argv[0], "engine"))
+		return show_engine();
 
 	if (argc < 2) {
 		is_can = is_file = is_ip = SR_TRUE;
