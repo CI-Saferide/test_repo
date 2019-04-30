@@ -101,21 +101,14 @@ SR_32 sr_engine_cli_commit(SR_32 fd)
 
 	sr_engine_get_db_lock();
 	c = redis_mng_session_start();
-        if (!c) {
-                CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-                                        "%s=redis session start failed",REASON);
-                rc = SR_ERROR;
-                goto out;
-        }
-
-	if (redis_mng_exec_all_actions(c, sr_config_handle_action)) {
+	if (!c) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-			"%s=exec for all actions failed",REASON);
+				"%s=redis session start failed",REASON);
 		rc = SR_ERROR;
 		goto out;
 	}
 
-	if (redis_mng_load_db(c, SR_TRUE, sr_config_handle_rule) != SR_SUCCESS) {
+	if (redis_mng_load_db(c, SR_TRUE, sr_config_handle_rule, sr_config_handle_action) != SR_SUCCESS) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 			"%s=load db failed",REASON);
 		rc = SR_ERROR;

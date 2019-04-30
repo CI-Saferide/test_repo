@@ -1390,6 +1390,9 @@ static void handle_can_rule(sr_can_record_t *can_rule, SR_32 *status)
 
 	switch (can_rule->can_item.can_item_type) {
 		case CAN_ITEM_ACTION:
+#ifdef DEBUG_PRINT
+			printf(">>>>>>>>>> Add CAN rule rule:%d action:%s \n", can_rule->rulenum, can_rule->can_item.u.action);
+#endif
 #ifdef BIN_CLS_DB
 			ret = cls_rule(true, CLS_CAN_RULE_TYPE, can_rule->rulenum, can_rule->can_item.u.action, 0);
     			if (ret != SR_SUCCESS) {
@@ -1468,7 +1471,9 @@ static void handle_file_rule(sr_file_record_t *file_rule, SR_32 *status)
 	
 	switch (file_rule->file_item.file_item_type) {
 		case FILE_ITEM_ACTION:
-			printf(">>>>>>>>>> Add FILE rule:%d action:%s \n", file_rule->rulenum, file_rule->file_item.u.action); 
+#ifdef DEBUG_PRINT
+			printf(">>>>>>>>>> Add FILE rule:%d action:%s \n", file_rule->rulenum, file_rule->file_item.u.action);
+#endif
 #ifdef BIN_CLS_DB
 			ret = cls_rule(true, CLS_FILE_RULE_TYPE, file_rule->rulenum, file_rule->file_item.u.action, 0);
 			if (ret != SR_SUCCESS) {
@@ -1481,9 +1486,11 @@ static void handle_file_rule(sr_file_record_t *file_rule, SR_32 *status)
 #endif
 			break;
 		case FILE_ITEM_FILENAME:
+#ifdef DEBUG_PRINT
 			printf("   >>>>>>>>>> FILENAME :%s perm:%s FILE_MODE_READ:%d FILE_MODE_WRITE:%d :%d \n",
-			file_rule->file_item.u.file.name, file_rule->file_item.u.file.perm, FILE_MODE_READ, FILE_MODE_WRITE, FILE_MODE_EXEC); 
+#endif
 #ifdef BIN_CLS_DB
+			file_rule->file_item.u.file.name, file_rule->file_item.u.file.perm, FILE_MODE_READ, FILE_MODE_WRITE, FILE_MODE_EXEC); 
 			sr_get_inode(file_rule->file_item.u.file.name, &file_ino);
 			ret = cls_file_rule(true, file_rule->rulenum, file_rule->file_item.u.file.name, file_ino, file_rule->file_item.u.file.perm);
 			if (ret != SR_SUCCESS) {
@@ -1496,7 +1503,9 @@ static void handle_file_rule(sr_file_record_t *file_rule, SR_32 *status)
 #endif
 			break;
 		case FILE_ITEM_PROGRAM:
-			printf("   >>>>>>>>> FILE_ITEM_PROGRAM: :%s \n", file_rule->file_item.u.program); 
+#ifdef DEBUG_PRINT
+			printf("   >>>>>>>>> FILE_ITEM_PROGRAM: :%s \n", file_rule->file_item.u.program);
+#endif
 #ifdef BIN_CLS_DB
 			if (create_program_rule(file_rule->file_item.u.program, file_rule->rulenum, CLS_FILE_RULE_TYPE) != SR_SUCCESS) {
 				CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
@@ -1508,7 +1517,9 @@ static void handle_file_rule(sr_file_record_t *file_rule, SR_32 *status)
 #endif
 			break;
 		case FILE_ITEM_USER:
-			printf("   >>>>>>>>> FILE_ITEM_USER: :%s \n", file_rule->file_item.u.user); 
+#ifdef DEBUG_PRINT
+			printf("   >>>>>>>>> FILE_ITEM_USER: :%s \n", file_rule->file_item.u.user);
+#endif
 #ifdef BIN_CLS_DB
 			if (create_user_rule(file_rule->file_item.u.user, file_rule->rulenum, CLS_FILE_RULE_TYPE) != SR_SUCCESS) {
 				CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
@@ -1528,9 +1539,9 @@ static void handle_file_rule(sr_file_record_t *file_rule, SR_32 *status)
 
 SR_32 sr_config_handle_action(void *data) 
 {
+#ifdef BIN_CLS_DB
 	sr_action_record_t *action = (sr_action_record_t *)data;
 
-#ifdef BIN_CLS_DB
 	if (cls_action(true, (bool)!!(action->actions_bitmap && SR_CLS_ACTION_ALLOW),
 		(action->log_target != LOG_TARGET_NONE), action->name) == SR_ERROR) {
 		printf("XXXXX EEEEEEEEEEE Failed add action !!!\n");
@@ -1539,14 +1550,24 @@ SR_32 sr_config_handle_action(void *data)
 			action->name);
 		return SR_ERROR;
         }
-#endif
 
-#ifndef DEBUG
+#ifdef DEBUG_PRINT
 	printf(">>>>>> Handle action :%s bm:%d log:%d rl bm:%d rl log:%d \n", action->name,
 		action->actions_bitmap,
 		action->log_target,
 		action->rl_actions_bitmap,
 		action->rl_log_target);
+#endif
+#else
+#ifdef DEBUG_PRINT
+	sr_action_record_t *action = (sr_action_record_t *)data;
+
+	printf(">>>>>> Handle action :%s bm:%d log:%d rl bm:%d rl log:%d \n", action->name,
+		action->actions_bitmap,
+		action->log_target,
+		action->rl_actions_bitmap,
+		action->rl_log_target);
+#endif
 #endif
 
 	return SR_SUCCESS;

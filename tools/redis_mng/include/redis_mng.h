@@ -118,7 +118,7 @@ redisContext *redis_mng_session_start(void);
 void redis_mng_session_end(redisContext *c);
 SR_32 redis_mng_clean_db(redisContext *c); // for test only
 /* get new configuration policy */
-SR_32 redis_mng_load_db(redisContext *c, int pipelined, handle_rule_f_t cb_func);
+SR_32 redis_mng_load_db(redisContext *c, int pipelined, handle_rule_f_t cb_func, SR_32 (*action_cb)(void *data));
 
 /* get all file-paths and executables from the current rules, pipelined */
 SR_32 redis_mng_reconf(redisContext *c, handle_rule_f_t cb_func);
@@ -194,7 +194,6 @@ SR_32 redis_mng_commit(redisContext *c);
 SR_32 redis_mng_add_system_policer(redisContext *c, char *exec, redis_system_policer_t *system_policer_info);
 SR_32 redis_mng_print_system_policer(redisContext *c);
 SR_32 redis_mng_exec_all_system_policer(redisContext *c, SR_32 (*cb)(char *exec, redis_system_policer_t *sp));
-SR_32 redis_mng_exec_all_actions(redisContext *c, SR_32 (*cb)(void *action));
 SR_32 redis_mng_exec_all_rules(redisContext *c, rule_type_t type, SR_32 rule_id_start, SR_32 rule_id_end, SR_32 (*cb)(SR_32 rule_num, void *rule));
 SR_32 redis_mng_exec_list(redisContext *c, list_type_e type, char *name, SR_32 (*cb)(char *val));
 SR_32 redis_mng_exec_all_list_names(redisContext *c, list_type_e type, SR_32 (*cb)(list_type_e type, char *name));
