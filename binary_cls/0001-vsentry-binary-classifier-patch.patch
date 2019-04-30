@@ -1,4 +1,4 @@
-From 407299797e54b14a378efbb1206acabe94ab620a Mon Sep 17 00:00:00 2001
+From caf77d94752c59854f5bb146c8d59427ece75c9d Mon Sep 17 00:00:00 2001
 From: oshriy <oshriy@saferide.io>
 Date: Tue, 12 Mar 2019 15:10:41 +0200
 Subject: [PATCH] vsentry binary classifier patch
@@ -8,18 +8,18 @@ Signed-off-by: oshriy <oshriy@saferide.io>
  include/linux/init.h                     |    5 +
  include/uapi/linux/Kbuild                |    1 +
  include/uapi/linux/vsentry/Kbuild        |    4 +
- include/uapi/linux/vsentry/vsentry.h     |   99 ++
- include/uapi/linux/vsentry/vsentry_drv.h |   57 +
+ include/uapi/linux/vsentry/vsentry.h     |  126 ++
+ include/uapi/linux/vsentry/vsentry_drv.h |   67 +
  init/main.c                              |    5 +
  security/Kconfig                         |    1 +
  security/Makefile                        |    2 +
  security/vsentry/Kconfig                 |   11 +
  security/vsentry/Makefile                |    3 +
- security/vsentry/vsentry_drv.c           |  390 +++++++
- security/vsentry/vsentry_hooks.c         | 1827 ++++++++++++++++++++++++++++++
- security/vsentry/vsentry_internal.h      |   29 +
- security/vsentry/vsentry_mod.c           |  584 ++++++++++
- 14 files changed, 3018 insertions(+)
+ security/vsentry/vsentry_drv.c           |  451 ++++
+ security/vsentry/vsentry_hooks.c         | 2484 ++++++++++++++++++++++
+ security/vsentry/vsentry_internal.h      |   34 +
+ security/vsentry/vsentry_mod.c           |  825 +++++++
+ 14 files changed, 4019 insertions(+)
  create mode 100644 include/uapi/linux/vsentry/Kbuild
  create mode 100644 include/uapi/linux/vsentry/vsentry.h
  create mode 100644 include/uapi/linux/vsentry/vsentry_drv.h
@@ -31,10 +31,10 @@ Signed-off-by: oshriy <oshriy@saferide.io>
  create mode 100644 security/vsentry/vsentry_mod.c
 
 diff --git a/include/linux/init.h b/include/linux/init.h
-index e30104c..a08162f 100644
+index e30104ceb86d..a08162f14562 100644
 --- a/include/linux/init.h
 +++ b/include/linux/init.h
-@@ -120,6 +120,11 @@
+@@ -120,6 +120,11 @@ extern char __initdata boot_command_line[];
  extern char *saved_command_line;
  extern unsigned int reset_devices;
  
@@ -47,7 +47,7 @@ index e30104c..a08162f 100644
  void setup_arch(char **);
  void prepare_namespace(void);
 diff --git a/include/uapi/linux/Kbuild b/include/uapi/linux/Kbuild
-index cd2be1c..395a9d7 100644
+index cd2be1c8e9fb..395a9d706460 100644
 --- a/include/uapi/linux/Kbuild
 +++ b/include/uapi/linux/Kbuild
 @@ -22,6 +22,7 @@ header-y += netfilter_ipv4/
@@ -60,7 +60,7 @@ index cd2be1c..395a9d7 100644
  
 diff --git a/include/uapi/linux/vsentry/Kbuild b/include/uapi/linux/vsentry/Kbuild
 new file mode 100644
-index 0000000..6b63a03
+index 000000000000..6b63a031fd38
 --- /dev/null
 +++ b/include/uapi/linux/vsentry/Kbuild
 @@ -0,0 +1,4 @@
@@ -70,10 +70,10 @@ index 0000000..6b63a03
 +
 diff --git a/include/uapi/linux/vsentry/vsentry.h b/include/uapi/linux/vsentry/vsentry.h
 new file mode 100644
-index 0000000..a60cf7c
+index 000000000000..9651c06e7552
 --- /dev/null
 +++ b/include/uapi/linux/vsentry/vsentry.h
-@@ -0,0 +1,99 @@
+@@ -0,0 +1,126 @@
 +/* Copyright (C) 2018 SafeRide, Inc.
 + *
 + * This software is licensed under the terms of the GNU General Public
@@ -94,19 +94,18 @@ index 0000000..a60cf7c
 +#define VSENTRY_ALREADY_EXISTS 	-2
 +#define VSENTRY_NONE_EXISTS 	-3
 +#define VSENTRY_INVALID 	-4
-+
-+#define VSENTRY_ALLOW 		0
-+#define VSENTRY_DROP		1
++#define VSENTRY_BUSY 		-5
 +
 +/* the following should be used in act_bitmap. see vsentry_event_t */
 +#define VSENTRY_ACTION_DROP 	(0)
 +#define VSENTRY_ACTION_ALLOW 	(1<<0)
 +#define VSENTRY_ACTION_LOG 	(1<<1)
++#define VSENTRY_ACTION_LEARN 	(1<<2)
 +
 +typedef enum {
-+	VSENTRY_MODE_LEARN,
++	VSENTRY_MODE_ENFORCE,
 +	VSENTRY_MODE_PERMISSIVE,
-+	VSENTRY_MODE_ENFOCE,
++	VSENTRY_MODE_LEARN,
 +	VSENTRY_MODE_TOTAL,
 +} vsentry_mode_e;
 +
@@ -114,7 +113,9 @@ index 0000000..a60cf7c
 +	VSENTRY_CLASIFFIER_INIT,
 +	VSENTRY_REGISTER_PRINTF,
 +	VSENTRY_CLASIFFIER_SET_MODE,
++	VSENTRY_CLASIFFIER_GET_MODE,
 +	VSENTRY_PRINT_INFO,
++	VSENTRY_REMOVE_INODE,
 +	VSENTRY_FILE_EVENT,
 +	VSENTRY_IP_EVENT,
 +	VSENTRY_CAN_EVENT,
@@ -155,9 +156,34 @@ index 0000000..a60cf7c
 +	unsigned int 		len;
 +} ip_event_t;
 +
++/* file modes */
++#define FILE_MODE_READ 	1<<0
++#define FILE_MODE_WRITE	1<<1
++#define FILE_MODE_EXEC	1<<2
++
++/* file types */
++typedef enum {
++	FILE_TYPE_REG,
++	FILE_TYPE_SYSFS,
++	FILE_TYPE_PROCFS,
++	FILE_TYPE_TOTAL,
++} file_type_t;
++
 +typedef struct __attribute__((packed, aligned(8))) {
-+	unsigned int uid;
-+	unsigned int exec_ino;
++	unsigned int 	mode;
++	unsigned int 	filename_len;
++	unsigned int 	type;
++	unsigned long 	file_ino;
++	unsigned long 	ancestor_ino;
++	char 		*filename;
++} file_event_t;
++
++typedef struct __attribute__((packed, aligned(8))) {
++	unsigned int 	uid;
++	unsigned long 	exec_ino;
++	unsigned int 	kernel;
++	unsigned int 	exec_name_len;
++	char 		*exec_name;
 +} id_event_t;
 +
 +typedef struct __attribute__((packed, aligned(8))) {
@@ -169,16 +195,17 @@ index 0000000..a60cf7c
 +	union {
 +		can_event_t 	can_event;
 +		ip_event_t 	ip_event;
++		file_event_t 	file_event;
 +	};
 +} vsentry_event_t;
 +
 +#endif /* __VSENTRY_H__ */
 diff --git a/include/uapi/linux/vsentry/vsentry_drv.h b/include/uapi/linux/vsentry/vsentry_drv.h
 new file mode 100644
-index 0000000..39286a2
+index 000000000000..c6eed03e991e
 --- /dev/null
 +++ b/include/uapi/linux/vsentry/vsentry_drv.h
-@@ -0,0 +1,57 @@
+@@ -0,0 +1,67 @@
 +/* Copyright (C) 2018 SafeRide, Inc.
 + *
 + * This software is licensed under the terms of the GNU General Public
@@ -218,14 +245,22 @@ index 0000000..39286a2
 +
 +struct vsentry_state {
 +	unsigned int enabled;
++	unsigned int mode;
 +	unsigned int cls_present;
 +	unsigned int db_present;
++	unsigned int file_cls_mode;
 +};
 +
 +struct vsentry_genl_info {
 +	unsigned int family;
 +	unsigned int mcgrp;
 +};
++
++typedef enum {
++	FILE_CLS_MODE_STR,
++	FILE_CLS_MODE_INODE,
++	FILE_CLS_MODE_MAX,
++} vsentry_file_cls_mode;
 +
 +#define VSENTRY_IOCTL_SET_ENABLE 	_IOW('v', 0x01, unsigned int)
 +#define VSENTRY_IOCTL_UPDATE_EXECFILE 	_IOW('v', 0x02, char *)
@@ -234,10 +269,12 @@ index 0000000..39286a2
 +#define VSENTRY_IOCTL_GET_STATE 	_IOR('v', 0x05, struct vsentry_state)
 +#define VSENTRY_IOCTL_GET_GENL_INFO 	_IOR('v', 0x06, struct vsentry_genl_info)
 +#define VSENTRY_IOCTL_PRINT_INFO 	_IO( 'v', 0x07)
++#define VSENTRY_IOCTL_COPY_DBFILE 	_IOW('v', 0x08, char *)
++#define VSENTRY_IOCTL_FILE_CLS_MODE 	_IOW('v', 0x09, unsigned int)
 +
 +#endif /* __VSENTRY_DRV_H__ */
 diff --git a/init/main.c b/init/main.c
-index 2858be7..15d021a 100644
+index 2858be732f6d..15d021abcef1 100644
 --- a/init/main.c
 +++ b/init/main.c
 @@ -952,6 +952,11 @@ static int __ref kernel_init(void *unused)
@@ -253,7 +290,7 @@ index 2858be7..15d021a 100644
  		ret = run_init_process(ramdisk_execute_command);
  		if (!ret)
 diff --git a/security/Kconfig b/security/Kconfig
-index 118f454..a833bbd 100644
+index 118f4549404e..a833bbd89330 100644
 --- a/security/Kconfig
 +++ b/security/Kconfig
 @@ -164,6 +164,7 @@ source security/tomoyo/Kconfig
@@ -265,7 +302,7 @@ index 118f454..a833bbd 100644
  source security/integrity/Kconfig
  
 diff --git a/security/Makefile b/security/Makefile
-index f2d71cd..7e00b43 100644
+index f2d71cdb8e19..7e00b43bac9d 100644
 --- a/security/Makefile
 +++ b/security/Makefile
 @@ -9,6 +9,7 @@ subdir-$(CONFIG_SECURITY_TOMOYO)        += tomoyo
@@ -286,7 +323,7 @@ index f2d71cd..7e00b43 100644
  # Object integrity file lists
 diff --git a/security/vsentry/Kconfig b/security/vsentry/Kconfig
 new file mode 100644
-index 0000000..1cb60f4
+index 000000000000..1cb60f4ee8d7
 --- /dev/null
 +++ b/security/vsentry/Kconfig
 @@ -0,0 +1,11 @@
@@ -303,7 +340,7 @@ index 0000000..1cb60f4
 +
 diff --git a/security/vsentry/Makefile b/security/vsentry/Makefile
 new file mode 100644
-index 0000000..2154a7b
+index 000000000000..2154a7b6a9a7
 --- /dev/null
 +++ b/security/vsentry/Makefile
 @@ -0,0 +1,3 @@
@@ -312,10 +349,10 @@ index 0000000..2154a7b
 +vsentry-y := vsentry_drv.o vsentry_mod.o vsentry_hooks.o
 diff --git a/security/vsentry/vsentry_drv.c b/security/vsentry/vsentry_drv.c
 new file mode 100644
-index 0000000..930e265
+index 000000000000..b4dee85264d5
 --- /dev/null
 +++ b/security/vsentry/vsentry_drv.c
-@@ -0,0 +1,390 @@
+@@ -0,0 +1,451 @@
 +/* Copyright (C) 2018 SafeRide, Inc.
 + *
 + * This software is licensed under the terms of the GNU General Public
@@ -336,6 +373,7 @@ index 0000000..930e265
 +#include <linux/sched.h>
 +#include <linux/mm.h>
 +#include <linux/slab.h>
++#include <linux/reboot.h>
 +#include <linux/uaccess.h>
 +#include <net/genetlink.h>
 +#include <linux/vsentry/vsentry.h>
@@ -538,6 +576,34 @@ index 0000000..930e265
 +		vsentry_print_info();
 +		break;
 +
++	case VSENTRY_IOCTL_COPY_DBFILE:
++		vs_drv_debug("copy dbfile\n");
++		file_str = strndup_user((void __user *)arg, PAGE_SIZE);
++		if (IS_ERR(file_str)) {
++			ret = PTR_ERR(file_str);
++			break;
++		}
++
++		ret = vsentry_copy_shmem(file_str);
++		kfree(file_str);
++
++		break;
++
++	case VSENTRY_IOCTL_FILE_CLS_MODE:
++	{
++		u32 file_cls_mode;
++
++		vs_drv_debug("set cls mode\n");
++		if (get_user(file_cls_mode, (u32 __user *) arg))
++			return -EFAULT;
++
++		if (file_cls_mode >= FILE_CLS_MODE_MAX)
++			return -EINVAL;
++
++		ret = vsentry_set_file_cls_mode(file_cls_mode);
++		break;
++	}
++
 +	default:
 +		vs_drv_err("error\n");
 +		ret = -EINVAL;
@@ -563,6 +629,7 @@ index 0000000..930e265
 +static int vsentry_drv_file_ops_init(void)
 +{
 +	int ret = 0;
++	struct class *vsentry_class;
 +
 +	vs_drv_debug("\n");
 +
@@ -586,6 +653,15 @@ index 0000000..930e265
 +		vs_drv_err("couldn't add character device (%d)\n", ret);
 +		goto free_cdev;
 +	}
++
++	/* create /dev/vs_drv */
++	vsentry_class = class_create(THIS_MODULE, "vsentry");
++	if (IS_ERR(vsentry_class)) {
++		vs_drv_err("failed creating vsentry class\n");
++		goto free_cdev;
++	}
++
++	device_create(vsentry_class, NULL, vsentry_dev, NULL, "vs_drv");
 +
 +	return 0;
 +
@@ -664,6 +740,22 @@ index 0000000..930e265
 +}
 +
 +/***********************************************************************
++ * function:    vsentry_reboot
++ * description: callback function to be called upon system reboot/halt
++ * in param:    n/a.
++ * out param:   n/a.
++ * return:      0 on success, other on failure.
++ **********************************************************************/
++//static int vsentry_reboot(struct notifier_block *nb, unsigned long event, void *unused)
++//{
++//	vsentry_shutdown();
++//        return NOTIFY_DONE;
++//}
++//
++//static struct notifier_block vsentry_reboot_notifier = {
++//        .notifier_call = vsentry_reboot,
++//};
++/***********************************************************************
 + * function:    vsentry_drv_init
 + * description: driver registeration
 + * in param:    n/a.
@@ -685,6 +777,12 @@ index 0000000..930e265
 +		pr_err("genl_register_family failed\n");
 +		return ret;
 +	}
++
++	/* add ourselves to the reboot_notifier_list */
++//	ret = register_reboot_notifier(&vsentry_reboot_notifier);
++//	if (ret != 0)
++//		pr_warn("can't register reboot notifier\n");
++
 +
 +	vs_drv_info("saferide's vsentry driver interface initialized\n");
 +
@@ -708,11 +806,11 @@ index 0000000..930e265
 +__exitcall(vsentry_drv_exit);
 diff --git a/security/vsentry/vsentry_hooks.c b/security/vsentry/vsentry_hooks.c
 new file mode 100644
-index 0000000..ca1220c
+index 000000000000..6f2127945752
 --- /dev/null
 +++ b/security/vsentry/vsentry_hooks.c
-@@ -0,0 +1,1827 @@
-+/* Copyright (C) 2018 SafeRide, Inc.
+@@ -0,0 +1,2484 @@
++/* Copyright (C) 2019 SafeRide, Inc.
 + *
 + * This software is licensed under the terms of the GNU General Public
 + * License version 2, as published by the Free Software Foundation, and
@@ -744,10 +842,10 @@ index 0000000..ca1220c
 +#include <linux/vsentry/vsentry_drv.h>
 +#include "vsentry_internal.h"
 +
-+#define VS_MOD_DEBUG
-+#ifdef VS_MOD_DEBUG
++//#define VS_HOOK_DEBUG
++#ifdef VS_HOOK_DEBUG
 +#define vs_hook_dbg(fmt, ...) \
-+	pr_debug("[DBG] %llu %s: " fmt, vsentry_get_curr_time_usec(), \
++	pr_dbg("[DBG] %llu %s: " fmt, vsentry_get_curr_time_usec(), \
 +		__func__, ##__VA_ARGS__)
 +#else
 +#define vs_hook_dbg(...)
@@ -763,14 +861,135 @@ index 0000000..ca1220c
 +	pr_info("[INF] %llu %s: " fmt, vsentry_get_curr_time_usec(), \
 +		__func__, ##__VA_ARGS__)
 +
++#define free_name(x) __putname((uintptr_t)x & ~(PATH_MAX-1))
++
++#define NUM_OF_BUCKETS_BITS	8
++#define MAP_SIZE		(1 << NUM_OF_BUCKETS_BITS)
++
++/* super block type to vsentry file type mapping.
++ * on each registered mount we keep the mapping to vsentry file type
++ * see vsentry_sb_kern_mount */
++static struct hlist_head super_block_map[MAP_SIZE];
++static DEFINE_SPINLOCK(super_block_map_lock);
++
++struct sb_to_vsentry_t {
++	unsigned long		s_magic;
++	unsigned int 		vsentry_type;
++	struct hlist_node	node;
++};
++
 +/***********************************************************************
-+ * function:     vsentry_get_exec_inode
++ * function:     get_file_type_by_magic
++ * description:  get the s_maginc mapping to vsentry file type.
++ * in param:     unsigned long s_magic - super block magic number.
++ * out param:    n/a.
++ * return:       unsigned int vsentry_type;
++ **********************************************************************/
++static int get_file_type_by_magic(unsigned long s_magic)
++{
++	struct sb_to_vsentry_t *s2v = NULL;
++	struct hlist_node *n;
++	unsigned char hash = hash_32(s_magic, NUM_OF_BUCKETS_BITS);
++	int ret = FILE_TYPE_REG;
++
++	spin_lock(&super_block_map_lock);
++
++	hlist_for_each_entry_safe(s2v, n, &super_block_map[hash], node) {
++		if (s2v->s_magic == s_magic) {
++			vs_hook_dbg("found sb 0x%lx vsentry type %u\n", s2v->s_magic, s2v->vsentry_type);
++			ret = s2v->vsentry_type;
++			break;
++		}
++	}
++
++	spin_unlock(&super_block_map_lock);
++
++	return ret;
++}
++
++/***********************************************************************
++ * function:     get_full_path
++ * description:  get the full path from struct path *path
++ * in param:     const struct path *path - path structure of a file.
++  *               int size - buffer size
++ * out param:    char *path_buffer - place to hold the path.
++ * return:       char *. NULL if error. pointer to start of path.
++ **********************************************************************/
++static inline char *get_full_path(const struct path *path, char *path_buffer, int size)
++{
++	char *path_ptr = NULL;
++
++	/* get the full path from *path */
++	path_ptr = d_absolute_path(path, path_buffer, size);
++	if (IS_ERR(path_ptr)) {
++		vs_hook_err("d_absolute_path failed\n");
++		return NULL;
++	}
++
++	return path_ptr;
++}
++
++/***********************************************************************
++ * function:     vsentry_get_pid_exec_path
++ * description:  extract the executable path of specific pid
++ * in param:     unsigned int pid - process pid
++ * out param:    id_event_t *id - info place holder.
++ * return:       n/a
++ **********************************************************************/
++static inline void vsentry_get_pid_exec_path(unsigned int pid, id_event_t *id)
++{
++	struct task_struct *p;
++	char *path_buffer = NULL;
++
++	if (!pid || !id) {
++		vs_hook_err("no pid or id\n");
++		goto exit_get_pid_path;
++	}
++
++	rcu_read_lock();
++
++	p = pid_task(find_vpid(pid), PIDTYPE_PID);
++	if (!p) {
++		vs_hook_err("cant find pid %u\n", pid);
++		goto exit_get_pid_path;
++	}
++
++	if ((p->flags & PF_KTHREAD) || !p->mm || !p->mm->exe_file) {
++		/* in kernel code, no file can be extracted so just mark as kernel */
++		id->kernel = true;
++		id->uid = 0;
++		id->exec_name = NULL;
++		goto exit_get_pid_path;
++	}
++
++	path_buffer = __getname();
++	if (!path_buffer) {
++		vs_hook_err("failed to allocate path buffer\n");
++		goto exit_get_pid_path;
++	}
++
++	id->kernel = false;
++	id->exec_name = get_full_path(&p->mm->exe_file->f_path, path_buffer, PATH_MAX);
++	if (id->exec_name) {
++		id->exec_name_len = strlen(id->exec_name);
++	} else {
++		vs_hook_err("failed to get exec_name\n");
++		__putname(path_buffer);
++		id->exec_name_len = 0;
++	}
++
++exit_get_pid_path:
++	rcu_read_unlock();
++}
++
++/***********************************************************************
++ * function:     vsentry_get_pid_exec_inode
 + * description:  extract the executable inode of specific pid
 + * in param:     unsigned int pid - process pid
 + * out param:    n/a
-+ * return:       unsigned int - inode
++ * return:       unsigned long - inode
 + **********************************************************************/
-+static unsigned int vsentry_get_exec_inode(unsigned int pid)
++static unsigned long vsentry_get_pid_exec_inode(unsigned int pid)
 +{
 +	struct task_struct *p;
 +	struct mm_struct *mm;
@@ -779,8 +998,6 @@ index 0000000..ca1220c
 +
 +	if (!pid)
 +		return 0;
-+
-+	read_lock(&tasklist_lock);
 +
 +	p = pid_task(find_vpid(pid), PIDTYPE_PID);
 +	if (!p)
@@ -797,22 +1014,185 @@ index 0000000..ca1220c
 +	ret = exe_file->f_path.dentry->d_inode->i_ino;
 +
 +exit_err:
-+	read_unlock(&tasklist_lock);
-+
 +	return ret;
 +}
 +
 +/***********************************************************************
-+ * function:     vsentry_extract_current_info
++ * function:     vsentry_get_current_info
 + * description:  get the current uid and exec_ino
 + * in param:     n/a
 + * out param:    id_event_t *id
 + * return:       n/a
 + **********************************************************************/
-+static inline void vsentry_extract_current_info(id_event_t *id)
++static inline void vsentry_get_current_info(id_event_t *id)
 +{
-+	id->exec_ino = vsentry_get_exec_inode(current->pid);
-+	id->uid = current->real_cred->uid.val;
++	rcu_read_lock();
++
++	if (current->flags & PF_KTHREAD) {
++		/* in kernel code, no file can be extracted so just mark
++		 * as kernel */
++		id->kernel = true;
++		id->uid = 0;
++		id->exec_ino = 0;
++	} else {
++		id->kernel = false;
++		id->exec_ino = vsentry_get_pid_exec_inode(current->pid);
++		id->uid = current->real_cred->uid.val;
++	}
++
++	rcu_read_unlock();
++}
++
++/***********************************************************************
++ * function:     vsentry_get_full_path
++ * description:  helper function that return the full path of a
++ *               file/directory extracted from struct path
++ * in param:     const struct path *path - path structure.
++ * out param:    file_event_t *file_ev - fil event struct to fill
++ * return:       VSENTRY_ERROR/VSENTRY_SUCCESS/VSENTRY_ALREADY_EXISTS
++ **********************************************************************/
++static int vsentry_get_full_path(const struct path *path, file_event_t *file_ev)
++{
++	char *path_buffer = NULL;
++
++	path_buffer = __getname();
++	if (!path_buffer) {
++		vs_hook_err("failed to allocate path buffer\n");
++		return VSENTRY_ERROR;
++	}
++
++	/* get the full path from current */
++	file_ev->filename = get_full_path(path, path_buffer, PATH_MAX);
++	if (!file_ev->filename) {
++		/* we were not able to extract the current path */
++		__putname(path_buffer);
++		file_ev->filename = NULL;
++		return VSENTRY_ERROR;
++	}
++
++	file_ev->filename_len = strlen(file_ev->filename);
++
++	return VSENTRY_SUCCESS;
++}
++
++/***********************************************************************
++ * function:     vsentry_check_self_proc
++ * description:  this function check if the current process try to
++ *               access its own proc directory.
++ * in param:     const struct path *path.
++ * out param:    n/a.
++ * return:       VSENTRY_ALREADY_EXISTS - current process try to
++ *                                        access its own proc.
++ *               VSENTRY_SUCCESS - current access some other proc file
++ **********************************************************************/
++static inline int vsentry_check_self_proc(const struct path *path)
++{
++	char current_proc_name[256];
++	struct dentry *dentry = path->dentry;
++	struct dentry *parent = dentry->d_parent;
++
++	/* go up the path till hit root (/proc) */
++	while(parent->d_parent != parent) {
++		dentry = parent;
++		parent = parent->d_parent;
++	}
++
++	/* check if this is current (with pid PID) access /proc/PID/xxx */
++	snprintf(current_proc_name, 256, "%d", current->pid);
++	if (strcmp(current_proc_name, dentry->d_name.name) == 0)
++		return VSENTRY_ALREADY_EXISTS;
++
++	return VSENTRY_SUCCESS;
++}
++
++/***********************************************************************
++ * function:     vsentry_handle_file_event
++ * description:  general function that handle all file event
++ * in param:     const struct path *path - path structure.
++ * out param:    unsigned int mode - file mode
++ * return:       char *. NULL error
++ **********************************************************************/
++static inline int vsentry_handle_file_event(const struct path *path, unsigned int mode)
++{
++	vsentry_event_t ev;
++	int ret = 0;
++
++	if (!vsentry_get_enable())
++		return 0;
++
++	memset(&ev, 0, sizeof(vsentry_event_t));
++
++	/* get common info */
++	vsentry_get_current_info(&ev.event_id);
++	ev.ts = vsentry_get_curr_time_usec();
++	ev.dir = DIR_IN;
++	ev.file_event.mode = mode;
++	ev.file_event.type = get_file_type_by_magic(path->dentry->d_sb->s_magic);
++
++	if (vsentry_get_file_cls_mode() == FILE_CLS_MODE_STR)
++		/* get the executable full path */
++		vsentry_get_pid_exec_path(current->pid, &ev.event_id);
++
++	if (ev.file_event.type != FILE_TYPE_REG) {
++		/* proc/sys files handling */
++		if (ev.file_event.type == FILE_TYPE_PROCFS) {
++			ret = vsentry_check_self_proc(path);
++			if (ret == VSENTRY_ALREADY_EXISTS)
++				/* the current process access its own /proc/PID dir */
++				return 0;
++		}
++
++		/* if SYS/PROC files we dont need to extract other info */
++		ev.file_event.filename = NULL;
++		ev.file_event.filename_len = 0;
++
++		if (vsentry_check_event(VSENTRY_FILE_EVENT, &ev, false) != VSENTRY_SUCCESS)
++			return -EACCES;
++
++		return 0;
++	}
++
++	if (vsentry_get_file_cls_mode() == FILE_CLS_MODE_STR) {
++		/* get the file full path from struct path */
++		ret = vsentry_get_full_path(path, &ev.file_event);
++		if (ret != VSENTRY_SUCCESS) {
++			ret = -EACCES;
++			goto handle_file_event_exit;
++		}
++
++		/* in string mode we only classify the event once as we
++		 * have the full path */
++		if (vsentry_check_event(VSENTRY_FILE_EVENT, &ev, false) != VSENTRY_SUCCESS)
++			ret = -EACCES;
++	} else {
++		struct dentry *ancestor= path->dentry->d_parent;
++
++		/* case of inode mode, we try to check the inode "recursively" till
++		 * we get "allow" or hit the root and return with -EACCESS */
++		ev.file_event.file_ino = path->dentry->d_inode->i_ino;
++
++		do {
++			ev.file_event.ancestor_ino = ancestor->d_inode->i_ino;
++
++			ret = vsentry_check_event(VSENTRY_FILE_EVENT, &ev, false);
++			if (ret == VSENTRY_NONE_EXISTS)
++				ancestor = ancestor->d_parent;
++			else
++				break;
++		} while(ancestor != ancestor->d_parent);
++
++		if (ret != VSENTRY_SUCCESS)
++			ret = -EACCES;
++	}
++
++handle_file_event_exit:
++	if (ev.event_id.exec_name)
++		free_name(ev.event_id.exec_name);
++
++	if (ev.file_event.filename)
++		free_name(ev.file_event.filename);
++
++	return ret;
 +}
 +
 +/***********************************************************************
@@ -852,9 +1232,6 @@ index 0000000..ca1220c
 + * and the socket. upon socet deletion the mapping is removed.
 + */
 +
-+#define NUM_OF_BUCKETS_BITS	8
-+#define MAP_SIZE		(1 << NUM_OF_BUCKETS_BITS)
-+
 +/* socket to process/uid mapping */
 +static struct hlist_head socket_process_map[MAP_SIZE];
 +static DEFINE_SPINLOCK(socket_process_map_lock);
@@ -862,8 +1239,14 @@ index 0000000..ca1220c
 +struct socket_to_id_t {
 +	struct socket		*socket;
 +	struct inode		*inode;
++	int 			pid;
 +	id_event_t		id;
-+	struct hlist_node	node;
++};
++
++struct s2p_node_t {
++	struct socket_to_id_t 	s2p;
++	struct hlist_node	list;
++	struct rcu_head         rhead;
 +};
 +
 +/***********************************************************************
@@ -875,27 +1258,35 @@ index 0000000..ca1220c
 + **********************************************************************/
 +static int map_process_to_socket(struct socket *socket, id_event_t *id)
 +{
-+	struct socket_to_id_t *s2p;
++	struct s2p_node_t *s2p_node = NULL;
 +	unsigned char hash = hash_ptr(socket, NUM_OF_BUCKETS_BITS);
++	struct hlist_head *head = &socket_process_map[hash];
++	unsigned long flag;
 +
-+	s2p = kzalloc(sizeof(struct socket_to_id_t), GFP_KERNEL);
-+	if (!s2p) {
-+		vs_hook_err("failed to alloc s2p\n");
++	s2p_node = kzalloc(sizeof(struct s2p_node_t), GFP_KERNEL);
++	if (!s2p_node) {
++		vs_hook_err("failed to allocate s2p_node\n");
 +		return VSENTRY_ERROR;
 +	}
 +
-+	memcpy(&s2p->id, id, sizeof(id_event_t));
-+	s2p->inode = SOCK_INODE(socket);
-+	s2p->socket = socket;
++	INIT_HLIST_NODE(&s2p_node->list);
++	memcpy(&s2p_node->s2p.id, id, sizeof(id_event_t));
++	s2p_node->s2p.inode = SOCK_INODE(socket);
++	s2p_node->s2p.socket = socket;
++	s2p_node->s2p.pid = current->pid;
 +
-+	spin_lock(&socket_process_map_lock);
++	spin_lock_irqsave(&socket_process_map_lock, flag);
 +
-+	hlist_add_head(&s2p->node, &socket_process_map[hash]);
++	rcu_read_lock();
 +
-+	spin_unlock(&socket_process_map_lock);
++	hlist_add_head_rcu(&s2p_node->list, head);
 +
-+	vs_hook_dbg("mapped socket 0x%px to exec_ino %u uid %u\n",
-+		socket, id->exec_ino, id->uid);
++	rcu_read_unlock();
++
++	spin_unlock_irqrestore(&socket_process_map_lock, flag);
++
++	vs_hook_dbg("mapped socket 0x%px to exec_ino %lu uid %u pid %u\n",
++			socket, id->exec_ino, id->uid, s2p_node->s2p.pid);
 +
 +	return VSENTRY_SUCCESS;
 +}
@@ -909,56 +1300,83 @@ index 0000000..ca1220c
 + **********************************************************************/
 +static int get_id_by_socket(struct socket *socket, id_event_t *id)
 +{
-+	struct socket_to_id_t *s2p = NULL;
-+	struct hlist_node *n;
++	struct s2p_node_t *s2p_node = NULL;
 +	unsigned char hash = hash_ptr(socket, NUM_OF_BUCKETS_BITS);
++	struct hlist_head *head = &socket_process_map[hash];
 +	int ret = VSENTRY_ERROR;
 +
-+	if (!spin_trylock(&socket_process_map_lock))
-+		return VSENTRY_ERROR;
++	rcu_read_lock();
 +
-+	hlist_for_each_entry_safe(s2p, n, &socket_process_map[hash], node) {
-+		if (s2p->socket == socket) {
-+			vs_hook_dbg("found socket 0x%px exec_ino %u uid %u\n",
-+				s2p->socket, s2p->id.exec_ino, s2p->id.uid);
-+			memcpy(id, &s2p->id, sizeof(id_event_t));
++	hlist_for_each_entry_rcu(s2p_node, head, list) {
++		if (s2p_node->s2p.socket == socket) {
++			vs_hook_dbg("found socket 0x%px exec_ino %lu uid %u\n",
++				s2p_node->s2p.socket, s2p_node->s2p.id.exec_ino,
++				s2p_node->s2p.id.uid);
++			memcpy(id, &s2p_node->s2p.id, sizeof(id_event_t));
++			if (s2p_node->s2p.pid) {
++				if (vsentry_get_file_cls_mode() == FILE_CLS_MODE_STR)
++					vsentry_get_pid_exec_path(s2p_node->s2p.pid, id);
++			}
 +			ret = VSENTRY_SUCCESS;
 +			break;
 +		}
 +	}
 +
-+	spin_unlock(&socket_process_map_lock);
++	rcu_read_unlock();
 +
 +	return ret;
 +}
 +
 +/***********************************************************************
++ * function:     socket_by_inode_delete
++ * description:  rcu complete callback function to free s2p_node
++ * in param:     struct rcu_head *rhead
++ * out param:    n/a
++ * return:       n/a
++ **********************************************************************/
++static void socket_by_inode_delete(struct rcu_head *rhead)
++{
++	struct s2p_node_t *s2p_node = container_of(rhead, struct s2p_node_t, rhead);
++
++	vs_hook_dbg("deleting socket 0x%px to exec_ino %lu uid %u pid %u\n",
++			s2p_node->s2p.socket, s2p_node->s2p.id.exec_ino,
++			s2p_node->s2p.id.uid, s2p_node->s2p.pid);
++
++	kfree(s2p_node);
++}
++
++/***********************************************************************
 + * function:     unmap_socket_by_inode
-+ * description:  delete mapping by inode.
++ * description:  delete s2p mapping by inode.
 + * in param:     struct inode *inode
 + * out param:    n/a
 + * return:       VSENTRY_ERROR/VSENTRY_SUCCESS
 + **********************************************************************/
 +static void unmap_socket_by_inode(struct inode *inode)
 +{
-+	struct socket_to_id_t *s2p = NULL;
-+	struct hlist_node *n;
++	struct s2p_node_t *s2p_node = NULL;
 +	struct socket *socket = SOCKET_I(inode);
 +	unsigned char hash = hash_ptr(socket, NUM_OF_BUCKETS_BITS);
++	struct hlist_head *head = &socket_process_map[hash];
++	unsigned long flag;
 +
-+	spin_lock(&socket_process_map_lock);
++	spin_lock_irqsave(&socket_process_map_lock, flag);
 +
-+	hlist_for_each_entry_safe(s2p, n, &socket_process_map[hash], node) {
-+		if (s2p->socket == socket) {
-+			vs_hook_dbg("del socket 0x%px to exec_ino %u uid %u\n",
-+				s2p->socket, s2p->id.exec_ino, s2p->id.uid);
-+			hlist_del(&s2p->node);
-+			kfree(s2p);
-+			break;
++	rcu_read_lock();
++
++	hlist_for_each_entry(s2p_node, head, list) {
++		if (s2p_node->s2p.socket == socket) {
++			vs_hook_dbg("unmapped socket 0x%px to exec_ino %lu uid %u pid %u\n",
++				s2p_node->s2p.socket, s2p_node->s2p.id.exec_ino,
++				s2p_node->s2p.id.uid, s2p_node->s2p.pid);
++			hlist_del_rcu(&s2p_node->list);
++			call_rcu(&s2p_node->rhead, socket_by_inode_delete);
 +		}
 +	}
 +
-+	spin_unlock(&socket_process_map_lock);
++	rcu_read_unlock();
++
++	spin_unlock_irqrestore(&socket_process_map_lock, flag);
 +}
 +
 +#if 0
@@ -1046,10 +1464,23 @@ index 0000000..ca1220c
 +	return 0;
 +}
 +
++#endif
++
++/***********************************************************************
++ * function:     vsentry_bprm_check_security
++ * description:  this function checks if current process can execute
++ *               the file specified in bprm->file.
++ * in param:     struct linux_binprm *bprm
++ * out param:    n/a
++ * return:       0/-EACCES
++ **********************************************************************/
 +static int vsentry_bprm_check_security(struct linux_binprm *bprm)
 +{
-+	return 0;
++	vs_hook_dbg("\n");
++	return vsentry_handle_file_event(&bprm->file->f_path, FILE_MODE_EXEC);
 +}
++
++#if 0
 +
 +static void vsentry_bprm_committing_creds(struct linux_binprm *bprm)
 +{
@@ -1078,10 +1509,65 @@ index 0000000..ca1220c
 +	return 0;
 +}
 +
++#endif
++
++/***********************************************************************
++ * function:     vsentry_sb_kern_mount
++ * description:  register the mount file type. this function helps us
++ *               to fast convert s_magic to vsentry file type.
++ * in param:     struct super_block *sb
++ *               int flags
++ *               void *data
++ * out param:    n/a
++ * return:       0
++ **********************************************************************/
 +static int vsentry_sb_kern_mount(struct super_block *sb, int flags, void *data)
 +{
++	struct sb_to_vsentry_t *s2v;
++	unsigned char hash = hash_32(sb->s_magic, NUM_OF_BUCKETS_BITS);
++
++	s2v = kzalloc(sizeof(struct sb_to_vsentry_t), GFP_KERNEL);
++	if (!s2v) {
++		vs_hook_err("failed to allocate s2v\n");
++		return 0;
++	}
++
++	s2v->s_magic = sb->s_magic;
++	switch(sb->s_magic) {
++	case XENFS_SUPER_MAGIC:
++	case PROC_SUPER_MAGIC:
++		s2v->vsentry_type = FILE_TYPE_PROCFS;
++		break;
++	case DEBUGFS_MAGIC:
++	case SECURITYFS_MAGIC:
++	case SELINUX_MAGIC:
++	case SMACK_MAGIC:
++	case CGROUP_SUPER_MAGIC:
++	case CGROUP2_SUPER_MAGIC:
++	case TRACEFS_MAGIC:
++	case SYSFS_MAGIC:
++	case FUTEXFS_SUPER_MAGIC:
++	case SOCKFS_MAGIC:
++	case PIPEFS_MAGIC:
++		s2v->vsentry_type = FILE_TYPE_SYSFS;
++		break;
++	default:
++		s2v->vsentry_type = FILE_TYPE_REG;
++		break;
++	}
++
++	spin_lock(&super_block_map_lock);
++
++	hlist_add_head(&s2v->node, &super_block_map[hash]);
++
++	spin_unlock(&super_block_map_lock);
++
++	vs_hook_dbg("mapped sb 0x%lx to %u\n", sb->s_magic, s2v->vsentry_type);
++
 +	return 0;
 +}
++
++#if 0
 +
 +static int vsentry_sb_show_options(struct seq_file *m, struct super_block *sb)
 +{
@@ -1146,69 +1632,209 @@ index 0000000..ca1220c
 +
 +#ifdef CONFIG_SECURITY_PATH
 +
-+#if 0
-+
++/***********************************************************************
++ * function:     vsentry_path_unlink
++ * description:  check if current process can delete a dentry from dir.
++ * in param:     const struct path *dir - path struct of parent
++ *                                        directory of the file.
++ *               struct dentry *dentry - the dentry structure for file
++ *                                       to be unlinked.
++ * out param:    n/a
++ * return:       0/-EACCES
++ **********************************************************************/
 +static int vsentry_path_unlink(const struct path *dir, struct dentry *dentry)
 +{
-+	return 0;
++	int ret;
++
++	vs_hook_dbg("\n");
++
++	ret  = vsentry_handle_file_event(dir, FILE_MODE_WRITE);
++	if (!ret)
++		vsentry_cls_remove_inode(dentry->d_inode->i_ino);
++
++	return ret;
 +}
 +
++/***********************************************************************
++ * function:     vsentry_path_mkdir
++ * description:  check if current process can create a new directory.
++ * in param:     const struct path *dir - path structure of parent of
++ *                                        the directory to be created.
++ *               struct dentry *dentry - dentry structure of new
++ *                                       directory.
++ *               umode_t mode - mode of new directory.
++ * out param:    n/a
++ * return:       0/-EACCES
++ **********************************************************************/
 +static int vsentry_path_mkdir(const struct path *dir, struct dentry *dentry,
 +			umode_t mode)
 +{
-+	return 0;
++	vs_hook_dbg("\n");
++
++	return vsentry_handle_file_event(dir, FILE_MODE_WRITE);
 +}
 +
++/***********************************************************************
++ * function:     vsentry_path_rmdir
++ * description:  check if current process can delete a directory.
++ * in param:     const struct path *dir - path structure of parent of
++ *                                        the directory to be removed.
++ *               struct dentry *dentry - dentry structure of directory
++ *                                       to be removed.
++ * out param:    n/a
++ * return:       0/-EACCES
++ **********************************************************************/
 +static int vsentry_path_rmdir(const struct path *dir, struct dentry *dentry)
 +{
-+	return 0;
++	int ret;
++
++	vs_hook_dbg("\n");
++
++	ret = vsentry_handle_file_event(dir, FILE_MODE_WRITE);
++	if (!ret)
++		vsentry_cls_remove_inode(dentry->d_inode->i_ino);
++
++	return ret;
 +}
 +
++/***********************************************************************
++ * function:     vsentry_path_mknod
++ * description:  check if current process can create a file.
++ * in param:     const struct path *dir - path structure of parent of
++ *                                        the new file.
++ *               struct dentry *dentry - dentry structure of the new
++ *                                       file.
++ *               umode_t mode - mode of the new file.
++ *               unsigned int dev - undecoded device number.
++ * out param:    n/a
++ * return:       0/-EACCES
++ **********************************************************************/
 +static int vsentry_path_mknod(const struct path *dir, struct dentry *dentry,
 +	umode_t mode, unsigned int dev)
 +{
-+	return 0;
++	vs_hook_dbg("\n");
++
++	return vsentry_handle_file_event(dir, FILE_MODE_WRITE);
 +}
 +
++#if 0
 +static int vsentry_path_truncate(const struct path *path)
 +{
 +	return 0;
 +}
 +
++#endif
++
++/***********************************************************************
++ * function:     vsentry_path_symlink
++ * description:  check if current process can create a  a symbolic link
++ *               to a file.
++ * in param:     const struct path *dir - path structure of parent
++ *                                        directory of the symbolic link.
++ *               struct dentry *dentry - dentry structure of the
++ *                                       symbolic link.
++ *               const char *old_name - the pathname of file.
++ * out param:    n/a
++ * return:       0/-EACCES
++ **********************************************************************/
 +static int vsentry_path_symlink(const struct path *dir, struct dentry *dentry,
 +	const char *old_name)
 +{
-+	return 0;
++	vs_hook_dbg("\n");
++
++	return vsentry_handle_file_event(dir, FILE_MODE_WRITE);
 +}
 +
++/***********************************************************************
++ * function:     vsentry_path_link
++ * description:  check if current process can create a link in directory
++ * in param:     struct dentry *old_dentry - dentry structure for an
++ *                                           existing link to the file.
++ *               const struct path *new_dir - path structure of the
++ *                                            parent directory of
++ *                                            the new link.
++ *	         struct dentry *new_dentry - dentry structure for the
++ *	                                     new link.
++ * out param:    n/a
++ * return:       0/-EACCES
++ **********************************************************************/
 +static int vsentry_path_link(struct dentry *old_dentry,
 +	const struct path *new_dir, struct dentry *new_dentry)
 +{
-+	return 0;
++	vs_hook_dbg("\n");
++
++	return vsentry_handle_file_event(new_dir, FILE_MODE_WRITE);
 +}
 +
++/***********************************************************************
++ * function:     vsentry_path_rename
++ * description:  check if current process can delete the old_dentry
++ *               from old_dir, and can create new_dentry in new_dir.
++ * in param:     const struct path *old_dir - path structure for parent
++ *                                            of the old link.
++ *               struct dentry *old_dentry - dentry structure of the old
++ *                                           link
++ *               const struct path *new_dir - path structure for parent
++ *                                            of the new link.
++ *               struct dentry *new_dentry - dentry structure of the
++ *                                           new link.
++ * out param:    n/a
++ * return:       0/-EACCES
++ **********************************************************************/
 +static int vsentry_path_rename(const struct path *old_dir,
 +	struct dentry *old_dentry, const struct path *new_dir,
 +	struct dentry *new_dentry)
 +{
-+	return 0;
++	int ret;
++	vs_hook_dbg("\n");
++
++	if (vsentry_handle_file_event(old_dir, FILE_MODE_WRITE) != 0)
++		return -EACCES;
++
++	ret = vsentry_handle_file_event(new_dir, FILE_MODE_WRITE);
++	if(!ret)
++		vsentry_cls_remove_inode(old_dentry->d_inode->i_ino);
++
++	return ret;
 +}
 +
++/***********************************************************************
++ * function:     vsentry_path_chmod
++ * description:  check if current process can change file mode.
++ * in param:     const struct path *path
++ *               umode_t mode
++ * out param:    n/a
++ * return:       0/-EACCES
++ **********************************************************************/
 +static int vsentry_path_chmod(const struct path *path, umode_t mode)
 +{
-+	return 0;
++	vs_hook_dbg("\n");
++
++	return vsentry_handle_file_event(path, FILE_MODE_WRITE);
 +}
 +
++/***********************************************************************
++ * function:     vsentry_path_chown
++ * description:  check if current process can change a file owner.
++ * in param:     const struct path *path
++ *               kuid_t uid
++ *               kgid_t gid
++ * out param:    n/a
++ * return:       0/-EACCES
++ **********************************************************************/
 +static int vsentry_path_chown(const struct path *path, kuid_t uid, kgid_t gid)
 +{
-+	return 0;
++	vs_hook_dbg("\n");
++
++	return vsentry_handle_file_event(path, FILE_MODE_WRITE);
 +}
++
++#if 0
 +
 +static int vsentry_path_chroot(const struct path *path)
 +{
 +	return 0;
 +}
-+
 +#endif
 +
 +#endif /* CONFIG_SECURITY_PATH */
@@ -1251,6 +1877,8 @@ index 0000000..ca1220c
 +{
 +	return 0;
 +}
++
++
 +
 +static int vsentry_inode_link(struct dentry *old_dentry, struct inode *dir,
 +	struct dentry *new_dentry)
@@ -1452,10 +2080,33 @@ index 0000000..ca1220c
 +	return 0;
 +}
 +
++#endif
++
++/***********************************************************************
++ * function:     vsentry_file_open
++ * description:  check if current process can read the file
++ * in param:     struct file *file
++ *               const struct cred *cred
++ * out param:    n/a
++ * return:       0/-EACCES
++ **********************************************************************/
 +static int vsentry_file_open(struct file *file, const struct cred *cred)
 +{
-+	return 0;
++	unsigned int mode = 0;
++
++	vs_hook_dbg("\n");
++
++	if (file->f_mode & FMODE_READ)
++		mode |= FILE_MODE_READ;
++	if (file->f_mode & FMODE_WRITE)
++		mode |= FILE_MODE_WRITE;
++	if (file->f_mode & FMODE_EXEC)
++		mode |= FILE_MODE_EXEC;
++
++	return vsentry_handle_file_event(&file->f_path, mode);
 +}
++
++#if 0
 +
 +static int vsentry_task_create(unsigned long clone_flags)
 +{
@@ -1801,7 +2452,9 @@ index 0000000..ca1220c
 +	vs_hook_dbg("%s socket created 0x%px\n",
 +		(family == AF_INET)?"net":"can", sock);
 +
-+	vsentry_extract_current_info(&id);
++	memset(&id, 0, sizeof(id_event_t));
++
++	vsentry_get_current_info(&id);
 +
 +	map_process_to_socket(sock, &id);
 +
@@ -1848,7 +2501,9 @@ index 0000000..ca1220c
 +	vs_hook_dbg("%s socket created 0x%px\n",
 +		(sock->sk->sk_family == AF_INET)?"net":"can", sock);
 +
-+	vsentry_extract_current_info(&id);
++	memset(&id, 0, sizeof(id_event_t));
++
++	vsentry_get_current_info(&id);
 +
 +	map_process_to_socket(newsock, &id);
 +
@@ -1880,6 +2535,8 @@ index 0000000..ca1220c
 +	if (!vsentry_get_enable() || sk->sk_family != AF_CAN)
 +		return 0;
 +
++	memset(&ev, 0, sizeof(vsentry_event_t));
++
 +	if (sock->ops->getname(sock,
 +			(struct sockaddr *)&addr, &addrlen, 0) == 0)
 +		if_index = addr.can_ifindex;
@@ -1897,11 +2554,12 @@ index 0000000..ca1220c
 +	if (err >= 0) {
 +		struct canfd_frame *cfd = (struct canfd_frame *)skb->data;
 +
-+		vs_hook_dbg("\n");
-+
 +		memset(&ev, 0, sizeof(vsentry_event_t));
 +
-+		vsentry_extract_current_info(&ev.event_id);
++		vsentry_get_current_info(&ev.event_id);
++
++		if (vsentry_get_file_cls_mode() == FILE_CLS_MODE_STR)
++			vsentry_get_pid_exec_path(current->pid, &ev.event_id);
 +
 +		ev.ts = vsentry_get_curr_time_usec();
 +		ev.can_event.can_header.msg_id = (CAN_EFF_MASK & cfd->can_id);
@@ -1910,8 +2568,7 @@ index 0000000..ca1220c
 +		ev.can_event.payload_len = cfd->len;
 +		memcpy(&ev.can_event.payload, cfd->data, cfd->len);
 +
-+		if (vsentry_check_event(VSENTRY_CAN_EVENT, &ev, false) ==
-+				VSENTRY_ALLOW)
++		if (vsentry_check_event(VSENTRY_CAN_EVENT, &ev, false) == VSENTRY_SUCCESS)
 +			ret = 0;
 +	}
 +
@@ -1970,20 +2627,23 @@ index 0000000..ca1220c
 + ***********************************************************************/
 +static int vsentry_socket_sock_rcv_skb(struct sock *sk, struct sk_buff *skb)
 +{
++	int ret = 0;
 +	vsentry_event_t ev;
-+	vsentry_ev_type_e type = VSENTRY_TOTAL_EVENT;
 +
 +	if (!vsentry_get_enable())
 +		return 0;
 +
 +	memset(&ev, 0, sizeof(vsentry_event_t));
 +
++	ev.event_id.exec_name = NULL;
 +	ev.ts = vsentry_get_curr_time_usec();
 +	ev.dir = DIR_IN;
 +
-+	/* try to extract the recv executable/user */
++	/* try to extract the receiver executable/user */
 +	if (sk->sk_socket)
 +		get_id_by_socket(sk->sk_socket, &ev.event_id);
++	else
++		ev.event_id.kernel = true;
 +
 +	switch (sk->sk_family) {
 +	case AF_CAN:
@@ -2003,7 +2663,8 @@ index 0000000..ca1220c
 +		ev.can_event.payload_len = cfd->len;
 +		memcpy(&ev.can_event.payload, cfd->data, cfd->len);
 +
-+		type = VSENTRY_CAN_EVENT;
++		if (vsentry_check_event(VSENTRY_CAN_EVENT, &ev, true) != VSENTRY_SUCCESS)
++			ret = -EACCES;
 +
 +		break;
 +	}
@@ -2023,19 +2684,20 @@ index 0000000..ca1220c
 +		ev.ip_event.ip_proto = ip_header->protocol;
 +		vsentry_extract_ip_info(&ev.ip_event, skb);
 +
-+		type = VSENTRY_IP_EVENT;
-+
++		if (vsentry_check_event(VSENTRY_IP_EVENT, &ev, true) != VSENTRY_SUCCESS)
++			ret = -EACCES;
 +		break;
 +	}
 +
 +	default:
-+		return 0;
++		ret = 0;
++		break;
 +	}
 +
-+	if (vsentry_check_event(type, &ev, true) != VSENTRY_ALLOW)
-+		return -EACCES;
++	if (ev.event_id.exec_name)
++		free_name(ev.event_id.exec_name);
 +
-+	return 0;
++	return ret;
 +}
 +
 +#if 0
@@ -2079,6 +2741,31 @@ index 0000000..ca1220c
 +static int vsentry_inet_conn_request(struct sock *sk, struct sk_buff *skb,
 +				struct request_sock *req)
 +{
++	vsentry_event_t ev;
++	struct iphdr *ip_header = NULL;
++
++	if (!vsentry_get_enable())
++		return 0;
++
++	vs_hook_dbg("classify rx net\n");
++
++	ev.ts = vsentry_get_curr_time_usec();
++	ev.dir = DIR_IN;
++	ev.event_id.exec_name = NULL;
++
++	/* try to extract the receiver executable/user */
++	if (sk->sk_socket)
++		get_id_by_socket(sk->sk_socket, &ev.event_id);
++
++	ip_header = (struct iphdr *)skb_network_header(skb);
++	ev.ip_event.ip_proto = ip_header->protocol;
++	vsentry_extract_ip_info(&ev.ip_event, skb);
++
++	vsentry_check_event(VSENTRY_IP_EVENT, &ev, true);
++
++	if (ev.event_id.exec_name)
++		free_name(ev.event_id.exec_name);
++
 +	return 0;
 +}
 +
@@ -2089,6 +2776,30 @@ index 0000000..ca1220c
 +
 +static void vsentry_inet_conn_established(struct sock *sk, struct sk_buff *skb)
 +{
++	vsentry_event_t ev;
++	struct iphdr *ip_header = NULL;
++
++	if (!vsentry_get_enable())
++		return;
++
++	vs_hook_dbg("classify rx net\n");
++
++	ev.ts = vsentry_get_curr_time_usec();
++	ev.dir = DIR_IN;
++	ev.event_id.exec_name = NULL;
++
++	/* try to extract the receiver executable/user */
++	if (sk->sk_socket)
++		get_id_by_socket(sk->sk_socket, &ev.event_id);
++
++	ip_header = (struct iphdr *)skb_network_header(skb);
++	ev.ip_event.ip_proto = ip_header->protocol;
++	vsentry_extract_ip_info(&ev.ip_event, skb);
++
++	vsentry_check_event(VSENTRY_IP_EVENT, &ev, true);
++
++	if (ev.event_id.exec_name)
++		free_name(ev.event_id.exec_name);
 +}
 +
 +static int vsentry_secmark_relabel_packet(u32 secid)
@@ -2229,14 +2940,18 @@ index 0000000..ca1220c
 +	LSM_HOOK_INIT(settime, vsentry_settime),
 +	LSM_HOOK_INIT(vm_enough_memory, vsentry_vm_enough_memory),
 +	LSM_HOOK_INIT(bprm_set_creds, vsentry_bprm_set_creds),
++#endif
 +	LSM_HOOK_INIT(bprm_check_security, vsentry_bprm_check_security),
++#if 0
 +	LSM_HOOK_INIT(bprm_committing_creds, vsentry_bprm_committing_creds),
 +	LSM_HOOK_INIT(bprm_committed_creds, vsentry_bprm_committed_creds),
 +	LSM_HOOK_INIT(sb_alloc_security, vsentry_sb_alloc_security),
 +	LSM_HOOK_INIT(sb_free_security, vsentry_sb_free_security),
 +	LSM_HOOK_INIT(sb_copy_data, vsentry_sb_copy_data),
 +	LSM_HOOK_INIT(sb_remount, vsentry_sb_remount),
++#endif
 +	LSM_HOOK_INIT(sb_kern_mount, vsentry_sb_kern_mount),
++#if 0
 +	LSM_HOOK_INIT(sb_show_options, vsentry_sb_show_options),
 +	LSM_HOOK_INIT(sb_statfs, vsentry_sb_statfs),
 +	LSM_HOOK_INIT(sb_mount, vsentry_sb_mount),
@@ -2249,17 +2964,19 @@ index 0000000..ca1220c
 +	LSM_HOOK_INIT(dentry_create_files_as, vsentry_dentry_create_files_as),
 +#endif
 +#ifdef CONFIG_SECURITY_PATH
-+#if 0
 +	LSM_HOOK_INIT(path_unlink, vsentry_path_unlink),
 +	LSM_HOOK_INIT(path_mkdir, vsentry_path_mkdir),
 +	LSM_HOOK_INIT(path_rmdir, vsentry_path_rmdir),
 +	LSM_HOOK_INIT(path_mknod, vsentry_path_mknod),
++#if 0
 +	LSM_HOOK_INIT(path_truncate, vsentry_path_truncate),
++#endif
 +	LSM_HOOK_INIT(path_symlink, vsentry_path_symlink),
 +	LSM_HOOK_INIT(path_link, vsentry_path_link),
 +	LSM_HOOK_INIT(path_rename, vsentry_path_rename),
 +	LSM_HOOK_INIT(path_chmod, vsentry_path_chmod),
 +	LSM_HOOK_INIT(path_chown, vsentry_path_chown),
++#if 0
 +	LSM_HOOK_INIT(path_chroot, vsentry_path_chroot),
 +#endif
 +#endif /* CONFIG_SECURITY_PATH */
@@ -2307,7 +3024,9 @@ index 0000000..ca1220c
 +	LSM_HOOK_INIT(file_set_fowner, vsentry_file_set_fowner),
 +	LSM_HOOK_INIT(file_send_sigiotask, vsentry_file_send_sigiotask),
 +	LSM_HOOK_INIT(file_receive, vsentry_file_receive),
++#endif
 +	LSM_HOOK_INIT(file_open, vsentry_file_open),
++#if 0
 +	LSM_HOOK_INIT(task_create, vsentry_task_create),
 +	LSM_HOOK_INIT(task_free, vsentry_task_free),
 +	LSM_HOOK_INIT(cred_alloc_blank, vsentry_cred_alloc_blank),
@@ -2443,12 +3162,21 @@ index 0000000..ca1220c
 +#endif
 +};
 +
++/***********************************************************************
++ * function:     vsentry_lsm_init
++ * description:  init and register vsentry hooks to LSM.
++ * in param:     n/a
++ * out param:    n/a
++ * return:       0
++ **********************************************************************/
 +static int __init vsentry_lsm_init(void)
 +{
 +	int i;
 +
-+	for (i = 0; i < MAP_SIZE; i++)
++	for (i = 0; i < MAP_SIZE; i++) {
 +		INIT_HLIST_HEAD(&socket_process_map[i]);
++		INIT_HLIST_HEAD(&super_block_map[i]);
++	}
 +
 +	security_add_hooks(vsentry_default_lsm_hooks,
 +		ARRAY_SIZE(vsentry_default_lsm_hooks));
@@ -2470,6 +3198,7 @@ index 0000000..ca1220c
 +static unsigned int vsentry_ipv4_hook_post_routing(void *priv,
 +	struct sk_buff *skb, const struct nf_hook_state *state)
 +{
++	int ret = NF_DROP;
 +	vsentry_event_t ev;
 +	struct iphdr *ip_header = (struct iphdr *)skb_network_header(skb);
 +
@@ -2481,7 +3210,7 @@ index 0000000..ca1220c
 +			ip_header->protocol != IPPROTO_UDP)
 +		return NF_ACCEPT;
 +
-+	vs_hook_dbg("\n");
++	vs_hook_dbg("classify tx net\n");
 +
 +	memset(&ev, 0, sizeof(vsentry_event_t));
 +
@@ -2493,11 +3222,16 @@ index 0000000..ca1220c
 +
 +	if (skb->sk && skb->sk->sk_socket)
 +		get_id_by_socket(skb->sk->sk_socket, &ev.event_id);
++	else
++		ev.event_id.kernel = true;
 +
-+	if (vsentry_check_event(VSENTRY_IP_EVENT, &ev, true) == VSENTRY_ALLOW)
-+		return NF_ACCEPT;
++	if (vsentry_check_event(VSENTRY_IP_EVENT, &ev, true) == VSENTRY_SUCCESS)
++		ret = NF_ACCEPT;
 +
-+	return NF_DROP;
++	if (ev.event_id.exec_name)
++		free_name(ev.event_id.exec_name);
++
++	return ret;
 +}
 +
 +static const struct nf_hook_ops vsentry_nf_ops[] = {
@@ -2509,12 +3243,26 @@ index 0000000..ca1220c
 +	},
 +};
 +
++/***********************************************************************
++ * function:     vsentry_nf_register
++ * description:  register to NF hooks.
++ * in param:     struct net *net
++ * out param:    n/a
++ * return:
++ **********************************************************************/
 +static int __net_init vsentry_nf_register(struct net *net)
 +{
 +	return nf_register_net_hooks(net, vsentry_nf_ops,
 +				     ARRAY_SIZE(vsentry_nf_ops));
 +}
 +
++/***********************************************************************
++ * function:     vsentry_nf_unregister
++ * description:  unregister from NF hooks.
++ * in param:     struct net *net
++ * out param:    n/a
++ * return:
++ **********************************************************************/
 +static void __net_exit vsentry_nf_unregister(struct net *net)
 +{
 +	nf_unregister_net_hooks(net, vsentry_nf_ops,
@@ -2526,6 +3274,13 @@ index 0000000..ca1220c
 +	.exit = vsentry_nf_unregister,
 +};
 +
++/***********************************************************************
++ * function:     vsentry_nf_init
++ * description:
++ * in param:
++ * out param:
++ * return:
++ **********************************************************************/
 +static int __init vsentry_nf_init(void)
 +{
 +	int err;
@@ -2541,10 +3296,10 @@ index 0000000..ca1220c
 +__initcall(vsentry_nf_init);
 diff --git a/security/vsentry/vsentry_internal.h b/security/vsentry/vsentry_internal.h
 new file mode 100644
-index 0000000..bfa63a8
+index 000000000000..eb69b8eca949
 --- /dev/null
 +++ b/security/vsentry/vsentry_internal.h
-@@ -0,0 +1,29 @@
+@@ -0,0 +1,34 @@
 +/* Copyright (C) 2018 SafeRide, Inc.
 + *
 + * This software is licensed under the terms of the GNU General Public
@@ -2568,19 +3323,24 @@ index 0000000..bfa63a8
 +int   vsentry_set_enable(bool enable);
 +int   vsentry_set_mode(unsigned int mode);
 +int   vsentry_get_state(struct vsentry_state *state);
++int   vsentry_set_file_cls_mode(unsigned int mode);
++int   vsentry_get_file_cls_mode(void);
 +void  vsentry_print_info(void);
++void  vsentry_cls_remove_inode(unsigned long inode);
 +int   vsentry_check_event(vsentry_ev_type_e type, vsentry_event_t *ev, bool atomic);
 +int   vsentry_generate_netlink_event(vsentry_event_t *ev);
 +unsigned long long vsentry_get_curr_time_usec(void);
++int   vsentry_copy_shmem(char *dbfile);
++//void  vsentry_shutdown(void);
 +
 +#endif /* __VSENTRY_INTERNAL_H__ */
 diff --git a/security/vsentry/vsentry_mod.c b/security/vsentry/vsentry_mod.c
 new file mode 100644
-index 0000000..2623da1
+index 000000000000..fae3bf7b11cb
 --- /dev/null
 +++ b/security/vsentry/vsentry_mod.c
-@@ -0,0 +1,584 @@
-+/* Copyright (C) 2018 SafeRide, Inc.
+@@ -0,0 +1,825 @@
++/* Copyright (C) 2019 SafeRide, Inc.
 + *
 + * This software is licensed under the terms of the GNU General Public
 + * License version 2, as published by the Free Software Foundation, and
@@ -2611,7 +3371,7 @@ index 0000000..2623da1
 +#define CLS_BIN_FILE 	"/etc/vsentry/cls.bin"
 +#define CLS_DB_FILE 	"/etc/vsentry/db.mem"
 +
-+#define VS_MOD_DEBUG
++//#define VS_MOD_DEBUG
 +#ifdef VS_MOD_DEBUG
 +#define vs_dbg(fmt, ...) \
 +	pr_debug("[DBG] %llu %s: " fmt, vsentry_get_curr_time_usec(), \
@@ -2632,11 +3392,12 @@ index 0000000..2623da1
 +
 +static int vsentry_eng_tgid;
 +static volatile bool vsentry_enabled;
++static unsigned int file_cls_mode = FILE_CLS_MODE_STR;
 +static void *shmem, *execmem;
++static unsigned int shmem_size = 0;
 +static volatile bool db_update;
 +static volatile unsigned int usage;
-+static int (* volatile cls_func)(vsentry_ev_type_e ev_type,
-+	vsentry_event_t *event, bool atomic);
++static int (* volatile cls_func)(vsentry_ev_type_e ev_type, vsentry_event_t *event);
 +
 +static DEFINE_SPINLOCK(vsentry_lock);
 +
@@ -2703,7 +3464,7 @@ index 0000000..2623da1
 +	struct file *f = NULL;
 +	loff_t offset = 0, f_size, m_size;
 +	int ret = VSENTRY_SUCCESS;
-+	void *tmp;
++	void *tmp = NULL;
 +
 +	vs_dbg("updating %s from file %s\n", executable?"EXEC":"DB", filename);
 +
@@ -2745,7 +3506,7 @@ index 0000000..2623da1
 +		goto update_err;
 +	}
 +
-+	vs_dbg("allocated %s mem 0x%px length 0x%llx\n",
++	vs_info("allocated %s mem 0x%px length 0x%llx\n",
 +			executable?"EXEC":"DB", tmp, m_size);
 +
 +	/* read file content to memory */
@@ -2758,6 +3519,9 @@ index 0000000..2623da1
 +	}
 +
 +	filp_close(f, NULL);
++
++	if (!executable)
++		shmem_size = f_size;
 +
 +	/* memory is ready */
 +	return tmp;
@@ -2772,7 +3536,6 @@ index 0000000..2623da1
 +	return ERR_PTR(ret);
 +}
 +
-+
 +/***********************************************************************
 + * function:    vsentry_mod_init
 + * description: init function. called by kernel init after root file-system
@@ -2783,15 +3546,12 @@ index 0000000..2623da1
 + **********************************************************************/
 +int vsentry_mod_init(void)
 +{
-+	execmem = update_mem_from_file(CLS_BIN_FILE, true);
-+	if (IS_ERR(execmem)) {
-+		vs_err("failed to initialize EXEC\n");
-+		execmem = NULL;
-+		return PTR_ERR(execmem);
-+	}
++	int mode = VSENTRY_MODE_ENFORCE;
 +
-+	shmem = update_mem_from_file(CLS_DB_FILE, false);
-+	if (IS_ERR(shmem)) {
++	if (vsentry_update_execmem(CLS_BIN_FILE) != VSENTRY_SUCCESS)
++		return -EIO;
++
++	if (vsentry_update_shmem(CLS_DB_FILE) != VSENTRY_SUCCESS) {
 +		shmem = __vmalloc(SHMEM_BUFFER_SIZE, GFP_USER |
 +				__GFP_ZERO, PAGE_KERNEL);
 +		/* if we don't have DB yet, we can start with empty DB */
@@ -2799,9 +3559,22 @@ index 0000000..2623da1
 +			vs_err("failed to initialize DB\n");
 +			return PTR_ERR(shmem);
 +		}
++
++		shmem_size = SHMEM_BUFFER_SIZE;
++
++		/* initialize classifier DB */
++		cls_func(VSENTRY_CLASIFFIER_INIT, shmem);
++
++		vs_info("setting learn mode\n");
++		mode = VSENTRY_MODE_LEARN;
++		vsentry_set_mode(mode);
 +	}
 +
-+	vsentry_set_enable(true);
++	/* to avoid logging overload upon init */
++	cls_func(VSENTRY_REGISTER_PRINTF, NULL);
++
++	if (vsentry_set_enable(true) != VSENTRY_SUCCESS)
++		return -EPERM;
 +
 +	vs_info("vsentry initialized\n");
 +
@@ -2821,10 +3594,8 @@ index 0000000..2623da1
 +	unsigned long flags;
 +	void *tmp_shmem = update_mem_from_file(dbfile, false);
 +
-+	if (IS_ERR(tmp_shmem)) {
-+		vs_err("failed to update new DB\n");
++	if (IS_ERR(tmp_shmem))
 +		return PTR_ERR(tmp_shmem);
-+	}
 +
 +	/* disable interrupts on this cpu */
 +	spin_lock_irqsave(&vsentry_lock, flags);
@@ -2836,28 +3607,16 @@ index 0000000..2623da1
 +	while (usage)
 +		;
 +
-+	if (vsentry_enabled) {
-+		BUG_ON(!cls_func);
++	if (cls_func) {
++		unsigned int mode = VSENTRY_MODE_TOTAL;
++
 +		/* init the classifier with the new DB */
-+		if (cls_func(VSENTRY_CLASIFFIER_INIT, tmp_shmem, false) !=
-+				VSENTRY_SUCCESS) {
-+			vs_err("failed to init cls with DB, restoring old DB\n");
++		cls_func(VSENTRY_CLASIFFIER_INIT, tmp_shmem);
 +
-+			/* free the newly allocated DB */
-+			vfree(tmp_shmem);
-+			tmp_shmem = NULL;
-+
-+			/* restore the old DB */
-+			if (cls_func(VSENTRY_CLASIFFIER_INIT, shmem, false) !=
-+					VSENTRY_SUCCESS) {
-+				vs_err("restore old DB failed. disabling\n");
-+				vsentry_enabled = false;
-+				cls_func = NULL;
-+				vfree(execmem);
-+				vfree(shmem);
-+				shmem = execmem = NULL;
-+			}
-+		}
++		/* align with new mode */
++		cls_func(VSENTRY_CLASIFFIER_GET_MODE, (void *)&mode);
++		if (mode == VSENTRY_MODE_LEARN)
++			file_cls_mode = FILE_CLS_MODE_STR;
 +	}
 +
 +	db_update = false;
@@ -2865,17 +3624,140 @@ index 0000000..2623da1
 +	/* enable interrupts on this cpu */
 +	spin_unlock_irqrestore(&vsentry_lock, flags);
 +
-+	if (tmp_shmem) {
-+		/* cls was updated, free old DB */
++	/* cls was updated, free old DB */
++	if (shmem)
 +		vfree(shmem);
-+		shmem = tmp_shmem;
-+	}
++	shmem = tmp_shmem;
 +
 +	vs_dbg("DB update was completed successfully\n");
 +
 +	return VSENTRY_SUCCESS;
 +}
 +
++/***********************************************************************
++ * function:    vsentry_copy_shmem
++ * description: this function will copy the DB to a file.
++ * in param:    char *dbfile
++ * out param:   n/a
++ * return:      VSENTRY_SUCCESS/error
++ **********************************************************************/
++int vsentry_copy_shmem(char *dbfile)
++{
++	struct file *f = NULL;
++	int ret = VSENTRY_SUCCESS;
++	bool is_enabled = vsentry_enabled;
++	unsigned int mode = VSENTRY_MODE_TOTAL;
++	bool modified = false;
++
++	if (!shmem || !shmem_size) {
++		vs_err("DB is not initialized\n");
++		return -EPERM;
++	}
++
++	/* open the file */
++	f = filp_open(dbfile, O_RDWR | O_CREAT, 0644);
++	if (IS_ERR(f)) {
++		vs_err("failed to open %s\n", dbfile);
++		return -ENOENT;
++	}
++
++	/* TODO: add lock to avoid miss-configuration (ioctl, etc) */
++	vsentry_enabled = false;
++
++	/* wait until all ongoing checks will complete */
++	while (usage)
++		;
++
++	/* get the current cls mode */
++	if (cls_func) {
++		cls_func(VSENTRY_CLASIFFIER_GET_MODE, (void *)&mode);
++
++		if (mode == VSENTRY_MODE_LEARN) {
++			unsigned int new_mode = VSENTRY_MODE_PERMISSIVE;
++
++			/* to avoid memory loss in the DB switch to permissive mode */
++			ret = cls_func(VSENTRY_CLASIFFIER_SET_MODE, (void *)&new_mode);
++			if (ret != VSENTRY_SUCCESS && ret != VSENTRY_ALREADY_EXISTS) {
++				vs_err("failed to set classifier mode to %u\n", mode);
++				vsentry_enabled = is_enabled;
++				return -EIO;
++			}
++
++			modified = true;
++		}
++	}
++
++	vs_dbg("copy DB to file %s\n", dbfile);
++
++	ret = kernel_write(f, shmem, shmem_size, 0);
++	if (ret != shmem_size) {
++		vs_err("failed to write %s. expected %d actual %d\n",
++			dbfile, (int)shmem_size, ret);
++		ret = -EIO;
++	} else {
++		vs_dbg("DB copy was completed successfully\n");
++	}
++
++	filp_close(f, NULL);
++
++	/* restore the current cls mode */
++	if (cls_func && modified) {
++		ret = cls_func(VSENTRY_CLASIFFIER_SET_MODE, (void *)&mode);
++		if (ret != VSENTRY_SUCCESS && ret != VSENTRY_ALREADY_EXISTS) {
++			vs_err("failed to set classifier mode to %u\n", mode);
++			ret = -EIO;
++		}
++	}
++
++	vsentry_enabled = is_enabled;
++
++	return ret;
++}
++
++/***********************************************************************
++ * function:    vsentry_shutdown
++ * description: called when system is going down. if we are in learn
++ *              write DB to file. set to permissive mode.
++ * in param:    n/a
++ * out param:   n/a
++ * return:      n/a
++ **********************************************************************/
++//void vsentry_shutdown(void)
++//{
++//	int ret = VSENTRY_SUCCESS;
++//	unsigned int mode;
++//
++//	if (!shmem || !shmem_size) {
++//		vs_err("DB is not initialized\n");
++//		return;
++//	}
++//
++//	vsentry_enabled = false;
++//
++//	/* wait until all ongoing checks will complete */
++//	while (usage)
++//		;
++//
++//	cls_func(VSENTRY_CLASIFFIER_GET_MODE, (void *)&mode);
++//	if (mode == VSENTRY_MODE_LEARN) {
++//		unsigned int new_mode = VSENTRY_MODE_PERMISSIVE;
++//
++//		/* to avoid memory loss in the DB switch to permissive mode */
++//		ret = cls_func(VSENTRY_CLASIFFIER_SET_MODE, (void *)&new_mode);
++//		if (ret != VSENTRY_SUCCESS && ret != VSENTRY_ALREADY_EXISTS) {
++//			vs_err("failed to set classifier mode to %u\n", mode);
++//			return;
++//		}
++//	}
++//	/* set to permissive mode */
++//	ret = cls_func(VSENTRY_CLASIFFIER_SET_MODE, (void *)&mode);
++//	if (ret != VSENTRY_SUCCESS && ret != VSENTRY_ALREADY_EXISTS) {
++//		vs_err("failed to set classifier mode to %u\n", mode);
++//		return;
++//	}
++//
++//	vsentry_copy_shmem(CLS_DB_FILE);
++//}
 +/***********************************************************************
 + * function:    vsentry_update_execmem
 + * description: this function will update the EXEC with a new content
@@ -2888,6 +3770,8 @@ index 0000000..2623da1
 +{
 +	unsigned long flags;
 +	void *tmp_execmem = update_mem_from_file(execfile, true);
++	bool modified = false;
++	unsigned int mode = VSENTRY_MODE_TOTAL;
 +
 +	if (IS_ERR(tmp_execmem)) {
 +		vs_err("failed to update new EXEC\n");
@@ -2904,29 +3788,27 @@ index 0000000..2623da1
 +	while (usage)
 +		;
 +
-+	if (vsentry_enabled) {
-+		BUG_ON(!shmem);
++	if (shmem) {
++		cls_func(VSENTRY_CLASIFFIER_GET_MODE, (void *)&mode);
++		if (mode == VSENTRY_MODE_LEARN) {
++			unsigned int new_mode = VSENTRY_MODE_PERMISSIVE;
 +
-+		/* point to the new EXEC */
-+		cls_func = (int (*)(vsentry_ev_type_e ev_type,
-+				vsentry_event_t *event, bool atomic))
-+						tmp_execmem;
-+
-+		cls_func(VSENTRY_REGISTER_PRINTF, (void *)printk, false);
-+
-+		/* initialize the new classifier with DB */
-+		if (cls_func(VSENTRY_CLASIFFIER_INIT, shmem, false) !=
-+				VSENTRY_SUCCESS) {
-+			vs_err("initialize EXEC failed, restoring old EXEC\n");
-+
-+			/* point to the previous EXEC */
-+			cls_func = (int (*)(vsentry_ev_type_e ev_type,
-+					vsentry_event_t *event, bool atomic))
-+							execmem;
-+			/* free the newly allocated EXEC */
-+			vfree(tmp_execmem);
-+			tmp_execmem = NULL;
++			/* to avoid memory loss in the DB switch to permissive mode */
++			cls_func(VSENTRY_CLASIFFIER_SET_MODE, (void *)&new_mode);
++			modified = true;
 +		}
++	}
++
++	/* point to the new EXEC */
++	cls_func = (int (*)(vsentry_ev_type_e ev_type, vsentry_event_t *event))tmp_execmem;
++	cls_func(VSENTRY_REGISTER_PRINTF, (void *)printk);
++	if (shmem) {
++		/* initialize classifier DB */
++		cls_func(VSENTRY_CLASIFFIER_INIT, shmem);
++
++		if (modified)
++			/* restore prev mode */
++			cls_func(VSENTRY_CLASIFFIER_SET_MODE, (void *)&mode);
 +	}
 +
 +	db_update = false;
@@ -2934,11 +3816,9 @@ index 0000000..2623da1
 +	/* enable interrupts on this cpu */
 +	spin_unlock_irqrestore(&vsentry_lock, flags);
 +
-+	if (tmp_execmem) {
-+		/* EXEC was updated, free previous EXEC */
-+		vfree(execmem);
-+		execmem = tmp_execmem;
-+	}
++	/* EXEC was updated, free previous EXEC */
++	vfree(execmem);
++	execmem = tmp_execmem;
 +
 +	vs_dbg("EXEC update was completed successfully\n");
 +
@@ -2978,32 +3858,13 @@ index 0000000..2623da1
 +			return -EPERM;
 +		}
 +
-+		if (!execmem) {
++		if (!cls_func) {
 +			vs_err("EXEC is not initialized\n");
 +			return -EPERM;
 +		}
-+
-+		cls_func = (int (*)(vsentry_ev_type_e ev_type,
-+			vsentry_event_t *event, bool atomic))execmem;
-+
-+		cls_func(VSENTRY_REGISTER_PRINTF, (void *)printk, false);
-+
-+		if (cls_func(VSENTRY_CLASIFFIER_INIT, shmem, false) !=
-+				VSENTRY_SUCCESS) {
-+			vs_err("failed to init classifier\n");
-+			return -EIO;
-+		}
-+
-+		vsentry_enabled = true;
-+	} else {
-+		vsentry_enabled = false;
-+
-+		/* wait until all ongoing checks will complete */
-+		while (usage)
-+			;
-+
-+		cls_func = NULL;
 +	}
++
++	vsentry_enabled = enable;
 +
 +	vs_dbg("vsentry is %s\n", vsentry_enabled?"enabled":"disabled");
 +
@@ -3021,50 +3882,120 @@ index 0000000..2623da1
 +{
 +	int ret;
 +
-+	if (!vsentry_enabled) {
-+		vs_err("vsentry is not enabled\n");
++	if (!shmem || !cls_func) {
++		vs_err("vsentry is not initialized\n");
 +		return -EPERM;
 +	}
 +
-+	vs_dbg("vsentry mode %d\n", mode);
++	vs_dbg("set vsentry mode %d\n", mode);
 +
-+	ret = cls_func(VSENTRY_CLASIFFIER_SET_MODE, (void *)&mode, false);
++	ret = cls_func(VSENTRY_CLASIFFIER_SET_MODE, (void *)&mode);
 +	if (ret != VSENTRY_SUCCESS && ret != VSENTRY_ALREADY_EXISTS) {
 +		vs_err("failed to set classifier mode to %u\n", mode);
 +		return -EIO;
 +	}
 +
++	if (mode == VSENTRY_MODE_LEARN)
++		vsentry_set_file_cls_mode(FILE_CLS_MODE_STR);
++
 +	return VSENTRY_SUCCESS;
 +}
 +
++/***********************************************************************
++ * function:    vsentry_get_state
++ * description: get the classifier and hooks state
++ * in param:    unsigned int mode
++ * out param:   struct vsentry_state *state
++ * return:      VSENTRY_SUCCESS
++ **********************************************************************/
 +int vsentry_get_state(struct vsentry_state *state)
 +{
 +	if (!state)
 +		return -EIO;
 +
++	if (shmem && cls_func)
++		cls_func(VSENTRY_CLASIFFIER_GET_MODE, (void *)&state->mode);
++	else
++		state->mode = VSENTRY_MODE_TOTAL;
++
 +	state->enabled = vsentry_enabled;
 +	state->cls_present = (execmem?true:false);
 +	state->db_present = (shmem?true:false);
++	state->file_cls_mode = file_cls_mode;
 +
 +	return VSENTRY_SUCCESS;
 +}
 +
++/***********************************************************************
++ * function:    vsentry_set_file_cls_mode
++ * description: set the file classification mode (string/inode)
++ * in param:    unsigned int mode
++ * out param:   n/a
++ * return:      VSENTRY_SUCCESS/-EINVAL
++ **********************************************************************/
++int vsentry_set_file_cls_mode(unsigned int mode)
++{
++	if (file_cls_mode >= FILE_CLS_MODE_MAX)
++		return -EINVAL;
++
++	file_cls_mode = mode;
++
++	vs_info("set vsentry file_cls_mode %s\n",
++		file_cls_mode==FILE_CLS_MODE_STR?"string":"inode");
++
++	return VSENTRY_SUCCESS;
++}
++
++/***********************************************************************
++ * function:    vsentry_get_file_cls_mode
++ * description: get the current file classification mode
++ * in param:    n/a
++ * out param:   n/a
++ * return:      int
++ **********************************************************************/
++int vsentry_get_file_cls_mode(void)
++{
++	return file_cls_mode;
++}
++
++/***********************************************************************
++ * function:    vsentry_print_info
++ * description: print the current classifier DB and state
++ * in param:    n/a
++ * out param:   n/a
++ * return:      n/a
++ **********************************************************************/
 +void vsentry_print_info(void)
 +{
-+	if (!vsentry_enabled) {
-+		vs_err("vsentry is disabled\n");
++	if (!shmem || !cls_func) {
++		vs_err("vsentry is not initialized\n");
 +		return;
 +	}
 +
-+	cls_func(VSENTRY_PRINT_INFO, NULL, false);
++	cls_func(VSENTRY_PRINT_INFO, NULL);
++}
++
++/***********************************************************************
++ * function:    vsentry_cls_remove_inode
++ * description: update the classifier DB with removed inode
++ * in param:    unsigned long inode
++ * out param:   n/a
++ * return:      n/a
++ **********************************************************************/
++void vsentry_cls_remove_inode(unsigned long inode)
++{
++	if (vsentry_enabled)
++		cls_func(VSENTRY_REMOVE_INODE, (void *)&inode);
 +}
 +
 +#ifdef VS_MOD_DEBUG
 +
 +void vsentry_print_ip_event(vsentry_event_t *ip_event)
 +{
-+	vs_dbg("uid %d, exec_ino %d dir %s src %d.%d.%d.%d sport %d dst %d.%d.%d.%d dport %d proto %d\n",
-+		ip_event->event_id.uid, ip_event->event_id.exec_ino,
++	vs_err("uid %u prog %s (inode %lu) dir %s src %d.%d.%d.%d sport %d dst %d.%d.%d.%d dport %d proto %d\n",
++		ip_event->event_id.kernel?0:ip_event->event_id.uid,
++		ip_event->event_id.kernel?"kernel":(ip_event->event_id.exec_name?ip_event->event_id.exec_name:""),
++		ip_event->event_id.exec_ino,
 +		(ip_event->dir == DIR_IN)?"in":"out",
 +		(ip_event->ip_event.saddr.v4addr & 0xFF000000)>>24,
 +		(ip_event->ip_event.saddr.v4addr & 0xFF0000)>>16,
@@ -3075,22 +4006,65 @@ index 0000000..2623da1
 +		(ip_event->ip_event.daddr.v4addr & 0xFF0000)>>16,
 +		(ip_event->ip_event.daddr.v4addr & 0xFF00)>>8,
 +		(ip_event->ip_event.daddr.v4addr & 0xFF),
-+		ip_event->ip_event.dport, ip_event->ip_event.ip_proto);
++		ip_event->ip_event.dport,
++		ip_event->ip_event.ip_proto);
 +}
 +
 +void vsentry_print_can_event(vsentry_event_t *can_event)
 +{
-+	vs_dbg("uid %d, exec_ino %d msgid 0x%x dir %s if %u\n",
-+		can_event->event_id.uid, can_event->event_id.exec_ino,
++	vs_err("uid %u prog %s (inode %lu) msgid 0x%x dir %s if %u\n",
++		can_event->event_id.kernel?0:can_event->event_id.uid,
++		can_event->event_id.kernel?"kernel":(can_event->event_id.exec_name?can_event->event_id.exec_name:""),
++		can_event->event_id.exec_ino,
 +		can_event->can_event.can_header.msg_id,
 +		(can_event->dir == DIR_IN)?"in":"out",
 +		can_event->can_event.can_header.if_index);
++}
++
++void vsentry_print_file_event(vsentry_event_t *file_event)
++{
++	switch (file_event->file_event.type) {
++	case FILE_TYPE_SYSFS:
++		vs_err("uid %u prog %s (%lu) file SYSFS (%lu) mode %s%s%s\n",
++			file_event->event_id.kernel?0:file_event->event_id.uid,
++			file_event->event_id.kernel?"kernel":(file_event->event_id.exec_name?file_event->event_id.exec_name:""),
++			file_event->event_id.exec_ino,
++			file_event->file_event.file_ino,
++			(file_event->file_event.mode & FILE_MODE_READ)?"r":"",
++			(file_event->file_event.mode & FILE_MODE_WRITE)?"w":"",
++			(file_event->file_event.mode & FILE_MODE_EXEC)?"x":"");
++		break;
++	case FILE_TYPE_PROCFS:
++		vs_err("uid %u prog %s (%lu) file PROCFS (%lu) mode %s%s%s\n",
++			file_event->event_id.kernel?0:file_event->event_id.uid,
++			file_event->event_id.kernel?"kernel":(file_event->event_id.exec_name?file_event->event_id.exec_name:""),
++			file_event->event_id.exec_ino,
++			file_event->file_event.file_ino,
++			(file_event->file_event.mode & FILE_MODE_READ)?"r":"",
++			(file_event->file_event.mode & FILE_MODE_WRITE)?"w":"",
++			(file_event->file_event.mode & FILE_MODE_EXEC)?"x":"");
++		break;
++	case FILE_TYPE_REG:
++		vs_err("uid %u prog %s (%lu) file %s (%lu) mode %s%s%s\n",
++			file_event->event_id.kernel?0:file_event->event_id.uid,
++			file_event->event_id.kernel?"kernel":(file_event->event_id.exec_name?file_event->event_id.exec_name:""),
++			file_event->event_id.exec_ino,
++			file_event->file_event.filename?file_event->file_event.filename:"",
++			file_event->file_event.file_ino,
++			(file_event->file_event.mode & FILE_MODE_READ)?"r":"",
++			(file_event->file_event.mode & FILE_MODE_WRITE)?"w":"",
++			(file_event->file_event.mode & FILE_MODE_EXEC)?"x":"");
++		break;
++	default:
++		break;
++	}
 +}
 +
 +static void cls_print_action(unsigned int action_bitmap)
 +{
 +	bool log = false;
 +	bool drop = true;
++	bool learn = false;
 +
 +	if (action_bitmap & VSENTRY_ACTION_ALLOW)
 +		drop = false;
@@ -3098,9 +4072,11 @@ index 0000000..2623da1
 +	if (action_bitmap & VSENTRY_ACTION_LOG)
 +		log = true;
 +
-+	vs_dbg("cls_func return %s%s\n", drop?"drop":"allow", log?",log":"");
-+}
++	if (action_bitmap & VSENTRY_ACTION_LEARN)
++		learn = true;
 +
++	vs_dbg("cls_func return %s%s%s\n", drop?"drop":"allow", log?",log":"", learn?"learn":"");
++}
 +#endif
 +
 +/***********************************************************************
@@ -3110,29 +4086,27 @@ index 0000000..2623da1
 + *              vsentry_event_t *ev - the event info
 + *              bool atomic - is this atomic/interrupt context
 + * out param:   n/a
-+ * return:      VSENTRY_ALLOW/VSENTRY_DROP
++ * return:      VSENTRY_ERROR/VSENTRY_SUCCESS/etc ..
 + **********************************************************************/
-+int vsentry_check_event(vsentry_ev_type_e type, vsentry_event_t *ev,
-+	bool atomic)
-+{
-+	int ret;
-+
-+	if (!vsentry_enabled || !cls_func)
-+		return VSENTRY_ALLOW;
-+
-+#ifdef VS_MOD_DEBUG
-+	switch (type) {
-+	case VSENTRY_IP_EVENT:
-+		vsentry_print_ip_event(ev);
-+		break;
-+	case VSENTRY_CAN_EVENT:
-+		vsentry_print_can_event(ev);
-+		break;
-+	default:
-+		break;
-+	}
++//#define TIMECHECK
++#ifdef TIMECHECK
++static DEFINE_SPINLOCK(time_check_lock);
 +#endif
 +
++int vsentry_check_event(vsentry_ev_type_e type, vsentry_event_t *ev, bool atomic)
++{
++	int ret = VSENTRY_ERROR;
++#ifdef TIMECHECK
++	unsigned long flags;
++#endif
++	if (!vsentry_enabled)
++		return VSENTRY_SUCCESS;
++
++#ifdef TIMECHECK
++	spin_lock_irqsave(&time_check_lock, flags);
++#endif
++
++	/* update usage counter */
 +	__sync_add_and_fetch(&usage, 1);
 +
 +	/* wait until update finish */
@@ -3142,28 +4116,55 @@ index 0000000..2623da1
 +		__sync_add_and_fetch(&usage, 1);
 +	}
 +
-+	if (cls_func)
-+		ret = cls_func(type, ev, atomic);
-+
-+	__sync_sub_and_fetch(&usage, 1);
-+
-+	if (ret != VSENTRY_SUCCESS) {
-+		vs_err("failed to classify event\n");
-+		return VSENTRY_DROP;
++retry:
++	if (cls_func) {
++		ret = cls_func(type, ev);
++		if (ret == VSENTRY_BUSY && !atomic) {
++			if (schedule_timeout_interruptible(usecs_to_jiffies(1)))
++				ret = VSENTRY_ERROR;
++			else
++				goto retry;
++		}
 +	}
 +
-+#ifdef VS_MOD_DEBUG
-+	cls_print_action(ev->act_bitmap);
-+#endif
++	/* update usage counter */
++	__sync_sub_and_fetch(&usage, 1);
 +
++	/* logging ? */
 +	if (ev->act_bitmap & VSENTRY_ACTION_LOG)
 +		vsentry_generate_netlink_event(ev);
 +
-+	if (ev->act_bitmap & VSENTRY_ACTION_ALLOW)
-+		return VSENTRY_ALLOW;
++	/* event when cls return success the decision might be drop */
++	if (ret == VSENTRY_SUCCESS) {
++		if (!(ev->act_bitmap & VSENTRY_ACTION_ALLOW))
++			ret = VSENTRY_ERROR;
++	}
 +
-+	return VSENTRY_DROP;
++#ifdef VS_MOD_DEBUG
++	if (ret != VSENTRY_SUCCESS) {
++		switch (type) {
++		case VSENTRY_IP_EVENT:
++			vsentry_print_ip_event(ev);
++			break;
++		case VSENTRY_CAN_EVENT:
++			vsentry_print_can_event(ev);
++			break;
++		case VSENTRY_FILE_EVENT:
++			vsentry_print_file_event(ev);
++			break;
++		default:
++			break;
++		}
++		cls_print_action(ev->act_bitmap);
++	}
++#endif
++
++#ifdef TIMECHECK
++	spin_unlock_irqrestore(&time_check_lock, flags);
++#endif
++
++	return ret;
 +}
 -- 
-1.9.1
+2.17.1
 

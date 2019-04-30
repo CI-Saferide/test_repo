@@ -1026,7 +1026,6 @@ static SR_32 show_group(int argc, char **argv)
 	}
 
 	name = argv[1];
-	printf("Showing group type:%d name:%s:\n", group_info[group_id].list_type, name);
 	redis_mng_print_list(c, group_info[group_id].list_type, name);
 
 out:

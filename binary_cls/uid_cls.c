@@ -17,19 +17,19 @@
 #define UID_HASH_NUM_OF_BITS 	10
 
 /* hash item for UID */
-typedef struct __attribute__ ((packed, aligned(8))) {
+typedef struct __attribute__ ((aligned(8))) {
 	unsigned int uid;
 	bit_array_t rules;
 } uid_hash_item_t;
 
 /* the default rules data struct */
-typedef struct __attribute__ ((packed, aligned(8))) {
+typedef struct __attribute__ ((aligned(8))) {
 	bit_array_t	any_rules[CLS_TOTAL_RULE_TYPE];
 } uid_any_rules_t;
 
 /* the below struct will hold the hash buckets offsets on the persistent
  * database */
-typedef struct __attribute__ ((packed, aligned(8))) {
+typedef struct __attribute__ ((aligned(8))) {
 	unsigned int 	buckets_offsets[CLS_TOTAL_RULE_TYPE];
 } uid_buckets_array_t;
 
@@ -129,7 +129,7 @@ int uid_cls_init(cls_hash_params_t *hash_params)
 	if (hash_params->hash_offset == 0 || hash_params->bits != UID_HASH_NUM_OF_BITS) {
 		/* hash was not prev allocated. lets allocate.
 		 * first we allocate memory to preserve the buckets offsets */
-		uid_buckets = heap_alloc(sizeof(uid_buckets_array_t));
+		uid_buckets = heap_calloc(sizeof(uid_buckets_array_t));
 		if (!uid_buckets) {
 			uid_err("failed to allocte uid_buckets\n");
 			return VSENTRY_ERROR;
@@ -183,6 +183,7 @@ int uid_cls_add_rule(cls_rule_type_e type, unsigned int rule, unsigned int uid)
 				return VSENTRY_ERROR;
 			}
 
+			uid_item->rules.empty = true;
 			uid_item->uid = uid;
 			/* insert new item to uid hash */
 			hash_insert_data(&uid_hash_array[type], uid_item);
@@ -192,9 +193,11 @@ int uid_cls_add_rule(cls_rule_type_e type, unsigned int rule, unsigned int uid)
 		arr = &uid_item->rules;
 	}
 
-	/* set the rule bit ib the relevant bit array */
-	ba_set_bit(rule, arr);
-	uid_dbg("set bit %u on %s uid %u\n", rule, get_type_str(type), uid);
+	if (!ba_is_set(rule, arr)) {
+		/* set the rule bit in the relevant bit array */
+		ba_set_bit(rule, arr);
+		uid_dbg("set bit %u on %s uid %u\n", rule, get_type_str(type), uid);
+	}
 
 	return VSENTRY_SUCCESS;
 }
@@ -245,6 +248,11 @@ int uid_cls_search(cls_rule_type_e type, id_event_t *data, bit_array_t *verdict)
 		return VSENTRY_INVALID;
 	}
 
+	/* in case kernel is the uid we cannot classify.
+	 * let other classifiers to decide. */
+	if (data->kernel)
+		return VSENTRY_SUCCESS;
+
 	arr_any = &uid_any_rules->any_rules[type];
 
 	/* search if this data exist */
@@ -262,7 +270,7 @@ int uid_cls_search(cls_rule_type_e type, id_event_t *data, bit_array_t *verdict)
 	}
 
 #ifdef ENABLE_LEARN
-	if (cls_get_mode() == CLS_MODE_LEARN) {
+	if (cls_get_mode() == VSENTRY_MODE_LEARN) {
 		/* in learn mode we dont want to get the default rule
 		 * since we want to learn this event, so we clear the
 		 * verdict bitmap to signal no match */
@@ -277,6 +285,38 @@ int uid_cls_search(cls_rule_type_e type, id_event_t *data, bit_array_t *verdict)
 
 
 	return VSENTRY_SUCCESS;
+}
+
+typedef struct {
+	int start;
+	int end;
+	int type;
+} uid_rules_limit_t;
+
+static void check_uid_rule(void *data, void* param)
+{
+	int i;
+	uid_hash_item_t *uid_item = data;
+	uid_rules_limit_t* limit = param;
+
+	for (i=limit->start; i<limit->end; i++) {
+		if (ba_is_set(i, &uid_item->rules))
+			uid_cls_del_rule(limit->type, i, uid_item->uid);
+	}
+}
+
+void uid_cls_clear_rules(int start, int end)
+{
+	int i;
+	uid_rules_limit_t limit = {
+		.start = start,
+		.end = end,
+	};
+
+	for (i=0; i<CLS_TOTAL_RULE_TYPE; i++) {
+		limit.type = i;
+		hash_walk(&uid_hash_array[i], check_uid_rule, &limit);
+	}
 }
 
 #ifdef CLS_DEBUG

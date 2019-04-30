@@ -1,3 +1,4 @@
+#include <asm/bitsperlong.h>
 #include "aux.h"
 #include "classifier.h"
 #include <stdint.h>
@@ -11,35 +12,36 @@
 #define aux_err(...)
 #endif
 
+#if __BITS_PER_LONG == 64
+#define ADDRESS_MASK 	0x7
+#else
+#define ADDRESS_MASK 	0x3
+#endif
+
 void *vs_memset(void *s, int c, size_t n)
 {
-	const size_t word_size = sizeof(unsigned long);
-	const size_t word_align = (word_size >= 8) ? word_size : 8;
-	const uintptr_t align_mask = word_align - 1;
-	unsigned char * buf = s;
-	const uintptr_t addr = (uintptr_t) s;
-	uintptr_t x = c & 0xff;
-	uintptr_t i;
 	unsigned long *wbuf;
-	const uintptr_t skip = word_align - (addr & align_mask);
+	unsigned char *buf = s;
+	unsigned long x=0, i;
 
-	for (i = 1; i<word_size; ++i)
-		x |= x << (i*8);
-
-	for (i = 0; i < skip; ++i) {
+	while (n && ((unsigned long)buf & ADDRESS_MASK)) {
 		*buf++ = (unsigned char)c;
 		--n;
 	}
 
-	wbuf = (unsigned long*)buf;
+	if (!n)
+		return s;
 
-	while (n >= word_size) {
+	for (i = 0; i<sizeof(unsigned long); ++i)
+		x |= c << (i*8);
+
+	wbuf = (unsigned long*)buf;
+	while (n >= sizeof(unsigned long)) {
 		*wbuf++ = x;
-		n -= word_size;
+		n -= sizeof(unsigned long);
 	}
 
 	buf = (unsigned char*)wbuf;
-
 	while (n--)
 		*buf++ = (unsigned char)c;
 
@@ -48,44 +50,34 @@ void *vs_memset(void *s, int c, size_t n)
 
 int vs_memcmp(const void *const s1, const void *const s2, size_t n)
 {
-	const size_t word_size = sizeof(unsigned long);
-	const size_t word_align = (word_size >= 8) ? word_size : 8;
-	const uintptr_t align_mask = word_align - 1;
-	const unsigned char * buf1 = s1;
-	const unsigned char * buf2 = s2;
-	const uintptr_t addr1 = (uintptr_t) s1;
-	const uintptr_t addr2 = (uintptr_t) s2;
+	const unsigned long *wbuf1, *wbuf2;
+	const unsigned char *buf1 = s1, *buf2 = s2;
 
-	if (s1 == s2)
-		return 0;
+	if (((unsigned long)buf1 & ADDRESS_MASK) == ((unsigned long)buf2 & ADDRESS_MASK)) {
 
-	if ((addr1 & align_mask) == (addr2 & align_mask)) {
-		uintptr_t i;
-		const unsigned long *wbuf1, *wbuf2;
-		const uintptr_t skip = word_align - (addr1 & align_mask);
-
-		for (i = 0; i < skip; ++i) {
+		while (n && ((unsigned long)buf1 & ADDRESS_MASK)) {
 			if (*buf1++ != *buf2++)
 				return n;
 			--n;
 		}
 
-		wbuf1 = (const unsigned long*)buf1;
-		wbuf2 = (const unsigned long*)buf2;
+		wbuf1 = (unsigned long*)buf1;
+		wbuf2 = (unsigned long*)buf2;
 
-		while (n >= word_size) {
+		while (n >= sizeof(unsigned long)) {
 			if (*wbuf1++ != *wbuf2++)
 				return n;
-			n -= word_size;
+			n -= sizeof(unsigned long);
 		}
 
-		buf1 = (const unsigned char*)wbuf1;
-		buf2 = (const unsigned char*)wbuf2;
+		buf1 = (unsigned char*)wbuf1;
+		buf2 = (unsigned char*)wbuf2;
 	}
 
-	while (n--) {
+	while (n) {
 		if (*buf1++ != *buf2++)
 			return n;
+		n--;
 	}
 
 	return 0;
@@ -93,39 +85,32 @@ int vs_memcmp(const void *const s1, const void *const s2, size_t n)
 
 void* vs_memcpy(void *dest, const void *src, size_t n)
 {
-	const size_t word_size = sizeof(unsigned long);
-	const size_t word_align = (word_size >= 8) ? word_size : 8;
-	const uintptr_t align_mask = word_align - 1;
-	unsigned char * buf_dest = dest;
-	const unsigned char * buf_src = src;
-	uintptr_t addr_dest = (uintptr_t) dest;
-	const uintptr_t addr_src = (uintptr_t) src;
+	const unsigned long *wbufs;
+	unsigned long *wbufd;
+	const unsigned char *bufs = src;
+	unsigned char *bufd = dest;
 
-	if ((addr_dest & align_mask) == (addr_src & align_mask)) {
-		uintptr_t i;
-		const unsigned long *wbuf_src;
-		unsigned long *wbuf_dest;
-		const uintptr_t skip = word_align - (addr_dest & align_mask);
+	if (((unsigned long)bufs & ADDRESS_MASK) == ((unsigned long)bufd & ADDRESS_MASK)) {
 
-		for (i = 0; i < skip; ++i) {
-			*buf_dest++ = *buf_src++;
+		while (n && ((unsigned long)bufs & ADDRESS_MASK)) {
+			*bufd++ = *bufs++;
 			--n;
 		}
 
-		wbuf_src = (const unsigned long*)buf_src;
-		wbuf_dest = (unsigned long*)buf_dest;
+		wbufs = (const unsigned long*)bufs;
+		wbufd = (unsigned long*)bufd;
 
-		while (n >= word_size) {
-			*wbuf_dest++ = *wbuf_src++;
-			n -= word_size;
+		while (n >= sizeof(unsigned long)) {
+			*wbufd++ = *wbufs++;
+			n -= sizeof(unsigned long);
 		}
 
-		buf_src = (const unsigned char*)wbuf_src;
-		buf_dest = (unsigned char*)wbuf_dest;
+		bufs = (const unsigned char*)wbufs;
+		bufd = (unsigned char*)wbufd;
 	}
 
 	while (n--)
-		*buf_dest++ = *buf_src++;
+		*bufd++ = *bufs++;
 
 	return dest;
 }

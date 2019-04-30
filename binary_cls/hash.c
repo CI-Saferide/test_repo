@@ -87,7 +87,7 @@ int hash_create(hash_t *new_hash)
 
 	if (new_hash->bits > MAX_NUM_OF_BITS) {
 		hash_err("invalid bits %u. (upto %d bits)\n",
-			bits, MAX_NUM_OF_BITS);
+			new_hash->bits, MAX_NUM_OF_BITS);
 		return VSENTRY_INVALID;
 	}
 
@@ -153,14 +153,15 @@ int hash_empty_data(hash_t *hash)
 
 	hash_dbg("deleting all data in hash %s\n", hash->name);
 
+	bucket = hash->buckets;
+
 	for(i=0; i<(1<<hash->bits); i++) {
-		bucket = hash->buckets + (i*sizeof(hash_bucket_t));
 		if (bucket->head_offset) {
 			del_item = get_pointer(bucket->head_offset);
 
 			while(del_item) {
 				hash_dbg("hash %s: deleting bucket %u item 0x%lx data 0x%lx\n",
-					hash->name, i, del_item, del_item->data);
+					hash->name, i, del_item, del_item->data_offset);
 				if (del_item->next_offset)
 					bucket->head_offset = del_item->next_offset;
 				else
@@ -171,6 +172,7 @@ int hash_empty_data(hash_t *hash)
 				del_item = get_pointer(bucket->head_offset);
 			}
 		}
+		bucket++;
 	}
 
 	hash_dbg("all data in hash %s deleted\n", hash->name);
@@ -258,7 +260,7 @@ static void *hash_get_data_from_bucket(hash_t *hash, void *data, unsigned int bu
 	get_item = get_pointer(bucket_p->head_offset);
 
 	while (get_item) {
-		hash_dbg("comparing 0x%lx to 0x%lx\n", get_item->data, data);
+		hash_dbg("comparing 0x%lx to 0x%lx\n", get_item->data_offset, data);
 
 		if (hash->hash_ops->comp(get_pointer(get_item->data_offset), data)) {
 			get_data = get_pointer(get_item->data_offset);
@@ -273,7 +275,7 @@ static void *hash_get_data_from_bucket(hash_t *hash, void *data, unsigned int bu
 }
 
 /* hash_get_data: find an hash item based on data and return its content.
- * the item content will be compared to data, if compare function will decalre
+ * the item content will be compared to data, if compare function will declare
  * them as equals, the item's data will be returned */
 void *hash_get_data(hash_t *hash, void *data)
 {
@@ -291,8 +293,8 @@ void *hash_get_data(hash_t *hash, void *data)
 
 /* hash_delete_data: find an hash item in a bucket based on data and delete its content
  * and the item. the item content will be compared to data, if compare function
- * will decalre them as equals, the item's data and the item will be deleted */
-int hash_delete_data_from_bucket(hash_t *hash, void *data, unsigned int bucket)
+ * will declare them as equals, the item's data and the item will be deleted */
+static int hash_delete_data_from_bucket(hash_t *hash, void *data, unsigned int bucket)
 {
 	hash_item_t *del_item = NULL, *prev_item = NULL;
 	hash_bucket_t *bucket_p = NULL;
@@ -316,7 +318,7 @@ int hash_delete_data_from_bucket(hash_t *hash, void *data, unsigned int bucket)
 	while (del_item) {
 		if (hash->hash_ops->comp(get_pointer(del_item->data_offset), data)) {
 			hash_dbg("hash %s: deleting item 0x%lx data 0x%lx\n",
-				hash->name, del_item, del_item->data);
+				hash->name, del_item, del_item->data_offset);
 
 			if (del_item == get_pointer(bucket_p->head_offset))
 				bucket_p->head_offset = del_item->next_offset;
@@ -341,7 +343,7 @@ int hash_delete_data_from_bucket(hash_t *hash, void *data, unsigned int bucket)
 
 /* hash_delete_data: find an hash item based on data and delete its content
  * and the item. the item content will be compared to data, if compare function
- * will decalre them as equals, the item's data and the item will be deleted */
+ * will declare them as equals, the item's data and the item will be deleted */
 int hash_delete_data(hash_t *hash, void *data)
 {
 	unsigned int bucket;
@@ -354,6 +356,94 @@ int hash_delete_data(hash_t *hash, void *data)
 	bucket = hash->hash_ops->create_key(data, hash->bits);
 
 	return hash_delete_data_from_bucket(hash, data, bucket);
+}
+
+/* hash_remove_data_from_bucket: remove an element from hash bucket */
+static int hash_remove_data_from_bucket(hash_t *hash, void *data, unsigned int bucket)
+{
+	hash_item_t *rem_item = NULL, *prev_item = NULL;
+	hash_bucket_t *bucket_p = NULL;
+
+	if (!hash || !data) {
+		hash_err("no hash/data was provided\n");
+		return VSENTRY_ERROR;
+	}
+
+	if (bucket >= (1<<hash->bits)) {
+		hash_err("invalid bucket %u. max %u\n", bucket, (1<<hash->bits)-1);
+		return VSENTRY_ERROR;
+	}
+
+	hash_dbg("try to remove 0x%lx from %s\n", data, hash->name);
+
+	bucket_p = hash->buckets + bucket;
+
+	rem_item = get_pointer(bucket_p->head_offset);
+
+	while (rem_item) {
+		if (hash->hash_ops->comp(get_pointer(rem_item->data_offset), data)) {
+			hash_dbg("hash %s: removing item 0x%lx data 0x%lx\n",
+				hash->name, rem_item, rem_item->data_offset);
+
+			if (rem_item == get_pointer(bucket_p->head_offset))
+				bucket_p->head_offset = rem_item->next_offset;
+			else if (prev_item)
+				prev_item->next_offset = rem_item->next_offset;
+
+			return VSENTRY_SUCCESS;
+		}
+
+		hash_dbg("searching next ...\n");
+		prev_item = rem_item;
+		rem_item = get_pointer(rem_item->next_offset);
+	}
+
+	hash_dbg("could not find a matched item to remove\n");
+
+	return VSENTRY_ERROR;
+}
+
+/* hash_remove_data: find an hash item based on data and remove from the lash.
+ * the item content will be compared to data, if compare function
+ * will declare them as equals, the item will be removed from the relevant bucket */
+int hash_remove_data(hash_t *hash, void *data)
+{
+	unsigned int bucket;
+
+	if (!hash || !data) {
+		hash_err("no hash/data was provided\n");
+		return VSENTRY_ERROR;
+	}
+
+	bucket = hash->hash_ops->create_key(data, hash->bits);
+
+	return hash_remove_data_from_bucket(hash, data, bucket);
+}
+
+void hash_walk(hash_t *hash, void (*cb)(void *data, void* param), void *param)
+{
+	int i;
+	hash_item_t *item, *next_item;
+	hash_bucket_t *bucket = NULL;
+
+	if (!hash || !cb) {
+		hash_err("no hash/cb was provided\n");
+		return;
+	}
+
+	bucket = hash->buckets;
+
+	for(i=0; i<(1<<hash->bits); i++) {
+		if (bucket->head_offset) {
+			item = get_pointer(bucket->head_offset);
+			while(item) {
+				next_item = get_pointer(item->next_offset);
+				cb(get_pointer(item->data_offset), param);
+				item = next_item;
+			}
+		}
+		bucket++;
+	}
 }
 
 void hash_print(hash_t *hash)

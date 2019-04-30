@@ -25,19 +25,19 @@ typedef enum {
 } port_type_e;
 
 /* hash item for PORT */
-typedef struct __attribute__ ((packed, aligned(8))) {
-	unsigned short port;
-	bit_array_t rules;
+typedef struct __attribute__ ((aligned(8))) {
+	unsigned short 	port;
+	bit_array_t 	rules;
 } port_hash_item_t;
 
 /* the default rules data struct */
-typedef struct __attribute__ ((packed, aligned(8))) {
+typedef struct __attribute__ ((aligned(8))) {
 	bit_array_t	any_rules[CLS_NET_DIR_TOTAL][PORT_TYPE_TOTAL];
 } any_rules_t;
 
 /* the below struct will hold the hash buckets offsets on the persistent
  * database */
-typedef struct __attribute__ ((packed, aligned(8))) {
+typedef struct __attribute__ ((aligned(8))) {
 	unsigned int 	buckets_offsets[CLS_NET_DIR_TOTAL][PORT_TYPE_TOTAL];
 } port_buckets_array_t;
 
@@ -147,7 +147,7 @@ int port_cls_init(cls_hash_params_t *hash_params)
 	if (hash_params->hash_offset == 0 || hash_params->bits != PORT_HASH_NUM_OF_BITS) {
 		/* hash was not prev allocated. lets allocate.
 		 * first we allocate memory to preserve the buckets offsets */
-		port_buckets = heap_alloc(sizeof(port_buckets_array_t));
+		port_buckets = heap_calloc(sizeof(port_buckets_array_t));
 		if (!port_buckets) {
 			port_err("failed to allocte port_buckets\n");
 			return VSENTRY_ERROR;
@@ -199,6 +199,9 @@ int  port_cls_add_rule(unsigned int rule, unsigned int port, unsigned int type, 
 	if ((port != PORT_ANY) && (port > PORT_MAX))
 		return VSENTRY_ERROR;
 
+	port_dbg("add port rule port %u type %s dir %s\n", port, (type==IPPROTO_TCP)?"tcp":"udp",
+			(dir==CLS_NET_DIR_SRC)?"src":"dst");
+
 	if (port == PORT_ANY) {
 		arr = &port_any_rules->any_rules[dir][port_type];
 	} else {
@@ -210,14 +213,23 @@ int  port_cls_add_rule(unsigned int rule, unsigned int port, unsigned int type, 
 			if (!port_item)
 				return VSENTRY_ERROR;
 
+			port_item->rules.empty = true;
 			port_item->port = (unsigned short)port;
 			hash_insert_data(&port_hash_array[dir][port_type], port_item);
+			port_dbg("created new port rule port %u type %s dir %s\n", port,
+					(type==IPPROTO_TCP)?"tcp":"udp",
+					(dir==CLS_NET_DIR_SRC)?"src":"dst");
 		}
 
 		arr = &port_item->rules;
 	}
 
-	ba_set_bit(rule, arr);
+	if (!ba_is_set(rule, arr)) {
+		ba_set_bit(rule, arr);
+		port_dbg("set bit %u on port rule port %u type %s dir %s\n", rule, port,
+			(type==IPPROTO_TCP)?"tcp":"udp",
+			(dir==CLS_NET_DIR_SRC)?"src":"dst");
+	}
 
 	return VSENTRY_SUCCESS;
 }
@@ -290,7 +302,7 @@ int port_cls_search(ip_event_t *data, bit_array_t *verdict)
 			/* no ANY rule, just AND verdict with specific rule */
 			ba_and(verdict, verdict, &port_item->rules);
 #ifdef ENABLE_LEARN
-	} else if (cls_get_mode() == CLS_MODE_LEARN) {
+	} else if (cls_get_mode() == VSENTRY_MODE_LEARN) {
 		/* in learn mode we dont want to get the default rule
 		 * since we want to learn this event, so we clear the
 		 * verdict bitmap to signal no match */
@@ -326,6 +338,47 @@ int port_cls_search(ip_event_t *data, bit_array_t *verdict)
 	ba_and(verdict, verdict, arr_any);
 
 	return VSENTRY_SUCCESS;
+}
+
+typedef struct {
+	int start;
+	int end;
+	int dir;
+	int type;
+} port_rules_limit_t;
+
+static void check_port_rule(void *data, void* param)
+{
+	int i;
+	port_hash_item_t *port_item = data;
+	port_rules_limit_t* limit = param;
+
+	for (i=limit->start; i<limit->end; i++) {
+		if (ba_is_set(i, &port_item->rules))
+			port_cls_del_rule(i, port_item->port, limit->type, limit->dir);
+	}
+}
+
+void port_cls_clear_rules(int start, int end)
+{
+	int i, j;
+	port_rules_limit_t limit = {
+		.start = start,
+		.end = end,
+	};
+
+	for (i=0; i<CLS_NET_DIR_TOTAL; i++) {
+		limit.dir = i;
+
+		for (j=0; j<PORT_TYPE_TOTAL; j++) {
+			if (j == PORT_TYPE_TCP)
+				limit.type = IPPROTO_TCP;
+			else
+				limit.type = IPPROTO_UDP;
+
+			hash_walk(&port_hash_array[i][j], check_port_rule, &limit);
+		}
+	}
 }
 
 #ifdef CLS_DEBUG

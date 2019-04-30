@@ -24,7 +24,7 @@ int sr_cls_file_add_rule(char *filename, char *exec, char *user, SR_U32 rulenum,
 {
 	struct stat buf = {};
 	sr_file_msg_cls_t *msg;
-	SR_U32 exec_inode;
+	unsigned long exec_inode;
 	SR_32 uid, st;
 
 	if (!run_ino) {
@@ -144,7 +144,7 @@ int sr_cls_file_del_rule(char *filename, char *exec, char *user, SR_U32 rulenum,
 {
 	struct stat buf;
 	sr_file_msg_cls_t *msg;
-	SR_U32 exec_inode = INODE_NONE;
+	unsigned long exec_inode = INODE_NONE;
 	SR_32  uid = UID_NONE;
 	int st;
 

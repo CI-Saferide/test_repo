@@ -17,7 +17,7 @@ static SR_32 get_can_interface_id(char *interface, SR_32 *if_id, SR_32 *dev_id)
 int sr_cls_canid_add_rule(SR_U32 canid, char *exec, char *user, SR_U32 rulenum,SR_U8 dir, char *interface)
 {
 	sr_canbus_msg_cls_t *msg;
- 	SR_U32 inode;
+	unsigned long inode;
  	SR_32 uid, st;
  	SR_32 if_id, dev_id;
 
@@ -55,7 +55,7 @@ int sr_cls_canid_add_rule(SR_U32 canid, char *exec, char *user, SR_U32 rulenum,S
 int sr_cls_canid_del_rule(SR_U32 canid, char *exec, char *user, SR_U32 rulenum, SR_U8 dir, char *interface)
 {
 	sr_canbus_msg_cls_t *msg;
- 	SR_U32 inode = INODE_NONE;
+	unsigned long inode = INODE_NONE;
  	SR_32 uid = UID_NONE, if_id, dev_id;
 
 	int st;

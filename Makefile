@@ -23,7 +23,7 @@ all: $(MORE_TRAGETS)
 	@echo "***** enter vsentry-mod *****"
 	@$(MAKE) -C vsentry-mod KERNEL_SRC=${KERNEL_SRC} $(DBG_FLAGS)
 	@echo "***** enter vsentry-engine *****"
-	@$(MAKE) -s -C vsentry-engine $(ENG_FLAGS) $(DBG_FLAGS)
+	@$(MAKE) -s -C vsentry-engine $(ENG_FLAGS) KERNEL_SRC=${KERNEL_SRC} $(DBG_FLAGS)
 	@echo "***** enter vsentry-cli *****"
 	@$(MAKE) -s -C vsentry-cli $(DBG_FLAGS)
 	@echo "***** enter vsentry-ut *****"

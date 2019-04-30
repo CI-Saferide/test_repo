@@ -52,6 +52,8 @@ int     hash_empty_data(hash_t *hash);
 int     hash_insert_data(hash_t *hash, void *data);
 void   *hash_get_data(hash_t *hash, void *data);
 int     hash_delete_data(hash_t *hash, void *data);
+int     hash_remove_data(hash_t *hash, void *data);
 void    hash_print(hash_t *hash);
+void    hash_walk(hash_t *hash, void (*cb)(void *data, void* param), void *param);
 
 #endif /* __HASH_H__ */

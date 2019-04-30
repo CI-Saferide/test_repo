@@ -12,7 +12,7 @@
 #endif
 
 /* action list item */
-typedef struct __attribute__ ((packed, aligned(8))) {
+typedef struct __attribute__ ((aligned(8))) {
 	act_t 		action;
 	unsigned int 	next_offset;
 	unsigned int 	ref_count;
@@ -67,8 +67,10 @@ int action_cls_add(act_t *act)
 		/* update the main db */
 		*db_offset = get_offset(list_head);
 
+#ifdef CLS_DEBUG
 		act_dbg("created new action %s: ", list_head->action.name);
 		action_print_act(&list_head->action);
+#endif
 
 		return VSENTRY_SUCCESS;
 	}
@@ -93,8 +95,10 @@ int action_cls_add(act_t *act)
 
 	vs_memcpy(&item->action, act, sizeof(act_t));
 
+#ifdef CLS_DEBUG
 	act_dbg("created new action %s: ", item->action.name);
 	action_print_act(&item->action);
+#endif
 
 	if (prev)
 		prev->next_offset = get_offset(item);
@@ -106,7 +110,7 @@ int action_cls_del(char *act_name, int name_len)
 {
 	act_list_item_t *item = list_head, *prev = NULL;
 
-	if (!act_name || name_len)
+	if (!act_name || !name_len)
 		return VSENTRY_INVALID;
 
 	while (item) {
@@ -121,16 +125,23 @@ int action_cls_del(char *act_name, int name_len)
 		return VSENTRY_NONE_EXISTS;
 
 	if (item->ref_count) {
-		act_dbg("action %s is still refed %u\n", item->ref_count);
+		act_dbg("action %s is still refed %u\n", act_name, item->ref_count);
 		return VSENTRY_SUCCESS;
+	}
+
+	if (item == list_head) {
+		list_head = get_pointer(item->next_offset);
+		/* update the main db */
+		*db_offset = item->next_offset;
 	}
 
 	if (prev)
 		prev->next_offset = item->next_offset;
 
 	act_dbg("deleting action %s: ", item->action.name);
+#ifdef CLS_DEBUG
 	action_print_act(&item->action);
-
+#endif
 	heap_free(item);
 
 	return VSENTRY_SUCCESS;
@@ -177,6 +188,41 @@ act_t *action_cls_search(char *act_name, int name_len)
 	return NULL;
 }
 
+int action_clean_unrefed(void)
+{
+	act_list_item_t *item = list_head, *prev = NULL, *next = NULL;
+
+	while (item) {
+		if (!item->ref_count) {
+			act_dbg("deleting action %s\n", item->action.name);
+
+			if (prev)
+				prev->next_offset = item->next_offset;
+
+			next = get_pointer(item->next_offset);
+
+			if (item == list_head) {
+				list_head = get_pointer(item->next_offset);
+				/* update the main db */
+				*db_offset = item->next_offset;
+			}
+
+			heap_free(item);
+
+			if (prev)
+				item = get_pointer(prev->next_offset);
+
+			item = next;
+		} else {
+			prev = item;
+			item = get_pointer(item->next_offset);
+		}
+	}
+
+	return VSENTRY_SUCCESS;
+}
+
+#ifdef CLS_DEBUG
 /* print act item content */
 void action_print_act(act_t *act)
 {
@@ -208,3 +254,4 @@ void action_print_list(void)
 
 	cls_printf("\n");
 }
+#endif /* CLS_DEBUG */

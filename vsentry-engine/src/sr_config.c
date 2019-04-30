@@ -144,6 +144,8 @@ static SR_32 delete_action(action_t *action)
 	return SR_SUCCESS;
 }
 
+#ifndef BIN_CLS_DB
+
 static SR_32 convert_action(char *action_name, SR_U16 *actions_bitmap)
 {
 	action_t *db_action;
@@ -171,10 +173,13 @@ static SR_32 convert_action(char *action_name, SR_U16 *actions_bitmap)
 	return SR_SUCCESS;
 }
 
+#endif
+
 static SR_32 add_ip_rule(ip_rule_t *rule)
 {
 #ifdef BIN_CLS_DB
-	unsigned int uid = UID_ANY, exec_ino = INODE_ANY;
+	unsigned int uid = UID_ANY;
+	unsigned long exec_ino = INODE_ANY;
 	int ret;
 #else
 	SR_U16 actions_bitmap = 0;
@@ -220,7 +225,7 @@ static SR_32 add_ip_rule(ip_rule_t *rule)
 		}
 	}
 
-	ret = cls_prog_rule(true, CLS_IP_RULE_TYPE, rule->rulenum, exec_ino);
+	ret = cls_prog_rule(true, CLS_IP_RULE_TYPE, rule->rulenum, exec_ino, rule->tuple.program);
 	if (ret != SR_SUCCESS) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 			"%s=failed to add exec_ino %u for ip rule %d",REASON,
@@ -300,7 +305,8 @@ static SR_32 delete_ip_rule(ip_rule_t *rule)
 	ip_rule_t *old_rule;
 #ifdef BIN_CLS_DB
 	int ret;
-	unsigned int uid = UID_ANY, exec_ino = INODE_ANY;
+	unsigned int uid = UID_ANY;
+	unsigned long exec_ino = INODE_ANY;
 #else
 	char *old_user, *old_program;
 #endif
@@ -382,7 +388,7 @@ static SR_32 delete_ip_rule(ip_rule_t *rule)
 		}
 	}
 
-	ret = cls_prog_rule(false, CLS_IP_RULE_TYPE, old_rule->rulenum, exec_ino);
+	ret = cls_prog_rule(false, CLS_IP_RULE_TYPE, old_rule->rulenum, exec_ino, old_rule->tuple.program);
 	if (ret != SR_SUCCESS) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 			"%s=failed to delete exec_ino %u for ip rule %d",REASON,
@@ -505,6 +511,7 @@ static SR_32 update_ip_rule(ip_rule_t *rule)
 	return SR_SUCCESS;
 }
 
+#ifndef BIN_CLS_DB
 #define PERM_R (1 << 2)
 #define PERM_W (1 << 1)
 #define PERM_X (1 << 0)
@@ -525,21 +532,79 @@ static void convert_permissions(char *permissions, SR_U8 *premisions_bitmaps)
 	if (perms & PERM_R)
 		*premisions_bitmaps |= SR_FILEOPS_READ;
 }
+#endif
 
 static SR_32 add_file_rule(file_rule_t *rule)
 {
+#ifdef BIN_CLS_DB
+	unsigned int uid = UID_ANY;
+	unsigned long exec_ino = INODE_ANY, file_ino = INODE_ANY;
+	int ret;
+#else
 	SR_U16 actions_bitmap = 0;
 	SR_U8 permissions = (SR_U8)0;
 	char *user, *program;
-
-	user = *(rule->tuple.user) ? rule->tuple.user : "*";
-	program = *(rule->tuple.program) ? rule->tuple.program : "*";
+#endif
 
 	if (sr_db_file_rule_add(rule) != SR_SUCCESS) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 			"%s=add file rule db add rule failed",REASON);
 		return SR_ERROR;
 	}
+
+#ifdef BIN_CLS_DB
+	/* create rule */
+	ret = cls_rule(true, CLS_FILE_RULE_TYPE, rule->rulenum, rule->action_name, 0);
+	if (ret != SR_SUCCESS) {
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+			"%s=failed to create file rule %u with action %s",REASON,
+			rule->rulenum, rule->action_name);
+		return ret;
+	}
+
+	/* create the uid rule */
+	if (*(rule->tuple.user))
+		uid = sal_get_uid(rule->tuple.user);
+
+	ret = cls_uid_rule(true, CLS_FILE_RULE_TYPE, rule->rulenum, uid);
+	if (ret != SR_SUCCESS) {
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+			"%s=failed to add uid %u for file rule %d",REASON,
+			uid, rule->rulenum);
+		return ret;
+	}
+
+	/* create the exec rule */
+	if (*(rule->tuple.program)) {
+		ret = sr_get_inode(rule->tuple.program, &exec_ino);
+		if (ret != SR_SUCCESS) {
+			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+				"%s=failed to get prog %s inode",REASON,
+				rule->tuple.program);
+			return ret;
+		}
+	}
+
+	ret = cls_prog_rule(true, CLS_FILE_RULE_TYPE, rule->rulenum, exec_ino, rule->tuple.program);
+	if (ret != SR_SUCCESS) {
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+			"%s=failed to add exec_ino %u for file rule %d",REASON,
+			exec_ino, rule->rulenum);
+		return ret;
+	}
+
+	/* create the file rule */
+	sr_get_inode(rule->tuple.program, &file_ino);
+	ret = cls_file_rule(true, rule->rulenum, rule->tuple.filename, file_ino, rule->tuple.permission);
+	if (ret != SR_SUCCESS) {
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+			"%s=failed to add file %s for file rule %d",REASON,
+			rule->tuple.filename, rule->rulenum);
+		return ret;
+	}
+#else
+	user = *(rule->tuple.user) ? rule->tuple.user : "*";
+	program = *(rule->tuple.program) ? rule->tuple.program : "*";
 
 	if (convert_action(rule->action_name, &actions_bitmap) != SR_SUCCESS) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
@@ -551,16 +616,103 @@ static SR_32 add_file_rule(file_rule_t *rule)
 	sr_cls_file_add_rule(rule->tuple.filename, program, user, rule->rulenum, (SR_U8)1);
 	sr_cls_rule_add(SR_FILE_RULES, rule->rulenum, actions_bitmap, permissions, SR_RATE_TYPE_BYTES, rule->tuple.max_rate, /* net_rule.rate_action */ 0 ,
                          /* net_ruole.action.log_target */ 0 , /* net_rule.tuple.action.email_id */ 0 , /* net_rule.tuple.action.phone_id */ 0 , /* net_rule.action.skip_rulenum */ 0);
+#endif
+
+	return SR_SUCCESS;
+}
+
+static SR_32 delete_file_rule(file_rule_t *rule)
+{
+#ifdef BIN_CLS_DB
+	unsigned int uid = UID_ANY;
+	unsigned long exec_ino = INODE_ANY, file_ino = INODE_ANY;
+	int ret;
+#else
+	char *program = NULL, *user = NULL;
+#endif
+	file_rule_t *old_rule;
+
+	if (!(old_rule = sr_db_file_rule_get(rule))) {
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+			"%s=delete file rule: failed gettig old rule=%d",REASON,
+			rule->rulenum);
+		return SR_SUCCESS;
+	}
+
+#ifdef BIN_CLS_DB
+	/* delete the file rule */
+	sr_get_inode(old_rule->tuple.filename, &file_ino);
+
+	ret = cls_file_rule(false, rule->rulenum, old_rule->tuple.filename, file_ino, NULL);
+	if (ret != SR_SUCCESS) {
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+			"%s=failed to add file %s for file rule %d",REASON,
+			rule->tuple.filename, rule->rulenum);
+		return ret;
+	}
+
+	/* delete the uid rule */
+	if (*(old_rule->tuple.user))
+		uid = sal_get_uid(old_rule->tuple.user);
+
+	ret = cls_uid_rule(false, CLS_FILE_RULE_TYPE, rule->rulenum, uid);
+	if (ret != SR_SUCCESS) {
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+			"%s=failed to delete uid %u for file rule %d",REASON,
+			uid, rule->rulenum);
+		return ret;
+	}
+
+	/* delete the exec rule */
+	if (*(old_rule->tuple.program)) {
+		ret = sr_get_inode(old_rule->tuple.program, &exec_ino);
+		if (ret != SR_SUCCESS) {
+			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+				"%s=failed to get prog %s inode",REASON,
+				rule->tuple.program);
+			return ret;
+		}
+	}
+
+	ret = cls_prog_rule(false, CLS_FILE_RULE_TYPE, rule->rulenum, exec_ino, old_rule->tuple.program);
+	if (ret != SR_SUCCESS) {
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+			"%s=failed to delete exec_ino %u for file rule %d",REASON,
+			exec_ino, rule->rulenum);
+		return ret;
+	}
+
+	/* delete the rule */
+	ret = cls_rule(false, CLS_FILE_RULE_TYPE, rule->rulenum, rule->action_name, 0);
+	if (ret != SR_SUCCESS) {
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+			"%s=failed to delete file rule %d",REASON, rule->rulenum);
+
+		return ret;
+	}
+
+#else
+	// Check if there other tuples in the rules.
+	if (!file_rule_tuple_exist_for_field(rule->rulenum, rule->tuple.id, SR_TRUE, *(old_rule->tuple.program) ? old_rule->tuple.program : "*"))
+		program = *(old_rule->tuple.program) ? old_rule->tuple.program : "*";
+	if (!file_rule_tuple_exist_for_field(rule->rulenum, rule->tuple.id, SR_FALSE, *(old_rule->tuple.user) ? old_rule->tuple.user : "*"))
+		user = *(old_rule->tuple.user) ? old_rule->tuple.user : "*";
+
+	sr_cls_file_del_rule(old_rule->tuple.filename, program, user, old_rule->rulenum, (SR_U8)1);
+#endif
+	sr_db_file_rule_delete(rule);
 
 	return SR_SUCCESS;
 }
 
 static SR_32 update_file_rule(file_rule_t *rule)
 {
+	file_rule_t *old_rule;
+#ifndef BIN_CLS_DB
 	SR_U16 actions_bitmap = 0;
 	SR_U8 permissions = (SR_U8)0;
-	file_rule_t *old_rule;
 	char *user, *program, *old_user, *old_program;
+#endif
 
 	if (!(old_rule = sr_db_file_rule_get(rule))) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
@@ -568,6 +720,19 @@ static SR_32 update_file_rule(file_rule_t *rule)
 			RULE_NUM_KEY,rule->rulenum);
 		return SR_ERROR;
 	}
+#ifdef BIN_CLS_DB
+	if (delete_file_rule(old_rule) == SR_ERROR) {
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+			"%s=update can rule: delete old rule failed",REASON);
+		return SR_ERROR;
+	}
+
+	if (add_file_rule(rule) == SR_ERROR) {
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+			"%s=update can rule: add updated rule failed",REASON);
+		return SR_ERROR;
+	}
+#else
 	user = *(rule->tuple.user) ? rule->tuple.user : "*";
 	program = *(rule->tuple.program) ? rule->tuple.program : "*";
 	old_user = *(old_rule->tuple.user) ? old_rule->tuple.user : "*";
@@ -592,30 +757,7 @@ static SR_32 update_file_rule(file_rule_t *rule)
 	strncpy(old_rule->tuple.program, rule->tuple.program, PROG_NAME_SIZE);
 	strncpy(old_rule->tuple.user, rule->tuple.user, USER_NAME_SIZE);
 	sr_cls_file_add_rule(rule->tuple.filename, program, user, rule->rulenum, (SR_U8)1);
-
-	return SR_SUCCESS;
-}
-
-static SR_32 delete_file_rule(file_rule_t *rule)
-{
-	file_rule_t *old_rule;
-	char *program = NULL, *user = NULL;
-
-	if (!(old_rule = sr_db_file_rule_get(rule))) {
-		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-			"%s=delete file rule: failed gettig old rule=%d",REASON,
-			rule->rulenum);
-		return SR_SUCCESS;
-	}
-
-	// Check if there other tuples in the rules.
-	if (!file_rule_tuple_exist_for_field(rule->rulenum, rule->tuple.id, SR_TRUE, *(old_rule->tuple.program) ? old_rule->tuple.program : "*"))
-		program = *(old_rule->tuple.program) ? old_rule->tuple.program : "*";
-	if (!file_rule_tuple_exist_for_field(rule->rulenum, rule->tuple.id, SR_FALSE, *(old_rule->tuple.user) ? old_rule->tuple.user : "*"))
-		user = *(old_rule->tuple.user) ? old_rule->tuple.user : "*";
-
-	sr_cls_file_del_rule(old_rule->tuple.filename, program, user, old_rule->rulenum, (SR_U8)1);
-	sr_db_file_rule_delete(rule);
+#endif
 
 	return SR_SUCCESS;
 }
@@ -643,7 +785,8 @@ static SR_U8 convert_can_dir(SR_U8 dir)
 static SR_32 add_can_rule(can_rule_t *rule)
 {
 #ifdef BIN_CLS_DB
-	unsigned int uid = UID_ANY, exec_ino = INODE_ANY, if_index = (unsigned int)(-1);
+	unsigned int uid = UID_ANY, if_index = (unsigned int)(-1);
+	unsigned long exec_ino = INODE_ANY;
 	int ret;
 #else
 	char *user, *program;
@@ -688,7 +831,7 @@ static SR_32 add_can_rule(can_rule_t *rule)
 		}
 	}
 
-	ret = cls_prog_rule(true, CLS_CAN_RULE_TYPE, rule->rulenum, exec_ino);
+	ret = cls_prog_rule(true, CLS_CAN_RULE_TYPE, rule->rulenum, exec_ino, rule->tuple.program);
 	if (ret != SR_SUCCESS) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 			"%s=failed to add exec_ino %u for can rule %d",REASON,
@@ -755,7 +898,8 @@ static SR_32 delete_can_rule(can_rule_t *rule)
 	can_rule_t *old_rule;
 #ifdef BIN_CLS_DB
 	int ret;
-	unsigned int uid = UID_ANY, exec_ino = INODE_ANY, if_index = (unsigned int)(-1);
+	unsigned int uid = UID_ANY, if_index = (unsigned int)(-1);
+	unsigned long exec_ino = INODE_ANY;
 #else
 	char *program = NULL, *user = NULL;
 #endif
@@ -820,7 +964,7 @@ static SR_32 delete_can_rule(can_rule_t *rule)
 		}
 	}
 
-	ret = cls_prog_rule(false, CLS_CAN_RULE_TYPE, rule->rulenum, exec_ino);
+	ret = cls_prog_rule(false, CLS_CAN_RULE_TYPE, rule->rulenum, exec_ino, old_rule->tuple.program);
 	if (ret != SR_SUCCESS) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 			"%s=failed to delete exec_ino %u for can rule %d",REASON,
@@ -1065,7 +1209,7 @@ out:
 #ifdef BIN_CLS_DB
 static SR_32 create_program_rule(char *program, SR_U16 rule_num, SR_U32 type) 
 {  
-        SR_U32 exec_ino = INODE_ANY;
+        unsigned long exec_ino = INODE_ANY;
         SR_32 ret;
 
 	if (*(program)) {
@@ -1077,7 +1221,7 @@ static SR_32 create_program_rule(char *program, SR_U16 rule_num, SR_U32 type)
     		}
 	}
 
-	ret = cls_prog_rule(true, type, rule_num, exec_ino);
+	ret = cls_prog_rule(true, type, rule_num, exec_ino, program);
 	if (ret != SR_SUCCESS) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 			"%s=failed to add exec_ino %u for ip rule %d",REASON,
@@ -1198,7 +1342,7 @@ static void handle_net_rule(sr_net_record_t *net_rule, SR_32 *status)
 #ifdef BIN_CLS_DB
 			/* create the src port rule */
 			ret = cls_port_rule(true, net_rule->rulenum, net_rule->net_item.u.port.port,
-				net_rule->net_item.u.port.proto, CLS_NET_DIR_SRC);
+				net_rule->net_item.u.port.proto, CLS_NET_DIR_DST);
 			if (ret != SR_SUCCESS) {
 				CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 					"%s=failed to add dst port %u rule %d",REASON,
@@ -1320,30 +1464,70 @@ static void handle_can_rule(sr_can_record_t *can_rule, SR_32 *status)
 
 static void handle_file_rule(sr_file_record_t *file_rule, SR_32 *status)
 {
+#ifdef BIN_CLS_DB
+        unsigned long file_ino = INODE_ANY;
+	SR_32 ret;
+#endif
+	
 	switch (file_rule->file_item.file_item_type) {
 		case FILE_ITEM_ACTION:
 #ifdef DEBUG_PRINT
 			printf(">>>>>>>>>> Add FILE rule:%d action:%s \n", file_rule->rulenum, file_rule->file_item.u.action);
 #endif
+#ifdef BIN_CLS_DB
+			ret = cls_rule(true, CLS_FILE_RULE_TYPE, file_rule->rulenum, file_rule->file_item.u.action, 0);
+			if (ret != SR_SUCCESS) {
+				CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+					"%s=failed to create file rule %u with action %s",REASON,
+					file_rule->rulenum, file_rule->file_item.u.action);
+				*status = SR_ERROR;
+				return;
+			}
+#endif
 			break;
 		case FILE_ITEM_FILENAME:
 #ifdef DEBUG_PRINT
-			printf("   >>>>> FILENAME :%s \n", file_rule->file_item.u.filename);
+			printf("   >>>>>>>>>> FILENAME :%s perm:%s FILE_MODE_READ:%d FILE_MODE_WRITE:%d :%d \n",
 #endif
-			break;
-		case FILE_ITEM_PERM:
-#ifdef DEBUG_PRINT
-			printf("   >>>>> PERM :%s \n", file_rule->file_item.u.perm);
+#ifdef BIN_CLS_DB
+			file_rule->file_item.u.file.name, file_rule->file_item.u.file.perm, FILE_MODE_READ, FILE_MODE_WRITE, FILE_MODE_EXEC); 
+			sr_get_inode(file_rule->file_item.u.file.name, &file_ino);
+			ret = cls_file_rule(true, file_rule->rulenum, file_rule->file_item.u.file.name, file_ino, file_rule->file_item.u.file.perm);
+			if (ret != SR_SUCCESS) {
+				CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+					"%s=failed to add file %s for file rule %d",REASON,
+				file_rule->file_item.u.file.name, file_rule->rulenum);
+				*status = SR_ERROR;
+				return;
+			}
 #endif
 			break;
 		case FILE_ITEM_PROGRAM:
 #ifdef DEBUG_PRINT
-			printf("   >>>>>>>>> PROGRAM :%s \n", file_rule->file_item.u.program);
+			printf("   >>>>>>>>> FILE_ITEM_PROGRAM: :%s \n", file_rule->file_item.u.program);
+#endif
+#ifdef BIN_CLS_DB
+			if (create_program_rule(file_rule->file_item.u.program, file_rule->rulenum, CLS_FILE_RULE_TYPE) != SR_SUCCESS) {
+				CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+					"%s=failed to add program %s for file rule %d",REASON,
+					file_rule->file_item.u.program, file_rule->rulenum);
+				*status = SR_ERROR;
+				return;
+			}
 #endif
 			break;
 		case FILE_ITEM_USER:
 #ifdef DEBUG_PRINT
-			printf("   >>>>>>>>> USER :%s \n", file_rule->file_item.u.user);
+			printf("   >>>>>>>>> FILE_ITEM_USER: :%s \n", file_rule->file_item.u.user);
+#endif
+#ifdef BIN_CLS_DB
+			if (create_user_rule(file_rule->file_item.u.user, file_rule->rulenum, CLS_FILE_RULE_TYPE) != SR_SUCCESS) {
+				CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+					"%s=failed to add user %s for file rule %d",REASON,
+					file_rule->file_item.u.user, file_rule->rulenum);
+				*status = SR_ERROR;
+				return;
+ 			}
 #endif
 			break;
 		default:
@@ -1355,9 +1539,9 @@ static void handle_file_rule(sr_file_record_t *file_rule, SR_32 *status)
 
 SR_32 sr_config_handle_action(void *data) 
 {
+#ifdef BIN_CLS_DB
 	sr_action_record_t *action = (sr_action_record_t *)data;
 
-#ifdef BIN_CLS_DB
 	if (cls_action(true, (bool)!!(action->actions_bitmap && SR_CLS_ACTION_ALLOW),
 		(action->log_target != LOG_TARGET_NONE), action->name) == SR_ERROR) {
 		printf("XXXXX EEEEEEEEEEE Failed add action !!!\n");
@@ -1366,14 +1550,24 @@ SR_32 sr_config_handle_action(void *data)
 			action->name);
 		return SR_ERROR;
         }
-#endif
 
-#ifndef DEBUG
+#ifdef DEBUG_PRINT
 	printf(">>>>>> Handle action :%s bm:%d log:%d rl bm:%d rl log:%d \n", action->name,
 		action->actions_bitmap,
 		action->log_target,
 		action->rl_actions_bitmap,
 		action->rl_log_target);
+#endif
+#else
+#ifdef DEBUG_PRINT
+	sr_action_record_t *action = (sr_action_record_t *)data;
+
+	printf(">>>>>> Handle action :%s bm:%d log:%d rl bm:%d rl log:%d \n", action->name,
+		action->actions_bitmap,
+		action->log_target,
+		action->rl_actions_bitmap,
+		action->rl_log_target);
+#endif
 #endif
 
 	return SR_SUCCESS;

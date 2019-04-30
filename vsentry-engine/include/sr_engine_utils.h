@@ -3,7 +3,7 @@
 
 #include "sr_types.h"
 
-SR_32 sr_get_inode(char *file_name, /*@out@*/ SR_U32 *inode);
+SR_32 sr_get_inode(char *file_name, /*@out@*/ unsigned long *inode);
 SR_32 sr_get_uid(char *uid);
 void sr_get_file_perm_from_bits(SR_U8 file_op, char *permissions);
 
