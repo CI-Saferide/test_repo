@@ -54,6 +54,7 @@
 #include "sr_bin_cls_eng.h"
 #endif
 
+//#define REDIS_TEST
 #ifdef REDIS_TEST
 #include "redis_mng.h"
 #endif
@@ -270,38 +271,16 @@ static void sr_interrupt_cb(int i)
 }
 
 #ifdef REDIS_TEST
-// cb function to load db
-static void db_add_rule_or_action(void *rule, SR_8 type, SR_32 *status)
-{
-	switch (type) {
-	case CONFIG_NET_RULE:
-		*status = sr_db_ip_rule_add(rule);
-		break;
-	case CONFIG_FILE_RULE:
-		*status = sr_db_file_rule_add(rule);
-		break;
-	case CONFIG_CAN_RULE:
-//		printf("*** DBG *** add can rule\n");
-		*status = sr_db_can_rule_add(rule);
-		break;
-	case CONFIG_TYPE_MAX:
-		*status = sr_db_action_update_action(rule);
-		break;
-	default:
-		printf("ERROR: db_add_rule_or_action called with non supported type %d\n", type);
-		*status = -1;
-		break;
-	}
-}
-
 static int sr_redis_load(/*int tcp,*/ int pipeline)
 {
+#if 0
 	int i;
 	can_rule_t can_rule, *can_rule_ptr;
 	ip_rule_t net_rule, *net_rule_ptr;
 	file_rule_t file_rule, *file_rule_ptr;
 	char file[60];
 	char perms[4];
+#endif
 	struct timeval t1, t2;
 	redisContext *c = redis_mng_session_start(/*tcp*/);
 	if (c == NULL) {
@@ -312,12 +291,14 @@ static int sr_redis_load(/*int tcp,*/ int pipeline)
 	sr_db_init();
 
 	gettimeofday(&t1,NULL);
-	if (redis_mng_load_db(c, pipeline, db_add_rule_or_action)) {
+	sr_engine_get_db_lock();
+	if (redis_mng_load_db(c, pipeline, sr_config_handle_rule, sr_config_handle_action)) {
 		printf("ERROR: redis_mng_load_db failed\n");
 		redis_mng_session_end(c);
 		sr_db_deinit();
 		return -1;
 	}
+	sr_engine_get_db_unlock();
 	gettimeofday(&t2,NULL);
 	printf("Load time: %.3fs\n",
 			(((((long long)t2.tv_sec)*1000000)+t2.tv_usec) - ((((long long)t1.tv_sec)*1000000)+t1.tv_usec))/1000000.0);
@@ -325,6 +306,7 @@ static int sr_redis_load(/*int tcp,*/ int pipeline)
 	redis_mng_session_end(c);
 
 	// verify all rules are there (NOTE: every 10th rule was removed)
+#if 0
 	for (i = 0; i < 1200; i++) {
 		can_rule.rulenum = i;
 		can_rule.tuple.id = 1;
@@ -504,6 +486,7 @@ static int sr_redis_load(/*int tcp,*/ int pipeline)
 			}
 		}
 	}
+#endif
 
 	sr_db_deinit();
 	return 0;
@@ -520,10 +503,10 @@ static int sr_redis_test(/*int tcp,*/ int clean_first, int clean_at_end)
 			char da[20];
 			char s_port[8];
 			char d_port[8];
-			char proto[4];
 		} addrs;
 		char mid[16];
 	} strs;
+	redis_mng_action_t action;
 	redis_mng_file_rule_t file_rule;
 	redis_mng_net_rule_t net_rule;
 	redis_mng_can_rule_t can_rule;
@@ -545,6 +528,27 @@ static int sr_redis_test(/*int tcp,*/ int clean_first, int clean_at_end)
 		}
 	}
 	//printf("3\n");fflush(stdout);
+
+	// add actions first
+	action.action_bm = NULL;
+	action.action_log = NULL;
+	action.rl_bm = NULL;
+	action.rl_log = NULL;
+	if ((rc = redis_mng_add_action(c, "drop", &action))) {
+		printf("ERROR: redis_mng_add_action %s failed, ret %d\n", "drop", rc);
+		redis_mng_session_end(c);
+		return -1;
+	}
+	if ((rc = redis_mng_add_action(c, "drop_log", &action))) {
+		printf("ERROR: redis_mng_add_action %s failed, ret %d\n", "drop_log", rc);
+		redis_mng_session_end(c);
+		return -1;
+	}
+	if ((rc = redis_mng_add_action(c, "log", &action))) {
+		printf("ERROR: redis_mng_add_action %s failed, ret %d\n", "log", rc);
+		redis_mng_session_end(c);
+		return -1;
+	}
 
 	// add 1200 file rules
 	sprintf(strs.file, "a_file_path_of_50_chars_length_123456789_0AB____GH");
@@ -575,7 +579,6 @@ static int sr_redis_test(/*int tcp,*/ int clean_first, int clean_at_end)
 		////printf("4.1\n");fflush(stdout);
 		sprintf(strs.addrs.sa, "192.168.1.%d/%d", addr_lsb, mask);
 		sprintf(strs.addrs.da, "192.168.2.%d/%d", addr_lsb, 32 - mask);
-		sprintf(strs.addrs.proto, "%02d", addr_lsb);
 		sprintf(strs.addrs.s_port, "%04d", i);
 		sprintf(strs.addrs.d_port, "%04d", i + 3);
 		////printf("4.2\n");fflush(stdout);
@@ -589,7 +592,7 @@ static int sr_redis_test(/*int tcp,*/ int clean_first, int clean_at_end)
 		net_rule.dst_ports_list = 0;
 		net_rule.src_port = strs.addrs.s_port;
 		net_rule.src_ports_list = 0;
-		net_rule.proto = strs.addrs.proto;
+		net_rule.proto = "6"/* TCP */; // fixme
 		net_rule.protos_list = 0;
 		net_rule.exec = "NULL";
 		net_rule.execs_list = 0;
@@ -713,6 +716,12 @@ static int sr_redis_test(/*int tcp,*/ int clean_first, int clean_at_end)
 	}*/
 	//printf("9\n");fflush(stdout);
 
+	if ((rc = redis_mng_commit(c))) {
+		printf("ERROR: redis_mng_commit failed, ret %d\n", rc);
+		redis_mng_session_end(c);
+		return -1;
+	}
+
 	if (clean_at_end) { // clean DB
 		if (redis_mng_clean_db(c)) {
 			printf("ERROR: redis_mng_clean_db failed\n");
@@ -762,14 +771,6 @@ SR_32 sr_engine_start(int argc, char *argv[])
 		fprintf(stderr, "failed to run in background .. exiting ...\n");
 		exit (-1);
 	}
-
-	// todo call redis
-#if 0
-	if (system("/bin/stty raw")) {
-		printf("error seting the term\n");
-		return;
-	}
-#endif
 
 	if (NULL == config_file) {
 		/* no config file parameters passed, using current directory */
@@ -867,9 +868,6 @@ SR_32 sr_engine_start(int argc, char *argv[])
 		return SR_ERROR;
 	}
 
-	// todo reconf here ?
-	// afterwards remove redis (wrap in production mode only)
-
 	ret = sr_file_hash_init();
 	if (ret != SR_SUCCESS){
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
@@ -913,6 +911,10 @@ SR_32 sr_engine_start(int argc, char *argv[])
 #ifdef BIN_CLS_DB
 	bin_cls_init();
 #endif
+
+	sr_db_init();
+	sentry_init(sr_config_vsentry_db_cb);
+
 #ifdef REDIS_TEST
 //#define TCP 1
 #define PIPELINE 1
@@ -928,10 +930,9 @@ SR_32 sr_engine_start(int argc, char *argv[])
 	else
 		printf("*** REDIS TEST *** SUCCESS!!!\n\n");
 #endif
-
-	sr_db_init();
-	sentry_init(sr_config_vsentry_db_cb);
 	
+	// todo reconf here?
+
 	/* policy update depends on remote server support */
 	if (config_params->remote_server_support_enable && config_params->policy_update_enable) {
 		/* enable automatic policy updates from server */

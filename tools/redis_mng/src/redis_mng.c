@@ -24,6 +24,7 @@
 #endif
 
 // fixme remove
+//#define DEBUG_PRINT
 #define DEBUG
 #ifdef DEBUG
 #define AUTH		"AUTH"
@@ -227,7 +228,7 @@ SR_32 print_action(void *data)
 	return SR_SUCCESS;
 }
 
-SR_32 redis_mng_exec_all_actions(redisContext *c, SR_32 (*cb)(void *data))
+static SR_32 redis_mng_exec_all_actions(redisContext *c, SR_32 (*cb)(void *data))
 {
 	int i, j;
 	redisReply *reply;
@@ -1202,12 +1203,18 @@ static SR_32 exec_for_all_group(list_type_e type, char *group, SR_32 (*cb)(char 
 	return SR_SUCCESS;
 }
 
-SR_32 redis_mng_load_db(redisContext *c, int pipelined, handle_rule_f_t cb_func)
+SR_32 redis_mng_load_db(redisContext *c, int pipelined, handle_rule_f_t cb_func, SR_32 (*action_cb)(void *data))
 {
 	int i, j;
 	redisReply *reply;
 	redisReply **replies;
 	SR_32 rc = SR_SUCCESS;
+
+	// get all actions (before rules)
+	if (redis_mng_exec_all_actions(c, action_cb)) {
+		printf("ERROR: redis_mng_load_db exec all actions failed");
+		return SR_ERROR;
+	}
 
 	// get all keys
 	reply = redisCommand(c,"KEYS *");
@@ -1651,11 +1658,11 @@ SR_32 redis_mng_update_net_rule(redisContext *c, SR_32 rule_id, redis_mng_net_ru
 		len += sprintf(cmd + len, " %s %s", DOWN_RL, rule->down_rl);
 	//printf("4.1.2\n");fflush(stdout);
 
-#ifdef DEBUG
+#ifdef DEBUG_PRINT
 	printf(">>>>>  cmd:%s: \n", cmd);
 #endif
 	reply = redisCommand(c, cmd);
-#ifdef DEBUG
+#ifdef DEBUG_PRINT
 	printf(">>> reply type:%d \n", reply ? reply->type : -1);
 #endif
 	//printf("4.1.3\n");fflush(stdout);
