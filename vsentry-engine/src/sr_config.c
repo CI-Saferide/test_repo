@@ -1489,9 +1489,9 @@ static void handle_file_rule(sr_file_record_t *file_rule, SR_32 *status)
 #ifdef DEBUG_PRINT
 			printf("   >>>>>>>>>> FILENAME :%s perm:%s FILE_MODE_READ:%d FILE_MODE_WRITE:%d :%d \n",
 			file_rule->file_item.u.file.name, file_rule->file_item.u.file.perm, FILE_MODE_READ, FILE_MODE_WRITE, FILE_MODE_EXEC);
-			sr_get_inode(file_rule->file_item.u.file.name, &file_ino);
 #endif
 #ifdef BIN_CLS_DB
+			sr_get_inode(file_rule->file_item.u.file.name, &file_ino);
 			ret = cls_file_rule(true, file_rule->rulenum, file_rule->file_item.u.file.name, file_ino, file_rule->file_item.u.file.perm);
 			if (ret != SR_SUCCESS) {
 				CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,

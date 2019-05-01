@@ -1903,10 +1903,48 @@ SR_32 redis_mng_commit(redisContext *c)
 
 SR_32 redis_mng_update_engine_state(redisContext *c, SR_BOOL is_on)
 {
-	// todo is this in the DB ?
-	redisAppendCommand(c,"SET %s %s", ENGINE, is_on ? "start" : "stop");
+	redisReply *reply = NULL;
+	SR_32 rc = SR_SUCCESS;
+
+	reply = redisCommand(c,"SET %s %s", ENGINE, is_on ? "start" : "stop");
+	if (!reply || reply->type != REDIS_REPLY_STATUS) {
+		printf("ERROR: redis_mng_update_engine_state failed\n");
+		rc = SR_ERROR;
+		goto out;
+	}
 	redis_changes++;
-	return SR_SUCCESS;
+
+out:
+	if (reply)
+		freeReplyObject(reply);
+	return rc;
+}
+
+SR_32 redis_mng_get_engine_state(redisContext *c, SR_BOOL *is_on)
+{
+	redisReply *reply = NULL;
+	SR_32 rc = SR_SUCCESS;
+
+	reply = redisCommand(c,"GET %s" , ENGINE);
+	if (!reply || reply->type != REDIS_REPLY_STRING) {
+		printf("ERROR: redis_mng_get_engine_state failed type:%d\n", reply ? reply->type : -1);
+		rc = SR_ERROR;
+		goto out;
+	}
+	if (!strcmp(reply->str, "start"))
+		*is_on = SR_TRUE;
+	else if (!strcmp(reply->str, "stop")) 
+		*is_on = SR_FALSE;
+	else {
+		printf("ERROR: redis_mng_get_engine_state failed invalid value:%s \n", reply->str);
+		rc = SR_ERROR;
+		goto out;
+	}
+
+out:
+	if (reply)
+		freeReplyObject(reply);
+	return rc;
 }
 
 SR_32 redis_mng_add_system_policer(redisContext *c, char *exec, redis_system_policer_t *sp)
