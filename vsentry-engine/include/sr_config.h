@@ -16,6 +16,8 @@
 #define PERM_LEN 4
 #define LOG_TARGET_LEN 32
 
+#define SR_MID_ANY (unsigned int)-1 
+
 typedef struct sr_action_record {
 	char             name[MAX_ACTION_NAME];
 	SR_U16 		 actions_bitmap;

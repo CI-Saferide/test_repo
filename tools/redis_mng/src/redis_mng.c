@@ -608,7 +608,7 @@ static SR_32 load_can_cb(char *item, void *param)
 	can_rule.can_item.can_item_type = can_rule_params->can_item_type;
 	switch (can_rule_params->can_item_type) {
 		case CAN_ITEM_MSG:
-			can_rule.can_item.u.msg.id = strtol(item, NULL, 16);
+			can_rule.can_item.u.msg.id = (strcmp(item, "any") == 0) ? SR_MID_ANY : strtol(item, NULL, 16);
 			strncpy(can_rule.can_item.u.msg.dir, can_rule_params->dir, sizeof(can_rule.can_item.u.msg.dir));
 			strncpy(can_rule.can_item.u.msg.inf, can_rule_params->inf, sizeof(can_rule.can_item.u.msg.inf));
 			break;
@@ -684,7 +684,7 @@ static SR_32 handle_can_ids(SR_U16 rule_id, char *mid, char *dir, char *inf, han
 	for (i = 0; i < inf_params.num_of_interfaces; i++) {
 		list_id = get_list_id(mid);
 		if (list_id == LIST_NONE) {
-			can_rule.can_item.u.msg.id = strtol(mid, NULL, 16);
+			can_rule.can_item.u.msg.id = (strcmp(mid, "any") == 0) ? SR_MID_ANY : strtol(mid, NULL, 16);
 			strncpy(can_rule.can_item.u.msg.dir, dir, DIR_LEN);
 			strncpy(can_rule.can_item.u.msg.inf, inf_params.interfaces[i], INTERFACE_LEN);
 			cb(&can_rule, ENTITY_TYPE_CAN_RULE, &rc);
