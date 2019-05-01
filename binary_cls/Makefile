@@ -73,7 +73,7 @@ ARM_ARCH 	= $(shell $(CC) -dM -E -< /dev/null | grep "__ARM_ARCH " | awk {'print
 ifeq ($(ARM_ARCH),7)
 # ARMv7 (32 bit) additional common cflags. in this case the flags
 # are the same for binary classifier and unitests programs
-CFLAGS 		+= -marm
+CFLAGS 		+= -marm -mno-thumb-interwork -mfpu=vfp
 LDFLAGS 	+= -Wl,-no-wchar-size-warning
 endif
 
