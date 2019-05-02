@@ -692,10 +692,6 @@ void loadServerConfigFromString(char *config) {
                 err = "argument must be 'yes' or 'no'";
                 goto loaderr;
             }
-        } else if (!strcasecmp(argv[0],"lua-time-limit") && argc == 2) {
-            server.lua_time_limit = strtoll(argv[1],NULL,10);
-        } else if (!strcasecmp(argv[0],"lua-replicate-commands") && argc == 2) {
-            server.lua_always_replicate_commands = yesnotoi(argv[1]);
         } else if (!strcasecmp(argv[0],"slowlog-log-slower-than") &&
                    argc == 2)
         {
@@ -1177,8 +1173,6 @@ void configSetCommand(client *c) {
     } config_set_numerical_field(
       "hll-sparse-max-bytes",server.hll_sparse_max_bytes,0,LONG_MAX) {
     } config_set_numerical_field(
-      "lua-time-limit",server.lua_time_limit,0,LONG_MAX) {
-    } config_set_numerical_field(
       "slowlog-log-slower-than",server.slowlog_log_slower_than,-1,LLONG_MAX) {
     } config_set_numerical_field(
       "slowlog-max-len",ll,0,LONG_MAX) {
@@ -1379,7 +1373,6 @@ void configGetCommand(client *c) {
             server.zset_max_ziplist_value);
     config_get_numerical_field("hll-sparse-max-bytes",
             server.hll_sparse_max_bytes);
-    config_get_numerical_field("lua-time-limit",server.lua_time_limit);
     config_get_numerical_field("slowlog-log-slower-than",
             server.slowlog_log_slower_than);
     config_get_numerical_field("latency-monitor-threshold",
@@ -2183,7 +2176,6 @@ int rewriteConfig(char *path) {
     rewriteConfigYesNoOption(state,"no-appendfsync-on-rewrite",server.aof_no_fsync_on_rewrite,CONFIG_DEFAULT_AOF_NO_FSYNC_ON_REWRITE);
     rewriteConfigNumericalOption(state,"auto-aof-rewrite-percentage",server.aof_rewrite_perc,AOF_REWRITE_PERC);
     rewriteConfigBytesOption(state,"auto-aof-rewrite-min-size",server.aof_rewrite_min_size,AOF_REWRITE_MIN_SIZE);
-    rewriteConfigNumericalOption(state,"lua-time-limit",server.lua_time_limit,LUA_SCRIPT_TIME_LIMIT);
     rewriteConfigYesNoOption(state,"cluster-enabled",server.cluster_enabled,0);
     rewriteConfigStringOption(state,"cluster-config-file",server.cluster_configfile,CONFIG_DEFAULT_CLUSTER_CONFIG_FILE);
     rewriteConfigYesNoOption(state,"cluster-require-full-coverage",server.cluster_require_full_coverage,CLUSTER_DEFAULT_REQUIRE_FULL_COVERAGE);
