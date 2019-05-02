@@ -4,7 +4,6 @@ REDBLACK=1
 YANG=1
 PROTOBUF=1
 PROTOBUF_C=1
-SYSREPO=1
 
 #set colors
 export red='\e[0;31m'
@@ -32,20 +31,6 @@ sudo apt-get install -y git cmake build-essential libpcre3-dev libev-dev autocon
 rm -rf $TOPDIR 2> /dev/null
 mkdir -p $TOPDIR
 mkdir -p $TARGET
-
-if [ $REDBLACK == '1' ]
-then
-               cd $TOPDIR
-               git clone https://github.com/sysrepo/libredblack.git 
-               cd libredblack 
-               env LDFLAGS='-L${TARGET}' ./configure --prefix=${TARGET}
-               make -j4
-               check_status
-               sudo make install
-               check_status
-               sudo ldconfig
-               echo -e "[  ${green} libredblack OK ${nc}  ]"
-fi
 
 if [ $YANG == '1' ]
 then
@@ -91,22 +76,6 @@ then
                echo -e "[  ${green} protobuf-c OK ${nc}  ]"
 fi
 
-if [ $SYSREPO == '1' ]
-then
-               cd $TOPDIR
-               git clone https://github.com/sysrepo/sysrepo.git
-               cd sysrepo
-               git checkout v0.7.0
-               #mkdir build && cd build
-               cmake -DCMAKE_INSTALL_PREFIX=${TARGET} -DCMAKE_PREFIX_PATH=${TARGET} -DBUILD_CPP_EXAMPLES:BOOL=FALSE -DCMAKE_BUILD_TYPE:String="Release" -DREPOSITORY_LOC:PATH=/etc/sysrepo ..
-               make -j4
-               check_status
-               sudo make install
-               check_status
-               sudo ldconfig
-               echo -e "[  ${green} sysrepo OK ${nc}  ]"
-fi
-
 #now lets make libsentry
 cd $TOPDIR
 git clone git@github.com:saferide-tech/open-sentry.git
@@ -115,10 +84,6 @@ make
 sudo cp -rva build/lib/* ${TARGET}/lib/
 
 #now install saferide.yang
-sudo ${TARGET}/bin/sysrepoctl --install --yang=$TOPDIR/open-sentry/yang/saferide.yang --permissions=644
-
-#now copy /etc/sysrepo folder to our $TARGET
-sudo cp -rav /etc/sysrepo ${TARGET}
 
 #now let make update-manager
 cd $TOPDIR

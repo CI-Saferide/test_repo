@@ -241,7 +241,7 @@ static void engine_shutdown(void)
 
 	sr_stop_task(SR_INFO_GATHER_TASK);
 	sr_stop_task(SR_ENGINE_TASK);
-	sentry_stop();
+
 	// todo remove redis
 #ifdef CONFIG_STAT_ANALYSIS
 	sr_stat_analysis_uninit();
@@ -929,8 +929,8 @@ SR_32 sr_engine_start(int argc, char *argv[])
 #endif
 
 	sr_db_init();
-	sentry_init(sr_config_vsentry_db_cb);
 
+	// todo upload redis
 #ifdef REDIS_TEST
 //#define TCP 1
 #define PIPELINE 1

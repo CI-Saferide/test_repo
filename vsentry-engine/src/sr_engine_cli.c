@@ -6,7 +6,6 @@
 #include "sr_db_ip.h"
 #include "sr_db_can.h"
 #include "sal_linux.h"
-#include "sysrepo_mng.h"
 #include "db_tools.h"
 #include "sr_white_list.h"
 #include "sr_control.h"
