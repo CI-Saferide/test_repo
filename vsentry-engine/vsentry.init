@@ -37,7 +37,7 @@ do_start() {
         mknod /dev/vsentry c `cat /proc/devices | grep vsentry | awk '{print $1}'` 0
     fi
     mkdir -p /var/log/candata/
-#    wait_sysrepo
+
     start-stop-daemon --quiet --exec /usr/bin/sr_engine --start -- -c /etc/vsentry/sr_config -b
 }
 
