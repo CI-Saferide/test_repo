@@ -46,7 +46,7 @@ static void looks_for_exec(void *data, void *param)
 	if (!strcmp(file_rule->tuple.program, look_for->name) && file_rule->rulenum == look_for->rulenum && file_rule->tuple.id != look_for->tupleid)
 		is_found = SR_TRUE;
 
-#ifdef DEBUG
+#ifdef DEBUG_PRINT
         printf(">>>>>>>>>>>> in looks_for_Exec ruile:%d t:%d exec:%s: lookfor : rule:%d t:%d exec:%s: \n",
                 file_rule->rulenum, file_rule->tuple.id, file_rule->tuple.program,
                 look_for->rulenum, look_for->tupleid, look_for->name);
@@ -62,7 +62,7 @@ static void looks_for_user(void *data, void *param)
 	if (!strcmp(file_rule->tuple.user, look_for->name) && file_rule->rulenum == look_for->rulenum && file_rule->tuple.id != look_for->tupleid)
 		is_found = SR_TRUE;
 
-#ifdef DEBUG
+#ifdef DEBUG_PRINT
         printf(">>>>>>>>>>>> in looks_for_user ruile:%d t:%d exec:%s: lookfor: rule:%d t:%d user:%s: \n",
                 file_rule->rulenum, file_rule->tuple.id, file_rule->tuple.user,
                 look_for->rulenum, look_for->tupleid, look_for->name);

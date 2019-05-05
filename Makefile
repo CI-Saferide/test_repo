@@ -29,14 +29,14 @@ all: $(MORE_TRAGETS)
 	@echo "***** enter vsentry-ut *****"
 	@$(MAKE) -s -C vsentry-ut $(DBG_FLAGS)
 	@echo "***** enter db *****"
-	@sudo $(MAKE) -s -C redis
+	@$(MAKE) -s -C redis
 
 clean: $(MORE_CLEAN_TARGETS)
 	@$(MAKE) -C vsentry-mod clean
 	@$(MAKE) -s -C vsentry-engine clean
 	@$(MAKE) -s -C vsentry-cli clean
 	@$(MAKE) -s -C vsentry-ut clean
-	@sudo $(MAKE) -s -C redis clean
+	@$(MAKE) -s -C redis clean
 
 install:
 	make install -s -C vsentry-mod

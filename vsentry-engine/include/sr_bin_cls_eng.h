@@ -1,6 +1,8 @@
 #ifndef __SR_BIN_CLS_ENG_H__
 #define __SR_BIN_CLS_ENG_H__
 
+#include <stdbool.h>
+
 #define DB_FILE 	"/etc/vsentry/db.mem"
 #define CLS_FILE 	"/etc/vsentry/cls.bin"
 #define BIN_CLS_DRV 	"/dev/vs_drv"

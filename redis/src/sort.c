@@ -285,22 +285,6 @@ void sortCommand(client *c) {
         return;
     }
 
-    /* When sorting a set with no sort specified, we must sort the output
-     * so the result is consistent across scripting and replication.
-     *
-     * The other types (list, sorted set) will retain their native order
-     * even if no sort order is requested, so they remain stable across
-     * scripting and replication. */
-    if (dontsort &&
-        sortval->type == OBJ_SET &&
-        (storekey || c->flags & CLIENT_LUA))
-    {
-        /* Force ALPHA sorting */
-        dontsort = 0;
-        alpha = 1;
-        sortby = NULL;
-    }
-
     /* Destructively convert encoded sorted sets for SORT. */
     if (sortval->type == OBJ_ZSET)
         zsetConvert(sortval, OBJ_ENCODING_SKIPLIST);

@@ -6,7 +6,6 @@
 #include <ctype.h>
 #include "sr_config_parse.h"
 #include "sr_command.h"
-#include "sysrepo_mng.h"
 
 static SR_BOOL is_run_db_mng = SR_TRUE;
 static SR_U32 static_policy_version;
@@ -51,6 +50,7 @@ static SR_32 get_vesrion_from_file(SR_U32 *version)
 	return SR_SUCCESS;
 }
 
+#if 0
 static SR_32 get_server_db(sysrepo_mng_handler_t *handler)
 {
 	CURL *curl;
@@ -160,6 +160,7 @@ cleanup:
 	sysrepo_mng_session_end(&handler);
 	return SR_SUCCESS;
 }
+#endif
 
 SR_32 sr_static_policy_db_mng_start(void)
 {
@@ -179,11 +180,6 @@ SR_32 sr_static_policy_db_mng_start(void)
 	}
 
 	is_run_db_mng = SR_TRUE;
-	if (sr_start_task(SR_STATIC_POLICY, database_management) != SR_SUCCESS) {
-		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-			"%s=failed to start static policy",REASON);
-		return SR_ERROR;
-	}
 
 	return SR_SUCCESS;
 }

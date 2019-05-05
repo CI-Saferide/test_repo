@@ -30,7 +30,6 @@
 #include "can_rule.h"
 #include "sr_db.h"
 #include "jsmn.h"
-#include <sysrepo.h>
 #include "sr_static_policy.h"
 #ifdef BIN_CLS_DB
 #include "sr_engine_utils.h"
@@ -1488,7 +1487,7 @@ static void handle_file_rule(sr_file_record_t *file_rule, SR_32 *status)
 		case FILE_ITEM_FILENAME:
 #ifdef DEBUG_PRINT
 			printf("   >>>>>>>>>> FILENAME :%s perm:%s FILE_MODE_READ:%d FILE_MODE_WRITE:%d :%d \n",
-			file_rule->file_item.u.file.name, file_rule->file_item.u.file.perm, FILE_MODE_READ, FILE_MODE_WRITE, FILE_MODE_EXEC); 
+			file_rule->file_item.u.file.name, file_rule->file_item.u.file.perm, FILE_MODE_READ, FILE_MODE_WRITE, FILE_MODE_EXEC);
 #endif
 #ifdef BIN_CLS_DB
 			sr_get_inode(file_rule->file_item.u.file.name, &file_ino);

@@ -16,7 +16,7 @@ release_hdr := $(shell sh -c './mkreleasehdr.sh')
 uname_S := $(shell sh -c 'uname -s 2>/dev/null || echo not')
 uname_M := $(shell sh -c 'uname -m 2>/dev/null || echo not')
 OPTIMIZATION?=-O2
-DEPENDENCY_TARGETS=hiredis linenoise lua
+DEPENDENCY_TARGETS=hiredis linenoise
 NODEPS:=clean distclean
 
 # Default settings
@@ -29,7 +29,7 @@ endif
 WARN=-Wall -W -Wno-missing-field-initializers
 OPT=$(OPTIMIZATION)
 
-PREFIX?=/usr/local
+PREFIX?=/usr
 INSTALL_BIN=$(PREFIX)/bin
 INSTALL=install
 
@@ -37,9 +37,6 @@ INSTALL=install
 MALLOC=libc
 ifneq ($(uname_M),armv6l)
 ifneq ($(uname_M),armv7l)
-ifeq ($(uname_S),Linux)
-	MALLOC=jemalloc
-endif
 endif
 endif
 
@@ -50,23 +47,6 @@ else
 ifneq (,$(findstring armv,$(uname_M)))
         CFLAGS+=-funwind-tables
 endif
-endif
-
-# Backwards compatibility for selecting an allocator
-ifeq ($(USE_TCMALLOC),yes)
-	MALLOC=tcmalloc
-endif
-
-ifeq ($(USE_TCMALLOC_MINIMAL),yes)
-	MALLOC=tcmalloc_minimal
-endif
-
-ifeq ($(USE_JEMALLOC),yes)
-	MALLOC=jemalloc
-endif
-
-ifeq ($(USE_JEMALLOC),no)
-	MALLOC=libc
 endif
 
 # Override default settings if possible
@@ -129,7 +109,7 @@ endif
 FINAL_LIBS+= -lcrypto
 
 # Include paths to dependencies
-FINAL_CFLAGS+= -I../deps/hiredis -I../deps/linenoise -I../deps/lua/src
+FINAL_CFLAGS+= -I../deps/hiredis -I../deps/linenoise
 
 ifeq ($(MALLOC),tcmalloc)
 	FINAL_CFLAGS+= -DUSE_TCMALLOC
@@ -175,7 +155,6 @@ REDIS_CHECK_RDB_NAME=redis-check-rdb
 REDIS_CHECK_AOF_NAME=redis-check-aof
 
 all: $(REDIS_SERVER_NAME) $(REDIS_SENTINEL_NAME) $(REDIS_CLI_NAME) $(REDIS_BENCHMARK_NAME) $(REDIS_CHECK_RDB_NAME) $(REDIS_CHECK_AOF_NAME)
-	cp redis-server /usr/bin/redis-server
 
 Makefile.dep:
 	-$(REDIS_CC) -MM *.c > Makefile.dep 2> /dev/null || true
@@ -216,7 +195,7 @@ endif
 
 # redis-server
 $(REDIS_SERVER_NAME): $(REDIS_SERVER_OBJ)
-	$(REDIS_LD) -o $@ $^ ../deps/hiredis/libhiredis.a ../deps/lua/src/liblua.a $(FINAL_LIBS)
+	$(REDIS_LD) -o $@ $^ ../deps/hiredis/libhiredis.a $(FINAL_LIBS)
 
 # redis-sentinel
 $(REDIS_SENTINEL_NAME): $(REDIS_SERVER_NAME)
@@ -248,9 +227,7 @@ dict-benchmark: dict.c zmalloc.c sds.c siphash.c
 	$(REDIS_CC) -c $<
 
 clean:
-	rm -rf $(REDIS_SERVER_NAME) $(REDIS_SENTINEL_NAME) $(REDIS_CLI_NAME) $(REDIS_BENCHMARK_NAME) $(REDIS_CHECK_RDB_NAME) $(REDIS_CHECK_AOF_NAME) *.o *.gcda *.gcno *.gcov redis.info lcov-html Makefile.dep dict-benchmark
-	rm -rf /usr/bin/redis-server
-	
+	rm -rf $(REDIS_SERVER_NAME) $(REDIS_SENTINEL_NAME) $(REDIS_CLI_NAME) $(REDIS_BENCHMARK_NAME) $(REDIS_CHECK_RDB_NAME) $(REDIS_CHECK_AOF_NAME) *.o *.gcda *.gcno *.gcov redis.info lcov-html Makefile.dep dict-benchmark	
 
 .PHONY: clean
 

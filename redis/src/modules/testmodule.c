@@ -256,7 +256,6 @@ int TestCtxFlags(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
         FAIL("Got no flags");
     }
 
-    if (flags & REDISMODULE_CTX_FLAGS_LUA) FAIL("Lua flag was set");
     if (flags & REDISMODULE_CTX_FLAGS_MULTI) FAIL("Multi flag was set");
 
     if (flags & REDISMODULE_CTX_FLAGS_AOF) FAIL("AOF Flag was set")

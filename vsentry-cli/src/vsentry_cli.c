@@ -1520,6 +1520,15 @@ static SR_32 handle_control(int argc, char **argv)
 
 static SR_32 handle_commit(int argc, char **argv)
 {
+	// first call Redis commit, to save the DB changes to file
+	if (!(c = redis_mng_session_start())) {
+		printf("ERROR: redis_mng_session_start failed\n");
+		return SR_ERROR;
+	}
+	redis_mng_commit(c);
+	close_session(); // session must be closed so engine can connect and re-conf
+
+	// then call engine to re-load all the rules and update classifier
 	handle_cmd_gen("cli_commit", "commiting...", SR_FALSE);
 
 	return SR_SUCCESS;
