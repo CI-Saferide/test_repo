@@ -121,12 +121,6 @@ ifeq ($(MALLOC),tcmalloc_minimal)
 	FINAL_LIBS+= -ltcmalloc_minimal
 endif
 
-ifeq ($(MALLOC),jemalloc)
-	DEPENDENCY_TARGETS+= jemalloc
-	FINAL_CFLAGS+= -DUSE_JEMALLOC -I../deps/jemalloc/include
-	FINAL_LIBS := ../deps/jemalloc/lib/libjemalloc.a $(FINAL_LIBS)
-endif
-
 REDIS_CC=$(QUIET_CC)$(CC) $(FINAL_CFLAGS)
 REDIS_LD=$(QUIET_LINK)$(CC) $(FINAL_LDFLAGS)
 REDIS_INSTALL=$(QUIET_INSTALL)$(INSTALL)
