@@ -251,9 +251,10 @@ def is_valid_file_rule(reply, is_file_group, filename, perm, is_program_group, p
 		return False
 	return True
 
-def check_file_rule_add(rule_type, rule_number, is_file_group, filename, perm, is_program_group, program, is_user_group, user, action, is_success):
+def check_file_rule_add(rule_type, rule_number, is_file_group, filename, perm, is_program_group, program, is_user_group, user, action, is_success, is_delete):
 	global errs
-	delete_rule(rule_type, 'file', rule_number)
+	if is_delete:
+		delete_rule(rule_type, 'file', rule_number)
 	update_cmd = cli_cmd + ' update ' + rule_type + ' file ' + ' rule_number ' + str(rule_number)
 	update_cmd = add_rule_field(update_cmd, is_file_group, 'file', filename)
 	update_cmd += ' perm ' + perm
@@ -296,11 +297,19 @@ def check_can_rules():
 
 def check_file_rules():
 	print '---------------- Check FILE Rules'
-	check_file_rule_add('rule', 11, True, 'invalid_group' , 'rw', False, '/bin/cat', False, 'root', 'action1', False)
-	check_file_rule_add('rule', 11, False, '/work/file1.txt' , 'rw', True, 'invalid_group', False, 'root', 'action1', False)
-	check_file_rule_add('rule', 10, True, 'file_group1', 'r', True, 'program_group1', True, 'user_group1', 'action1', True)
-	check_file_rule_add('rule', 10, False, '/work/file1.txt' , 'rw', True, 'program_group1', True, 'user_group1', 'action1', True)
-	check_file_rule_add('rule', 10, False, '/work/file1.txt' , 'rw', False, '/bin/cat', False, 'root', 'action1', True)
+	check_file_rule_add('rule', 11, True, 'invalid_group' , 'rw', False, '/bin/cat', False, 'root', 'action1', False, True)
+	check_file_rule_add('rule', 11, False, '/work/file1.txt' , 'rw', True, 'invalid_group', False, 'root', 'action1', False, True)
+	check_file_rule_add('rule', 11, False, '/work/file2.txt' , 'r', False, '/bin/cat', False, 'root', 'action9', False, True)
+	check_file_rule_add('rule', 10, True, 'file_group1', 'r', True, 'program_group1', True, 'user_group1', 'action1', True, True)
+	check_file_rule_add('rule', 10, False, '/work/file1.txt' , 'rw', True, 'program_group1', True, 'user_group1', 'action1', True, True)
+	check_file_rule_add('rule', 10, False, '/work/file1.txt' , 'rw', False, '/bin/cat', False, 'root', 'action1', True, True)
+	check_file_rule_add('rule', 10, False, '/work/file2.txt' , 'rw', False, '/bin/cat', False, 'root', 'action1', True, True)
+	check_file_rule_add('rule', 10, False, '/work/file2.txt' , 'r', False, '/bin/cat', False, 'root', 'action1', True, False)
+	check_file_rule_add('rule', 10, False, '/work/file2.txt' , 'x', False, '/bin/cat', False, 'root', 'action1', True, False)
+	check_file_rule_add('rule', 10, False, '/work/file2.txt' , 'x', False, '/bin/echo', False, 'root', 'action1', True, False)
+	check_file_rule_add('rule', 10, False, '/work/file2.txt' , 'x', False, '/bin/echo', False, '*', 'action1', True, False)
+	check_file_rule_add('rule', 10, False, '/work/file2.txt' , 'x', False, '/bin/echo', False, '*', 'action2', True, False)
+	check_file_rule_add('rule', 10, False, '/work/file2.txt' , 'rwx', False, '/bin/echo', False, 'root', 'action2', True, False)
 
 def is_valid_ip_rule(reply, is_src_addr_group, src_addr, is_dst_addr_group, dst_addr, is_proto_group, proto, is_src_port_group, src_port, is_dst_port_group, dst_port, is_program_group, program, is_user_group, user, action):
 	rule_src_addr = reply[1]
@@ -341,8 +350,9 @@ def is_valid_ip_rule(reply, is_src_addr_group, src_addr, is_dst_addr_group, dst_
 		return False
 	return True
 
-def check_ip_rule_add(rule_type, rule_number, is_src_addr_group, src_addr, is_dst_addr_group, dst_addr, is_proto_group, proto, is_src_port_group, src_port, is_dst_port_group, dst_port, is_program_group, program, is_user_group, user, action, is_success):
-	delete_rule(rule_type, 'ip', rule_number)
+def check_ip_rule_add(rule_type, rule_number, is_src_addr_group, src_addr, is_dst_addr_group, dst_addr, is_proto_group, proto, is_src_port_group, src_port, is_dst_port_group, dst_port, is_program_group, program, is_user_group, user, action, is_success, is_delete):
+	if is_delete:
+		delete_rule(rule_type, 'ip', rule_number)
 	update_cmd = cli_cmd + ' update ' + rule_type + ' ip ' + ' rule_number ' + str(rule_number)
 	update_cmd = add_rule_field(update_cmd, is_src_addr_group, 'src_addr', src_addr)
 	update_cmd = add_rule_field(update_cmd, is_dst_addr_group, 'dst_addr', dst_addr)
@@ -370,9 +380,13 @@ def check_ip_rule_add(rule_type, rule_number, is_src_addr_group, src_addr, is_ds
 	
 def check_ip_rules():
 	print '---------------- Check IP Rules'
-	check_ip_rule_add('rule', '10', True, 'addr_group1', True, 'addr_group2', True, 'proto_group1', True, 'port_group1', True, 'port_group2', True, 'program_group1', True, 'user_group1', 'action1', True)
-	check_ip_rule_add('rule', '10', False, '6.5.4.3/24', True, 'addr_group2', True, 'proto_group1', True, 'port_group1', True, 'port_group2', True, 'program_group1', True, 'user_group1', 'action1', True)
-	check_ip_rule_add('rule', '10', False, '6.5.4.3/24', False, '1.1.1.1/32', True, 'proto_group1', True, 'port_group1', True, 'port_group2', True, 'program_group1', True, 'user_group1', 'action1', True)
+	check_ip_rule_add('rule', '11', True, 'addr_group_invalid', True, 'addr_group2', True, 'proto_group1', True, 'port_group1', True, 'port_group2', True, 'program_group1', True, 'user_group1', 'action1', False, True)
+	check_ip_rule_add('rule', '11', True, 'addr_group1', True, 'addr_group_invalid', True, 'proto_group1', True, 'port_group1', True, 'port_group2', True, 'program_group1', True, 'user_group1', 'action1', False, True)
+	check_ip_rule_add('rule', '11', True, 'addr_group1', True, 'addr_group2', True, 'proto_group_invalid', True, 'port_group1', True, 'port_group2', True, 'program_group1', True, 'user_group1', 'action1', False, True)
+	check_ip_rule_add('rule', '11', True, 'addr_group1', True, 'addr_group2', True, 'proto_group1', True, 'port_group_invalid', True, 'port_group2', True, 'program_group1', True, 'user_group1', 'action1', False, True)
+	check_ip_rule_add('rule', '10', True, 'addr_group1', True, 'addr_group2', True, 'proto_group1', True, 'port_group1', True, 'port_group2', True, 'program_group1', True, 'user_group1', 'action1', True, True)
+	check_ip_rule_add('rule', '10', False, '6.5.4.3/24', True, 'addr_group2', True, 'proto_group1', True, 'port_group1', True, 'port_group2', True, 'program_group1', True, 'user_group1', 'action1', True, True)
+	check_ip_rule_add('rule', '10', False, '6.5.4.3/24', False, '1.1.1.1/32', True, 'proto_group1', True, 'port_group1', True, 'port_group2', True, 'program_group1', True, 'user_group1', 'action1', True, True)
 
 def check_rules():
 	check_can_rules()
