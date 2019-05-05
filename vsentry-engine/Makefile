@@ -84,7 +84,6 @@ INCLUDES 	:=  -I../common/include \
 				-I../tools/sr-log/include \
 				-I../tools/sr-hash/include \
 				-I../tools/json \
-				-I../tools/sysrepo_mng/include \
 				-I../tools/redis_mng/include \
 				-I../tools/db_tools/include \
 				-I../vsentry-lib/include \
@@ -101,9 +100,9 @@ DEPS		:=  $(OBJS:.o=.d)
 
 # libs to link with
 ifdef BIN_CLS_DB
-LIBS		:= -Wl,--start-group -l$(TARGET) -lsr_hash -lsr_log -lsysrepo_mng -lredis_mng -ldb_tools -lbin_cls -Wl,--end-group -lpthread -ljsmn -lsentry -lsysrepo -lcurl -larchive -lcrypto
+LIBS		:= -Wl,--start-group -l$(TARGET) -lsr_hash -lsr_log -lredis_mng -ldb_tools -lbin_cls -Wl,--end-group -lpthread -ljsmn -lsentry -lcurl -larchive -lcrypto
 else
-LIBS 		:= -Wl,--start-group -l$(TARGET) -lsr_hash -lsr_log -lsysrepo_mng -lredis_mng -ldb_tools -Wl,--end-group -lpthread -ljsmn -lsentry -lsysrepo -lcurl -larchive -lcrypto
+LIBS 		:= -Wl,--start-group -l$(TARGET) -lsr_hash -lsr_log -lredis_mng -ldb_tools -Wl,--end-group -lpthread -ljsmn -lsentry -lcurl -larchive -lcrypto
 endif
 LIBS += $(if $(IRDETO),-lclient)
 # and where to search them 
@@ -137,9 +136,9 @@ build_ver:
 	@echo "/*@unused@*/ static const char SR_GIT_BUILD[] = \"`git log --pretty=format:'%h' -n 1`\"; " > $(TOP_DIR)/../common/include/sr_build_ver.h
 
 ifdef BIN_CLS_DB
-$(TARGET): libsr_log libsr_hash libjsmn libsysrepo_mng libredis_mng libdb_tools libbin_cls lib$(TARGET)
+$(TARGET): libsr_log libsr_hash libjsmn libredis_mng libdb_tools libbin_cls lib$(TARGET)
 else
-$(TARGET): libsr_log libsr_hash libjsmn libsysrepo_mng libredis_mng libdb_tools lib$(TARGET)
+$(TARGET): libsr_log libsr_hash libjsmn libredis_mng libdb_tools lib$(TARGET)
 endif
 	@echo "linking $(notdir $@)"
 	@$(CC) $(LDFLAGS) -o $(BINDIR)/$(TARGET) $(LIB_PATH) $(LIBS)
@@ -167,9 +166,6 @@ libsr_hash:
 
 libjsmn:
 	@$(MAKE) -s -C ../tools/json TOP_DIR=$(TOP_DIR)
-
-libsysrepo_mng:
-	@$(MAKE) -s -C ../tools/sysrepo_mng TOP_DIR=$(TOP_DIR)
 	
 libredis_mng:
 	@$(MAKE) -s -C ../tools/redis_mng TOP_DIR=$(TOP_DIR)

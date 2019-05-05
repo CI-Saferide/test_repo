@@ -30,7 +30,6 @@
 #include "can_rule.h"
 #include "sr_db.h"
 #include "jsmn.h"
-#include <sysrepo.h>
 #include "sr_static_policy.h"
 #ifdef BIN_CLS_DB
 #include "sr_engine_utils.h"

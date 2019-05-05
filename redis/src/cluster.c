@@ -5606,8 +5606,7 @@ clusterNode *getNodeByQuery(client *c, struct redisCommand *cmd, robj **argv, in
      * node is a slave and the request is about an hash slot our master
      * is serving, we can reply without redirection. */
     if (c->flags & CLIENT_READONLY &&
-        (cmd->flags & CMD_READONLY || cmd->proc == evalCommand ||
-         cmd->proc == evalShaCommand) &&
+        (cmd->flags & CMD_READONLY) &&
         nodeIsSlave(myself) &&
         myself->slaveof == n)
     {

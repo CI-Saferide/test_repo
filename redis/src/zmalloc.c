@@ -56,20 +56,6 @@ void zlibc_free(void *ptr) {
 #endif
 #endif
 
-/* Explicitly override malloc/free etc when using tcmalloc. */
-#if defined(USE_TCMALLOC)
-#define malloc(size) tc_malloc(size)
-#define calloc(count,size) tc_calloc(count,size)
-#define realloc(ptr,size) tc_realloc(ptr,size)
-#define free(ptr) tc_free(ptr)
-#elif defined(USE_JEMALLOC)
-#define malloc(size) je_malloc(size)
-#define calloc(count,size) je_calloc(count,size)
-#define realloc(ptr,size) je_realloc(ptr,size)
-#define free(ptr) je_free(ptr)
-#define mallocx(size,flags) je_mallocx(size,flags)
-#define dallocx(ptr,flags) je_dallocx(ptr,flags)
-#endif
 
 #define update_zmalloc_stat_alloc(__n) do { \
     size_t _n = (__n); \
@@ -108,24 +94,6 @@ void *zmalloc(size_t size) {
     return (char*)ptr+PREFIX_SIZE;
 #endif
 }
-
-/* Allocation and free functions that bypass the thread cache
- * and go straight to the allocator arena bins.
- * Currently implemented only for jemalloc. Used for online defragmentation. */
-#ifdef HAVE_DEFRAG
-void *zmalloc_no_tcache(size_t size) {
-    void *ptr = mallocx(size+PREFIX_SIZE, MALLOCX_TCACHE_NONE);
-    if (!ptr) zmalloc_oom_handler(size);
-    update_zmalloc_stat_alloc(zmalloc_size(ptr));
-    return ptr;
-}
-
-void zfree_no_tcache(void *ptr) {
-    if (ptr == NULL) return;
-    update_zmalloc_stat_free(zmalloc_size(ptr));
-    dallocx(ptr, MALLOCX_TCACHE_NONE);
-}
-#endif
 
 void *zcalloc(size_t size) {
     void *ptr = calloc(1, size+PREFIX_SIZE);
@@ -301,36 +269,12 @@ size_t zmalloc_get_rss(void) {
 }
 #endif
 
-#if defined(USE_JEMALLOC)
-int zmalloc_get_allocator_info(size_t *allocated,
-                               size_t *active,
-                               size_t *resident) {
-    uint64_t epoch = 1;
-    size_t sz;
-    *allocated = *resident = *active = 0;
-    /* Update the statistics cached by mallctl. */
-    sz = sizeof(epoch);
-    je_mallctl("epoch", &epoch, &sz, &epoch, sz);
-    sz = sizeof(size_t);
-    /* Unlike RSS, this does not include RSS from shared libraries and other non
-     * heap mappings. */
-    je_mallctl("stats.resident", resident, &sz, NULL, 0);
-    /* Unlike resident, this doesn't not include the pages jemalloc reserves
-     * for re-use (purge will clean that). */
-    je_mallctl("stats.active", active, &sz, NULL, 0);
-    /* Unlike zmalloc_used_memory, this matches the stats.resident by taking
-     * into account all allocations done by this process (not only zmalloc). */
-    je_mallctl("stats.allocated", allocated, &sz, NULL, 0);
-    return 1;
-}
-#else
 int zmalloc_get_allocator_info(size_t *allocated,
                                size_t *active,
                                size_t *resident) {
     *allocated = *resident = *active = 0;
     return 1;
 }
-#endif
 
 /* Get the sum of the specified field (converted form kb to bytes) in
  * /proc/self/smaps. The field must be specified with trailing ":" as it
