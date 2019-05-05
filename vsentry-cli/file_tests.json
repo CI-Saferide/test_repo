@@ -1,0 +1,14 @@
+{
+"TC1": {"rule_num": 10, "is_file_group": true, "file": "file_group1", "perm": "r", "is_program_group": true, "program": "program_group1", "is_user_group": true, "user": "user_group1", "action": "action1", "is_delete": true, "is_success": true},
+"TC2": {"rule_num": 10, "is_file_group": false, "file": "/work/file1.txt", "perm": "rw", "is_program_group": true, "program": "program_group1", "is_user_group": true, "user": "user_group1", "action": "action1", "is_delete": true, "is_success": true},
+"TC3": {"rule_num": 10, "is_file_group": false, "file": "/work/file1.txt", "perm": "rw", "is_program_group": false, "program": "/bin/cat", "is_user_group": true, "user": "user_group1", "action": "action1", "is_delete": true, "is_success": true},
+"TC4": {"rule_num": 10, "is_file_group": false, "file": "/work/file1.txt", "perm": "rw", "is_program_group": false, "program": "/bin/cat", "is_user_group": false, "user": "root", "action": "action1", "is_delete": false, "is_success": true},
+"TC5": {"rule_num": 10, "is_file_group": false, "file": "/work/file2.txt", "perm": "rw", "is_program_group": false, "program": "/bin/cat", "is_user_group": false, "user": "root", "action": "action1", "is_delete": false, "is_success": true},
+"TC6": {"rule_num": 10, "is_file_group": false, "file": "/work/file2.txt", "perm": "r", "is_program_group": false, "program": "/bin/cat", "is_user_group": false, "user": "root", "action": "action1", "is_delete": false, "is_success": true},
+"TC7": {"rule_num": 10, "is_file_group": false, "file": "/work/file2.txt", "perm": "x", "is_program_group": false, "program": "/bin/cat", "is_user_group": false, "user": "root", "action": "action1", "is_delete": false, "is_success": true},
+"TC8": {"rule_num": 10, "is_file_group": false, "file": "/work/file2.txt", "perm": "x", "is_program_group": false, "program": "/bin/cat", "is_user_group": false, "user": "*", "action": "action1", "is_delete": false, "is_success": true},
+"TC9": {"rule_num": 10, "is_file_group": false, "file": "/work/file2.txt", "perm": "x", "is_program_group": false, "program": "/bin/cat", "is_user_group": false, "user": "*", "action": "action2", "is_delete": false, "is_success": true},
+"TC10": {"rule_num": 10, "is_file_group": false, "file": "/work/file2.txt", "perm": "rwx", "is_program_group": false, "program": "/bin/cat", "is_user_group": false, "user": "root", "action": "action2", "is_delete": false, "is_success": true},
+"TC11": {"rule_num": 11, "is_file_group": true, "file": "invalid_file_group", "perm": "rwx", "is_program_group": false, "program": "/bin/cat", "is_user_group": false, "user": "root", "action": "action2", "is_delete": false, "is_success": false},
+"TC12": {"rule_num": 11, "is_file_group": true, "file": "file_group1", "perm": "r", "is_program_group": true, "program": "program_group_invalid", "is_user_group": true, "user": "user_group1", "action": "action1", "is_delete": true, "is_success": false}
+}
