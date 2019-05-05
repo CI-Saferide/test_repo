@@ -1,7 +1,9 @@
 import subprocess
+import argparse
 
 cli_cmd = './build/bin/vsentry_cli'
 errs = 0
+is_verbose = False
 
 def run_cmd(cmd):
 	cmd_list = cmd.split();
@@ -16,7 +18,8 @@ def create_group(group_type, group_name, values):
 	try:
 		run_cmd(delete_cmd)
 	except subprocess.CalledProcessError, e:
-		print 'Failed delete group: ' + group_name
+		if is_verbose:
+			print 'Failed delete group: ' + group_name
 	try:
 		run_cmd(update_cmd)
 	except subprocess.CalledProcessError, e:
@@ -75,7 +78,8 @@ def create_action(name, atype, log, rl, rl_log):
 	try:
 		run_cmd(delete_cmd)
 	except subprocess.CalledProcessError, e:
-		print 'Failed delete action: ' + name
+		if is_verbose:
+			print 'Failed delete action: ' + name
 	try:
 		run_cmd(update_cmd)
 	except subprocess.CalledProcessError, e:
@@ -132,7 +136,8 @@ def get_rule(rule_type, section, rule_number):
 	except subprocess.CalledProcessError, e:
 		print 'Failed to get rule : ' + str(rule_number)
 		return
-	print reply
+	if is_verbose:
+		print reply
 	i = 0
 	while (i < len(reply) and reply[i] != str(rule_number)):
 		 i += 1
@@ -187,7 +192,8 @@ def check_can_rule_add(rule_type, rule_number, is_mid_group, mid, can_dir, is_if
 	update_cmd = add_rule_field(update_cmd, is_program_group, 'program', program)
 	update_cmd = add_rule_field(update_cmd, is_user_group, 'user', user)
 	update_cmd += ' action ' + action
-	print update_cmd
+	if is_verbose:
+		print update_cmd
 	try:
 		run_cmd(update_cmd)
 	except subprocess.CalledProcessError, e:
@@ -338,6 +344,14 @@ def check_rules():
 	check_can_rules()
 	check_file_rules()
 	check_ip_rules()
+
+parser = argparse.ArgumentParser()
+
+parser.add_argument("--verbose", help="increase output verbosity",
+                    action="store_true")
+args = parser.parse_args()
+if args.verbose:
+	is_verbose = True
 
 print '---------------- Check groups'
 check_groups()
