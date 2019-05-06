@@ -241,6 +241,7 @@ typedef long long mstime_t; /* millisecond time type. */
 #define CLIENT_CLOSE_AFTER_REPLY (1<<6) /* Close after writing entire reply. */
 #define CLIENT_UNBLOCKED (1<<7) /* This client was unblocked and is stored in
                                   server.unblocked_clients */
+#define CLIENT_LUA (1<<8) /* This is a non connected client used by Lua */
 #define CLIENT_ASKING (1<<9)     /* Client issued the ASKING command */
 #define CLIENT_CLOSE_ASAP (1<<10)/* Close this client ASAP */
 #define CLIENT_UNIX_SOCKET (1<<11) /* Client connected via Unix domain socket */
@@ -259,6 +260,8 @@ typedef long long mstime_t; /* millisecond time type. */
 #define CLIENT_REPLY_OFF (1<<22)   /* Don't send replies to client. */
 #define CLIENT_REPLY_SKIP_NEXT (1<<23)  /* Set CLIENT_REPLY_SKIP for next cmd */
 #define CLIENT_REPLY_SKIP (1<<24)  /* Don't send just this reply. */
+#define CLIENT_LUA_DEBUG (1<<25)  /* Run EVAL in debug mode. */
+#define CLIENT_LUA_DEBUG_SYNC (1<<26)  /* EVAL debugging without fork() */
 #define CLIENT_MODULE (1<<27) /* Non connected client used by some module. */
 #define CLIENT_PROTECTED (1<<28) /* Client should not be freed for now. */
 
@@ -399,6 +402,9 @@ typedef long long mstime_t; /* millisecond time type. */
 #define MAXMEMORY_NO_EVICTION (7<<8)
 
 #define CONFIG_DEFAULT_MAXMEMORY_POLICY MAXMEMORY_NO_EVICTION
+
+/* Scripting */
+#define LUA_SCRIPT_TIME_LIMIT 5000 /* milliseconds */
 
 /* Units */
 #define UNIT_SECONDS 0
@@ -860,6 +866,7 @@ struct redisMemOverhead {
     size_t clients_slaves;
     size_t clients_normal;
     size_t aof_buffer;
+    size_t lua_caches;
     size_t overhead_total;
     size_t dataset;
     size_t total_keys;
@@ -1243,6 +1250,24 @@ struct redisServer {
                                       to set in order to suppress certain
                                       native Redis Cluster features. Check the
                                       REDISMODULE_CLUSTER_FLAG_*. */
+    /* Scripting */
+    client *lua_client;   /* The "fake client" to query Redis from Lua */
+    client *lua_caller;   /* The client running EVAL right now, or NULL */
+    dict *lua_scripts;         /* A dictionary of SHA1 -> Lua scripts */
+    unsigned long long lua_scripts_mem;  /* Cached scripts' memory + oh */
+    mstime_t lua_time_limit;  /* Script timeout in milliseconds */
+    mstime_t lua_time_start;  /* Start time of script, milliseconds time */
+    int lua_write_dirty;  /* True if a write command was called during the
+                             execution of the current script. */
+    int lua_random_dirty; /* True if a random command was called during the
+                             execution of the current script. */
+    int lua_replicate_commands; /* True if we are doing single commands repl. */
+    int lua_multi_emitted;/* True if we already proagated MULTI. */
+    int lua_repl;         /* Script replication flags for redis.set_repl(). */
+    int lua_timedout;     /* True if we reached the time limit for script
+                             execution. */
+    int lua_kill;         /* Kill the script if true. */
+    int lua_always_replicate_commands; /* Default replication type. */
     /* Lazy free */
     int lazyfree_lazy_eviction;
     int lazyfree_lazy_expire;
@@ -1872,6 +1897,7 @@ int redis_check_aof_main(int argc, char **argv);
 int ldbRemoveChild(pid_t pid);
 void ldbKillForkedSessions(void);
 int ldbPendingChildren(void);
+sds luaCreateFunction(client *c, robj *body);
 
 /* Blocked clients */
 void processUnblockedClients(void);

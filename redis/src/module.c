@@ -485,6 +485,8 @@ void moduleFreeContext(RedisModuleCtx *ctx) {
 void moduleHandlePropagationAfterCommandCallback(RedisModuleCtx *ctx) {
     client *c = ctx->client;
 
+    if (c->flags & CLIENT_LUA) return;
+
     /* Handle the replication of the final EXEC, since whatever a command
      * emits is always wrapped around MULTI/EXEC. */
     if (ctx->flags & REDISMODULE_CTX_MULTI_EMITTED) {
@@ -1244,7 +1246,7 @@ int RM_ReplyWithDouble(RedisModuleCtx *ctx, double d) {
 void moduleReplicateMultiIfNeeded(RedisModuleCtx *ctx) {
     /* Skip this if client explicitly wrap the command with MULTI, or if
      * the module command was called by a script. */
-    if (ctx->client->flags & CLIENT_MULTI) return;
+    if (ctx->client->flags & (CLIENT_MULTI|CLIENT_LUA)) return;
     /* If we already emitted MULTI return ASAP. */
     if (ctx->flags & REDISMODULE_CTX_MULTI_EMITTED) return;
     /* If this is a thread safe context, we do not want to wrap commands
@@ -1384,6 +1386,8 @@ int RM_GetContextFlags(RedisModuleCtx *ctx) {
     int flags = 0;
     /* Client specific flags */
     if (ctx->client) {
+        if (ctx->client->flags & CLIENT_LUA)
+         flags |= REDISMODULE_CTX_FLAGS_LUA;
         if (ctx->client->flags & CLIENT_MULTI)
          flags |= REDISMODULE_CTX_FLAGS_MULTI;
     }
@@ -3523,6 +3527,7 @@ void unblockClientFromModule(client *c) {
  */
 RedisModuleBlockedClient *RM_BlockClient(RedisModuleCtx *ctx, RedisModuleCmdFunc reply_callback, RedisModuleCmdFunc timeout_callback, void (*free_privdata)(RedisModuleCtx*,void*), long long timeout_ms) {
     client *c = ctx->client;
+    int islua = c->flags & CLIENT_LUA;
     int ismulti = c->flags & CLIENT_MULTI;
 
     c->bpop.module_blocked_handle = zmalloc(sizeof(RedisModuleBlockedClient));
@@ -3532,7 +3537,7 @@ RedisModuleBlockedClient *RM_BlockClient(RedisModuleCtx *ctx, RedisModuleCmdFunc
      * commands from Lua or MULTI. We actually create an already aborted
      * (client set to NULL) blocked client handle, and actually reply with
      * an error. */
-    bc->client = (ismulti) ? NULL : c;
+    bc->client = (islua || ismulti) ? NULL : c;
     bc->module = ctx->module;
     bc->reply_callback = reply_callback;
     bc->timeout_callback = timeout_callback;
@@ -3544,9 +3549,11 @@ RedisModuleBlockedClient *RM_BlockClient(RedisModuleCtx *ctx, RedisModuleCmdFunc
     bc->dbid = c->db->id;
     c->bpop.timeout = timeout_ms ? (mstime()+timeout_ms) : 0;
 
-    if (ismulti) {
+    if (islua || ismulti) {
         c->bpop.module_blocked_handle = NULL;
-        addReplyError(c, "Blocking module command called from transaction");
+        addReplyError(c, islua ?
+            "Blocking module command called from Lua script" :
+            "Blocking module command called from transaction");
     } else {
         blockClient(c,BLOCKED_MODULE);
     }
@@ -4299,8 +4306,10 @@ RedisModuleTimerID RM_CreateTimer(RedisModuleCtx *ctx, mstime_t period, RedisMod
 
     /* If we have no main timer (the old one was invalidated, or this is the
      * first module timer we have), install one. */
-    if (aeTimer == -1)
+    if (aeTimer == -1) {
+        printf("*** DBG *** MOD: moduleTimerHandler\n");fflush(stdout);
         aeTimer = aeCreateTimeEvent(server.el,period,moduleTimerHandler,NULL,NULL);
+    }
 
     return key;
 }

@@ -630,6 +630,6 @@ cant_free:
  *
  */
 int freeMemoryIfNeededAndSafe(void) {
-    if (server.loading) return C_OK;
+    if (server.lua_timedout || server.loading) return C_OK;
     return freeMemoryIfNeeded();
 }
