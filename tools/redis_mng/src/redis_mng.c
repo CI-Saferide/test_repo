@@ -391,7 +391,7 @@ static SR_32 print_can(SR_32 num, void *rule)
 {
 	redis_mng_can_rule_t *can_rule = (redis_mng_can_rule_t *)rule;
 
-	printf("%d %s %s %s %s %s %s \n", num, can_rule->mid, can_rule->dir, can_rule->interface, can_rule->exec, can_rule->user, can_rule->action);
+	printf("%d %s %s %s %s %s %s %s \n", num, can_rule->mid, can_rule->dir, can_rule->interface, can_rule->exec, can_rule->user, can_rule->rl, can_rule->action);
 
 	return SR_SUCCESS;
 }
@@ -505,6 +505,7 @@ SR_32 redis_mng_exec_all_rules(redisContext *c, rule_type_t type, SR_32 rule_id_
 				can_rule.exec = get_field(PROGRAM_ID, replies[i]->elements, replies[i]);
 				can_rule.user = get_field(USER_ID, replies[i]->elements, replies[i]);
 				can_rule.action = get_field(ACTION, replies[i]->elements, replies[i]);
+				can_rule.rl = get_field(DOWN_RL, replies[i]->elements, replies[i]);
 				rule = &can_rule;
 				break;
 			case RULE_TYPE_IP:
@@ -708,6 +709,8 @@ static SR_32 load_can(SR_32 rule_id, SR_32 n, redisReply *reply, handle_rule_f_t
 	field = get_field(ACTION, n, reply);
 	can_rule.can_item.can_item_type = CAN_ITEM_RULE;
 	strncpy(can_rule.can_item.u.rule_info.action, field, MAX_ACTION_NAME);
+	field = get_field(DOWN_RL, n, reply);
+	can_rule.can_item.u.rule_info.rate_limit = atoi(field);
 	cb(&can_rule, ENTITY_TYPE_CAN_RULE, &rc);
 	if (rc != SR_SUCCESS) return rc;
 
@@ -1733,6 +1736,9 @@ SR_32 redis_mng_update_can_rule(redisContext *c, SR_32 rule_id, redis_mng_can_ru
 			len += sprintf(cmd + len, " %s %d%s%s", USER_ID, LIST_USERS, LIST_PREFIX, rule->user);
 		else // single value
 			len += sprintf(cmd + len, " %s %s", USER_ID, rule->user);
+	}
+	if (rule->rl) {
+		len += sprintf(cmd + len, " %s %s", DOWN_RL, rule->rl);
 	}
 
 	reply = redisCommand(c, cmd);

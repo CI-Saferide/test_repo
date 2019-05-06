@@ -495,7 +495,8 @@ static SR_U32 handle_param(char *param, char *field, int field_size, int argc, i
 static SR_32 handle_update_can(SR_U32 rule_id, SR_BOOL is_wl, int argc, char **argv)
 {
 	int i;
-	char mid[GROUP_NAME_SIZE], interface[GROUP_NAME_SIZE], dir[16], user[GROUP_NAME_SIZE], program[GROUP_NAME_SIZE], action[ACTION_STR_SIZE];
+	char mid[GROUP_NAME_SIZE], interface[GROUP_NAME_SIZE], dir[16], user[GROUP_NAME_SIZE],
+		program[GROUP_NAME_SIZE], action[ACTION_STR_SIZE], rl[GROUP_NAME_SIZE];
 	SR_BOOL is_program_list = SR_FALSE, is_user_list = SR_FALSE, is_mid_list = SR_FALSE, is_interface_list = SR_FALSE;
 	SR_32 rc = SR_SUCCESS, is_update;
 	redis_mng_can_rule_t rule_info = {};
@@ -515,6 +516,7 @@ static SR_32 handle_update_can(SR_U32 rule_id, SR_BOOL is_wl, int argc, char **a
 		INIT_COMMON_PARAMS
 		strcpy(mid, "any");
 		strcpy(dir, "both");
+		strcpy(rl, "0");
 	} else  {
 		UPDATE_INIT_COMMON_PARAMS
 	}
@@ -529,6 +531,8 @@ static SR_32 handle_update_can(SR_U32 rule_id, SR_BOOL is_wl, int argc, char **a
 		if (handle_param("interface_group", interface, sizeof(interface), argc, &i, argv, is_valid_interface_list, &is_interface_list, SR_TRUE) == SR_SUCCESS)
 			continue;
 		if (handle_param("dir", dir, sizeof(dir), argc, &i, argv, is_valid_dir, NULL, SR_FALSE) == SR_SUCCESS)
+			continue;
+		if (handle_param("rl", rl, sizeof(rl), argc, &i, argv, is_valid_numeric, NULL, SR_FALSE) == SR_SUCCESS)
 			continue;
 		HANDLE_COMMON_PARAMS
 		printf("Invalid paramter:%s \n", argv[i]);
@@ -549,6 +553,7 @@ static SR_32 handle_update_can(SR_U32 rule_id, SR_BOOL is_wl, int argc, char **a
 	rule_info.interface = EMPTY2NULL(interface);
 	rule_info.interfaces_list = is_interface_list;
 	rule_info.dir = EMPTY2NULL(dir);
+	rule_info.rl = EMPTY2NULL(rl);
 	rule_info.action = action;
 	if (redis_mng_update_can_rule(c, rule_id, &rule_info) != SR_SUCCESS) {
 		printf("update rule failed");

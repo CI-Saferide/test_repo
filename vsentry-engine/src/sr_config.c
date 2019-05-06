@@ -1389,7 +1389,7 @@ static void handle_can_rule(sr_can_record_t *can_rule, SR_32 *status)
 			printf(">>>>>>>>>> Add CAN rule rule:%d action:%s \n", can_rule->rulenum, can_rule->can_item.u.action);
 #endif
 #ifdef BIN_CLS_DB
-			ret = cls_rule(true, CLS_CAN_RULE_TYPE, can_rule->rulenum, can_rule->can_item.u.rule_info.action, 0);
+			ret = cls_rule(true, CLS_CAN_RULE_TYPE, can_rule->rulenum, can_rule->can_item.u.rule_info.action, can_rule->can_item.u.rule_info.rate_limit);
     			if (ret != SR_SUCCESS) {
 				CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 					"%s=failed to create can rule %u with action %s",REASON,

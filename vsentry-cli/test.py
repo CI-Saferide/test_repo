@@ -157,7 +157,7 @@ def is_valid_can_rule(reply, is_mid_group, mid, can_dir, is_if_group, interface,
 	rule_if = reply[3]
 	rule_prog = reply[4]
 	rule_user = reply[5]
-	rule_action = reply[6]
+	rule_action = reply[7]
 	if is_mid_group:
 		mid  = 'l:' + mid
 	if rule_mid.find(mid) == -1:
@@ -187,7 +187,7 @@ def is_valid_can_rule(reply, is_mid_group, mid, can_dir, is_if_group, interface,
 		
 	return True
 	
-def check_can_rule_add(rule_type, rule_number, is_mid_group, mid, can_dir, is_if_group, interface, is_program_group, program, is_user_group, user, action, is_success, is_delete):
+def check_can_rule_add(rule_type, rule_number, is_mid_group, mid, can_dir, is_if_group, interface, is_program_group, program, is_user_group, user, rl, action, is_success, is_delete):
 	global errs
 	if is_delete:
 		delete_rule(rule_type, 'can', rule_number)
@@ -197,6 +197,7 @@ def check_can_rule_add(rule_type, rule_number, is_mid_group, mid, can_dir, is_if
 	update_cmd = add_rule_field(update_cmd, is_if_group, 'interface', interface)
 	update_cmd = add_rule_field(update_cmd, is_program_group, 'program', program)
 	update_cmd = add_rule_field(update_cmd, is_user_group, 'user', user)
+	update_cmd = add_rule_field(update_cmd, False, 'rl', rl)
 	update_cmd += ' action ' + action
 	if is_verbose:
 		print 'check CAN add rule: ', update_cmd
@@ -297,7 +298,8 @@ def check_can_rules():
 		action = value['action']
 		is_success = value['is_success']
 		is_delete = value['is_delete']
-		check_can_rule_add('rule', rule_num, is_mid_group, mid, direction, is_if_group, inf, is_program_group, program, is_user_group, user, action, is_success, is_delete)
+		rl = value['rl']
+		check_can_rule_add('rule', rule_num, is_mid_group, mid, direction, is_if_group, inf, is_program_group, program, is_user_group, user, rl, action, is_success, is_delete)
 
 def check_file_rules():
 	print '---------------- Check FILE Rules'

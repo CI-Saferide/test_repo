@@ -10,7 +10,7 @@
 
 #define ACTION_FIELDS		8
 #define FILE_RULE_FIELDS	10
-#define CAN_RULE_FIELDS		12
+#define CAN_RULE_FIELDS		14
 #define NET_RULE_FIELDS		18
 #define MAX_RULE_FIELDS		20
 
@@ -78,6 +78,7 @@ typedef struct redis_mng_can_rule {
 	char 	*user;
 	char 	*dir;		// direction - single value
 	char 	*action; 	// single value
+	char 	*rl;
 	SR_8	mids_list;
 	SR_8	interfaces_list;
 	SR_8	execs_list;
