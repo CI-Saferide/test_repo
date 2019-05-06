@@ -219,6 +219,9 @@ static inline long u64divu32(long long *divs, long div)
 
 #endif
 
+#ifdef ARM7DIV
+extern unsigned long long arm7_uldivmod(unsigned long long a, unsigned long long b);
+#endif
 static bool cls_rl(unsigned int rl_offset, unsigned int dir, unsigned long long ts, unsigned int size)
 {
 	unsigned long long delta_ts, last_ts;
@@ -251,6 +254,9 @@ static bool cls_rl(unsigned int rl_offset, unsigned int dir, unsigned long long 
 #ifdef __i386__
 	added_credit = (delta_ts * rl->limit);
 	added_credit = u64divu32(&added_credit, SEC_IN_USEC);
+#elif defined (ARM7DIV)
+	added_credit = (delta_ts * rl->limit);
+	added_credit = arm7_uldivmod(added_credit, SEC_IN_USEC);
 #else
 	added_credit = (delta_ts * rl->limit)/SEC_IN_USEC;
 #endif
@@ -324,21 +330,6 @@ int cls_classify_event(vsentry_ev_type_e ev_type, vsentry_event_t *event)
 	/* set all bits in the initial verdict array */
 	ba_set(&verdict);
 
-	/* get uid classification */
-	ret = uid_cls_search(event->type, &event->event_id, &verdict);
-	if (ret != VSENTRY_SUCCESS || ba_is_empty(&verdict)) {
-		cls_err("failed to classify %s uid\n", get_type_str(event->type));
-		goto classify_exit;
-	}
-
-	/* get prog classification */
-	ret = prog_cls_search(event->type, &event->event_id, &verdict);
-	if (ret != VSENTRY_SUCCESS || ba_is_empty(&verdict)) {
-		cls_err("failed to classify prog (%s) %s\n", get_type_str(event->type),
-				event->event_id.exec_name);
-		goto classify_exit;
-	}
-
 	switch (ev_type) {
 	case VSENTRY_CAN_EVENT:
 		size = 1;
@@ -404,6 +395,22 @@ int cls_classify_event(vsentry_ev_type_e ev_type, vsentry_event_t *event)
 	default:
 		goto classify_exit;
 	}
+
+	/* get uid classification */
+	ret = uid_cls_search(event->type, &event->event_id, &verdict);
+	if (ret != VSENTRY_SUCCESS || ba_is_empty(&verdict)) {
+		cls_err("failed to classify %s uid\n", get_type_str(event->type));
+		goto classify_exit;
+	}
+
+	/* get prog classification */
+	ret = prog_cls_search(event->type, &event->event_id, &verdict);
+	if (ret != VSENTRY_SUCCESS || ba_is_empty(&verdict)) {
+		cls_err("failed to classify prog (%s) %s\n", get_type_str(event->type),
+				event->event_id.exec_name);
+		goto classify_exit;
+	}
+
 
 	/* we matched a specific rule, get its action */
 	bit = ba_ffs(&verdict);
