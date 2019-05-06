@@ -1,7 +1,12 @@
+#!/usr/bin/env python2
+
 import subprocess
+import argparse
+import json
 
 cli_cmd = './build/bin/vsentry_cli'
 errs = 0
+is_verbose = False
 
 def run_cmd(cmd):
 	cmd_list = cmd.split();
@@ -16,7 +21,8 @@ def create_group(group_type, group_name, values):
 	try:
 		run_cmd(delete_cmd)
 	except subprocess.CalledProcessError, e:
-		print 'Failed delete group: ' + group_name
+		if is_verbose:
+			print 'Failed delete group: ' + group_name
 	try:
 		run_cmd(update_cmd)
 	except subprocess.CalledProcessError, e:
@@ -75,7 +81,8 @@ def create_action(name, atype, log, rl, rl_log):
 	try:
 		run_cmd(delete_cmd)
 	except subprocess.CalledProcessError, e:
-		print 'Failed delete action: ' + name
+		if is_verbose:
+			print 'Failed delete action: ' + name
 	try:
 		run_cmd(update_cmd)
 	except subprocess.CalledProcessError, e:
@@ -110,13 +117,15 @@ def check_actions():
 	create_action('action1', 'drop', 'syslog', 'none', 'none')
 	create_action('action1', 'allow', 'none', 'none', 'none')
 	create_action('action1', 'allow', 'file', 'drop', 'syslog')
+	create_action('action2', 'allow', 'file', 'drop', 'syslog')
 
 def delete_rule(rule_type, section, rule_number):
 	delete_cmd = cli_cmd + ' delete ' + rule_type + ' ' + section + ' rule_number ' + str(rule_number)
 	try:
 		run_cmd(delete_cmd)
 	except subprocess.CalledProcessError, e:
-		print 'info: failed delete rule ' + str(rule_number)
+		if is_verbose:
+			print 'info: failed delete rule ' + str(rule_number)
 
 def add_rule_field(cmd, is_group, field, value):
 	new_cmd = cmd + ' ' + field
@@ -132,7 +141,8 @@ def get_rule(rule_type, section, rule_number):
 	except subprocess.CalledProcessError, e:
 		print 'Failed to get rule : ' + str(rule_number)
 		return
-	print reply
+	if is_verbose:
+		print reply
 	i = 0
 	while (i < len(reply) and reply[i] != str(rule_number)):
 		 i += 1
@@ -147,7 +157,7 @@ def is_valid_can_rule(reply, is_mid_group, mid, can_dir, is_if_group, interface,
 	rule_if = reply[3]
 	rule_prog = reply[4]
 	rule_user = reply[5]
-	rule_action = reply[6]
+	rule_action = reply[7]
 	if is_mid_group:
 		mid  = 'l:' + mid
 	if rule_mid.find(mid) == -1:
@@ -177,24 +187,34 @@ def is_valid_can_rule(reply, is_mid_group, mid, can_dir, is_if_group, interface,
 		
 	return True
 	
-def check_can_rule_add(rule_type, rule_number, is_mid_group, mid, can_dir, is_if_group, interface, is_program_group, program, is_user_group, user, action):
+def check_can_rule_add(rule_type, rule_number, is_mid_group, mid, can_dir, is_if_group, interface, is_program_group, program, is_user_group, user, rl, action, is_success, is_delete):
 	global errs
-	delete_rule(rule_type, 'can', rule_number)
+	if is_delete:
+		delete_rule(rule_type, 'can', rule_number)
 	update_cmd = cli_cmd + ' update ' + rule_type + ' can ' + ' rule_number ' + str(rule_number)
 	update_cmd = add_rule_field(update_cmd, is_mid_group, 'mid', mid)
 	update_cmd += ' dir ' + can_dir
 	update_cmd = add_rule_field(update_cmd, is_if_group, 'interface', interface)
 	update_cmd = add_rule_field(update_cmd, is_program_group, 'program', program)
 	update_cmd = add_rule_field(update_cmd, is_user_group, 'user', user)
+	update_cmd = add_rule_field(update_cmd, False, 'rl', rl)
 	update_cmd += ' action ' + action
-	print update_cmd
+	if is_verbose:
+		print 'check CAN add rule: ', update_cmd
 	try:
 		run_cmd(update_cmd)
 	except subprocess.CalledProcessError, e:
-		print 'Failed add can rule : ' + str(rule_number)
+		if (is_success):
+			print 'Failed add can rule : ' + str(rule_number)
+			errs += 1
+		return
+	if not is_success:
+		print 'ERROR - invalud rule success, rule:', rule_number
 		errs += 1
 		return
 	reply = get_rule(rule_type, 'can', rule_number)
+	if is_verbose:
+		print 'reply: ', reply
 	if (not is_valid_can_rule(reply, is_mid_group, mid, can_dir, is_if_group, interface, is_program_group, program, is_user_group, user, action)):
 		print 'ERROR in CAN rule number:', str(rule_number)
 		errs += 1
@@ -233,9 +253,10 @@ def is_valid_file_rule(reply, is_file_group, filename, perm, is_program_group, p
 		return False
 	return True
 
-def check_file_rule_add(rule_type, rule_number, is_file_group, filename, perm, is_program_group, program, is_user_group, user, action):
+def check_file_rule_add(rule_type, rule_number, is_file_group, filename, perm, is_program_group, program, is_user_group, user, action, is_success, is_delete):
 	global errs
-	delete_rule(rule_type, 'file', rule_number)
+	if is_delete:
+		delete_rule(rule_type, 'file', rule_number)
 	update_cmd = cli_cmd + ' update ' + rule_type + ' file ' + ' rule_number ' + str(rule_number)
 	update_cmd = add_rule_field(update_cmd, is_file_group, 'file', filename)
 	update_cmd += ' perm ' + perm
@@ -245,7 +266,13 @@ def check_file_rule_add(rule_type, rule_number, is_file_group, filename, perm, i
 	try:
 		run_cmd(update_cmd)
 	except subprocess.CalledProcessError, e:
-		print 'ERROR Failed add file rule : ' + str(rule_number)
+		if is_success:
+			print 'ERROR Failed add file rule : ' + str(rule_number)
+			errs += 1
+		return
+	if not is_success:
+		print 'ERROR success of invalid rule number:', rule_number
+		print update_cmd
 		errs += 1
 		return
 	reply = get_rule(rule_type, 'file', rule_number)
@@ -255,17 +282,68 @@ def check_file_rule_add(rule_type, rule_number, is_file_group, filename, perm, i
 
 def check_can_rules():
 	print '---------------- Check CAN Rules'
-	check_can_rule_add('rule', 10, True, 'mid_group1', 'in', True, 'caninf_group1', True, 'program_group1', True, 'user_group1', 'action1')
-	check_can_rule_add('rule', 10, False, '123', 'out', True, 'caninf_group1', True, 'program_group1', True, 'user_group1', 'action1')
-	check_can_rule_add('rule', 10, False, '123', 'both', False, 'vcan0', True, 'program_group1', True, 'user_group1', 'action1')
-	check_can_rule_add('rule', 10, False, '123', 'both', False, 'vcan0', False, '/bin/cat', True, 'user_group1', 'action1')
-	check_can_rule_add('rule', 10, False, '123', 'both', False, 'vcan0', False, '/bin/cat', False, 'root', 'action1')
+	with open('can_tests.json') as json_file:  
+		tests = json.load(json_file)
+	for key, value in tests.iteritems():
+		rule_num = value['rule_num']
+		is_mid_group = value['is_mid_group']
+		mid = value['mid']
+		direction = value['dir']
+		is_if_group = value['is_if_group']
+		inf = value['inf']
+		is_program_group = value['is_program_group']
+		program = value['program']
+		is_user_group = value['is_user_group']
+		user = value['user']
+		action = value['action']
+		is_success = value['is_success']
+		is_delete = value['is_delete']
+		rl = value['rl']
+		check_can_rule_add('rule', rule_num, is_mid_group, mid, direction, is_if_group, inf, is_program_group, program, is_user_group, user, rl, action, is_success, is_delete)
 
 def check_file_rules():
 	print '---------------- Check FILE Rules'
-	check_file_rule_add('rule', 10, True, 'file_group1', 'r', True, 'program_group1', True, 'user_group1', 'action1')
-	check_file_rule_add('rule', 10, False, '/work/file1.txt' , 'rw', True, 'program_group1', True, 'user_group1', 'action1')
-	check_file_rule_add('rule', 10, False, '/work/file1.txt' , 'rw', False, '/bin/cat', False, 'root', 'action1')
+	with open('file_tests.json') as json_file:  
+		tests = json.load(json_file)
+	for key, value in tests.iteritems():
+		rule_num = value['rule_num']
+		is_file_group = value['is_file_group']
+		filename = value['file']
+		perm = value['perm']
+		is_program_group = value['is_program_group']
+		program = value['program']
+		is_user_group = value['is_user_group']
+		user = value['user']
+		action = value['action']
+		is_success = value['is_success']
+		is_delete = value['is_delete']
+		check_file_rule_add('rule', rule_num, is_file_group, filename, perm, is_program_group, program, is_user_group, user, action, is_success, is_delete)
+
+def check_ip_rules():
+	print '---------------- Check IP Rules'
+	with open('ip_tests.json') as json_file:  
+		tests = json.load(json_file)
+	for key, value in tests.iteritems():
+		rule_num = value['rule_num']
+		is_src_addr_group = value['is_src_addr_group']
+		src_addr = value['src_addr']
+		is_dst_addr_group = value['is_dst_addr_group']
+		dst_addr = value['dst_addr']
+		is_proto_group = value['is_proto_group']
+		proto = value['proto']
+		is_src_prot_group = value['is_src_prot_group']
+		src_port = value['src_port']
+		is_dst_prot_group = value['is_dst_prot_group']
+		dst_port = value['dst_port']
+		is_program_group = value['is_program_group']
+		program = value['program']
+		is_user_group = value['is_user_group']
+		user = value['user']
+		action = value['action']
+		is_success = value['is_success']
+		is_delete = value['is_delete']
+		rl = value['rl']
+		check_ip_rule_add('rule', rule_num, is_src_addr_group, src_addr, is_dst_addr_group, dst_addr, is_proto_group, proto, is_src_prot_group, src_port, is_dst_prot_group, dst_port, is_program_group, program, is_user_group, user, rl, action, is_success, is_delete)
 
 def is_valid_ip_rule(reply, is_src_addr_group, src_addr, is_dst_addr_group, dst_addr, is_proto_group, proto, is_src_port_group, src_port, is_dst_port_group, dst_port, is_program_group, program, is_user_group, user, action):
 	rule_src_addr = reply[1]
@@ -275,7 +353,7 @@ def is_valid_ip_rule(reply, is_src_addr_group, src_addr, is_dst_addr_group, dst_
 	rule_dst_portr = reply[5]
 	rule_prog = reply[6]
 	rule_user = reply[7]
-	rule_action = reply[10]
+	rule_action = reply[9]
 	if is_src_addr_group:
 		src_addr  = 'l:' + src_addr
 	if rule_src_addr.find(src_addr) == -1:
@@ -306,8 +384,10 @@ def is_valid_ip_rule(reply, is_src_addr_group, src_addr, is_dst_addr_group, dst_
 		return False
 	return True
 
-def check_ip_rule_add(rule_type, rule_number, is_src_addr_group, src_addr, is_dst_addr_group, dst_addr, is_proto_group, proto, is_src_port_group, src_port, is_dst_port_group, dst_port, is_program_group, program, is_user_group, user, action):
-	delete_rule(rule_type, 'ip', rule_number)
+def check_ip_rule_add(rule_type, rule_number, is_src_addr_group, src_addr, is_dst_addr_group, dst_addr, is_proto_group, proto, is_src_port_group, src_port, is_dst_port_group, dst_port, is_program_group, program, is_user_group, user, rl, action, is_success, is_delete):
+	global errs
+	if is_delete:
+		delete_rule(rule_type, 'ip', rule_number)
 	update_cmd = cli_cmd + ' update ' + rule_type + ' ip ' + ' rule_number ' + str(rule_number)
 	update_cmd = add_rule_field(update_cmd, is_src_addr_group, 'src_addr', src_addr)
 	update_cmd = add_rule_field(update_cmd, is_dst_addr_group, 'dst_addr', dst_addr)
@@ -316,11 +396,18 @@ def check_ip_rule_add(rule_type, rule_number, is_src_addr_group, src_addr, is_ds
 	update_cmd = add_rule_field(update_cmd, is_dst_port_group, 'dst_port', dst_port)
 	update_cmd = add_rule_field(update_cmd, is_program_group, 'program', program)
 	update_cmd = add_rule_field(update_cmd, is_user_group, 'user', user)
+	update_cmd = add_rule_field(update_cmd, False, 'rl', rl)
 	update_cmd += ' action ' + action
 	try:
 		run_cmd(update_cmd)
 	except subprocess.CalledProcessError, e:
-		print 'ERROR Failed add ip rule : ' + str(rule_number)
+		if is_success:
+			print 'ERROR Failed add ip rule : ' + str(rule_number)
+			print update_cmd
+			errs += 1
+		return
+	if not is_success:
+		print 'ERROR invalid rule sucees, rule id:' + str(rule_number)
 		errs += 1
 		return
 	reply = get_rule(rule_type, 'ip', rule_number)
@@ -328,16 +415,18 @@ def check_ip_rule_add(rule_type, rule_number, is_src_addr_group, src_addr, is_ds
 		print 'ERROR in IP rule number:', str(rule_number)
 		errs += 1
 	
-def check_ip_rules():
-	print '---------------- Check IP Rules'
-	check_ip_rule_add('rule', '10', True, 'addr_group1', True, 'addr_group2', True, 'proto_group1', True, 'port_group1', True, 'port_group2', True, 'program_group1', True, 'user_group1', 'action1')
-	check_ip_rule_add('rule', '10', False, '6.5.4.3/24', True, 'addr_group2', True, 'proto_group1', True, 'port_group1', True, 'port_group2', True, 'program_group1', True, 'user_group1', 'action1')
-	check_ip_rule_add('rule', '10', False, '6.5.4.3/24', False, '1.1.1.1/32', True, 'proto_group1', True, 'port_group1', True, 'port_group2', True, 'program_group1', True, 'user_group1', 'action1')
-
 def check_rules():
 	check_can_rules()
 	check_file_rules()
 	check_ip_rules()
+
+parser = argparse.ArgumentParser()
+
+parser.add_argument("--verbose", help="increase output verbosity",
+                    action="store_true")
+args = parser.parse_args()
+if args.verbose:
+	is_verbose = True
 
 print '---------------- Check groups'
 check_groups()

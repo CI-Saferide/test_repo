@@ -16,6 +16,8 @@
 #define PERM_LEN 4
 #define LOG_TARGET_LEN 32
 
+#define SR_MID_ANY (unsigned int)-1 
+
 typedef struct sr_action_record {
 	char             name[MAX_ACTION_NAME];
 	SR_U16 		 actions_bitmap;
@@ -25,27 +27,25 @@ typedef struct sr_action_record {
 } sr_action_record_t;
 
 typedef enum {
-	NET_ITEM_ACTION,
+	NET_ITEM_RULE,
 	NET_ITEM_SRC_ADDR,
 	NET_ITEM_DST_ADDR,
 	NET_ITEM_PROTO,
 	NET_ITEM_SRC_PORT,
 	NET_ITEM_DST_PORT,
-	NET_ITEM_UP_RL,
-	NET_ITEM_DOWN_RL,
 	NET_ITEM_PROGRAM,
 	NET_ITEM_USER,
 } sr_net_item_type_t;
 
 typedef enum {
-	CAN_ITEM_ACTION,
+	CAN_ITEM_RULE,
 	CAN_ITEM_MSG,
 	CAN_ITEM_PROGRAM,
 	CAN_ITEM_USER,
 } sr_can_item_type_t;
 
 typedef enum {
-	FILE_ITEM_ACTION,
+	FILE_ITEM_RULE,
 	FILE_ITEM_FILENAME,
 	FILE_ITEM_PROGRAM,
 	FILE_ITEM_USER,
@@ -57,15 +57,18 @@ typedef struct {
 } port_t;
 
 typedef struct {
+	char    action[MAX_ACTION_NAME];
+	SR_U32  rate_limit;
+} rule_info_t;
+
+typedef struct {
 	sr_net_item_type_t net_item_type;
 	union {
-		char    action[MAX_ACTION_NAME];
+		rule_info_t rule_info;
 		char	src_addr[MAX_ADDR_LEN];
 		char	dst_addr[MAX_ADDR_LEN];
 		SR_U8	proto;
 		port_t  port;
-		SR_U32  up_rl;
-		SR_U32  down_rl;
 		char    program[MAX_PATH];
 		char    user[MAX_USER_NAME];
 	} u;
@@ -85,7 +88,7 @@ typedef struct {
 typedef struct {
 	sr_can_item_type_t can_item_type;
 	union {
-		char    action[MAX_ACTION_NAME];
+		rule_info_t rule_info;
 		can_msg_t msg;
 		char    program[MAX_PATH];
 		char    user[MAX_USER_NAME];
@@ -105,7 +108,7 @@ typedef struct sr_file {
 typedef struct {
 	sr_file_item_type_t file_item_type;
 	union {
-		char    action[MAX_ACTION_NAME];
+		rule_info_t rule_info;
 		sr_file_t file;
 		char    program[MAX_PATH];
 		char    user[MAX_USER_NAME];
