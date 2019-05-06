@@ -565,17 +565,18 @@ SR_32 redis_mng_clean_db(redisContext *c)
 
 char *redis_mng_get_group_name(char *field)
 {
-	SR_U32 i, n;
+	SR_32 i, n;
 
 	if (!field) return NULL;
 	
 	n = strlen(field) - strlen(LIST_PREFIX);
+	if (n < 2) return field;
 	for (i = 1; i < n; i++) {
 		if (!memcmp(field + 1, LIST_PREFIX, strlen(LIST_PREFIX)))
 			return field + i + strlen(LIST_PREFIX);
 	}
 	
-	return NULL;
+	return field;
 }
 
 static list_type_e get_list_id(char *field)
