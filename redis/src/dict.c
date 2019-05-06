@@ -479,28 +479,22 @@ dictEntry *dictFind(dict *d, const void *key)
     uint64_t h, idx, table;
 
     if (d->ht[0].used + d->ht[1].used == 0) {
-//    	printf("*** ERR *** dict empty\n");
     	return NULL; /* dict is empty */
     }
-//    printf("*** DBG *** dict not empty, find %s\n", (char *)key);
     if (dictIsRehashing(d)) _dictRehashStep(d);
     h = dictHashKey(d, key);
     for (table = 0; table <= 1; table++) {
         idx = h & d->ht[table].sizemask;
         he = d->ht[table].table[idx];
         while(he) {
-            if (key==he->key || dictCompareKeys(d, key, he->key)) {
-//                printf("*** DBG *** found %s, (%s -> %s)\n", (char *)key, (char *)he->key, (char *)he->v.val);
+            if (key==he->key || dictCompareKeys(d, key, he->key))
                 return he;
-            }
             he = he->next;
         }
         if (!dictIsRehashing(d)) {
-//            printf("*** ERR *** not found - mid\n");
         	return NULL;
         }
     }
-//    printf("*** ERR *** not found - end\n");
     return NULL;
 }
 

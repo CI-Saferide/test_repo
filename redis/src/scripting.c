@@ -36,6 +36,7 @@
 #include <math.h>
 
 void ldbInit(void);
+void ldbDisable(client *c);
 void ldbEnable(client *c);
 void evalGenericCommandWithDebugging(client *c);
 void ldbLog(sds entry);
@@ -54,6 +55,7 @@ struct ldbState {
     int bp[LDB_BREAKPOINTS_MAX]; /* An array of breakpoints line numbers. */
     int bpcount; /* Number of valid entries inside bp. */
     int step;   /* Stop at next line ragardless of breakpoints. */
+    int luabp;  /* Stop at next line because redis.breakpoint() was called. */
     sds *src;   /* Lua script source code split by line. */
     int lines;  /* Number of lines in 'src'. */
     int currentline;    /* Current line number. */
@@ -89,6 +91,91 @@ void sha1hex(char *digest, char *script, size_t len) {
     digest[40] = '\0';
 }
 
+/* ---------------------------------------------------------------------------
+ * EVAL and SCRIPT commands implementation
+ * ------------------------------------------------------------------------- */
+
+void evalCommand(client *c) {
+	evalGenericCommandWithDebugging(c);
+}
+
+void evalShaCommand(client *c) {
+    if (sdslen(c->argv[1]->ptr) != 40) {
+        /* We know that a match is not possible if the provided SHA is
+         * not the right length. So we return an error ASAP, this way
+         * evalGenericCommand() can be implemented without string length
+         * sanity check */
+        addReply(c, shared.noscripterr);
+        return;
+    }
+    addReplyError(c,"Please use EVAL instead of EVALSHA for debugging");
+    return;
+}
+
+void scriptCommand(client *c) {
+    if (c->argc == 2 && !strcasecmp(c->argv[1]->ptr,"help")) {
+        const char *help[] = {
+"DEBUG (yes|sync|no) -- Set the debug mode for subsequent scripts executed.",
+"EXISTS <sha1> [<sha1> ...] -- Return information about the existence of the scripts in the script cache.",
+"FLUSH -- Flush the Lua scripts cache. Very dangerous on replicas.",
+"KILL -- Kill the currently executing Lua script.",
+"LOAD <script> -- Load a script into the scripts cache, without executing it.",
+NULL
+        };
+        addReplyHelp(c, help);
+    } else if (c->argc == 2 && !strcasecmp(c->argv[1]->ptr,"flush")) {
+        addReply(c,shared.ok);
+        replicationScriptCacheFlush();
+        server.dirty++; /* Propagating this command is a good idea. */
+    } else if (c->argc >= 2 && !strcasecmp(c->argv[1]->ptr,"exists")) {
+        int j;
+
+        addReplyMultiBulkLen(c, c->argc-2);
+        for (j = 2; j < c->argc; j++) {
+            if (dictFind(server.lua_scripts,c->argv[j]->ptr))
+                addReply(c,shared.cone);
+            else
+                addReply(c,shared.czero);
+        }
+    } else if (c->argc == 2 && !strcasecmp(c->argv[1]->ptr,"kill")) {
+        if (server.lua_caller == NULL) {
+            addReplySds(c,sdsnew("-NOTBUSY No scripts in execution right now.\r\n"));
+        } else if (server.lua_caller->flags & CLIENT_MASTER) {
+            addReplySds(c,sdsnew("-UNKILLABLE The busy script was sent by a master instance in the context of replication and cannot be killed.\r\n"));
+        } else if (server.lua_write_dirty) {
+            addReplySds(c,sdsnew("-UNKILLABLE Sorry the script already executed write commands against the dataset. You can either wait the script termination or kill the server in a hard way using the SHUTDOWN NOSAVE command.\r\n"));
+        } else {
+            server.lua_kill = 1;
+            addReply(c,shared.ok);
+        }
+    } else if (c->argc == 3 && !strcasecmp(c->argv[1]->ptr,"debug")) {
+        if (clientHasPendingReplies(c)) {
+            addReplyError(c,"SCRIPT DEBUG must be called outside a pipeline");
+            return;
+        }
+        if (!strcasecmp(c->argv[2]->ptr,"no")) {
+            ldbDisable(c);
+            addReply(c,shared.ok);
+        } else if (!strcasecmp(c->argv[2]->ptr,"yes")) {
+            ldbEnable(c);
+            addReply(c,shared.ok);
+        } else if (!strcasecmp(c->argv[2]->ptr,"sync")) {
+            ldbEnable(c);
+            addReply(c,shared.ok);
+            c->flags |= CLIENT_LUA_DEBUG_SYNC;
+        } else {
+            addReplyError(c,"Use SCRIPT DEBUG yes/sync/no");
+            return;
+        }
+    } else {
+        addReplySubcommandSyntaxError(c);
+    }
+}
+
+/* ---------------------------------------------------------------------------
+ * LDB: Redis Lua debugging facilities
+ * ------------------------------------------------------------------------- */
+
 /* Initialize Lua debugger data structures. */
 void ldbInit(void) {
     ldb.fd = -1;
@@ -111,14 +198,23 @@ void ldbFlushLog(list *log) {
 
 /* Enable debug mode of Lua scripts for this client. */
 void ldbEnable(client *c) {
+    c->flags |= CLIENT_LUA_DEBUG;
     ldbFlushLog(ldb.logs);
     ldb.fd = c->fd;
     ldb.step = 1;
     ldb.bpcount = 0;
+    ldb.luabp = 0;
     sdsfree(ldb.cbuf);
     ldb.cbuf = sdsempty();
     ldb.maxlen = LDB_MAX_LEN_DEFAULT;
     ldb.maxlen_hint_sent = 0;
+}
+
+/* Exit debugging mode from the POV of client. This function is not enough
+ * to properly shut down a client debugging session, see ldbEndSession()
+ * for more information. */
+void ldbDisable(client *c) {
+    c->flags &= ~(CLIENT_LUA_DEBUG|CLIENT_LUA_DEBUG_SYNC);
 }
 
 /* Append a log entry to the specified LDB log. */
@@ -180,7 +276,7 @@ void ldbSendLogs(void) {
  * The caller should call ldbEndSession() only if ldbStartSession()
  * returned 1. */
 int ldbStartSession(client *c) {
-    ldb.forked = 1;
+    ldb.forked = (c->flags & CLIENT_LUA_DEBUG_SYNC) == 0;
     if (ldb.forked) {
         pid_t cp = fork();
         if (cp == -1) {
@@ -277,7 +373,10 @@ int ldbRemoveChild(pid_t pid) {
 /* Return the number of children we still did not receive termination
  * acknowledge via wait() in the parent process. */
 int ldbPendingChildren(void) {
-    return listLength(ldb.children);
+    if (ldb.children)
+    	return listLength(ldb.children);
+    else
+    	return 0;
 }
 
 /* Kill all the forked sessions. */
@@ -300,6 +399,8 @@ void ldbKillForkedSessions(void) {
 void evalGenericCommandWithDebugging(client *c) {
     if (ldbStartSession(c)) {
         ldbEndSession(c);
+    } else {
+        ldbDisable(c);
     }
 }
 

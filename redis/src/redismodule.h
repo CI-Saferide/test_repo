@@ -61,6 +61,8 @@
 /* Context Flags: Info about the current context returned by
  * RM_GetContextFlags(). */
 
+/* The command is running in the context of a Lua script */
+#define REDISMODULE_CTX_FLAGS_LUA (1<<0)
 /* The command is running inside a Redis transaction */
 #define REDISMODULE_CTX_FLAGS_MULTI (1<<1)
 /* The instance is a master */

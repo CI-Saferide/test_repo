@@ -39,7 +39,7 @@ endif
 
 all: $(TARGET)
 
-$(TARGET): lib$(TARGET) libdb_tools
+$(TARGET): lib$(TARGET) libdb_tools libredis_mng
 	@echo "linking $(notdir $@)"
 	$(CC) $(LDFLAGS) -o $(BINDIR)/$(TARGET) $(LIB_PATH) $(LIBS)
 
@@ -55,6 +55,10 @@ OBJSDIR:
 libdb_tools:
 	@$(MAKE) -s -C ../tools/db_tools TOP_DIR=$(TOP_DIR)
 
+libredis_mng:
+	@$(MAKE) -s -C ../tools/redis_mng TOP_DIR=$(TOP_DIR)
+
+
 $(OBJDIR)/%.o: %.c
 	@echo "compiling $(notdir $<)"
 	$(CC) $(CPPFLAGS) -g $(CFLAGS) $(INCLUDES) -c $< -o $@
@@ -66,5 +70,6 @@ install:
 	install -m 755 build/bin/* /usr/bin/
 
 -include $(DEPS)
+
 
 

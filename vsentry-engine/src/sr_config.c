@@ -1259,14 +1259,14 @@ static void handle_net_rule(sr_net_record_t *net_rule, SR_32 *status)
         SR_32 ret;
 #endif
 	switch (net_rule->net_item.net_item_type) {
-		case NET_ITEM_ACTION:
+		case NET_ITEM_RULE:
 #ifdef BIN_CLS_DB
 			/* create the rule */
-			ret = cls_rule(true, CLS_IP_RULE_TYPE, net_rule->rulenum, net_rule->net_item.u.action, 0);
+			ret = cls_rule(true, CLS_IP_RULE_TYPE, net_rule->rulenum, net_rule->net_item.u.rule_info.action, net_rule->net_item.u.rule_info.rate_limit);
 			if (ret != SR_SUCCESS) {
 				CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 					"%s=failed to create ip rule %u with action %s",REASON,
-       					net_rule->rulenum, net_rule->net_item.u.action);
+       					net_rule->rulenum, net_rule->net_item.u.rule_info.action);
 				*status = ret;
 				return;
         		}
@@ -1353,10 +1353,6 @@ static void handle_net_rule(sr_net_record_t *net_rule, SR_32 *status)
 			}
 #endif
 			break;
-		case NET_ITEM_UP_RL:
-			break;
-		case NET_ITEM_DOWN_RL:
-			break;
 		case NET_ITEM_PROGRAM:
 #ifdef BIN_CLS_DB
 			/* create the exec rule */
@@ -1388,16 +1384,16 @@ static void handle_can_rule(sr_can_record_t *can_rule, SR_32 *status)
 #endif
 
 	switch (can_rule->can_item.can_item_type) {
-		case CAN_ITEM_ACTION:
+		case CAN_ITEM_RULE:
 #ifdef DEBUG_PRINT
 			printf(">>>>>>>>>> Add CAN rule rule:%d action:%s \n", can_rule->rulenum, can_rule->can_item.u.action);
 #endif
 #ifdef BIN_CLS_DB
-			ret = cls_rule(true, CLS_CAN_RULE_TYPE, can_rule->rulenum, can_rule->can_item.u.action, 0);
+			ret = cls_rule(true, CLS_CAN_RULE_TYPE, can_rule->rulenum, can_rule->can_item.u.rule_info.action, can_rule->can_item.u.rule_info.rate_limit);
     			if (ret != SR_SUCCESS) {
 				CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 					"%s=failed to create can rule %u with action %s",REASON,
-					can_rule->rulenum, can_rule->can_item.u.action);
+					can_rule->rulenum, can_rule->can_item.u.rule_info.action);
 				*status = SR_ERROR;
 				return;
         		}
@@ -1469,16 +1465,16 @@ static void handle_file_rule(sr_file_record_t *file_rule, SR_32 *status)
 #endif
 	
 	switch (file_rule->file_item.file_item_type) {
-		case FILE_ITEM_ACTION:
+		case FILE_ITEM_RULE:
 #ifdef DEBUG_PRINT
-			printf(">>>>>>>>>> Add FILE rule:%d action:%s \n", file_rule->rulenum, file_rule->file_item.u.action);
+			printf(">>>>>>>>>> Add FILE rule:%d action:%s \n", file_rule->rulenum, file_rule->file_item.u.rule_info.action);
 #endif
 #ifdef BIN_CLS_DB
-			ret = cls_rule(true, CLS_FILE_RULE_TYPE, file_rule->rulenum, file_rule->file_item.u.action, 0);
+			ret = cls_rule(true, CLS_FILE_RULE_TYPE, file_rule->rulenum, file_rule->file_item.u.rule_info.action, 0);
 			if (ret != SR_SUCCESS) {
 				CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 					"%s=failed to create file rule %u with action %s",REASON,
-					file_rule->rulenum, file_rule->file_item.u.action);
+					file_rule->rulenum, file_rule->file_item.u.rule_info.action);
 				*status = SR_ERROR;
 				return;
 			}

@@ -417,8 +417,6 @@ static int sr_redis_load(/*int tcp,*/ int pipeline)
 				sr_db_deinit();
 				return -1;
 			}
-//			if (i == 1)
-//					printf("*** DBG *** GET dp %d, sp %d\n", net_rule_ptr->tuple.dstport, net_rule_ptr->tuple.srcport);
 			if (net_rule_ptr->tuple.dstport != i + 3) {
 				printf("ERROR: ip rule %d dst port %d != %d\n", i, net_rule_ptr->tuple.dstport, i + 3);
 				sr_db_deinit();

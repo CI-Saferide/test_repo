@@ -1017,12 +1017,16 @@ struct redisMemOverhead *getMemoryOverheadData(void) {
     mh->aof_buffer = mem;
     mem_total+=mem;
 
+    mem = server.lua_scripts_mem;
+    mem += dictSize(server.lua_scripts) * sizeof(dictEntry) +
+        dictSlots(server.lua_scripts) * sizeof(dictEntry*);
     mem += dictSize(server.repl_scriptcache_dict) * sizeof(dictEntry) +
         dictSlots(server.repl_scriptcache_dict) * sizeof(dictEntry*);
     if (listLength(server.repl_scriptcache_fifo) > 0) {
         mem += listLength(server.repl_scriptcache_fifo) * (sizeof(listNode) + 
             sdsZmallocSize(listNodeValue(listFirst(server.repl_scriptcache_fifo))));
     }
+    mh->lua_caches = mem;
     mem_total+=mem;
 
     for (j = 0; j < server.dbnum; j++) {
@@ -1131,6 +1135,12 @@ sds getMemoryDoctorReport(void) {
         /* Slaves using more than 10 MB each? */
         if (numslaves > 0 && mh->clients_slaves / numslaves > (1024*1024*10)) {
             big_slave_buf = 1;
+            num_reports++;
+        }
+
+        /* Too many scripts are cached? */
+        if (dictSize(server.lua_scripts) > 1000) {
+            many_scripts = 1;
             num_reports++;
         }
     }
@@ -1338,6 +1348,9 @@ NULL
 
         addReplyBulkCString(c,"aof.buffer");
         addReplyLongLong(c,mh->aof_buffer);
+
+        addReplyBulkCString(c,"lua.caches");
+        addReplyLongLong(c,mh->lua_caches);
 
         for (size_t j = 0; j < mh->num_dbs; j++) {
             char dbname[32];

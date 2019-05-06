@@ -1391,6 +1391,21 @@ int rdbSaveRio(rio *rdb, int *error, int flags, rdbSaveInfo *rsi) {
         di = NULL; /* So that we don't release it again on error. */
     }
 
+    /* If we are storing the replication information on disk, persist
+     * the script cache as well: on successful PSYNC after a restart, we need
+     * to be able to process any EVALSHA inside the replication backlog the
+     * master will send us. */
+    if (rsi && dictSize(server.lua_scripts)) {
+        di = dictGetIterator(server.lua_scripts);
+        while((de = dictNext(di)) != NULL) {
+            robj *body = dictGetVal(de);
+            if (rdbSaveAuxField(rdb,"lua",3,body->ptr,sdslen(body->ptr)) == -1)
+                goto werr;
+        }
+        dictReleaseIterator(di);
+        di = NULL; /* So that we don't release it again on error. */
+    }
+
     /* EOF opcode */
     if (rdbSaveType(rdb,RDB_OPCODE_EOF) == -1)
     	goto werr;
