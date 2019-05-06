@@ -372,8 +372,9 @@ int aeProcessEvents(aeEventLoop *eventLoop, int flags)
         aeTimeEvent *shortest = NULL;
         struct timeval tv, *tvp;
 
-        if (flags & AE_TIME_EVENTS && !(flags & AE_DONT_WAIT))
+        if (flags & AE_TIME_EVENTS && !(flags & AE_DONT_WAIT)) {
             shortest = aeSearchNearestTimer(eventLoop);
+        }
         if (shortest) {
             long now_sec, now_ms;
 
@@ -411,8 +412,9 @@ int aeProcessEvents(aeEventLoop *eventLoop, int flags)
         numevents = aeApiPoll(eventLoop, tvp);
 
         /* After sleep callback. */
-        if (eventLoop->aftersleep != NULL && flags & AE_CALL_AFTER_SLEEP)
+        if (eventLoop->aftersleep != NULL && flags & AE_CALL_AFTER_SLEEP) {
             eventLoop->aftersleep(eventLoop);
+        }
 
         for (j = 0; j < numevents; j++) {
             aeFileEvent *fe = &eventLoop->events[eventLoop->fired[j].fd];
@@ -465,8 +467,9 @@ int aeProcessEvents(aeEventLoop *eventLoop, int flags)
         }
     }
     /* Check time events */
-    if (flags & AE_TIME_EVENTS)
+    if (flags & AE_TIME_EVENTS) {
         processed += processTimeEvents(eventLoop);
+    }
 
     return processed; /* return the number of processed file/time events */
 }
@@ -496,8 +499,9 @@ int aeWait(int fd, int mask, long long milliseconds) {
 void aeMain(aeEventLoop *eventLoop) {
     eventLoop->stop = 0;
     while (!eventLoop->stop) {
-        if (eventLoop->beforesleep != NULL)
+        if (eventLoop->beforesleep != NULL) {
             eventLoop->beforesleep(eventLoop);
+        }
         aeProcessEvents(eventLoop, AE_ALL_EVENTS|AE_CALL_AFTER_SLEEP);
     }
 }
