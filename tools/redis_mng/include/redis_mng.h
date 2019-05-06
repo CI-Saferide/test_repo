@@ -11,7 +11,7 @@
 #define ACTION_FIELDS		8
 #define FILE_RULE_FIELDS	10
 #define CAN_RULE_FIELDS		12
-#define NET_RULE_FIELDS		20
+#define NET_RULE_FIELDS		18
 #define MAX_RULE_FIELDS		20
 
 typedef enum redis_mng_list_type {

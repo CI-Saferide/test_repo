@@ -636,7 +636,7 @@ static SR_32 handle_update_ip(SR_U32 rule_id, SR_BOOL is_wl, int argc, char **ar
 {
 	int i;
 	char src_addr[GROUP_NAME_SIZE], dst_addr[GROUP_NAME_SIZE], proto[GROUP_NAME_SIZE], src_port[GROUP_NAME_SIZE], dst_port[GROUP_NAME_SIZE];
-	char down_rl[GROUP_NAME_SIZE], up_rl[GROUP_NAME_SIZE];
+	char rl[GROUP_NAME_SIZE];
 	char user[GROUP_NAME_SIZE], program[GROUP_NAME_SIZE], action[ACTION_STR_SIZE];
 	SR_BOOL is_src_addr_list = SR_FALSE, is_dst_addr_list = SR_FALSE, is_proto_list = SR_FALSE,
 		 is_src_port_list = SR_FALSE, is_dst_port_list = SR_FALSE, is_program_list = SR_FALSE, is_user_list = SR_FALSE;
@@ -660,8 +660,7 @@ static SR_32 handle_update_ip(SR_U32 rule_id, SR_BOOL is_wl, int argc, char **ar
 		strcpy(dst_addr, "0.0.0.0/32");
 		strcpy(src_port, "0");
 		strcpy(dst_port, "0");
-		strcpy(up_rl, "0");
-		strcpy(down_rl, "0");
+		strcpy(rl, "0");
 	} else {
 		UPDATE_INIT_COMMON_PARAMS
 		*proto = *src_addr = *dst_addr = *src_port = *dst_port = 0;
@@ -687,9 +686,7 @@ static SR_32 handle_update_ip(SR_U32 rule_id, SR_BOOL is_wl, int argc, char **ar
 			continue;
 		if (handle_param("dst_port_group", dst_port, sizeof(dst_port), argc, &i, argv, is_valid_port_list, &is_dst_port_list, SR_TRUE) == SR_SUCCESS)
 			continue;
-		if (handle_param("up_rl", up_rl, sizeof(up_rl), argc, &i, argv, is_valid_numeric, NULL, SR_FALSE) == SR_SUCCESS)
-			continue;
-		if (handle_param("down_rl", down_rl, sizeof(down_rl), argc, &i, argv, is_valid_numeric, NULL, SR_FALSE) == SR_SUCCESS)
+		if (handle_param("rl", rl, sizeof(rl), argc, &i, argv, is_valid_numeric, NULL, SR_FALSE) == SR_SUCCESS)
 			continue;
 		HANDLE_COMMON_PARAMS
 		printf("Invalid paramter:%s \n", argv[i]);
@@ -717,8 +714,7 @@ static SR_32 handle_update_ip(SR_U32 rule_id, SR_BOOL is_wl, int argc, char **ar
 	rule_info.dst_ports_list = is_dst_port_list;
 	rule_info.dst_port = EMPTY2NULL(dst_port);
 	rule_info.dst_ports_list = is_dst_port_list;
-	rule_info.down_rl = EMPTY2NULL(down_rl);
-	rule_info.up_rl = EMPTY2NULL(up_rl);
+	rule_info.down_rl = EMPTY2NULL(rl);
 	rule_info.action = action;
 	if (redis_mng_update_net_rule(c, rule_id, &rule_info) != SR_SUCCESS) {
 		printf("update rule failed");
@@ -726,8 +722,8 @@ static SR_32 handle_update_ip(SR_U32 rule_id, SR_BOOL is_wl, int argc, char **ar
 		goto out;
 	}
 #ifdef DEBUG
-	printf("handle ip rule %d %d src_addr:%s dst_addr:%s proto:%s sport:%s dport:%s program:%s user:%s downrl:%s uprl:%s action:%s \n",
-		rule_id, is_wl, src_addr, dst_addr, proto, src_port, dst_port, program, user, down_rl, up_rl, action);
+	printf("handle ip rule %d %d src_addr:%s dst_addr:%s proto:%s sport:%s dport:%s program:%s user:%s rl:%s action:%s \n",
+		rule_id, is_wl, src_addr, dst_addr, proto, src_port, dst_port, program, user, rl, action);
 #endif
 
 out:

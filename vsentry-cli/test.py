@@ -340,7 +340,8 @@ def check_ip_rules():
 		action = value['action']
 		is_success = value['is_success']
 		is_delete = value['is_delete']
-		check_ip_rule_add('rule', rule_num, is_src_addr_group, src_addr, is_dst_addr_group, dst_addr, is_proto_group, proto, is_src_prot_group, src_port, is_dst_prot_group, dst_port, is_program_group, program, is_user_group, user, action, is_success, is_delete)
+		rl = value['rl']
+		check_ip_rule_add('rule', rule_num, is_src_addr_group, src_addr, is_dst_addr_group, dst_addr, is_proto_group, proto, is_src_prot_group, src_port, is_dst_prot_group, dst_port, is_program_group, program, is_user_group, user, rl, action, is_success, is_delete)
 
 def is_valid_ip_rule(reply, is_src_addr_group, src_addr, is_dst_addr_group, dst_addr, is_proto_group, proto, is_src_port_group, src_port, is_dst_port_group, dst_port, is_program_group, program, is_user_group, user, action):
 	rule_src_addr = reply[1]
@@ -350,7 +351,7 @@ def is_valid_ip_rule(reply, is_src_addr_group, src_addr, is_dst_addr_group, dst_
 	rule_dst_portr = reply[5]
 	rule_prog = reply[6]
 	rule_user = reply[7]
-	rule_action = reply[10]
+	rule_action = reply[9]
 	if is_src_addr_group:
 		src_addr  = 'l:' + src_addr
 	if rule_src_addr.find(src_addr) == -1:
@@ -381,7 +382,7 @@ def is_valid_ip_rule(reply, is_src_addr_group, src_addr, is_dst_addr_group, dst_
 		return False
 	return True
 
-def check_ip_rule_add(rule_type, rule_number, is_src_addr_group, src_addr, is_dst_addr_group, dst_addr, is_proto_group, proto, is_src_port_group, src_port, is_dst_port_group, dst_port, is_program_group, program, is_user_group, user, action, is_success, is_delete):
+def check_ip_rule_add(rule_type, rule_number, is_src_addr_group, src_addr, is_dst_addr_group, dst_addr, is_proto_group, proto, is_src_port_group, src_port, is_dst_port_group, dst_port, is_program_group, program, is_user_group, user, rl, action, is_success, is_delete):
 	global errs
 	if is_delete:
 		delete_rule(rule_type, 'ip', rule_number)
@@ -393,6 +394,7 @@ def check_ip_rule_add(rule_type, rule_number, is_src_addr_group, src_addr, is_ds
 	update_cmd = add_rule_field(update_cmd, is_dst_port_group, 'dst_port', dst_port)
 	update_cmd = add_rule_field(update_cmd, is_program_group, 'program', program)
 	update_cmd = add_rule_field(update_cmd, is_user_group, 'user', user)
+	update_cmd = add_rule_field(update_cmd, False, 'rl', rl)
 	update_cmd += ' action ' + action
 	try:
 		run_cmd(update_cmd)

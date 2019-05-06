@@ -400,7 +400,7 @@ static SR_32 print_ip(SR_32 num, void *rule)
 {
 	redis_mng_net_rule_t *net_rule = (redis_mng_net_rule_t *)rule;
 
-	printf("%d %-32s %-32s %s %s %s %-24.24s %-24.24s %s %s %s \n",
+	printf("%d %-32s %-32s %s %s %s %-24.24s %-24.24s %s %s \n",
 		num, 
 		net_rule->src_addr_netmask,
 		net_rule->dst_addr_netmask,
@@ -409,7 +409,6 @@ static SR_32 print_ip(SR_32 num, void *rule)
 		net_rule->dst_port,
 		net_rule->exec,
 		net_rule->user,
-		net_rule->up_rl,
 		net_rule->down_rl,
 		net_rule->action);
 
@@ -707,8 +706,8 @@ static SR_32 load_can(SR_32 rule_id, SR_32 n, redisReply *reply, handle_rule_f_t
 	can_rule.rulenum = rule_id;
 
 	field = get_field(ACTION, n, reply);
-	can_rule.can_item.can_item_type = CAN_ITEM_ACTION;
-	strncpy(can_rule.can_item.u.action, field, MAX_ACTION_NAME);
+	can_rule.can_item.can_item_type = CAN_ITEM_RULE;
+	strncpy(can_rule.can_item.u.rule_info.action, field, MAX_ACTION_NAME);
 	cb(&can_rule, ENTITY_TYPE_CAN_RULE, &rc);
 	if (rc != SR_SUCCESS) return rc;
 
@@ -804,8 +803,8 @@ static SR_32 load_file(SR_32 rule_id, SR_32 n, redisReply *reply, handle_rule_f_
 	file_rule.rulenum = rule_id;
 
 	field = get_field(ACTION, n, reply);
-	file_rule.file_item.file_item_type = FILE_ITEM_ACTION;
-	strncpy(file_rule.file_item.u.action, field, MAX_ACTION_NAME);
+	file_rule.file_item.file_item_type = FILE_ITEM_RULE;
+	strncpy(file_rule.file_item.u.rule_info.action, field, MAX_ACTION_NAME);
 	cb(&file_rule, ENTITY_TYPE_FILE_RULE, &rc);
 	if (rc != SR_SUCCESS) return rc;
 
@@ -972,9 +971,11 @@ static SR_32 load_net(SR_32 rule_id, SR_32 n, redisReply *reply, handle_rule_f_t
 
 	net_rule.rulenum = rule_id;
 
+	net_rule.net_item.net_item_type = NET_ITEM_RULE;
 	field = get_field(ACTION, n, reply);
-	net_rule.net_item.net_item_type = NET_ITEM_ACTION;
-	strncpy(net_rule.net_item.u.action, field, MAX_ACTION_NAME);
+	strncpy(net_rule.net_item.u.rule_info.action, field, MAX_ACTION_NAME);
+	field = get_field(DOWN_RL, n, reply);
+	net_rule.net_item.u.rule_info.rate_limit = atoi(field);
 	cb(&net_rule, ENTITY_TYPE_IP_RULE, &rc);
 	if (rc != SR_SUCCESS) return rc;
 
@@ -1019,18 +1020,6 @@ static SR_32 load_net(SR_32 rule_id, SR_32 n, redisReply *reply, handle_rule_f_t
 		printf("ERROR : handle_ports faield \n");
 		return rc;
 	}
-
-	field = get_field(UP_RL, n, reply);
-	net_rule.net_item.net_item_type = NET_ITEM_UP_RL;
-	net_rule.net_item.u.up_rl = atoi(field);
-	cb(&net_rule, ENTITY_TYPE_IP_RULE, &rc);
-	if (rc != SR_SUCCESS) return rc;
-
-	field = get_field(DOWN_RL, n, reply);
-	net_rule.net_item.net_item_type = NET_ITEM_DOWN_RL;
-	net_rule.net_item.u.down_rl = atoi(field);
-	cb(&net_rule, ENTITY_TYPE_IP_RULE, &rc);
-	if (rc != SR_SUCCESS) return rc;
 
 	field = get_field(PROGRAM_ID, n, reply);
 	list_id = get_list_id(field);
@@ -1301,8 +1290,6 @@ SR_32 redis_mng_load_db(redisContext *c, int pipelined, handle_rule_f_t cb_func,
 
 		} else if (!memcmp(reply->element[i]->str, NET_PREFIX, strlen(NET_PREFIX))) { // net rule
 
-			// ACTION, action, SRC_ADDR, src_addr_netmask, DST_ADDR, dst_addr_netmask, PROGRAM_ID, exec, USER_ID, user,
-			// PROTOCOL, proto, SRC_PORT, src_port, DST_PORT, dst_port
 			if (replies[i]->elements != NET_RULE_FIELDS) {
 				printf("ERROR: NET redisGetReply %d length is wrong %d instead of %d\n", i, (int)replies[i]->elements,
 						NET_RULE_FIELDS);
