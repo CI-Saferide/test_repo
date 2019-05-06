@@ -54,13 +54,16 @@ static SR_BOOL is_used_port_group(redisContext *c, char *name);
 static SR_BOOL is_used_proto_group(redisContext *c, char *name);
 static SR_BOOL is_used_program_group(redisContext *c, char *name);
 static SR_BOOL is_used_user_group(redisContext *c, char *name);
+static SR_BOOL is_used_mid_group(redisContext *c, char *name);
+static SR_BOOL is_used_if_group(redisContext *c, char *name);
+static SR_BOOL is_used_file_group(redisContext *c, char *name);
 
 static group_info_t group_info[MAX_GROUP + 1] = {
-	{.group_name = "file-group", .valid_cb = is_valid_file, .list_type = LIST_FILES},
+	{.group_name = "file-group", .used_cb = is_used_file_group, .valid_cb = is_valid_file, .list_type = LIST_FILES},
 	{.group_name = "program-group", .used_cb = is_used_program_group, .valid_cb = is_valid_program, .list_type = LIST_PROGRAMS},
 	{.group_name = "user-group", .used_cb = is_used_user_group, .valid_cb = is_valid_user, .list_type = LIST_USERS},
-	{.group_name = "mid-group", .valid_cb = is_valid_msg_id, .list_type = LIST_MIDS},
-	{.group_name = "can-intf-group", .valid_cb = is_valid_interface, .list_type = LIST_CAN_INTF},
+	{.group_name = "mid-group", .used_cb = is_used_mid_group, .valid_cb = is_valid_msg_id, .list_type = LIST_MIDS},
+	{.group_name = "can-intf-group", .used_cb = is_used_if_group, .valid_cb = is_valid_interface, .list_type = LIST_CAN_INTF},
 	{.group_name = "addr-group", .used_cb = is_used_addr_group, .valid_cb = is_valid_ip_addr, .list_type = LIST_ADDRS},
 	{.group_name = "port-group", .used_cb = is_used_port_group, .valid_cb = is_valid_numeric, .list_type = LIST_PORTS},
 	{.group_name = "proto-group", .used_cb = is_used_proto_group, .valid_cb = is_valid_ip_proto, .list_type = LIST_PROTOCOLS},
@@ -1296,6 +1299,39 @@ static SR_BOOL is_used_proto_group(redisContext *c, char *name)
 	return is_used;
 }
 
+static SR_32 group_mid_used_cb(SR_32 rule_num, void *rule, void *param)
+{
+	redis_mng_can_rule_t *can_rule = (redis_mng_can_rule_t *)rule;
+	char *name = (char *)param;
+
+	if (!strcmp(redis_mng_get_group_name(can_rule->mid), name))
+		is_used = SR_TRUE;
+
+	return SR_SUCCESS;
+}
+
+static SR_32 group_if_used_cb(SR_32 rule_num, void *rule, void *param)
+{
+	redis_mng_can_rule_t *can_rule = (redis_mng_can_rule_t *)rule;
+	char *name = (char *)param;
+
+	if (!strcmp(redis_mng_get_group_name(can_rule->interface), name))
+		is_used = SR_TRUE;
+
+	return SR_SUCCESS;
+}
+
+static SR_32 group_file_used_cb(SR_32 rule_num, void *rule, void *param)
+{
+	redis_mng_file_rule_t *file_rule = (redis_mng_file_rule_t *)rule;
+	char *name = (char *)param;
+
+	if (!strcmp(redis_mng_get_group_name(file_rule->file_name), name))
+		is_used = SR_TRUE;
+
+	return SR_SUCCESS;
+}
+
 static SR_BOOL is_used_program_group(redisContext *c, char *name)
 {
 	is_used = SR_FALSE;
@@ -1312,6 +1348,30 @@ static SR_BOOL is_used_user_group(redisContext *c, char *name)
 	redis_mng_exec_all_rules(c, RULE_TYPE_IP, -1, -1, group_user_used_ip_cb, (void *)name);
 	redis_mng_exec_all_rules(c, RULE_TYPE_FILE, -1, -1, group_user_used_file_cb, (void *)name);
 	redis_mng_exec_all_rules(c, RULE_TYPE_CAN, -1, -1, group_user_used_can_cb, (void *)name);
+
+	return is_used;
+}
+
+static SR_BOOL is_used_mid_group(redisContext *c, char *name)
+{
+	is_used = SR_FALSE;
+	redis_mng_exec_all_rules(c, RULE_TYPE_CAN, -1, -1, group_mid_used_cb, (void *)name);
+
+	return is_used;
+}
+
+static SR_BOOL is_used_if_group(redisContext *c, char *name)
+{
+	is_used = SR_FALSE;
+	redis_mng_exec_all_rules(c, RULE_TYPE_CAN, -1, -1, group_if_used_cb, (void *)name);
+
+	return is_used;
+}
+
+static SR_BOOL is_used_file_group(redisContext *c, char *name)
+{
+	is_used = SR_FALSE;
+	redis_mng_exec_all_rules(c, RULE_TYPE_FILE, -1, -1, group_file_used_cb, (void *)name);
 
 	return is_used;
 }
