@@ -195,8 +195,11 @@ SR_32 redis_mng_commit(redisContext *c);
 SR_32 redis_mng_add_system_policer(redisContext *c, char *exec, redis_system_policer_t *system_policer_info);
 SR_32 redis_mng_print_system_policer(redisContext *c);
 SR_32 redis_mng_exec_all_system_policer(redisContext *c, SR_32 (*cb)(char *exec, redis_system_policer_t *sp));
-SR_32 redis_mng_exec_all_rules(redisContext *c, rule_type_t type, SR_32 rule_id_start, SR_32 rule_id_end, SR_32 (*cb)(SR_32 rule_num, void *rule));
+SR_32 redis_mng_exec_all_rules(redisContext *c, rule_type_t type, SR_32 rule_id_start, SR_32 rule_id_end, SR_32 (*cb)(SR_32 rule_num, void *rule, void *param), void *param);
 SR_32 redis_mng_exec_list(redisContext *c, list_type_e type, char *name, SR_32 (*cb)(char *val));
 SR_32 redis_mng_exec_all_list_names(redisContext *c, list_type_e type, SR_32 (*cb)(list_type_e type, char *name));
+SR_BOOL redis_mng_group_used(redisContext *c, rule_type_t type, SR_32 (*cb)(SR_32 rule_num, void *rule));
+
+char *redis_mng_get_group_name(char *field);
 
 #endif

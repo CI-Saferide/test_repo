@@ -36,6 +36,7 @@ static redisContext *c;
 
 typedef struct group_info {
 	char group_name[GROUP_NAME_SIZE];
+	SR_BOOL (*used_cb)(redisContext *c, char *name);
 	SR_BOOL (*valid_cb)(char *val);
 	list_type_e list_type;
 } group_info_t;
@@ -48,6 +49,9 @@ static SR_BOOL is_valid_interface(char *interface);
 static SR_BOOL is_valid_ip_addr(char *ip_addr);
 static SR_BOOL is_valid_numeric(char *port);
 static SR_BOOL is_valid_ip_proto(char *ip_proto);
+static SR_BOOL is_used_addr_group(redisContext *c, char *name);
+static SR_BOOL is_used_port_group(redisContext *c, char *name);
+static SR_BOOL is_used_proto_group(redisContext *c, char *name);
 
 static group_info_t group_info[MAX_GROUP + 1] = {
 	{.group_name = "file-group", .valid_cb = is_valid_file, .list_type = LIST_FILES},
@@ -55,9 +59,9 @@ static group_info_t group_info[MAX_GROUP + 1] = {
 	{.group_name = "user-group", .valid_cb = is_valid_user, .list_type = LIST_USERS},
 	{.group_name = "mid-group", .valid_cb = is_valid_msg_id, .list_type = LIST_MIDS},
 	{.group_name = "can-intf-group", .valid_cb = is_valid_interface, .list_type = LIST_CAN_INTF},
-	{.group_name = "addr-group", .valid_cb = is_valid_ip_addr, .list_type = LIST_ADDRS},
-	{.group_name = "port-group", .valid_cb = is_valid_numeric, .list_type = LIST_PORTS},
-	{.group_name = "proto-group", .valid_cb = is_valid_ip_proto, .list_type = LIST_PROTOCOLS},
+	{.group_name = "addr-group", .used_cb = is_used_addr_group, .valid_cb = is_valid_ip_addr, .list_type = LIST_ADDRS},
+	{.group_name = "port-group", .used_cb = is_used_port_group, .valid_cb = is_valid_numeric, .list_type = LIST_PORTS},
+	{.group_name = "proto-group", .used_cb = is_used_proto_group, .valid_cb = is_valid_ip_proto, .list_type = LIST_PROTOCOLS},
 };
 
 static void close_session(void)
@@ -1161,6 +1165,69 @@ print:
 	return SR_SUCCESS;
 }
 
+static SR_BOOL is_used;
+
+static SR_32 group_addr_used_cb(SR_32 rule_num, void *rule, void *param)
+{
+	redis_mng_net_rule_t *net_rule = (redis_mng_net_rule_t *)rule;
+	char *name = (char *)param;
+
+	if (!strcmp(redis_mng_get_group_name(net_rule->src_addr_netmask), name) || 
+	    !strcmp(redis_mng_get_group_name(net_rule->dst_addr_netmask), name)) {
+		is_used = SR_TRUE;
+	}
+
+	return SR_SUCCESS;
+}
+
+static SR_32 group_port_used_cb(SR_32 rule_num, void *rule, void *param)
+{
+	redis_mng_net_rule_t *net_rule = (redis_mng_net_rule_t *)rule;
+	char *name = (char *)param;
+
+	if (!strcmp(redis_mng_get_group_name(net_rule->src_port), name) || 
+	    !strcmp(redis_mng_get_group_name(net_rule->dst_port), name)) {
+		is_used = SR_TRUE;
+	}
+
+	return SR_SUCCESS;
+}
+
+static SR_32 group_proto_used_cb(SR_32 rule_num, void *rule, void *param)
+{
+	redis_mng_net_rule_t *net_rule = (redis_mng_net_rule_t *)rule;
+	char *name = (char *)param;
+
+	if (!strcmp(redis_mng_get_group_name(net_rule->proto), name))
+		is_used = SR_TRUE;
+
+	return SR_SUCCESS;
+}
+
+static SR_BOOL is_used_addr_group(redisContext *c, char *name)
+{
+	is_used = SR_FALSE;
+	redis_mng_exec_all_rules(c, RULE_TYPE_IP, -1, -1, group_addr_used_cb, (void *)name);
+
+	return is_used;
+}
+
+static SR_BOOL is_used_port_group(redisContext *c, char *name)
+{
+	is_used = SR_FALSE;
+	redis_mng_exec_all_rules(c, RULE_TYPE_IP, -1, -1, group_port_used_cb, (void *)name);
+
+	return is_used;
+}
+
+static SR_BOOL is_used_proto_group(redisContext *c, char *name)
+{
+	is_used = SR_FALSE;
+	redis_mng_exec_all_rules(c, RULE_TYPE_IP, -1, -1, group_proto_used_cb, (void *)name);
+
+	return is_used;
+}
+
 static SR_32 handle_delete_group(int argc, char **argv)
 {
 	char *type, *name;
@@ -1171,18 +1238,23 @@ static SR_32 handle_delete_group(int argc, char **argv)
 		return SR_ERROR;
 	}
 
+	type = argv[0];
+	if ((group_id = get_group_index(type)) < 0) {
+		printf(" group type %s is not valid \n", type);
+		return SR_ERROR;
+	}
+	name = argv[1];
+
 	if (!(c = redis_mng_session_start())) {
 		printf("ERROR: redis_mng_session_start failed\n");
 		return SR_ERROR;
 	}
 
-	type = argv[0];
-	if ((group_id = get_group_index(type)) < 0) {
-		printf(" group type %s is not valid \n", type);
+	if (group_info[group_id].used_cb && group_info[group_id].used_cb(c, name)) {
+		printf("group %s is used\n", name);
 		rc = SR_ERROR;
 		goto out;
 	}
-	name = argv[1];
 
 	if (redis_mng_destroy_list(c, group_info[group_id].list_type, name) != SR_SUCCESS) {
 		printf("Delete failed\n");
