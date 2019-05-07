@@ -236,13 +236,6 @@ static SR_BOOL is_valid_rule_id(char *type, char *section, char *rule_str)
 
 static SR_BOOL is_valid_file(char *file)
 {
-        struct stat buf;
-
-        if (stat(file, &buf)) {
-                printf("file does not exist\n");
-                return SR_FALSE;
-        }
-
         return SR_TRUE;
 }
 
