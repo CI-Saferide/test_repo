@@ -775,15 +775,15 @@ out:
 		redis_mng_session_end(c);
 	sr_engine_get_db_unlock();
 
-	if (rc == SR_SUCCESS) {
 #ifdef BIN_CLS_DB
+	if (rc == SR_SUCCESS) {
 		if (bin_cls_update(false) != SR_SUCCESS) {
 			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 				"%s=bin cls update failed",REASON);
 			return SR_ERROR;
 		}
-#endif
 	}
+#endif
 
 	return rc;
 }

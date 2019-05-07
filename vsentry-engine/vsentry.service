@@ -3,6 +3,7 @@ Description=SafeRide vSentry security engine
 
 [Service]
 Type=forking
+ExecStartPre=/usr/bin/redis-server & 
 ExecStartPre=/bin/sh -c "if [ ! -e /dev/vsentry ]; then mknod /dev/vsentry c `cat /proc/devices | grep vsentry | awk '{print $1}'` 0; fi"
 ExecStart=/usr/bin/sr_engine -c /etc/vsentry/sr_config -b
 Restart=on-failure
