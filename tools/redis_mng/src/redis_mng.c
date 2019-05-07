@@ -1920,12 +1920,14 @@ SR_32 redis_mng_get_engine_state(redisContext *c, SR_BOOL *is_on)
 	SR_32 rc = SR_SUCCESS;
 
 	reply = redisCommand(c,"GET %s" , ENGINE);
-	if (!reply || reply->type != REDIS_REPLY_STRING) {
+	if (!reply) {
 		printf("ERROR: redis_mng_get_engine_state failed type:%d\n", reply ? reply->type : -1);
 		rc = SR_ERROR;
 		goto out;
 	}
-	if (!strcmp(reply->str, "start"))
+	if (reply->type == REDIS_REPLY_NIL)
+		*is_on = SR_FALSE;
+	else if (!strcmp(reply->str, "start"))
 		*is_on = SR_TRUE;
 	else if (!strcmp(reply->str, "stop")) 
 		*is_on = SR_FALSE;

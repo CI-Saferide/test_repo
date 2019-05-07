@@ -737,6 +737,7 @@ SR_32 sr_redis_load(void)
 {
 	redisContext *c;
 	SR_32 rc = SR_SUCCESS;
+	SR_BOOL is_on;
 
 	sr_engine_get_db_lock();
 	c = redis_mng_session_start();
@@ -750,6 +751,20 @@ SR_32 sr_redis_load(void)
 	if ((rc = redis_mng_load_db(c, SR_TRUE, sr_config_handle_rule, sr_config_handle_action)) != SR_SUCCESS) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 		"%s=load db failed",REASON);
+		goto out;
+	}
+
+	// Get the engine state
+	if ((rc = redis_mng_get_engine_state(c, &is_on)) != SR_SUCCESS) {
+		printf("ERROR: redis_mng_get_engine_state failed\n");
+		rc = SR_ERROR;
+  		goto out;
+	}
+#ifdef DEBUG
+	printf(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>. %s \n", is_on ? "start" : "stop");
+#endif
+	if ((rc = bin_cls_enable(is_on)) != SR_SUCCESS) {
+		printf("ERROR: bin cls enable failed\n");
 		goto out;
 	}
 
