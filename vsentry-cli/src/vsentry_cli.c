@@ -670,7 +670,7 @@ static SR_32 handle_update_ip(SR_U32 rule_id, SR_BOOL is_wl, int argc, char **ar
 		strcpy(rl, "0");
 	} else {
 		UPDATE_INIT_COMMON_PARAMS
-		*proto = *src_addr = *dst_addr = *src_port = *dst_port = 0;
+		*rl = *proto = *src_addr = *dst_addr = *src_port = *dst_port = 0;
 	}
 	for (i = 0; i < argc; ) {
 		if (handle_param("src_addr", src_addr, sizeof(src_addr), argc, &i, argv, is_valid_ip_addr, &is_src_addr_list, SR_FALSE) == SR_SUCCESS)
