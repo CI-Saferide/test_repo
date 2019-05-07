@@ -763,10 +763,12 @@ SR_32 sr_redis_load(void)
 #ifdef DEBUG
 	printf(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>. %s \n", is_on ? "start" : "stop");
 #endif
+#ifdef BIN_CLS_DB
 	if ((rc = bin_cls_enable(is_on)) != SR_SUCCESS) {
 		printf("ERROR: bin cls enable failed\n");
 		goto out;
 	}
+#endif
 
 out:
 	if (c)
