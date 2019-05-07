@@ -11,6 +11,9 @@
 #include "sr_control.h"
 #include "sr_config.h"
 #include "redis_mng.h"
+#ifdef BIN_CLS_DB
+#include "sr_bin_cls_eng.h"
+#endif
 
 static int g_fd;
 static redisContext *c;
@@ -107,10 +110,9 @@ SR_32 sr_engine_cli_commit(SR_32 fd)
 		goto out;
 	}
 
-	if (redis_mng_load_db(c, SR_TRUE, sr_config_handle_rule, sr_config_handle_action) != SR_SUCCESS) {
+	if ((rc = redis_mng_load_db(c, SR_TRUE, sr_config_handle_rule, sr_config_handle_action)) != SR_SUCCESS) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 			"%s=load db failed",REASON);
-		rc = SR_ERROR;
 		goto out;
 	}
 
@@ -118,6 +120,16 @@ out:
 	if (c)
 		redis_mng_session_end(c);
 	sr_engine_get_db_unlock();
+
+	if (rc == SR_SUCCESS) {
+#ifdef BIN_CLS_DB
+		if (bin_cls_update(false) != SR_SUCCESS) {
+			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+				"%s=bin cls update failed",REASON);
+			return SR_ERROR;
+		}
+#endif
+	}
 
 	return rc;
 }
