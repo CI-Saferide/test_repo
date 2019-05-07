@@ -8,8 +8,8 @@ typedef enum {
         RULE_TYPE_CAN,
         RULE_TYPE_FILE,
         RULE_TYPE_IP,
-		RULE_TYPE_MAX = RULE_TYPE_IP,
-		RULE_TYPE_TOTAL = (RULE_TYPE_MAX + 1),
+	RULE_TYPE_MAX = RULE_TYPE_IP,
+	RULE_TYPE_TOTAL = (RULE_TYPE_MAX + 1),
 } rule_type_t;
 
 typedef enum {

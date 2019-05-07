@@ -387,7 +387,7 @@ SR_32 redis_mng_print_all_list_names(redisContext *c, list_type_e type)
 	return redis_mng_exec_all_list_names(c, type, print_list_name);
 }
 
-static SR_32 print_can(SR_32 num, void *rule)
+static SR_32 print_can(SR_32 num, void *rule, void *param)
 {
 	redis_mng_can_rule_t *can_rule = (redis_mng_can_rule_t *)rule;
 
@@ -396,7 +396,7 @@ static SR_32 print_can(SR_32 num, void *rule)
 	return SR_SUCCESS;
 }
 
-static SR_32 print_ip(SR_32 num, void *rule)
+static SR_32 print_ip(SR_32 num, void *rule, void *param)
 {
 	redis_mng_net_rule_t *net_rule = (redis_mng_net_rule_t *)rule;
 
@@ -415,7 +415,7 @@ static SR_32 print_ip(SR_32 num, void *rule)
 	return SR_SUCCESS;
 }
 
-static SR_32 print_file(SR_32 num, void *rule)
+static SR_32 print_file(SR_32 num, void *rule, void *param)
 {
 	redis_mng_file_rule_t *file_rule = (redis_mng_file_rule_t *)rule;
 	printf("%-6d %-88.88s %-4s %-24.24s %-24.24s %-24.24s\n",
@@ -433,11 +433,11 @@ SR_32 redis_mng_print_rules(redisContext *c, rule_type_t type, SR_32 rule_id_sta
 {
 	switch (type) {
 		case RULE_TYPE_CAN:
-			return redis_mng_exec_all_rules(c, type, rule_id_start, rule_id_end, print_can);
+			return redis_mng_exec_all_rules(c, type, rule_id_start, rule_id_end, print_can, NULL);
 		case RULE_TYPE_IP:
-			return redis_mng_exec_all_rules(c, type, rule_id_start, rule_id_end, print_ip);
+			return redis_mng_exec_all_rules(c, type, rule_id_start, rule_id_end, print_ip, NULL);
 		case RULE_TYPE_FILE:
-			return redis_mng_exec_all_rules(c, type, rule_id_start, rule_id_end, print_file);
+			return redis_mng_exec_all_rules(c, type, rule_id_start, rule_id_end, print_file, NULL);
 		default:
 			printf("ERROR: exec all rules - invalid rule type :%d \n", type);
 			return SR_ERROR;
@@ -447,7 +447,7 @@ SR_32 redis_mng_print_rules(redisContext *c, rule_type_t type, SR_32 rule_id_sta
 	return SR_SUCCESS;
 }
 
-SR_32 redis_mng_exec_all_rules(redisContext *c, rule_type_t type, SR_32 rule_id_start, SR_32 rule_id_end, SR_32 (*cb)(SR_32 rule_num, void *rule))
+SR_32 redis_mng_exec_all_rules(redisContext *c, rule_type_t type, SR_32 rule_id_start, SR_32 rule_id_end, SR_32 (*cb)(SR_32 rule_num, void *rule, void *param), void *param)
 {
 	int i, j, num;
 	redisReply *reply;
@@ -537,7 +537,7 @@ SR_32 redis_mng_exec_all_rules(redisContext *c, rule_type_t type, SR_32 rule_id_
 		}
 		if (!(((rule_id_start == -1) && (rule_id_end == -1)) || ((num >= rule_id_start) && (num <= rule_id_end))))
 			continue;
-		if (cb(num, rule) != SR_SUCCESS) {
+		if (cb(num, rule, param) != SR_SUCCESS) {
 			printf("ERROR: exec all rules - failed for  rule :%d \n", num);
 		}
 	}
@@ -563,19 +563,20 @@ SR_32 redis_mng_clean_db(redisContext *c)
 	return SR_SUCCESS;
 }
 
-static char *get_group_name(char *field)
+char *redis_mng_get_group_name(char *field)
 {
-	SR_U32 i, n;
+	SR_32 i, n;
 
 	if (!field) return NULL;
 	
 	n = strlen(field) - strlen(LIST_PREFIX);
+	if (n < 2) return field;
 	for (i = 1; i < n; i++) {
 		if (!memcmp(field + 1, LIST_PREFIX, strlen(LIST_PREFIX)))
 			return field + i + strlen(LIST_PREFIX);
 	}
 	
-	return NULL;
+	return field;
 }
 
 static list_type_e get_list_id(char *field)
@@ -645,7 +646,7 @@ static SR_32 handle_list_can(SR_32 rule_id, sr_can_item_type_t type, handle_rule
 	if (dir)
 		strncpy(params.dir, dir, sizeof(params.dir));
 	params.rc = &rc;
-	exec_for_all_group(list_id, get_group_name(group), load_can_cb, &params);
+	exec_for_all_group(list_id, redis_mng_get_group_name(group), load_can_cb, &params);
 
 	if (rc != SR_SUCCESS) {
 		printf("ERROR: handle_list_net field for list:%d group:%s\n", list_id, group);
@@ -678,7 +679,7 @@ static SR_32 handle_can_ids(SR_U16 rule_id, char *mid, char *dir, char *inf, han
 		inf_params.num_of_interfaces = 1;
 		strncpy(inf_params.interfaces[0], inf, INTERFACE_LEN);
 	} else {
-		exec_for_all_group(list_id, get_group_name(inf), handle_inf_group_cb, &inf_params);
+		exec_for_all_group(list_id, redis_mng_get_group_name(inf), handle_inf_group_cb, &inf_params);
 	}
 	
 	for (i = 0; i < inf_params.num_of_interfaces; i++) {
@@ -788,7 +789,7 @@ static SR_32 handle_list_file(SR_32 rule_id, sr_file_item_type_t type, handle_ru
 	params.rc = &rc;
 	if (perm)
 		strncpy(params.perm, perm, sizeof(params.perm));
-	exec_for_all_group(list_id, get_group_name(group), load_file_cb, &params);
+	exec_for_all_group(list_id, redis_mng_get_group_name(group), load_file_cb, &params);
 
 	if (rc != SR_SUCCESS) {
 		printf("ERROR: handle_list_net field for list:%d group:%s\n", list_id, group);
@@ -913,7 +914,7 @@ static SR_32 handle_list_net(SR_32 rule_id, sr_net_item_type_t type, handle_rule
 	params.cb = cb;
 	params.net_item_type = type;
 	params.rc = &rc;
-	exec_for_all_group(list_id, get_group_name(group), load_net_cb, &params);
+	exec_for_all_group(list_id, redis_mng_get_group_name(group), load_net_cb, &params);
 
 	if (rc != SR_SUCCESS) {
 		printf("ERROR: handle_list_net field for list:%d group:%s\n", list_id, group);
@@ -953,7 +954,7 @@ static SR_32 handle_prots(SR_32 rule_id, char *ip_proto, handle_rule_f_t cb, cha
 		proto_params.num_of_protos = 1;
 		strncpy(proto_params.protocols[0], ip_proto, PROTO_NAME_MAX);
 	} else {
-		exec_for_all_group(list_id, get_group_name(ip_proto), handle_port_group_cb, &proto_params);
+		exec_for_all_group(list_id, redis_mng_get_group_name(ip_proto), handle_port_group_cb, &proto_params);
 	}
 
 	for (i = 0; i < proto_params.num_of_protos; i++) {
@@ -1919,12 +1920,14 @@ SR_32 redis_mng_get_engine_state(redisContext *c, SR_BOOL *is_on)
 	SR_32 rc = SR_SUCCESS;
 
 	reply = redisCommand(c,"GET %s" , ENGINE);
-	if (!reply || reply->type != REDIS_REPLY_STRING) {
+	if (!reply) {
 		printf("ERROR: redis_mng_get_engine_state failed type:%d\n", reply ? reply->type : -1);
 		rc = SR_ERROR;
 		goto out;
 	}
-	if (!strcmp(reply->str, "start"))
+	if (reply->type == REDIS_REPLY_NIL)
+		*is_on = SR_FALSE;
+	else if (!strcmp(reply->str, "start"))
 		*is_on = SR_TRUE;
 	else if (!strcmp(reply->str, "stop")) 
 		*is_on = SR_FALSE;

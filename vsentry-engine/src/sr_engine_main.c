@@ -271,7 +271,7 @@ static void sr_interrupt_cb(int i)
 }
 
 #ifdef REDIS_TEST
-static int sr_redis_load(/*int tcp,*/ int pipeline)
+static int sr_redis_load_test(/*int tcp,*/ int pipeline)
 {
 #if 0
 	int i;
@@ -733,6 +733,59 @@ static int sr_redis_test(/*int tcp,*/ int clean_first, int clean_at_end)
 }
 #endif
 
+SR_32 sr_redis_load(void)
+{
+	redisContext *c;
+	SR_32 rc = SR_SUCCESS;
+	SR_BOOL is_on;
+
+	sr_engine_get_db_lock();
+	c = redis_mng_session_start();
+	if (!c) {
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+			"%s=redis session start failed",REASON);
+		rc = SR_ERROR;
+		goto out;
+	}
+
+	if ((rc = redis_mng_load_db(c, SR_TRUE, sr_config_handle_rule, sr_config_handle_action)) != SR_SUCCESS) {
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+		"%s=load db failed",REASON);
+		goto out;
+	}
+
+	// Get the engine state
+	if ((rc = redis_mng_get_engine_state(c, &is_on)) != SR_SUCCESS) {
+		printf("ERROR: redis_mng_get_engine_state failed\n");
+		rc = SR_ERROR;
+  		goto out;
+	}
+#ifdef DEBUG
+	printf(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>. %s \n", is_on ? "start" : "stop");
+#endif
+	if ((rc = bin_cls_enable(is_on)) != SR_SUCCESS) {
+		printf("ERROR: bin cls enable failed\n");
+		goto out;
+	}
+
+out:
+	if (c)
+		redis_mng_session_end(c);
+	sr_engine_get_db_unlock();
+
+	if (rc == SR_SUCCESS) {
+#ifdef BIN_CLS_DB
+		if (bin_cls_update(false) != SR_SUCCESS) {
+			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+				"%s=bin cls update failed",REASON);
+			return SR_ERROR;
+		}
+#endif
+	}
+
+	return rc;
+}
+
 SR_32 sr_engine_start(int argc, char *argv[])
 {
 	SR_32 ret;
@@ -926,6 +979,12 @@ SR_32 sr_engine_start(int argc, char *argv[])
 		return SR_ERROR;
 #endif
 
+	if (sr_redis_load() != SR_SUCCESS) {
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+			"%s=failed to load redis",REASON);
+		return SR_ERROR;
+	}
+
 	sr_db_init();
 
 	// todo upload redis
@@ -934,7 +993,7 @@ SR_32 sr_engine_start(int argc, char *argv[])
 #define PIPELINE 1
 	printf("\nRedis start - %s, %s:\n", /*TCP ? "TCP" :*/ "Unix socket", PIPELINE ? "pipelined" : "non-pipelined");
 	// read after boot
-	if (sr_redis_load(/*TCP,*/ PIPELINE))
+	if (sr_redis_load_test(/*TCP,*/ PIPELINE))
 		printf("*** REDIS LOAD *** failed\n");
 	else
 		printf("*** REDIS LOAD *** SUCCESS!!!\n");
