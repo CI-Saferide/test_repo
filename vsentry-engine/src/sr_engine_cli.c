@@ -16,7 +16,6 @@
 #endif
 
 static int g_fd;
-static redisContext *c;
 
 static void engine_status_dump(int fd)
 {
@@ -99,39 +98,7 @@ void sr_engine_cli_load(SR_32 fd)
 
 SR_32 sr_engine_cli_commit(SR_32 fd)
 {
-	SR_32 rc = SR_SUCCESS;
-
-	sr_engine_get_db_lock();
-	c = redis_mng_session_start();
-	if (!c) {
-		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-				"%s=redis session start failed",REASON);
-		rc = SR_ERROR;
-		goto out;
-	}
-
-	if ((rc = redis_mng_load_db(c, SR_TRUE, sr_config_handle_rule, sr_config_handle_action)) != SR_SUCCESS) {
-		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-			"%s=load db failed",REASON);
-		goto out;
-	}
-
-out:
-	if (c)
-		redis_mng_session_end(c);
-	sr_engine_get_db_unlock();
-
-	if (rc == SR_SUCCESS) {
-#ifdef BIN_CLS_DB
-		if (bin_cls_update(false) != SR_SUCCESS) {
-			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-				"%s=bin cls update failed",REASON);
-			return SR_ERROR;
-		}
-#endif
-	}
-
-	return rc;
+	return sr_redis_load();
 }
 
 
