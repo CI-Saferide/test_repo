@@ -624,7 +624,7 @@ static SR_32 load_can_cb(char *item, void *param)
 			return SR_ERROR;
 	}
 	can_rule_params->cb(&can_rule, ENTITY_TYPE_CAN_RULE, can_rule_params->rc);
-#ifdef DEBUG
+#ifdef REDIS_MNG_DEBUG
 	printf("-------------ZZZZZZZZZZZZZZZZZZZZZZZZZZz in load_can_cb rule:%d type:%d item:%s dir:%s: inf:%s:  rc:%d \n",
 			can_rule.rulenum, can_rule_params->can_item_type, item, can_rule.can_item.u.msg.dir, can_rule.can_item.u.msg.inf, *(can_rule_params->rc));
 			
@@ -768,7 +768,7 @@ static SR_32 load_file_cb(char *item, void *param)
 			return SR_ERROR;
 	}
 	file_rule_params->cb(&file_rule, ENTITY_TYPE_FILE_RULE, file_rule_params->rc);
-#ifdef DEBUG
+#ifdef REDIS_MNG_DEBUG
 	printf("-------------ZZZZZZZZZZZZZZZZZZZZZZZZZZz in load_file_cb rule:%d type:%d item:%s rc:%d \n",
 			file_rule.rulenum, file_rule_params->file_item_type, item, *(file_rule_params->rc));
 			
@@ -886,7 +886,7 @@ static SR_32 load_net_cb(char *item, void *param)
 			return SR_ERROR;
 	}
 	net_rule_params->cb(&net_rule, ENTITY_TYPE_IP_RULE, net_rule_params->rc);
-#ifdef DEBUG
+#ifdef REDIS_MNG_DEBUG
 	printf("-------------ZZZZZZZZZZZZZZZZZZZZZZZZZZz in load_net_cb rule:%d type:%d proto:%d item:%s rc:%d \n", net_rule.rulenum, net_rule_params->net_item_type, net_rule_params->proto, 
 			item, *(net_rule_params->rc));
 #endif
