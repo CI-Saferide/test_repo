@@ -1096,8 +1096,8 @@ int rdbSaveInfoAuxFields(rio *rdb, int flags, rdbSaveInfo *rsi) {
 
 /* --------------------------- Encryption - Decryption --------------------------*/
 
-static EVP_CIPHER_CTX e_ctx;
-static EVP_CIPHER_CTX d_ctx;
+static EVP_CIPHER_CTX *e_ctx;
+static EVP_CIPHER_CTX *d_ctx;
 
 static unsigned char key[32] = { 	0xde, 0x71, 0xca, 0xb0, 0x02, 0xf0, 0x85, 0x55,
 									0xcb, 0xf3, 0xf3, 0xc0, 0xab, 0x07, 0x4e, 0x2c,
@@ -1119,16 +1119,32 @@ static int plain_buf_size;
 
 int aes_init(void)
 {
-	EVP_CIPHER_CTX_init(&e_ctx);
-	if (!EVP_EncryptInit_ex(&e_ctx, EVP_aes_256_cbc(), NULL, key, iv)) {
-		printf("EVP_EncryptInit_ex failed\n");
+	e_ctx = EVP_CIPHER_CTX_new();
+	if (!e_ctx) {
+		printf("EVP_CIPHER_CTX_new failed\n");
+		return -1;
+	}
+	d_ctx = EVP_CIPHER_CTX_new();
+	if (!d_ctx) {
+		printf("EVP_CIPHER_CTX_new failed\n");
+		EVP_CIPHER_CTX_free(e_ctx);
 		return -1;
 	}
 
-	EVP_CIPHER_CTX_init(&d_ctx);
-	if (!EVP_DecryptInit_ex(&d_ctx, EVP_aes_256_cbc(), NULL, key, iv)) {
+	EVP_CIPHER_CTX_init(e_ctx);
+	if (!EVP_EncryptInit_ex(e_ctx, EVP_aes_256_cbc(), NULL, key, iv)) {
+		printf("EVP_EncryptInit_ex failed\n");
+		EVP_CIPHER_CTX_free(e_ctx);
+		EVP_CIPHER_CTX_free(d_ctx);
+		return -1;
+	}
+
+	EVP_CIPHER_CTX_init(d_ctx);
+	if (!EVP_DecryptInit_ex(d_ctx, EVP_aes_256_cbc(), NULL, key, iv)) {
 		printf("EVP_DecryptInit_ex failed\n");
-		EVP_CIPHER_CTX_cleanup(&e_ctx);
+		EVP_CIPHER_CTX_cleanup(e_ctx);
+		EVP_CIPHER_CTX_free(e_ctx);
+		EVP_CIPHER_CTX_free(d_ctx);
 		return -1;
 	}
 
@@ -1139,8 +1155,10 @@ int aes_init(void)
 
 void aes_uninit(void)
 {
-	EVP_CIPHER_CTX_cleanup(&e_ctx);
-	EVP_CIPHER_CTX_cleanup(&d_ctx);
+	EVP_CIPHER_CTX_cleanup(e_ctx);
+	EVP_CIPHER_CTX_cleanup(d_ctx);
+	EVP_CIPHER_CTX_free(e_ctx);
+	EVP_CIPHER_CTX_free(d_ctx);
 }
 
 /* Encrypt in_len bytes of data
@@ -1159,7 +1177,7 @@ int aes_encrypt(const char *plaintext, int in_len, char **ciphertext, int *out_l
 #endif
 
 	/* allows reusing of 'e' for multiple encryption cycles */
-	if (!EVP_EncryptInit_ex(&e_ctx, NULL, NULL, NULL, NULL)) {
+	if (!EVP_EncryptInit_ex(e_ctx, NULL, NULL, NULL, NULL)) {
 		printf("EVP_EncryptInit_ex failed\n");
 		return -1;
 	}
@@ -1172,7 +1190,7 @@ int aes_encrypt(const char *plaintext, int in_len, char **ciphertext, int *out_l
 				printf("%c", ((char *)plain_buf)[i]);
 			printf("\n");*/
 			/* update ciphertext, c_len is filled with the length of ciphertext generated, *len is the size of plaintext in bytes */
-			if (!EVP_EncryptUpdate(&e_ctx, cipher_buf /* ciphertext */, &c_len,
+			if (!EVP_EncryptUpdate(e_ctx, cipher_buf /* ciphertext */, &c_len,
 					plain_buf /* plaintext */, plain_buf_pos /* in_len */)) {
 				printf("EVP_EncryptUpdate failed\n");
 				return -1;
@@ -1181,7 +1199,7 @@ int aes_encrypt(const char *plaintext, int in_len, char **ciphertext, int *out_l
 			c_len = 0;
 
 		/* update ciphertext with the final remaining bytes */
-		if (!EVP_EncryptFinal_ex(&e_ctx, cipher_buf + c_len, &f_len)) {
+		if (!EVP_EncryptFinal_ex(e_ctx, cipher_buf + c_len, &f_len)) {
 			printf("EVP_EncryptFinal_ex failed\n");
 			return -1;
 		}
@@ -1212,7 +1230,7 @@ int aes_encrypt(const char *plaintext, int in_len, char **ciphertext, int *out_l
 			printf("%c", ((char *)plain_buf)[i]);
 		printf("\n");*/
 		// temp_buf is full, encrypt it
-		if (!EVP_EncryptUpdate(&e_ctx, cipher_buf /* ciphertext */, &c_len,
+		if (!EVP_EncryptUpdate(e_ctx, cipher_buf /* ciphertext */, &c_len,
 				plain_buf /* plaintext */, plain_buf_pos /* in_len */)) {
 			printf("EVP_EncryptUpdate failed\n");
 			return -1;
@@ -1225,7 +1243,7 @@ int aes_encrypt(const char *plaintext, int in_len, char **ciphertext, int *out_l
 #endif
 //		printf("*** DBG *** ENC update: plaintext_len %d -> ciphertext_len %d\n", plain_buf_pos, c_len);
 
-		if (!EVP_EncryptFinal_ex(&e_ctx, cipher_buf + c_len, &f_len)) {
+		if (!EVP_EncryptFinal_ex(e_ctx, cipher_buf + c_len, &f_len)) {
 			printf("EVP_EncryptFinal_ex failed\n");
 			return -1;
 		}
@@ -1264,7 +1282,7 @@ int aes_decrypt(char *ciphertext, int in_len, char *plaintext, int *out_len/*, i
 //	int i;
 
 	if (ciphertext) {
-		if (!EVP_DecryptInit_ex(&d_ctx, NULL, NULL, NULL, NULL)) {
+		if (!EVP_DecryptInit_ex(d_ctx, NULL, NULL, NULL, NULL)) {
 			printf("EVP_DecryptInit_ex failed\n");
 			return -1;
 		}
@@ -1274,13 +1292,13 @@ int aes_decrypt(char *ciphertext, int in_len, char *plaintext, int *out_len/*, i
 			printf("%02x", ((unsigned char *)ciphertext)[i]);
 		printf("\n");*/
 		// decrypt new read data
-		if (!EVP_DecryptUpdate(&d_ctx, plain_buf, &p_len, (unsigned char *)ciphertext, in_len)) {
+		if (!EVP_DecryptUpdate(d_ctx, plain_buf, &p_len, (unsigned char *)ciphertext, in_len)) {
 			printf("aes_decrypt: EVP_DecryptUpdate failed\n");
 			return -1;
 		}
 //		printf("*** DBG *** DEC update: c_len %d -> p_len %d\n", in_len, p_len);
 
-		if (!EVP_DecryptFinal_ex(&d_ctx, plain_buf + p_len, &f_len)) {
+		if (!EVP_DecryptFinal_ex(d_ctx, plain_buf + p_len, &f_len)) {
 			printf("EVP_DecryptFinal_ex failed, f_len %d\n", f_len);
 			return -1;
 		}
