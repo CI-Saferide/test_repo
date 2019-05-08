@@ -632,7 +632,7 @@ static int bin_cls_db_upload(void)
 	/* deinit cls db */
 	deinit_db_mem();
 
-	/* copy the kenrel DB to tmp file */
+	/* copy the kenrel DB */
 	if (ioctl(drv_fd, VSENTRY_IOCTL_COPY_DBFILE, db_file_name) != 0) {
 		fprintf(stderr, "failed to copy kernel db to dbfile %s: %s (%d)\n", db_file_name, strerror(errno), errno);
 		unlink(db_file_name);
@@ -722,6 +722,9 @@ int bin_cls_init(char *cls, char *db)
 		 * we need to upload the kernel db and use it.
 		 * THIS MUST HAPPEN BEFORE RADIS RECONF */
 		bin_cls_db_upload();
+
+		cls_set_mode(VSENTRY_MODE_ENFORCE);
+
 		bin_cls_update(true);
 	} else {
 #endif
