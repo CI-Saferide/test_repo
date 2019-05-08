@@ -39,6 +39,6 @@ clean: $(MORE_CLEAN_TARGETS)
 	@$(MAKE) -s -C redis clean
 
 install:
-	make install -s -C vsentry-mod
 	make install -s -C vsentry-engine
 	make install -s -C vsentry-cli
+	make install -s -C redis
