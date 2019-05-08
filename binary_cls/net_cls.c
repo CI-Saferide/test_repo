@@ -453,10 +453,11 @@ static int net_check_node(struct radix_node *node, void *data)
 	mask = ((char *)get_pointer(node->rn_u.rn_leaf.rn_Mask) + 4);
 	vs_memcpy(&netmask, mask, sizeof(unsigned int));
 
-	cls_dbg("deleting addr 0x%08X mask 0x%08X\n", net_addr, netmask);
 	for (i=limit->start; i<limit->end; i++) {
-		if (ba_is_set(i, &node->private.rules))
+		if (ba_is_set(i, &node->private.rules)) {
+			cls_dbg("deleting addr 0x%08X mask 0x%08X\n", net_addr, netmask);
 			net_cls_del_rule(i, net_addr, netmask, limit->dir);
+		}
 	}
 
 	return 0;
