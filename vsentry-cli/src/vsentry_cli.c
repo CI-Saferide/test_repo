@@ -110,7 +110,7 @@ static int engine_connect(void)
 
 static void print_update_engine_usage(void)
 {
-	printf("action update engine [start | stop] \n");
+	printf("update engine [start | stop] \n");
 }
 
 static void print_update_action_usage(void)
@@ -144,12 +144,17 @@ static void print_show_group_usage(void)
 	printf("vsnetry_cli show group [group name] \n");
 }
 
+static void print_show_engine_usage(void)
+{
+	printf("vsnetry_cli show engine\n");
+}
+
 static void print_update_rule_usage(void)
 {
 	printf("can: vsentry_cli update [rule | wl] can rule_number my_rule_number dir [in | out | both] [mid | mid_group my_mid] "
-		"[interface | interface_group my_interface] [program_group | program my_program] [user_group | user my_user] action my_action\n");
+		"[interface | interface_group my_interface] [program_group | program my_program] [user_group | user my_user] [rl rate limit] action my_action\n");
 	printf("ip: vsentry_cli update [rule wl] ip rule_number my_rule_number [src_addr_group | src_addr my_ip] [dst_addr_group | dstaddr my_ip] [proto_group | proto my_proto] "
-		" [src_port_group my_port ] [dst_port_group | src_port my_port] [program_group | program my_program] [user_group | user my_user] action my_action\n");
+		" [src_port_group my_port ] [dst_port_group | src_port my_port] [program_group | program my_program] [user_group | user my_user] [rl rate limit] action my_action\n");
 	printf("file: vsentry_cli update [rule wl] rule_number my_rule_number [file file_group my_file]  [perm my_per (combination of r, w, x)]" 
 		" [program_group | program my_program] [user_group | user my user ] action my_action\n");
 }
@@ -160,6 +165,7 @@ static void print_update_usage(void)
 	print_update_rule_usage();
 	print_update_action_usage();
 	print_update_group_usage();
+	print_update_engine_usage();
 }
 
 static void print_show_usage(void)
@@ -168,6 +174,7 @@ static void print_show_usage(void)
 	print_show_rule_usage();
 	print_show_action_usage();
 	print_show_group_usage();
+	print_show_engine_usage();
 }
 
 static void print_delete_group_usage(void)
