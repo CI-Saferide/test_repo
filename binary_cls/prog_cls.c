@@ -505,7 +505,7 @@ static void update_node_inode(tree_node_t *node, void *param)
 			prog_hash_item_t *prog_item = get_pointer(node->priv_offset);
 
 			prog_item->exec_ino = update_param->cb(buffer);
-			prog_dbg("setting prog %s inode %lu\n", buffer, prog_item->exec_ino);
+//			prog_dbg("setting prog %s inode %lu\n", buffer, prog_item->exec_ino);
 			if (prog_item->exec_ino)
 				hash_insert_data(update_param->hash, prog_item);
 		}
@@ -527,7 +527,7 @@ static void update_node_inode(tree_node_t *node, void *param)
 				prog_hash_item_t *prog_item = get_pointer(node->priv_offset);
 
 				prog_item->exec_ino = update_param->cb(buffer);
-				prog_dbg("setting prog %s inode %lu\n", buffer, prog_item->exec_ino);
+//				prog_dbg("setting prog %s inode %lu\n", buffer, prog_item->exec_ino);
 				if (prog_item->exec_ino)
 					hash_insert_data(update_param->hash, prog_item);
 			}

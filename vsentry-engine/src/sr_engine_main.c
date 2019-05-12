@@ -52,6 +52,7 @@
 
 #ifdef BIN_CLS_DB
 #include "sr_bin_cls_eng.h"
+#include "classifier.h"
 #endif
 
 //#define REDIS_TEST
@@ -747,6 +748,9 @@ SR_32 sr_redis_load(void)
 		rc = SR_ERROR;
 		goto out;
 	}
+
+	/* clear non learning rules */
+	cls_clear_rules(0, LEARN_RULES_START);
 
 	if ((rc = redis_mng_load_db(c, SR_TRUE, sr_config_handle_rule, sr_config_handle_action)) != SR_SUCCESS) {
 		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,

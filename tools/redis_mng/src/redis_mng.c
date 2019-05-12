@@ -23,9 +23,6 @@
 #include "sr_log.h"
 #endif
 
-// fixme remove
-//#define DEBUG_PRINT
-#define DEBUG
 #ifdef DEBUG
 #define AUTH		"AUTH"
 #define DEL			"DEL"
@@ -1073,6 +1070,7 @@ typedef struct group_db_group {
 
 */
 
+#ifdef DEBUG
 static void print_groups_db(void)
 {
 	list_type_e type;
@@ -1088,6 +1086,7 @@ static void print_groups_db(void)
 		}
 	}
 }
+#endif
 
 static SR_32 load_list_names(list_type_e type, char *name)
 {

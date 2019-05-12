@@ -4256,7 +4256,6 @@ int main(int argc, char **argv) {
     // removed TCP, should connect only through Unix socket
     server.port = 0;
     server.tcp_backlog = 0;
-    server.bindaddr = NULL;
     server.bindaddr_count = 0;
 #endif
     zfree(server.unixsocket);

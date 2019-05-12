@@ -71,9 +71,6 @@ typedef long long mstime_t; /* millisecond time type. */
 #include "endianconv.h"
 #include "crc64.h"
 
-// fixme remove
-#define DEBUG
-
 /* Error codes */
 #define C_OK                    0
 #define C_ERR                   -1
