@@ -2,7 +2,7 @@ ifdef CROSS_COMPILE
 export CC=$(CROSS_COMPILE)gcc
 endif
 
-CPPFLAGS += -I../common/include -I../vsentry-lib/include -I../vsentry-engine/sal/platform/linux/include -I../vsentry-engine/include -I../tools/sr-log/include -I../tools/db_tools/include -Icli_builder/include
+CPPFLAGS += -I../common/include -I../vsentry-lib/include -I../vsentry-engine/sal/platform/linux/include -I../vsentry-engine/include -I../tools/sr-log/include -I../tools/db_tools/include -I../tools/redis_mng/include
 
 TOP_DIR		:= $(shell pwd)
 BUILD_DIR 	:= $(TOP_DIR)/build
@@ -25,26 +25,21 @@ OBJS		:=  $(addprefix $(OBJDIR)/,$(SRCS:.c=.o))
 DEPS		:=  $(OBJS:.o=.d)
 
 # libs to link with
-LIBS		:= -l$(TARGET) -lsentry -ldb_tools -lcli
+LIBS		:= -l$(TARGET) -lsentry -lredis_mng -ldb_tools
 # and where to search them 
-LIB_PATH 	:= -L$(LIBDIR) -L$(TOP_DIR)/cli_builder/build
+LIB_PATH 	:= -L$(LIBDIR) -L$(TOP_DIR)/../vsentry-engine/build/lib
 
 CFLAGS 		+= -MMD -Wall
 
 ifdef DEBUG
-CFLAGS		+= -g -O0
+CFLAGS		+= -g -O0 -DDEBUG
 else
 CFLAGS 		+= -O2
 endif
 
-LIBCLI = cli_builder/build/libcli.a
-
 all: $(TARGET)
 
-$(LIBCLI):
-	make -C cli_builder
-
-$(TARGET): lib$(TARGET) libdb_tools $(LIBCLI)
+$(TARGET): lib$(TARGET) libdb_tools libredis_mng
 	@echo "linking $(notdir $@)"
 	$(CC) $(LDFLAGS) -o $(BINDIR)/$(TARGET) $(LIB_PATH) $(LIBS)
 
@@ -60,6 +55,10 @@ OBJSDIR:
 libdb_tools:
 	@$(MAKE) -s -C ../tools/db_tools TOP_DIR=$(TOP_DIR)
 
+libredis_mng:
+	@$(MAKE) -s -C ../tools/redis_mng TOP_DIR=$(TOP_DIR)
+
+
 $(OBJDIR)/%.o: %.c
 	@echo "compiling $(notdir $<)"
 	$(CC) $(CPPFLAGS) -g $(CFLAGS) $(INCLUDES) -c $< -o $@
@@ -71,5 +70,6 @@ install:
 	install -m 755 build/bin/* /usr/bin/
 
 -include $(DEPS)
+
 
 

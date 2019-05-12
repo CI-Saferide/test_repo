@@ -69,13 +69,13 @@ char *get_action_log_facility_string(log_facility_e log_facility)
         static char log_facility_string[LOG_FACILITY_SIZE];
 
         switch (log_facility) {
-                case LOG_NONE:
+                case LOG_TARGET_NONE:
                         strcpy(log_facility_string, "none");
                         break;
-                case LOG_TO_SYSLOG:
+                case LOG_TARGET_SYSLOG:
                         strcpy(log_facility_string, "syslog");
                         break;
-                case LOG_TO_FILE:
+                case LOG_TARGET_FILE:
                         strcpy(log_facility_string, "file");
                         break;
                 default:
@@ -152,15 +152,13 @@ char *get_ip_proto_name(SR_U8 ip_proto)
 	return proto_name;
 }
 
-SR_8 get_ip_proto_code(char *ip_proto)
+SR_U8 get_ip_proto_code(char *ip_proto)
 {
 	if (!strcmp(ip_proto, "tcp"))
 		return 6;
 	if (!strcmp(ip_proto, "udp"))
 		return 17;
-	if (!strcmp(ip_proto, "any"))
-		return 0;
-	return -1;
+	return 0;
 }
 
 SR_U8 can_dir_convert(SR_U8 dir)
@@ -205,7 +203,7 @@ char *perm_cli_to_db(char *perm_str)
 	if (strstr(perm_str, "x"))
 		perm |= FILE_PERM_X;
 
-	sprintf(db_perm, "77%d", perm);
+	sprintf(db_perm, "%d", perm);
 
 	return db_perm;
 }
@@ -238,3 +236,15 @@ SR_BOOL is_valid_ip(char *ip_addr)
 		return SR_FALSE;
 	return (atoi(buf) <= 255);
 }
+
+SR_32 get_log_facility_enum(char *log)
+{
+        if (!strcmp(log, "syslog"))
+                return LOG_TARGET_SYSLOG;
+        if (!strcmp(log, "file"))
+                return LOG_TARGET_FILE;
+        if (!strcmp(log, "none"))
+                return LOG_TARGET_NONE;
+        return -1;
+}
+

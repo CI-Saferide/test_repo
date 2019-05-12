@@ -100,7 +100,7 @@ unitests: $(TARGET)
 	@echo "linking unit_test_db"
 	@$(CC) $(CFLAGS) $(INCLUDES) unit_test_db.c -o $(BINDIR)/unit_test_db $(LDFLAGS) -L$(LIBDIR) -lbin_cls
 	@echo "linking unit_test_drv"
-	@$(CC) $(CFLAGS) $(INCLUDES) unit_test_drv.c -o $(BINDIR)/unit_test_drv $(LDFLAGS) -L$(LIBDIR) -lbin_cls
+	@$(CC) $(CFLAGS) $(INCLUDES) unit_test_drv.c -o $(BINDIR)/unit_test_drv $(LDFLAGS) -L$(LIBDIR) -lbin_cls -lpthread
 	@echo "linking unit_test_ba"
 	@$(CC) $(CFLAGS) $(INCLUDES) unit_test_ba.c -o $(BINDIR)/unit_test_ba $(LDFLAGS) -L$(LIBDIR) -lbin_cls
 

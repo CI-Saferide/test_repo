@@ -73,30 +73,6 @@ insatll_saferide_service(){
     run_cmd `chown root:root /etc/init.d/saferide`
 }
 
-insatll_sysrepo_service(){
-    operation="Prepare sysrepo service"
-    string="INSTALL_DIR=$install_dir"
-    string="${string//\//\\/}"
-    run_cmd `sed -i.bak s/INSTALL_DIR=NA/$string/g $script_dir/ubuntu/sysrepo`
-    operation="Install sysrepo service"
-    run_cmd `cp -ra $script_dir/ubuntu/sysrepo /etc/init.d`
-    operation="Fix service owner"
-    run_cmd `chown root:root /etc/init.d/sysrepo`
-    operation="Config automatic running for sysrepo"
-    run_cmd update-rc.d sysrepo defaults
-}
-
-install_yang(){
-    #operation="Install yang db"
-    #run_cmd echo `$install_dir/bin/sysrepoctl --install --yang=$install_dir/sysrepo/yang/saferide.yang --permissions=644`
-    operation="Install /var related files"
-    run_cmd `cp -ra $install_dir/var/run/* /var/run/`
-	operation="Install /etc related files"
-	run_cmd `cp -ra $install_dir/sysrepo/   /etc/`
-	rm -rf $install_dir/var
-	rm -rf $install_dir/sysrepo
-}
-
 remove_tmp_files(){
     operation="Remove temporary files"
 	run_cmd `rm $install_dir/md5.calc $install_dir/md5.check`
@@ -108,8 +84,6 @@ remove_tmp_files(){
 echo -ne "\r"
 library_path_update
 insatll_saferide_service
-insatll_sysrepo_service
-install_yang
 remove_tmp_files
 
 exit 0

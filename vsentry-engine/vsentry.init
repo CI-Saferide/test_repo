@@ -14,45 +14,15 @@
 
 DESC="SafeRide vSentry security agent"
 
-wait_sysrepo() {
-    counter=0
-    while [ true ]; do
-        if [ ! -e /var/run/sysrepod.pid ]; then
-            sleep 1
-            counter=$(( $counter + 1 ))
-            if [ $counter -ge 10 ]; then
-                echo "sysrepo is not running ... exiting"
-                exit 1
-            fi
-        else
-            echo "sysrepod $pid is running"
-            break
-        fi
-    done
-}
-
 do_start() {
-    if [ ! -e /etc/sysrepo/yang/ietf-netconf-acm@2012-02-22.yang ]; then
-        /usr/bin/sysrepoctl --install --yang=/etc/vsentry/yang/ietf-netconf-acm@2012-02-22.yang
-    fi
-    if [ ! -e /etc/sysrepo/yang/ietf-netconf-notifications@2012-02-06.yang ]; then
-        /usr/bin/sysrepoctl --install --yang=/etc/vsentry/yang/ietf-netconf-notifications@2012-02-06.yang
-    fi
-    if [ ! -e /etc/sysrepo/yang/ietf-netconf@2011-06-01.yang ]; then
-        /usr/bin/sysrepoctl --install --yang=/etc/vsentry/yang/ietf-netconf@2011-06-01.yang
-    fi
-    if [ ! -e /etc/sysrepo/yang/notifications@2008-07-14.yang ]; then
-        /usr/bin/sysrepoctl --install --yang=/etc/vsentry/yang/notifications@2008-07-14.yang
-    fi
-    if [ ! -e /etc/sysrepo/yang/saferide.yang ]; then
-        /usr/bin/sysrepoctl --install --yang=/etc/vsentry/yang/saferide.yang
-    fi
     insmod /lib/modules/$(uname -r)/extra/vsentry.ko
     if [ ! -e /dev/vsentry ]; then
         mknod /dev/vsentry c `cat /proc/devices | grep vsentry | awk '{print $1}'` 0
     fi
     mkdir -p /var/log/candata/
-    wait_sysrepo
+
+    start-stop-daemon --quiet --exec /usr/bin/redis-server -b --start
+
     start-stop-daemon --quiet --exec /usr/bin/sr_engine --start -- -c /etc/vsentry/sr_config -b
 }
 

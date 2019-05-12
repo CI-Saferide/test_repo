@@ -6,14 +6,12 @@
 #include "sr_cls_canbus_control.h"
 #include "sr_actions_common.h"
 #include "sr_cls_rules_control.h"
-#include "sysrepo_mng.h"
 #include "sr_cls_wl_common.h"
 #include "sentry.h"
 #include "db_tools.h"
 #include "sr_engine_cli.h"
 
 static SR_32 rule_id; 
-//static sysrepo_mng_handler_t sysrepo_handler;
 
 typedef struct can_rule_info {
 	SR_U32  msg_id;
@@ -151,11 +149,13 @@ static SR_32 create_can_rule_for_exec(SR_U8 dir, SR_32 *rule_id, char *exec)
 #ifdef DEBUG
 			printf(">>>>>>> IN Rule:%d tuple:%d exec:%s: if:%s: msgid:%x \n", *rule_id, tuple_id, exec, if_name, rule_iter->msg_id);
 #endif
+#if 0
 			if (sys_repo_mng_create_canbus_rule(sr_white_list_get_hadler(), *rule_id, tuple_id, rule_iter->msg_id, if_name, exec, "*", WHITE_LIST_ACTION, can_dir_convert(dir)) != SR_SUCCESS) {
 				CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
 					"%s=fail to create can rule in persistent db rule id: %d mid: %x dir: %s exec: %s",
 						REASON, *rule_id, rule_iter->msg_id, dir==SR_CAN_OUT? "out":"in" ,exec);
 			}
+#endif
 			tuple_id++;
 		}
 		(*rule_id)++;
@@ -227,12 +227,6 @@ static SR_32 canbus_apply_cb(void *hash_data, void *data)
 SR_32 sr_white_list_canbus_apply(void)
 {
 	SR_32 rc;
-	
-/*	if (sysrepo_mng_session_start(&sysrepo_handler)) {
-		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-			"%s=wl can:fail to init persistent db",REASON);
-		return SR_ERROR;
-	}*/
 
 	rule_id = SR_CAN_WL_START_RULE_NO;
 	
@@ -241,12 +235,6 @@ SR_32 sr_white_list_canbus_apply(void)
 			"%s=can wl hash exec failed",REASON);
 		return SR_ERROR;
 	}
-/*	if (sys_repo_mng_commit(&sysrepo_handler) != SR_SUCCESS) { 
-		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-				"%s=failed to commit wl can rules from persistent db", REASON);
-	}
-
-	sysrepo_mng_session_end(&sysrepo_handler);*/
 
 	return SR_SUCCESS;
 }

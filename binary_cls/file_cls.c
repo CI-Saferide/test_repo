@@ -739,7 +739,7 @@ static void update_node_inode(tree_node_t *node, void *param)
 			file_hash_item_t *file_item = get_pointer(node->priv_offset);
 
 			file_item->file_ino = cb(buffer);
-			file_dbg("setting file %s inode %lu\n", buffer, file_item->file_ino);
+//			file_dbg("setting file %s inode %lu\n", buffer, file_item->file_ino);
 			if (file_item->file_ino)
 				hash_insert_data(&file_inode_hash, file_item);
 		}
@@ -761,7 +761,7 @@ static void update_node_inode(tree_node_t *node, void *param)
 				file_hash_item_t *file_item = get_pointer(node->priv_offset);
 
 				file_item->file_ino = cb(buffer);
-				file_dbg("setting file %s inode %lu\n", buffer, file_item->file_ino);
+//				file_dbg("setting file %s inode %lu\n", buffer, file_item->file_ino);
 				if (file_item->file_ino)
 					hash_insert_data(&file_inode_hash, file_item);
 			}
@@ -903,9 +903,6 @@ void file_cls_clear_rules(int start, int end)
 	current_buf_len = 1;
 
 	str_tree_walk(root, check_file_rule, &limit);
-
-	/* clear tree from unneeded nodes */
-	str_tree_walk(root, file_cls_delete_node, root);
 
 	if (!ba_is_empty(procfs_rules)) {
 		for (i=start; i<end; i++)

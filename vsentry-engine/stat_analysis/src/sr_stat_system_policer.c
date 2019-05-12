@@ -4,10 +4,14 @@
 #include <stdio.h>
 #include "sr_stat_analysis.h"
 #include "sr_config_parse.h"
+#include "redis_mng.h"
+#include "sr_engine_main.h"
 
 #define HASH_SIZE 500
 
 static struct sr_gen_hash *system_policer_table, *system_policer_learn_table;
+
+static redisContext *c;
 
 static SR_U64 cur_time;
 static SR_BOOL is_updated = SR_FALSE;
@@ -34,8 +38,8 @@ static void system_policer_print(void *data_in_hash)
 {
 	system_policer_item_t *system_policer_item = (system_policer_item_t *)data_in_hash;
 
-        CEF_log_event(SR_CEF_CID_SP, "info", SEVERITY_LOW, "process :%s: utime:%d stime:%d vm_allocated:%d bytes_read:%d bytes_write:%d num of threads:%d curr_time:%d",
-		system_policer_item->exec, system_policer_item->stats.utime, system_policer_item->stats.stime,
+        CEF_log_event(SR_CEF_CID_SP, "info", SEVERITY_LOW, "process :%s: time:%d vm_allocated:%d bytes_read:%d bytes_write:%d num of threads:%d curr_time:%d",
+		system_policer_item->exec, system_policer_item->stats.time,
 		system_policer_item->stats.vm_allocated,  
 		system_policer_item->stats.bytes_read, system_policer_item->stats.bytes_write,
 		system_policer_item->stats.num_of_threads, system_policer_item->stats.curr_time);
@@ -89,34 +93,41 @@ void sr_stat_system_policer_uninit(void)
         sr_gen_hash_destroy(system_policer_learn_table);
 }
 
-static SR_32 write_leran_to_file(void *hash_data, void *data)
+static SR_32 write_leran_to_db(void *hash_data, void *data)
 {
-	FILE *fp = (FILE *)data;
 	system_policer_item_t *learn = (system_policer_item_t *)hash_data;
+	redis_system_policer_t sp_info = {};
 
-	fprintf(fp, "%s,%llu,%llu,%llu,%llu,%u,%u\n", learn->exec, learn->stats.utime, learn->stats.stime, learn->stats.bytes_read, learn->stats.bytes_write,
-		learn->stats.vm_allocated, learn->stats.num_of_threads);
+	sp_info.time = learn->stats.time;
+	sp_info.bytes_read = learn->stats.bytes_read;
+	sp_info.bytes_write = learn->stats.bytes_write;
+	sp_info.vm_allocated = learn->stats.vm_allocated;
+	sp_info.num_of_threads = learn->stats.num_of_threads;
+	if (redis_mng_add_system_policer(c, learn->exec, &sp_info)) {
+		CEF_log_event(SR_CEF_CID_SP, "error", SEVERITY_HIGH, "%s=Inserting of system policer process %s to REdis failed", REASON, learn->exec);
+		return SR_ERROR;
+	}
 
 	return SR_SUCCESS;
 }
 
-static SR_32 system_policer_flush_leran_table(void)
+static SR_32 system_policer_flush_learn_table(void)
 {
-	struct config_params_t *config_params;
-	FILE *fp;
-
-	config_params = sr_config_get_param();
-
-	if (!(fp = fopen(config_params->system_prolicer_learn_file, "w"))) {
-        	CEF_log_event(SR_CEF_CID_SP, "error", SEVERITY_HIGH, "%s=system_policer_flush_leran_table failed oppening:%",
-			REASON, config_params->system_prolicer_learn_file);
-		return SR_ERROR;
+	SR_32 ret = SR_SUCCESS;
+	sr_engine_get_db_lock();
+	if (!(c = redis_mng_session_start())) {
+        	CEF_log_event(SR_CEF_CID_SP, "error", SEVERITY_HIGH, "%s=Failed start redis session", REASON);
+		ret = SR_ERROR;
+		goto out;
 	}
-	sr_gen_hash_exec_for_each(system_policer_learn_table, write_leran_to_file, fp, 0); 
+	sr_gen_hash_exec_for_each(system_policer_learn_table, write_leran_to_db, NULL, 0); 
 
-	fclose(fp);
+out:
+	if (c)
+		redis_mng_session_end(c);
+	sr_engine_get_db_unlock();
 
-	return SR_SUCCESS;
+	return ret;
 }
 
 #define SET_MAX_DIF_FIELD(curr, prev, max, ctime, ptime) \
@@ -167,8 +178,7 @@ static SR_32 system_policer_update_max(char *exe, struct sr_ec_system_stat_t *cu
 {
 	SR_U64 value;
 
-	SET_MAX_DIF_FIELD(curr->utime, prev->utime, max->utime, curr->curr_time, prev->curr_time)
-	SET_MAX_DIF_FIELD(curr->stime, prev->stime, max->stime, curr->curr_time, prev->curr_time)
+	SET_MAX_DIF_FIELD(curr->time, prev->time, max->time, curr->curr_time, prev->curr_time)
 	SET_MAX_DIF_FIELD(curr->bytes_read, prev->bytes_read, max->bytes_read, curr->curr_time, prev->curr_time)
 	SET_MAX_DIF_FIELD(curr->bytes_write, prev->bytes_write, max->bytes_write, curr->curr_time, prev->curr_time)
 
@@ -186,8 +196,7 @@ static SR_32 system_policer_update_tolerance(char *exe, struct sr_ec_system_stat
 
         config_params = sr_config_get_param();
 
-	SET_MAX_DIF_FIELD_PROTECT(curr->utime, prev->utime, max->utime, curr->curr_time, prev->curr_time, exe, "utime")
-	SET_MAX_DIF_FIELD_PROTECT(curr->stime, prev->stime, max->stime, curr->curr_time, prev->curr_time, exe, "stime")
+	SET_MAX_DIF_FIELD_PROTECT(curr->time, prev->time, max->time, curr->curr_time, prev->curr_time, exe, "time")
 	SET_MAX_DIF_FIELD_PROTECT(curr->bytes_read, prev->bytes_read, max->bytes_read, curr->curr_time, prev->curr_time, exe, "bytes_read")
 	SET_MAX_DIF_FIELD_PROTECT(curr->bytes_write, prev->bytes_write, max->bytes_write, curr->curr_time, prev->curr_time, exe, "bytes_write")
 
@@ -209,7 +218,7 @@ static SR_32 system_policer_learn(char *exe_name, system_policer_item_t *system_
 
 #ifdef SYSTEM_POLICER_DEBUG
 	if (is_debug_exe(exe_name)) {
-		printf("LLLLLLLLLLLLLLLLLLLLLLLLL exe:%s utime:%d bytes read:%llu !!!!!\n", exe_name, stats->utime, stats->bytes_read);
+		printf("LLLLLLLLLLLLLLLLLLLLLLLLL exe:%s utime:%d bytes read:%llu !!!!!\n", exe_name, stats->time, stats->bytes_read);
 	}
 #endif
 
@@ -310,8 +319,7 @@ SR_32 sr_stat_system_policer_new_data(struct sr_ec_system_stat_t *stats)
 	if (system_policer_item->stats.pid != stats->pid)
 		goto out;
 	/* If threads died */
-	if (stats->utime < system_policer_item->stats.utime ||
-	    stats->stime < system_policer_item->stats.stime)  {
+	if (stats->time < system_policer_item->stats.time) {
 		goto out;
 	}
 
@@ -344,12 +352,14 @@ SR_32 sr_start_system_policer_data_finish(void)
 {
 	SR_32 rc;
 
+	if (sr_stat_analysis_learn_mode_get() != SR_STAT_MODE_LEARN)
+		return SR_SUCCESS;
 	if (!is_updated)
 		return SR_SUCCESS;
 	is_updated = SR_FALSE;
 
 	// Write the learned table to a file
-	if ((rc = system_policer_flush_leran_table()) != SR_SUCCESS) {
+	if ((rc = system_policer_flush_learn_table()) != SR_SUCCESS) {
 		return rc;
 	}
 	
@@ -388,6 +398,29 @@ SR_32 sr_stat_system_policer_delete_aged(void)
 	return SR_SUCCESS;
 }
 
+static SR_32 policer_cb(char *exec, redis_system_policer_t *sp)
+{
+	system_policer_item_t *system_policer_learn_item;
+
+	SR_Zalloc(system_policer_learn_item, system_policer_item_t *, sizeof(system_policer_item_t));
+	if (!system_policer_learn_item) {
+		CEF_log_event(SR_CEF_CID_SP, "error", SEVERITY_HIGH, "%s=learn hash update: memory allocation failed ", REASON);
+		return SR_ERROR;
+	}
+	strncpy(system_policer_learn_item->exec, exec, SR_MAX_PATH_SIZE);
+	system_policer_learn_item->stats.time = sp->time;
+	system_policer_learn_item->stats.bytes_read = sp->bytes_read;
+	system_policer_learn_item->stats.bytes_write = sp->bytes_write;
+	system_policer_learn_item->stats.vm_allocated = sp->vm_allocated;
+	system_policer_learn_item->stats.num_of_threads = sp->num_of_threads;
+	if (sr_gen_hash_insert(system_policer_learn_table, (void *)exec, system_policer_learn_item, 0) != SR_SUCCESS) {
+       		CEF_log_event(SR_CEF_CID_SP, "error", SEVERITY_HIGH, "%s=sr_gen_hash_insert failed ", REASON);
+		return SR_ERROR;
+	}	
+
+	return SR_SUCCESS;
+}
+
 #define GET_NUM_TOKEN(field) \
 		token = strtok(NULL, ",");\
 		if (!token)\
@@ -396,52 +429,26 @@ SR_32 sr_stat_system_policer_delete_aged(void)
 
 SR_32 sr_stat_policer_load_file(void)
 {
-	ssize_t read;
-	FILE *fp;
-	size_t len = 0;
-	char *line = NULL;
-	struct config_params_t *config_params;
-	system_policer_item_t *system_policer_learn_item;
-	char *token, *exe_name;
+	SR_32 rc = SR_SUCCESS;
 
-	config_params = sr_config_get_param();
+	sr_engine_get_db_lock();
+	if (!(c = redis_mng_session_start())) {
+        	CEF_log_event(SR_CEF_CID_SP, "error", SEVERITY_HIGH, "%s=Failed start redis session", REASON);
+		rc = SR_ERROR;
+		goto out;
+	}
+
+	if (redis_mng_exec_all_system_policer(c, policer_cb)) {
+        	CEF_log_event(SR_CEF_CID_SP, "error", SEVERITY_HIGH, "%s=Failed policer load file", REASON);
+		rc = SR_ERROR;
+		goto out;
+	} 
 	
-	if (!(fp = fopen(config_params->system_prolicer_learn_file, "r"))) {
-        	CEF_log_event(SR_CEF_CID_SP, "error", SEVERITY_HIGH, "%s=sr_stat_policer_load_fileailed oppening:%s ",
-			REASON, config_params->system_prolicer_learn_file);
-		return SR_ERROR;
-	}
+out:
+	if (c)
+		redis_mng_session_end(c);
+	sr_engine_get_db_unlock();
 
-	while ((read = getline(&line, &len, fp)) != -1) {
-#ifdef SYSTEM_POLICER_DEBUG
-        	printf("Retrieved line of length %zu :\n", read);
-        	printf("%s", line);
-#endif
-		SR_Zalloc(system_policer_learn_item, system_policer_item_t *, sizeof(system_policer_item_t));
-		if (!system_policer_learn_item) {
-        		CEF_log_event(SR_CEF_CID_SP, "error", SEVERITY_HIGH, "%s=learn hash update: memory allocation failed ", REASON);
-			return SR_ERROR;
-		}
-		exe_name = strtok(line, ",");
-		if (!exe_name)
-			continue;
-		strncpy(system_policer_learn_item->exec, exe_name, SR_MAX_PATH_SIZE);
-		GET_NUM_TOKEN(system_policer_learn_item->stats.utime)
-		GET_NUM_TOKEN(system_policer_learn_item->stats.stime)
-		GET_NUM_TOKEN(system_policer_learn_item->stats.bytes_read)
-		GET_NUM_TOKEN(system_policer_learn_item->stats.bytes_write)
-		GET_NUM_TOKEN(system_policer_learn_item->stats.vm_allocated)
-		GET_NUM_TOKEN(system_policer_learn_item->stats.num_of_threads)
-		if (sr_gen_hash_insert(system_policer_learn_table, (void *)exe_name, system_policer_learn_item, 0) != SR_SUCCESS) {
-        		CEF_log_event(SR_CEF_CID_SP, "error", SEVERITY_HIGH, "%s=sr_gen_hash_insert failed ", REASON);
-			return SR_ERROR;
-		}	
-	}
-
-	fclose(fp);
-	if (len)
-		free(line);
-
-	return SR_SUCCESS;
+	return rc;
 }
 

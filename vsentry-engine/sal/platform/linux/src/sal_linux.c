@@ -481,3 +481,32 @@ SR_BOOL sal_is_iterate_dir(char *filename)
 	return SR_TRUE;
 }
 
+static void reverse_arr(char *arr, int n)
+{
+	int i, tmp;
+
+	for (i = 0; i < n / 2; i++)  {
+		tmp = arr[i];
+		arr[i] = arr[n - 1 - i];
+		arr[n - 1 - i] = tmp;
+	}
+}
+
+SR_BOOL sal_is_big_endian(void)
+{
+	union {
+		SR_32 i;
+		char c[4];
+	} u;
+
+	u.i = 1;
+
+	return u.c[3] == 1;
+}
+
+void sal_to_network_order(SR_U32 *num)
+{
+	if (sal_is_big_endian())
+		return;
+	reverse_arr((char *)num, 4);
+}

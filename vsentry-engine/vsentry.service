@@ -1,14 +1,9 @@
 [Unit]
 Description=SafeRide vSentry security engine
-After=sysrepod.service
 
 [Service]
 Type=forking
-ExecStartPre=/bin/sh -c "if [ ! -e /etc/sysrepo/yang/ietf-netconf-acm@2012-02-22.yang ]; then /usr/bin/sysrepoctl --install --yang=/etc/vsentry/yang/ietf-netconf-acm@2012-02-22.yang; fi"
-ExecStartPre=/bin/sh -c "if [ ! -e /etc/sysrepo/yang/ietf-netconf-notifications@2012-02-06.yang ]; then /usr/bin/sysrepoctl --install --yang=/etc/vsentry/yang/ietf-netconf-notifications@2012-02-06.yang; fi"
-ExecStartPre=/bin/sh -c "if [ ! -e /etc/sysrepo/yang/ietf-netconf@2011-06-01.yang ]; then /usr/bin/sysrepoctl --install --yang=/etc/vsentry/yang/ietf-netconf@2011-06-01.yang; fi"
-ExecStartPre=/bin/sh -c "if [ ! -e /etc/sysrepo/yang/notifications@2008-07-14.yang ]; then /usr/bin/sysrepoctl --install --yang=/etc/vsentry/yang/notifications@2008-07-14.yang; fi"
-ExecStartPre=/bin/sh -c "if [ ! -e /etc/sysrepo/yang/saferide.yang ]; then /usr/bin/sysrepoctl --install --yang=/etc/vsentry/yang/saferide.yang; fi"
+ExecStartPre=/usr/bin/redis-server & 
 ExecStartPre=/bin/sh -c "if [ ! -e /dev/vsentry ]; then mknod /dev/vsentry c `cat /proc/devices | grep vsentry | awk '{print $1}'` 0; fi"
 ExecStart=/usr/bin/sr_engine -c /etc/vsentry/sr_config -b
 Restart=on-failure

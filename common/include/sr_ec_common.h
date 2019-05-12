@@ -96,8 +96,7 @@ struct sr_ec_connection_stat_wl_t {
 #pragma pack(push, 1)
 struct sr_ec_system_stat_t{
 	SR_U32 pid;
-	SR_U64 utime;
-	SR_U64 stime;
+	SR_U64 time;
 	SR_U32 vm_allocated;
 	SR_U64 bytes_read;
 	SR_U64 bytes_write;

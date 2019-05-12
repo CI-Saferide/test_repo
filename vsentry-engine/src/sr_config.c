@@ -30,7 +30,6 @@
 #include "can_rule.h"
 #include "sr_db.h"
 #include "jsmn.h"
-#include <sysrepo.h>
 #include "sr_static_policy.h"
 #ifdef BIN_CLS_DB
 #include "sr_engine_utils.h"
@@ -68,8 +67,6 @@ static void handler(int signal)
  	}
 }
 #endif
-
-static char filename[] = "sr_engine.cfg";
 
 #ifdef BIN_CLS_DB
 #endif
@@ -1149,249 +1146,6 @@ void sr_config_vsentry_db_cb(int type, int op, void *entry)
 	}
 }
 
-
-SR_BOOL write_config_record (void* ptr, enum sr_header_type rec_type)
-{
-	FILE* 					conf_file;
-	conf_file = fopen(filename,"ab");
-	switch (rec_type) {
-	case CONFIG_NET_RULE: {
-		struct sr_net_record	net_rec;
-		struct sr_net_entry*	net_entry;
-		memcpy(&net_rec, ptr, sizeof(net_rec));
-		net_entry = (struct sr_net_entry*)ptr;
-		fwrite(&rec_type, 1, sizeof(rec_type),conf_file);
-		fwrite(&net_rec, 1, sizeof(net_rec),conf_file);
-		fwrite(net_entry->process, (size_t)net_entry->process_size, sizeof(SR_8),conf_file);
-		break;
-		}
-	case CONFIG_FILE_RULE: {
-		struct sr_file_record	file_rec;
-		struct sr_file_entry*	file_entry;
-		memcpy(&file_rec, ptr, sizeof(file_rec));
-		file_entry = (struct sr_file_entry*)ptr;
-		fwrite(&rec_type, 1, sizeof(rec_type),conf_file);
-		fwrite(&file_rec, 1, sizeof(file_rec),conf_file);
-		fwrite(file_entry->process, (size_t)file_entry->process_size, sizeof(SR_8),conf_file);
-		fwrite(file_entry->filename, (size_t)file_entry->filename_size, sizeof(SR_8),conf_file);
-		break;
-		}
-	case CONFIG_CAN_RULE: {
-		struct sr_can_record		can_rec;
-		struct sr_can_entry*		can_entry;
-		memcpy(&can_rec, ptr, sizeof(can_rec));
-		can_entry = (struct sr_can_entry*)ptr;
-		fwrite(&rec_type, 1, sizeof(rec_type),conf_file);
-		fwrite(&can_rec, 1, sizeof(can_rec),conf_file);
-		fwrite(can_entry->process, (size_t)can_entry->process_size, sizeof(SR_8),conf_file);
-		break;
-		}
-	case CONFIG_PHONE_ENTRY: {
-		struct sr_phone_record*	phone_entry;
-		phone_entry = (struct sr_phone_record*)ptr;
-		fwrite(&rec_type, 1, sizeof(rec_type),conf_file);
-		fwrite(phone_entry, 1, sizeof(struct sr_phone_record),conf_file);
-		break;
-		}
-	case CONFIG_EMAIL_ENTRY: {
-		struct sr_email_record		email_rec;
-		struct sr_email_entry*		email_entry;
-		memcpy(&email_rec, ptr, sizeof(email_rec));
-		email_entry = (struct sr_email_entry*)ptr;
-		fwrite(&rec_type, 1, sizeof(rec_type),conf_file);
-		fwrite(&email_rec, 1, sizeof(email_rec),conf_file);
-		fwrite(email_entry->email, (size_t)email_entry->email_size, sizeof(SR_8),conf_file);
-		break;
-		}
-	case CONFIG_LOG_TARGET: {
-		struct sr_log_record		log_rec;
-		struct sr_log_entry*		log_entry;
-		memcpy(&log_rec, ptr, sizeof(log_rec));
-		log_entry = (struct sr_log_entry*)ptr;
-		fwrite(&rec_type, 1, sizeof(rec_type),conf_file);
-		fwrite(&log_rec, 1, sizeof(log_rec),conf_file);
-		fwrite(log_entry->log_target, (size_t)log_entry->log_size, sizeof(SR_8),conf_file);
-		break;
-		}
-	default:
-		fclose (conf_file);
-		return SR_FALSE;
-	};
-	
-	fclose (conf_file);
-	return SR_TRUE;
-}
-
-SR_BOOL read_config_file (void)
-{
-	FILE* 					conf_file;
-	char					process[4096];
-	enum sr_header_type		rec_type;
-	conf_file = fopen(filename,"rb");
-	
-	if (!conf_file) {
-		return SR_TRUE;
-	}
-
-	while (!feof(conf_file)) {
-		if (1 != fread(&rec_type, sizeof(rec_type), 1, conf_file)) {
-				fclose (conf_file);
-				return SR_FALSE;
-			}
-		switch (rec_type) {
-		case CONFIG_NET_RULE: {
-			struct sr_net_record	net_rec = {};
-			if (1 != fread(&net_rec, sizeof(net_rec), 1, conf_file)) {
-				CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-					"%s=fail to read from config file, line %d",REASON,
-					__LINE__);
-				fclose (conf_file);
-				return SR_FALSE;
-			}
-			memset(process, 0, 4096);
-			if (net_rec.process_size != fread(&process, sizeof(SR_8), net_rec.process_size, conf_file)) {
-				CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-					"%s=fail to read from config file, line %d",REASON,
-					__LINE__);
-				fclose (conf_file);
-				return SR_FALSE;
-			}
-			sr_cls_port_add_rule(net_rec.src_port, process, "*", net_rec.rulenum, SR_DIR_SRC, net_rec.proto);
-			sr_cls_port_add_rule(net_rec.dst_port, process, "*", net_rec.rulenum, SR_DIR_DST, net_rec.proto);
-			sr_cls_add_ipv4(htonl(net_rec.src_addr), process, "*", htonl(net_rec.src_netmask), net_rec.rulenum, SR_DIR_SRC);
-			sr_cls_add_ipv4(htonl(net_rec.dst_addr), process, "*", htonl(net_rec.dst_netmask), net_rec.rulenum, SR_DIR_DST);
-			sr_cls_rule_add(SR_NET_RULES, net_rec.rulenum, net_rec.action.actions_bitmap, 0, SR_RATE_TYPE_EVENT, net_rec.max_rate, net_rec.rate_action,
-				net_rec.action.log_target, net_rec.action.email_id, net_rec.action.phone_id, net_rec.action.skip_rulenum);
-			break;
-			}
-		case CONFIG_FILE_RULE: {
-			struct sr_file_record	file_rec;
-			char					filename[4096];
-			if (1 != fread(&file_rec, sizeof(file_rec), 1, conf_file)) {
-				CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-					"%s=fail to read from config file, line %d",REASON,
-					__LINE__);
-				fclose (conf_file);
-				return SR_FALSE;
-			}
-			memset(process, 0, 4096);
-			memset(filename, 0, 4096);
-			if (file_rec.process_size != fread(&process, sizeof(SR_8), file_rec.process_size, conf_file)) {
-				CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-					"%s=fail to read from config file, line %d",REASON,
-					__LINE__);
-				fclose (conf_file);
-				return SR_FALSE;
-			}
-			if (file_rec.filename_size != fread(&filename, sizeof(SR_8), file_rec.filename_size, conf_file)) {
-				CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-					"%s=fail to read from config file, line %d",REASON,
-					__LINE__);
-				fclose (conf_file);
-				return SR_FALSE;
-			}
-			sr_cls_file_add_rule(filename, process, "*", file_rec.rulenum, (SR_U8)1);
-			sr_cls_rule_add(SR_FILE_RULES, file_rec.rulenum, file_rec.action.actions_bitmap, SR_FILEOPS_READ, SR_RATE_TYPE_EVENT, file_rec.max_rate,
-				file_rec.rate_action, file_rec.action.log_target, file_rec.action.email_id, file_rec.action.phone_id, file_rec.action.skip_rulenum);
-			break;
-			}
-		case CONFIG_CAN_RULE: {
-			struct sr_can_record	can_rec;
-			if (1 != fread(&can_rec, sizeof(can_rec), 1, conf_file)) {
-				CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-					"%s=fail to read from config file, line %d",REASON,
-					__LINE__);
-				fclose (conf_file);
-				return SR_FALSE;
-			}
-			memset(process, 0, 4096);
-			if (can_rec.process_size != fread(&process, sizeof(SR_8), can_rec.process_size, conf_file)) {
-				CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-					"%s=fail to read from config file line %d",REASON,
-					__LINE__);
-				fclose (conf_file);
-				return SR_FALSE;
-			}
-			sr_cls_canid_add_rule(can_rec.msg_id, "*", "*", can_rec.rulenum,can_rec.direction, "vcan0");
-			sr_cls_rule_add(SR_CAN_RULES, can_rec.rulenum, can_rec.action.actions_bitmap, 0, SR_RATE_TYPE_EVENT, can_rec.max_rate, can_rec.rate_action, can_rec.action.log_target, can_rec.action.email_id, can_rec.action.phone_id, can_rec.action.skip_rulenum);
-			break;
-			}
-		case CONFIG_PHONE_ENTRY: {
-			struct sr_phone_record	phone_rec;
-			if (1 != fread(&phone_rec, sizeof(phone_rec), 1, conf_file)) {
-				CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-					"%s=fail to read from config file line %d",REASON,
-					__LINE__);
-				fclose (conf_file);
-				return SR_FALSE;
-			}
-			CEF_log_event(SR_CEF_CID_SYSTEM, "info", SEVERITY_LOW,
-				"%s=msg type - phone entry",MESSAGE);
-			CEF_log_event(SR_CEF_CID_SYSTEM, "info", SEVERITY_LOW,
-				"%s=phone_id - %d",MESSAGE,
-				phone_rec.phone_id);
-			CEF_log_event(SR_CEF_CID_SYSTEM, "info", SEVERITY_LOW,
-				"%s=phone_number - %s",MESSAGE,
-				phone_rec.phone_number);
-			break;
-			}
-		case CONFIG_EMAIL_ENTRY: {
-			struct sr_email_record	email_rec;
-			char					email[256];
-			if (1 != fread(&email_rec, sizeof(email_rec), 1, conf_file)) {
-				CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-					"%s=fail to read from config file, line %d",REASON,
-					__LINE__);
-				fclose (conf_file);
-				return SR_FALSE;
-			}
-			memset(email, 0, 256);
-			if (email_rec.email_size != fread(&email, sizeof(SR_8), email_rec.email_size, conf_file)) {
-				CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-					"%s=fail to read from config file, line %d",REASON,
-					__LINE__);
-				fclose (conf_file);
-				return SR_FALSE;
-			}
-			printf ("msg type = email entry\n");
-			printf ("email_id = %d\n", email_rec.email_id);
-			printf ("email = %s\n", email);
-			break;
-			}
-		case CONFIG_LOG_TARGET: {
-			struct sr_log_record	log_rec;
-			char					log_target[256];
-			if (1 != fread(&log_rec, sizeof(log_rec), 1, conf_file)) {
-				CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-					"%s=fail to read from config file, line %d",REASON,
-					__LINE__);
-				fclose (conf_file);
-				return SR_FALSE;
-			}
-			memset(log_target, 0, 256);
-			if (log_rec.log_size != fread(&log_target, sizeof(SR_8), log_rec.log_size, conf_file)) {
-				CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
-					"%s=fail to read from config file, line %d",REASON,
-					__LINE__);
-				fclose (conf_file);
-				return SR_FALSE;
-			}
-			printf ("msg type = log target\n");
-			printf ("log_id = %d\n", log_rec.log_id);
-			printf ("log target = %s\n", log_target);
-			break;
-			}
-		default:
-			fclose (conf_file);
-			return SR_FALSE;
-			break;
-		};
-	} /* end of configuration file reached */
-
-	fclose (conf_file);
-	return SR_TRUE;
-}
-
 SR_32 sr_create_filter_paths(void)
 {
 	sal_os_t os;
@@ -1412,3 +1166,434 @@ SR_32 sr_create_filter_paths(void)
 
 	return SR_SUCCESS;
 }
+
+#ifdef BIN_CLS_DB
+static SR_32 parse_addr(char *addr_str, SR_U32 *addr, SR_U32 *netmask)
+{
+	char *p, *tmp = NULL;
+	SR_32 rc = SR_SUCCESS;
+	SR_U32 i, n;
+
+	if (!(tmp = strdup(addr_str)))
+		return SR_ERROR;
+
+	p = strtok(tmp, "/");
+	if (!p) {
+		rc = SR_ERROR;
+		goto out;
+	}
+	p = strtok(NULL, "/");
+	if (!p) {
+		rc = SR_ERROR;
+		goto out;
+	}
+	sal_get_ip_address_from_str(tmp, addr);
+
+	n = atoi(p);
+
+	*netmask = 0;
+	for (i = 0 ;i < n; i++) {
+		(*netmask) >>= 1;
+		(*netmask) |= (1 << 31);
+	} 
+	sal_to_network_order(netmask);
+
+out:
+	if (tmp)
+		free(tmp);
+	return rc;
+} 
+#endif
+
+#ifdef BIN_CLS_DB
+static SR_32 create_program_rule(char *program, SR_U16 rule_num, SR_U32 type) 
+{  
+        unsigned long exec_ino = INODE_ANY;
+        SR_32 ret;
+
+	if (*(program)) {
+		ret = sr_get_inode(program, &exec_ino);
+		if (ret != SR_SUCCESS) {
+			CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+				"%s=failed to get prog %s inode",REASON, program);
+			return SR_ERROR;
+    		}
+	}
+
+	ret = cls_prog_rule(true, type, rule_num, exec_ino, program);
+	if (ret != SR_SUCCESS) {
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+			"%s=failed to add exec_ino %u for ip rule %d",REASON,
+					exec_ino, rule_num);
+		return SR_ERROR;
+	}
+
+	return SR_SUCCESS;
+}
+#endif
+
+#ifdef BIN_CLS_DB
+static SR_32 create_user_rule(char *user, SR_U16 rule_num, SR_U32 type) 
+{  
+	unsigned int uid = UID_ANY;
+	SR_32 ret;
+
+	if (*(user))
+		uid = sal_get_uid(user);
+
+	ret = cls_uid_rule(true, type, rule_num, uid);
+	if (ret != SR_SUCCESS) {
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+		"%s=failed to add uid %u for ip rule %d",REASON,uid, rule_num);
+		return SR_ERROR;
+	}
+
+	return SR_SUCCESS;
+}
+#endif
+
+static void handle_net_rule(sr_net_record_t *net_rule, SR_32 *status)
+{
+#ifdef BIN_CLS_DB
+	SR_U32 src_addr, dst_addr, src_netmask, dst_netmask;
+        SR_32 ret;
+#endif
+	switch (net_rule->net_item.net_item_type) {
+		case NET_ITEM_RULE:
+#ifdef BIN_CLS_DB
+			/* create the rule */
+			ret = cls_rule(true, CLS_IP_RULE_TYPE, net_rule->rulenum, net_rule->net_item.u.rule_info.action, net_rule->net_item.u.rule_info.rate_limit);
+			if (ret != SR_SUCCESS) {
+				CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+					"%s=failed to create ip rule %u with action %s",REASON,
+       					net_rule->rulenum, net_rule->net_item.u.rule_info.action);
+				*status = ret;
+				return;
+        		}
+#endif
+			break;
+		case NET_ITEM_SRC_ADDR:
+#ifdef BIN_CLS_DB
+			if (parse_addr(net_rule->net_item.u.src_addr, &src_addr, &src_netmask) != SR_SUCCESS) {
+				CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+					"%s=invalid src address rule %u ",REASON, net_rule->rulenum);
+				*status = SR_ERROR;
+				return;
+			}
+			/* create the src ip rule */
+			ret = cls_ip_rule(true, net_rule->rulenum, src_addr, src_netmask, CLS_NET_DIR_SRC);
+			if (ret != SR_SUCCESS) {
+				CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+				"%s=failed to add src ip rule %d",REASON, net_rule->rulenum);
+				*status = ret;
+				return;
+			}
+#endif
+			break;
+		case NET_ITEM_DST_ADDR:
+#ifdef BIN_CLS_DB
+			if (parse_addr(net_rule->net_item.u.dst_addr, &dst_addr, &dst_netmask) != SR_SUCCESS) {
+				CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+					"%s=invalid dst address rule %u ",REASON, net_rule->rulenum);
+				*status = SR_ERROR;
+				return;
+			}
+			/* create the dst ip rule */
+			ret = cls_ip_rule(true, net_rule->rulenum, dst_addr, dst_netmask, CLS_NET_DIR_DST);
+			if (ret != SR_SUCCESS) {
+				CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+				"%s=failed to add dst ip rule %d",REASON, net_rule->rulenum);
+				*status = ret;
+				return;
+			}
+#endif
+			break;
+		case NET_ITEM_PROTO:
+#ifdef BIN_CLS_DB
+			/* create the ip_proto rule */
+			ret = cls_ip_porto_rule(true, net_rule->rulenum, net_rule->net_item.u.proto); 
+			if (ret != SR_SUCCESS) {
+				CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+					"%s=failed to add ipproto %u rule %d",REASON,
+					net_rule->net_item.u.proto, net_rule->rulenum);
+				*status = ret;
+				return;
+			}
+#endif
+			break;
+		case NET_ITEM_SRC_PORT:
+#ifdef BIN_CLS_DB
+			/* create the src port rule */
+			ret = cls_port_rule(true, net_rule->rulenum, net_rule->net_item.u.port.port,
+				net_rule->net_item.u.port.proto, CLS_NET_DIR_SRC);
+			if (ret != SR_SUCCESS) {
+				CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+					"%s=failed to add src port %u rule %d",REASON,
+					net_rule->net_item.u.port.port, net_rule->rulenum);
+				printf("EEEEEEEEEEee failed to add src port %u rule %d\n",
+					net_rule->net_item.u.port.port, net_rule->rulenum);
+				*status = ret;
+				return;
+			}
+#endif
+			break;
+		case NET_ITEM_DST_PORT:
+#ifdef BIN_CLS_DB
+			/* create the src port rule */
+			ret = cls_port_rule(true, net_rule->rulenum, net_rule->net_item.u.port.port,
+				net_rule->net_item.u.port.proto, CLS_NET_DIR_DST);
+			if (ret != SR_SUCCESS) {
+				CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+					"%s=failed to add dst port %u rule %d",REASON,
+					net_rule->net_item.u.port.port, net_rule->rulenum);
+				printf("EEEEEEEEEEee failed to add dst port %u rule %d\n",
+					net_rule->net_item.u.port.port, net_rule->rulenum);
+				*status = ret;
+				return;
+			}
+#endif
+			break;
+		case NET_ITEM_PROGRAM:
+#ifdef BIN_CLS_DB
+			/* create the exec rule */
+			if (create_program_rule(net_rule->net_item.u.program, net_rule->rulenum, CLS_IP_RULE_TYPE) != SR_SUCCESS) {
+				*status = SR_ERROR;
+				return;
+        		}
+#endif
+			break;
+		case NET_ITEM_USER:
+#ifdef BIN_CLS_DB
+        		/* create the uid rule */
+			if (create_user_rule(net_rule->net_item.u.user, net_rule->rulenum, CLS_IP_RULE_TYPE) != SR_SUCCESS) { 
+				*status = SR_ERROR;
+				return;
+        		}
+#endif
+			break;
+		default:
+			break;
+	}
+}
+
+static void handle_can_rule(sr_can_record_t *can_rule, SR_32 *status)
+{
+#ifdef BIN_CLS_DB
+        SR_U32 if_index = (unsigned int)(-1);
+        int ret;
+#endif
+
+	switch (can_rule->can_item.can_item_type) {
+		case CAN_ITEM_RULE:
+#ifdef DEBUG_PRINT
+			printf(">>>>>>>>>> Add CAN rule rule:%d action:%s \n", can_rule->rulenum, can_rule->can_item.u.action);
+#endif
+#ifdef BIN_CLS_DB
+			ret = cls_rule(true, CLS_CAN_RULE_TYPE, can_rule->rulenum, can_rule->can_item.u.rule_info.action, can_rule->can_item.u.rule_info.rate_limit);
+    			if (ret != SR_SUCCESS) {
+				CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+					"%s=failed to create can rule %u with action %s",REASON,
+					can_rule->rulenum, can_rule->can_item.u.rule_info.action);
+				*status = SR_ERROR;
+				return;
+        		}
+#endif
+			break;
+		case CAN_ITEM_MSG:
+#ifdef BIN_CLS_DB
+ 			/* create the can rule */
+			ret = sal_get_interface_id(can_rule->can_item.u.msg.inf, (SR_32*)&if_index);
+			if (ret != SR_SUCCESS) {
+				CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+					"%s=failed to get if_index for can %s",REASON,
+						can_rule->can_item.u.msg.inf);
+				*status = SR_ERROR;
+				return;
+        		}
+			if (!strcmp(can_rule->can_item.u.msg.dir, "in") || !strcmp(can_rule->can_item.u.msg.dir, "both")) {
+				ret = cls_can_rule(true, can_rule->rulenum, can_rule->can_item.u.msg.id, DIR_IN, if_index);
+				if (ret != SR_SUCCESS) {
+					CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+					"%s=failed to add can rule in",REASON);
+					*status = SR_ERROR;
+					return;
+				}
+			}
+			if (!strcmp(can_rule->can_item.u.msg.dir, "out") || !strcmp(can_rule->can_item.u.msg.dir, "both")) {
+				ret = cls_can_rule(true, can_rule->rulenum, can_rule->can_item.u.msg.id, DIR_OUT, if_index);
+				if (ret != SR_SUCCESS) {
+					CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+					"%s=failed to add can rule in",REASON);
+					*status = SR_ERROR;
+					return;
+				}
+			}
+#if DEBUG
+			printf("   >>>>>>>>>CCCCCCCCCCCCCCCCCAAN rule createdu rule:%d mid:%x dir:%s if:%s  \n",
+				can_rule->rulenum, can_rule->can_item.u.msg.id, can_rule->can_item.u.msg.dir, can_rule->can_item.u.msg.inf);
+#endif
+#endif
+			break;
+		case CAN_ITEM_PROGRAM:
+#ifdef BIN_CLS_DB
+			/* create the exec rule */
+			if (create_program_rule(can_rule->can_item.u.program, can_rule->rulenum, CLS_CAN_RULE_TYPE) != SR_SUCCESS) {
+				*status = SR_ERROR;
+				return;
+        		}
+#endif
+			break;
+		case CAN_ITEM_USER:
+#ifdef BIN_CLS_DB
+        		/* create the uid rule */
+			if (create_user_rule(can_rule->can_item.u.user, can_rule->rulenum, CLS_CAN_RULE_TYPE) != SR_SUCCESS) { 
+				*status = SR_ERROR;
+				return;
+        		}
+#endif
+			break;
+		default:
+			break;
+	}
+}
+
+static void handle_file_rule(sr_file_record_t *file_rule, SR_32 *status)
+{
+#ifdef BIN_CLS_DB
+        unsigned long file_ino = INODE_ANY;
+	SR_32 ret;
+#endif
+	
+	switch (file_rule->file_item.file_item_type) {
+		case FILE_ITEM_RULE:
+#ifdef DEBUG_PRINT
+			printf(">>>>>>>>>> Add FILE rule:%d action:%s \n", file_rule->rulenum, file_rule->file_item.u.rule_info.action);
+#endif
+#ifdef BIN_CLS_DB
+			ret = cls_rule(true, CLS_FILE_RULE_TYPE, file_rule->rulenum, file_rule->file_item.u.rule_info.action, 0);
+			if (ret != SR_SUCCESS) {
+				CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+					"%s=failed to create file rule %u with action %s",REASON,
+					file_rule->rulenum, file_rule->file_item.u.rule_info.action);
+				*status = SR_ERROR;
+				return;
+			}
+#endif
+			break;
+		case FILE_ITEM_FILENAME:
+#ifdef DEBUG_PRINT
+			printf("   >>>>>>>>>> FILENAME :%s perm:%s FILE_MODE_READ:%d FILE_MODE_WRITE:%d :%d \n",
+			file_rule->file_item.u.file.name, file_rule->file_item.u.file.perm, FILE_MODE_READ, FILE_MODE_WRITE, FILE_MODE_EXEC);
+#endif
+#ifdef BIN_CLS_DB
+			sr_get_inode(file_rule->file_item.u.file.name, &file_ino);
+			ret = cls_file_rule(true, file_rule->rulenum, file_rule->file_item.u.file.name, file_ino, file_rule->file_item.u.file.perm);
+			if (ret != SR_SUCCESS) {
+				CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+					"%s=failed to add file %s for file rule %d",REASON,
+				file_rule->file_item.u.file.name, file_rule->rulenum);
+				*status = SR_ERROR;
+				return;
+			}
+#endif
+			break;
+		case FILE_ITEM_PROGRAM:
+#ifdef DEBUG_PRINT
+			printf("   >>>>>>>>> FILE_ITEM_PROGRAM: :%s \n", file_rule->file_item.u.program);
+#endif
+#ifdef BIN_CLS_DB
+			if (create_program_rule(file_rule->file_item.u.program, file_rule->rulenum, CLS_FILE_RULE_TYPE) != SR_SUCCESS) {
+				CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+					"%s=failed to add program %s for file rule %d",REASON,
+					file_rule->file_item.u.program, file_rule->rulenum);
+				*status = SR_ERROR;
+				return;
+			}
+#endif
+			break;
+		case FILE_ITEM_USER:
+#ifdef DEBUG_PRINT
+			printf("   >>>>>>>>> FILE_ITEM_USER: :%s \n", file_rule->file_item.u.user);
+#endif
+#ifdef BIN_CLS_DB
+			if (create_user_rule(file_rule->file_item.u.user, file_rule->rulenum, CLS_FILE_RULE_TYPE) != SR_SUCCESS) {
+				CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+					"%s=failed to add user %s for file rule %d",REASON,
+					file_rule->file_item.u.user, file_rule->rulenum);
+				*status = SR_ERROR;
+				return;
+ 			}
+#endif
+			break;
+		default:
+			break;
+	}
+
+	*status = SR_SUCCESS;
+}
+
+SR_32 sr_config_handle_action(void *data) 
+{
+#ifdef BIN_CLS_DB
+	sr_action_record_t *action = (sr_action_record_t *)data;
+
+	if (cls_action(true, (bool)!!(action->actions_bitmap && SR_CLS_ACTION_ALLOW),
+		(action->log_target != LOG_TARGET_NONE), action->name) == SR_ERROR) {
+		printf("XXXXX EEEEEEEEEEE Failed add action !!!\n");
+		CEF_log_event(SR_CEF_CID_SYSTEM, "error", SEVERITY_HIGH,
+			"%s=handle action failed act=%s",REASON,
+			action->name);
+		return SR_ERROR;
+        }
+
+#ifdef DEBUG_PRINT
+	printf(">>>>>> Handle action :%s bm:%d log:%d rl bm:%d rl log:%d \n", action->name,
+		action->actions_bitmap,
+		action->log_target,
+		action->rl_actions_bitmap,
+		action->rl_log_target);
+#endif
+#else
+#ifdef DEBUG_PRINT
+	sr_action_record_t *action = (sr_action_record_t *)data;
+
+	printf(">>>>>> Handle action :%s bm:%d log:%d rl bm:%d rl log:%d \n", action->name,
+		action->actions_bitmap,
+		action->log_target,
+		action->rl_actions_bitmap,
+		action->rl_log_target);
+#endif
+#endif
+
+	return SR_SUCCESS;
+	
+}
+
+void sr_config_handle_rule(void *data, redis_entity_type_t type, SR_32 *status)
+{
+	sr_net_record_t  *net_rule;
+	sr_can_record_t  *can_rule;
+	sr_file_record_t  *file_rule;
+
+	*status = SR_SUCCESS;
+
+	switch (type) { 
+		case  ENTITY_TYPE_IP_RULE:
+			net_rule = (sr_net_record_t *)data;
+			handle_net_rule(net_rule, status);
+			break;
+		case  ENTITY_TYPE_FILE_RULE:
+			file_rule = (sr_file_record_t *)data;
+			handle_file_rule(file_rule, status);
+			break;
+		case  ENTITY_TYPE_CAN_RULE:
+			can_rule = (sr_can_record_t *)data;
+			handle_can_rule(can_rule, status);
+			break;
+		default:
+			*status = SR_ERROR;
+			printf("ERROR: entity UNKOWN type :%d \n", type);
+			break;
+	}
+}
+

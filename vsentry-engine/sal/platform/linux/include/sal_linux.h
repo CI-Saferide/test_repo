@@ -107,4 +107,6 @@ SR_32 sal_linux_local_interface(char *file_name, SR_32 (*handle_data_cb)(char *b
 
 SR_BOOL sal_is_iterate_dir(char *filename);
 
+void sal_to_network_order(SR_U32 *num);
+
 #endif /* SAL_LINUX_ENGINE_H*/

@@ -3,148 +3,127 @@
 
 #include "sr_actions_common.h"
 #include "sr_sal_common.h"
+#include "db_tools.h"
+#include "redis_mng.h"
 
 #define MAX_PATH_LEN	4096
+#define MAX_ACTION_NAME 64
+#define MAX_ADDR_LEN 128
+#define MAX_PATH 512
+#define MAX_USER_NAME 32
+#define DIR_LEN 16
+#define	INTERFACE_LEN 64
+#define PERM_LEN 4
+#define LOG_TARGET_LEN 32
 
-enum sr_header_type{
-	CONFIG_NET_RULE = 1,
-	CONFIG_FILE_RULE,
-	CONFIG_CAN_RULE,
-	CONFIG_PHONE_ENTRY,
-	CONFIG_EMAIL_ENTRY,
-	CONFIG_LOG_TARGET,
-	CONFIG_TYPE_MAX,
-};
+#define SR_MID_ANY (unsigned int)-1 
 
-struct sr_config_actions{
-	SR_U16 						actions_bitmap;					/* bitmap of actions */
-	SR_U16 						skip_rulenum; 					/* for skip action */
-	SR_U8 						log_target; 					/* syslog facility etc for log action */
-	SR_U8 						email_id;   					/* store an index to a list of email addresses */
-	SR_U8 						phone_id;   					/* store an index to a list of phone numbers for sms actions */
-};
+typedef struct sr_action_record {
+	char             name[MAX_ACTION_NAME];
+	SR_U16 		 actions_bitmap;
+	sr_log_target_t  log_target;
+	SR_U16 		 rl_actions_bitmap;
+	sr_log_target_t  rl_log_target;
+} sr_action_record_t;
 
-struct sr_net_record{
-	SR_U16						rulenum;						/* rule number */
-	SR_U32						src_addr;						/* source IPv4 address */
-	SR_U32						dst_addr;						/* destination IPv4 address */
-	SR_U32  					src_netmask;					/* source IPv4 netmask */
-	SR_U32  					dst_netmask;					/* destination IPv4 netmask */
-	SR_U32  					src_port;						/* source port */
-	SR_U32  					dst_port;						/* destination port */
-	SR_8						proto;							/* protocol */
-	struct sr_config_actions	action;							/* bitmap of actions */
-	SR_U16						rate_action;					/* bitmap of rate exceed actions */
-	SR_U32 						max_rate;						/* maximum rate */
-	SR_32						uid;							/* user id */
-	SR_U16						process_size;					/* process name size in bytes */
-	SR_8*						process;						/* process name */
-};
+typedef enum {
+	NET_ITEM_RULE,
+	NET_ITEM_SRC_ADDR,
+	NET_ITEM_DST_ADDR,
+	NET_ITEM_PROTO,
+	NET_ITEM_SRC_PORT,
+	NET_ITEM_DST_PORT,
+	NET_ITEM_PROGRAM,
+	NET_ITEM_USER,
+} sr_net_item_type_t;
 
-struct sr_net_entry{		
-	SR_U16						rulenum;						/* rule number */
-	SR_U32						src_addr;						/* source IPv4 address */
-	SR_U32						dst_addr;						/* destination IPv4 address */
-	SR_U32  					src_netmask;					/* source IPv4 netmask */
-	SR_U32  					dst_netmask;					/* destination IPv4 netmask */
-	SR_U32  					src_port;						/* source port */
-	SR_U32  					dst_port;						/* destination port */
-	SR_8						proto;							/* protocol */
-	struct sr_config_actions	action;							/* bitmap of actions */
-	SR_U16						rate_action;					/* bitmap of rate exceed actions */
-	SR_U32 						max_rate;						/* maximum rate */
-	SR_32						uid;							/* user id */
-	SR_U16						process_size;					/* process name size in bytes */
-	SR_8						process[MAX_PATH_LEN];			/* process name */
-};
-		
-struct sr_file_record{
-	SR_U16						rulenum;						/* rule number */
-	struct sr_config_actions	action;							/* bitmap of actions */
-	SR_U16						rate_action;					/* bitmap of rate exceed actions */
-	SR_U32 						max_rate;						/* maximum rate */
-	SR_32						uid;							/* user id */
-	SR_U16						process_size;					/* process name size in bytes */
-	SR_U16						filename_size;					/* filename size in bytes */
-	SR_8*						process;						/* process name */
-	/* next feild should be calculated according to the real size of process feild */
-#if 0
-	SR_8*	  					filename;						/* filename/path. max path is 4096 on unix systems */
-#endif
-};
+typedef enum {
+	CAN_ITEM_RULE,
+	CAN_ITEM_MSG,
+	CAN_ITEM_PROGRAM,
+	CAN_ITEM_USER,
+} sr_can_item_type_t;
 
-struct sr_file_entry{
-	SR_U16						rulenum;						/* rule number */
-	struct sr_config_actions	action;							/* bitmap of actions */
-	SR_U16						rate_action;					/* bitmap of rate exceed actions */
-	SR_U32 						max_rate;						/* maximum rate */
-	SR_32						uid;							/* user id */
-	SR_U16						process_size;					/* process name size in bytes */
-	SR_U16						filename_size;					/* filename size in bytes */
-	SR_8						process[MAX_PATH_LEN];			/* process name */
-	SR_8	  					filename[MAX_PATH_LEN];			/* filename/path. max path is 4096 on unix systems */
-};
+typedef enum {
+	FILE_ITEM_RULE,
+	FILE_ITEM_FILENAME,
+	FILE_ITEM_PROGRAM,
+	FILE_ITEM_USER,
+} sr_file_item_type_t;
 
-struct sr_can_record{		
-	SR_U16						rulenum;						/* rule number */
-	SR_U32						msg_id;							/* can msg id */
-	SR_8						direction;							/* can inbount/outbound */
-	struct sr_config_actions	action;							/* bitmap of actions */
-	SR_U16						rate_action;					/* bitmap of rate exceed actions */
-	SR_U32 						max_rate;						/* maximum rate */
-	SR_32						uid;							/* user id */
-	SR_U16						process_size;					/* process name size in bytes */
-	SR_8*						process;						/* process name */
-};
+typedef struct {
+	SR_8 proto;
+	SR_U16 port;
+} port_t;
 
-struct sr_can_entry{		
-	SR_U16						rulenum;						/* rule number */
-	SR_U32						msg_id;							/* can msg id */
-	SR_8						direction;							/* can inbount/outbound */
-	struct sr_config_actions	action;							/* bitmap of actions */
-	SR_U16						rate_action;					/* bitmap of rate exceed actions */
-	SR_U32 						max_rate;						/* maximum rate */
-	SR_32						uid;							/* user id */
-	SR_U16						process_size;					/* process name size in bytes */
-	SR_8						process[MAX_PATH_LEN];			/* process name */
-};
+typedef struct {
+	char    action[MAX_ACTION_NAME];
+	SR_U32  rate_limit;
+} rule_info_t;
 
-struct sr_phone_record{
-	SR_U8						phone_id;						/* phone index */
-	SR_8						phone_number[15];				/* phone number */
-};			
-			
-struct sr_email_record{			
-	SR_U8						email_id;						/* email index */
-	SR_U8						email_size;						/* email string length */
-	SR_8*						email;							/* email address. according to IETF the max length is 254 bytes */
-};
+typedef struct {
+	sr_net_item_type_t net_item_type;
+	union {
+		rule_info_t rule_info;
+		char	src_addr[MAX_ADDR_LEN];
+		char	dst_addr[MAX_ADDR_LEN];
+		SR_U8	proto;
+		port_t  port;
+		char    program[MAX_PATH];
+		char    user[MAX_USER_NAME];
+	} u;
+} net_item_t;
 
-struct sr_email_entry{			
-	SR_U8						email_id;						/* email index */
-	SR_U8						email_size;						/* email string length */
-	SR_8						email[256];						/* email address. according to IETF the max length is 254 bytes */
-};
-			
-struct sr_log_record{			
-	SR_U8						log_id;							/* log index */
-	SR_U8						log_size;						/* log daemon target length */
-	SR_8*						log_target;						/* log daemon target */
-};
+typedef struct sr_net_record {
+	SR_U16	rulenum;
+	net_item_t net_item;
+} sr_net_record_t;
 
-struct sr_log_entry{			
-	SR_U8						log_id;							/* log index */
-	SR_U8						log_size;						/* log daemon target length */
-	SR_8						log_target[256];				/* log daemon target */
-};
+typedef struct {
+	SR_U32	id;
+	char    dir[DIR_LEN];
+	char    inf[INTERFACE_LEN];
+} can_msg_t;
 
-SR_BOOL config_ut(void);
-SR_BOOL write_config_record (void* ptr, enum sr_header_type rec_type);
-SR_BOOL read_config_file (void);
-SR_BOOL read_config_db (void);
-void start_cli(void);
+typedef struct {
+	sr_can_item_type_t can_item_type;
+	union {
+		rule_info_t rule_info;
+		can_msg_t msg;
+		char    program[MAX_PATH];
+		char    user[MAX_USER_NAME];
+	} u;
+} can_item_t;
+
+typedef struct sr_can_record {
+	SR_U16	rulenum;
+	can_item_t can_item;
+} sr_can_record_t;
+
+typedef struct sr_file {
+	char	name[MAX_PATH];
+	char	perm[PERM_LEN];
+} sr_file_t;
+
+typedef struct {
+	sr_file_item_type_t file_item_type;
+	union {
+		rule_info_t rule_info;
+		sr_file_t file;
+		char    program[MAX_PATH];
+		char    user[MAX_USER_NAME];
+	} u;
+} file_item_t;
+
+typedef struct sr_file_record {
+	SR_U16	rulenum;
+	file_item_t file_item;
+} sr_file_record_t;
+
 SR_32 sr_create_filter_paths(void);
 void sr_config_vsentry_db_cb(int type, int op, void *entry);
 SR_U32 sr_config_get_mod_state(void);
+void sr_config_handle_rule(void *data, redis_entity_type_t type, SR_32 *status);
+SR_32 sr_config_handle_action(void *data);
 
 #endif /* SR_CONFIG_H */
