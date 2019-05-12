@@ -59,6 +59,24 @@ static void generate_ip_log_extention(char *dst, int len, bool allow, ip_event_t
 			ip_ev->dport, ip_ev->ip_proto);
 }
 
+static void generate_file_log_extention(char *dst, int len, bool allow, vsentry_event_t *file_ev)
+{
+	if (file_ev->file_event.type == FILE_TYPE_SYSFS)
+		snprintf(dst, len, "msg=file message %s sysfs mode %x\n",
+			allow?"allowed":"dropped",
+			file_ev->file_event.mode);
+	else if (file_ev->file_event.type == FILE_TYPE_PROCFS)
+		snprintf(dst, len, "msg=file message %s procfs mode %x\n",
+			allow?"allowed":"dropped",
+			file_ev->file_event.mode);
+	else
+		snprintf(dst, len, "msg=file message %s reg file inode %lu ancestor %lu mode %x\n",
+			allow?"allowed":"dropped",
+			file_ev->file_event.file_ino,
+			file_ev->file_event.ancestor_ino,
+			file_ev->file_event.mode);
+}
+
 static void genl_log_print_cef_msg(vsentry_event_t *event)
 {
 	SR_8 cef_buffer[MAX_PAYLOAD];
@@ -92,7 +110,7 @@ static void genl_log_print_cef_msg(vsentry_event_t *event)
 		class = SR_CEF_CID_CAN;
 		break;
 	case CLS_FILE_RULE_TYPE:
-		generate_can_log_extention(extension, MAX_PAYLOAD,
+		generate_file_log_extention(extension, MAX_PAYLOAD,
 				(event->act_bitmap & VSENTRY_ACTION_ALLOW), event);
 		class = SR_CEF_CID_FILE;
 		break;

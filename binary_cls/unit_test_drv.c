@@ -5,9 +5,14 @@
 #include <sys/stat.h>
 #include <sys/ioctl.h>
 #include <unistd.h>
+#include <pthread.h>
 #include <fcntl.h>
 #include <errno.h>
 #include <malloc.h>
+#include <sys/socket.h>
+#include <linux/netlink.h>
+#include <linux/genetlink.h>
+#include <linux/rtnetlink.h>
 #include <linux/vsentry/vsentry.h>
 #include <linux/vsentry/vsentry_drv.h>
 #include "classifier.h"
@@ -19,6 +24,247 @@
 #define PAD_SIZE 	4096
 
 static int drv_fd = 0;
+
+static struct vsentry_genl_info genl_info;
+
+static void generate_can_log_extention(char *dst, int len, bool allow, vsentry_event_t *can_ev)
+{
+	snprintf(dst, len, "can %s: msgid 0x%x dir %s if_index %u",
+			allow?"allowed":"dropped", can_ev->can_event.can_header.msg_id,
+			(can_ev->dir == DIR_IN)?"in":"out",
+			can_ev->can_event.can_header.if_index);
+}
+
+static void generate_ip_log_extention(char *dst, int len, bool allow, ip_event_t *ip_ev)
+{
+	snprintf(dst, len, "ip %s: src %d.%d.%d.%d sport %d dst %d.%d.%d.%d dport %d proto %d",
+			allow?"allowed":"dropped",
+			(ip_ev->saddr.v4addr & 0xFF000000)>>24,
+			(ip_ev->saddr.v4addr & 0xFF0000)>>16,
+			(ip_ev->saddr.v4addr & 0xFF00)>>8,
+			(ip_ev->saddr.v4addr & 0xFF),
+			ip_ev->sport,
+			(ip_ev->daddr.v4addr & 0xFF000000)>>24,
+			(ip_ev->daddr.v4addr & 0xFF0000)>>16,
+			(ip_ev->daddr.v4addr & 0xFF00)>>8,
+			(ip_ev->daddr.v4addr & 0xFF),
+			ip_ev->dport, ip_ev->ip_proto);
+}
+
+static void generate_file_log_extention(char *dst, int len, bool allow, vsentry_event_t *file_ev)
+{
+	snprintf(dst, len, "file %s: inode %lu",
+			allow?"allowed":"dropped",
+			file_ev->file_event.file_ino);
+}
+
+static void genl_log_print_cef_msg(vsentry_event_t *event)
+{
+	unsigned char cef_buffer[PAD_SIZE];
+
+	switch(event->type) {
+	case CLS_IP_RULE_TYPE:
+		generate_ip_log_extention(cef_buffer, PAD_SIZE,
+				(event->act_bitmap & VSENTRY_ACTION_ALLOW), &event->ip_event);
+		break;
+	case CLS_CAN_RULE_TYPE:
+		generate_can_log_extention(cef_buffer, PAD_SIZE,
+				(event->act_bitmap & VSENTRY_ACTION_ALLOW), event);
+		break;
+	case CLS_FILE_RULE_TYPE:
+		generate_file_log_extention(cef_buffer, PAD_SIZE,
+				(event->act_bitmap & VSENTRY_ACTION_ALLOW), event);
+		break;
+	default:
+		return;
+	}
+
+	fprintf(stdout, "event log %llu: %s\n", event->ts, cef_buffer);
+}
+
+static int parse_rtattr(struct rtattr *tb[], int max, struct rtattr *rta, int len)
+{
+        memset(tb, 0, sizeof(struct rtattr *) * (max + 1));
+        while (RTA_OK(rta, len)) {
+                if (rta->rta_type <= max)
+                        tb[rta->rta_type] = rta;
+                rta = RTA_NEXT(rta,len);
+        }
+
+        if (len)
+                fprintf(stderr, "deficit %d, rta_len=%d\n", len, rta->rta_len);
+
+        return 0;
+}
+
+static void format_netlink(struct nlmsghdr *msg)
+{
+	struct rtattr *tb[VSENTRY_GENL_ATTR_MAX + 1];
+	struct genlmsghdr *ghdr = NLMSG_DATA(msg);
+	int len;
+	struct rtattr *attrs;
+
+	len = msg->nlmsg_len;
+
+	/* if this message doesn't have the proper family ID, drop it */
+	if (msg->nlmsg_type != genl_info.family) {
+		fprintf(stderr,"netlink: message received with wrong family id.\n");
+		return;
+	}
+
+	len -= NLMSG_LENGTH(GENL_HDRLEN);
+	if (len < 0) {
+		fprintf(stderr, "netlink: wrong controller message len: %d\n", len);
+		return;
+	}
+
+	attrs = (struct rtattr *)((char *)ghdr + GENL_HDRLEN);
+	/* parse the attributes in this message */
+	parse_rtattr(tb, VSENTRY_GENL_ATTR_MAX, attrs, len);
+
+	/* if there's an ACPI event attribute... */
+	if (tb[VSENTRY_GENL_ATTR_EVENT]) {
+		genl_log_print_cef_msg((vsentry_event_t*)RTA_DATA(tb[VSENTRY_GENL_ATTR_EVENT]));
+	}
+}
+
+static void process_netlink(int fd)
+{
+	int status;
+	struct nlmsghdr *h;
+	struct sockaddr_nl nladdr;
+	struct iovec iov;
+	struct msghdr msg = {
+		.msg_name = &nladdr,
+		.msg_namelen = sizeof(nladdr),
+		.msg_iov = &iov,
+		.msg_iovlen = 1,
+	};
+	char buf[8192];
+
+	/* set up the netlink address */
+	memset(&nladdr, 0, sizeof(nladdr));
+	nladdr.nl_family = AF_NETLINK;
+	nladdr.nl_pid = 0;
+	nladdr.nl_groups = 0;
+
+	iov.iov_base = buf;
+	iov.iov_len = sizeof(buf);
+
+	status = recvmsg(fd, &msg, 0);
+	if (status < 0) {
+		if (errno == EINTR)
+			return;
+
+		fprintf(stderr, "netlink recvmsg error: %s (%d)\n", strerror(errno), errno);
+		return;
+	}
+
+	if (status == 0) {
+		fprintf(stderr, "netlink connection closed\n");
+		return;
+	}
+
+	if (msg.msg_namelen != sizeof(nladdr)) {
+		fprintf(stderr, "netlink: unexpected address length: %d\n", msg.msg_namelen);
+		return;
+	}
+
+	/* for each message received */
+	for (h = (struct nlmsghdr*)buf; (unsigned)status >= sizeof(*h); ) {
+		int len = h->nlmsg_len;
+		int l = len - sizeof(*h);
+
+		if (l < 0  ||  len > status) {
+			if (msg.msg_flags & MSG_TRUNC) {
+				fprintf(stderr, "netlink: message truncated(1)\n");
+				return;
+			}
+			fprintf(stderr, "netlink: malformed message. len: %d\n", len);
+			return;
+		}
+
+		/* format the message */
+		format_netlink(h);
+
+		status -= NLMSG_ALIGN(len);
+		h = (struct nlmsghdr*)((char*)h + NLMSG_ALIGN(len));
+	}
+
+	if (msg.msg_flags & MSG_TRUNC) {
+		fprintf(stderr, "netlink: message truncated (2)\n");
+		return;
+	}
+
+	if (status) {
+		fprintf(stderr, "netlink: remnant of size %d\n", status);
+		return;
+	}
+
+	return;
+}
+
+static void* vsentry_genl_logger(void *func)
+{
+	int ret, genetlink_fd;
+	struct sockaddr_nl addr;
+	int sndbuf = 131072;
+	int rcvbuf = 131072;
+
+	memset(&genl_info, 0, sizeof(genl_info));
+
+	ret = ioctl(drv_fd, VSENTRY_IOCTL_GET_GENL_INFO, &genl_info);
+	if (ret != 0) {
+		fprintf(stderr, "failed to get genl_info: %s (%d)\n", strerror(errno), errno);
+		return NULL;
+	}
+
+	if (!genl_info.family) {
+		fprintf(stderr, "kernel netlink logger family is wrong\n");
+		return NULL;
+	}
+
+	/* open a socket to the kernel netlink module */
+	genetlink_fd = socket(AF_NETLINK, SOCK_RAW, NETLINK_GENERIC);
+	if (genetlink_fd < 0) {
+		fprintf(stderr, "failed to open netlink socket: %s (%d)\n", strerror(errno), errno);
+		return NULL;
+	}
+
+	if (setsockopt(genetlink_fd, SOL_SOCKET,SO_SNDBUF, &sndbuf, sizeof(sndbuf)) < 0) {
+		fprintf(stderr, "setsockopt SO_SNDBUF: %s (%d)\n", strerror(errno), errno);
+		return NULL;
+	}
+
+	if (setsockopt(genetlink_fd, SOL_SOCKET,SO_RCVBUF, &rcvbuf, sizeof(rcvbuf)) < 0) {
+		fprintf(stderr, "setsockopt SO_RCVBUF: %s (%d)\n", strerror(errno), errno);
+		return NULL;
+	}
+
+	memset(&addr, 0, sizeof(addr));
+	addr.nl_family = AF_NETLINK;
+	addr.nl_groups = genl_info.mcgrp ? (1 << (genl_info.mcgrp - 1)) : 0;
+
+	if (bind(genetlink_fd, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
+		fprintf(stderr, "failed to bind netlink socket: %s (%d)\n", strerror(errno), errno);
+		return NULL;
+	}
+
+	while (1) {
+		fd_set rfds;
+
+		FD_ZERO(&rfds);
+		FD_SET(genetlink_fd, &rfds);
+
+		ret = select((genetlink_fd + 1), &rfds, NULL, NULL, NULL);
+		if (ret > 0) {
+			if (FD_ISSET(genetlink_fd , &rfds))
+				process_netlink(genetlink_fd);
+		}
+	}
+
+	return NULL;
+}
 
 int bin_cls_reload(char *exec_file_name)
 {
@@ -254,6 +500,7 @@ int main(int argc, char **argv)
 	char *exec_file_name = EXEC_FILE;
 	int opt;
 	struct vsentry_state state;
+	pthread_t thread;
 
 	while ((opt = getopt (argc, argv, "e:f:h")) != -1) {
 		switch (opt) {
@@ -274,6 +521,12 @@ int main(int argc, char **argv)
 		default:
 			break;
 		}
+	}
+
+	/* start thread listening for logs over netlink */
+	if (pthread_create(&thread, NULL, vsentry_genl_logger, NULL) != 0) {
+		fprintf(stderr, "failed to create genl_logger: %s (%d)\n", strerror(errno), errno);
+		return VSENTRY_ERROR;
 	}
 
 	/* config file is ready, lets update the kernel */
