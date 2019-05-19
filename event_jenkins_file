@@ -1,11 +1,16 @@
 node('Build'){    
     stage('Identify trigger') {
         
-	checkout([$class: 'GitSCM', branches: [[name: '*/tags/*'], [name: '*/master']],
-	 doGenerateSubmoduleConfigurations: false, extensions: [],
-	 submoduleCfg: [],userRemoteConfigs: [[credentialsId: 'CI_user',
-         refspec: '+refs/tags/*:refs/remotes/origin/tags/*',
-         url: 'https://github.com/CI-Saferide/test_repo.git']]])
+	//checkout([$class: 'GitSCM', branches: [[name: '*/tags/*'], [name: '*/master']],
+	// doGenerateSubmoduleConfigurations: false, extensions: [],
+	// submoduleCfg: [],userRemoteConfigs: [[credentialsId: 'CI_user',
+        // refspec: '+refs/tags/*:refs/remotes/origin/tags/*',
+        // url: 'https://github.com/CI-Saferide/test_repo.git']]])
+	
+	checkout([$class: 'GitSCM', branches: [[name: '*/master'], [name: '*/tags/*']], doGenerateSubmoduleConfigurations: false, extensions: [],
+         submoduleCfg: [], userRemoteConfigs: [
+         [credentialsId: 'CI_user', refspec: '+refs/tags/*:refs/remotes/origin/tags/*', url: 'https://github.com/CI-Saferide/test_repo.git'],
+         [credentialsId: 'CI_user', url: 'https://github.com/CI-Saferide/test_repo.git']]])	
 
 	try{
             env.GIT_BRANCH = sh(returnStdout: true, script: 'git branch' ).trim()
