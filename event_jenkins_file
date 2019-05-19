@@ -1,0 +1,44 @@
+node('Build'){    
+    stage('Identify trigger') {
+        // checkout([$class: 'GitSCM', branches: [[name: '*/tags/*']], doGenerateSubmoduleConfigurations: false, extensions: [],
+        checkout([$class: 'GitSCM', branches: [[name: '*/master']], doGenerateSubmoduleConfigurations: false, extensions: [], 
+        submoduleCfg: [],
+        // userRemoteConfigs: [[credentialsId: 'CI_user', refspec: '+refs/tags/*:refs/remotes/origin/tags/*',
+        userRemoteConfigs: [[credentialsId: 'CI_user', url: 'https://github.com/CI-Saferide/test_repo.git']]])
+        try{
+            env.GIT_BRANCH = sh(returnStdout: true, script: 'git branch' ).trim()
+            echo "${branch}"
+        } catch(Throwable e){
+            env.GIT_TAG = sh(returnStdout: true, script: 'git describe --tags --abbrev=0' ).trim()
+            echo GIT_TAG
+        }
+    
+    }
+
+    echo "triggerd"
+    
+    // script {
+    //     //extract numbers from git tag
+    //     num_from_tag = "${GIT_TAG}".findAll(/\d+/)
+    //     def RES_VERSION = num_from_tag[0]+ " " + num_from_tag[1] + " " +num_from_tag[2]
+    //     echo "${RES_VERSION}"
+    //     //extract vobs version from latest docker image name
+    //     vobs_version = ("${Docker_image}" =~ /vobs(.+)_AP/)[0][1]
+    //     //final version name
+    //     def VERSION_NAME =num_from_tag[0]+ "." + num_from_tag[1] + "." +num_from_tag[2]+"_"+"${vobs_version}"
+    //     echo "${VERSION_NAME}"
+    // }
+    
+}
+// this method run shell command with ascii plugin
+def runCommand ( command ) {
+    ansiColor('xterm'){
+        if(isUnix()){
+        sh command
+        } else {
+            bat command
+        }
+    }
+} 
+
+
