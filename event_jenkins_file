@@ -22,7 +22,9 @@ node('Build'){
 	    env.GIT_REVPARSE = sh(returnStdout: true, script: 'git rev-parse HEAD' ).trim()
             echo "git revparse = ${GIT_REVPARSE}"
         
-    
+	    env.GET_GREP = sh(returnStdout: true, script: "git show-ref | grep ${GIT_REVPARSE} " ).trim()    
+	    echo "git get_grep = ${GET_GREP}"
+
     }
 
     echo "triggerd"
