@@ -22,7 +22,7 @@ node('Build'){
 
     }
 
-    if ("${params.trigger_typy}" != "null" && "${params.trigger_typy}" != ""){
+    if ("${params.trigger_type}" != "null" && "${params.trigger_type}" != ""){
         echo "triggerd from ${params.trigger_typy}"
     }else{
         build job: 'testA', parameters: [string(name: 'trigger_type', value: "tag")]
