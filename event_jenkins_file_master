@@ -18,9 +18,11 @@ node('Build'){
 	    echo "git get_grep = ${GET_GREP}"
 
     }
-
-    echo "triggerd"
-    
+    if ("${params.trigger_typy}" != "null" && "${params.trigger_typy}" != ""){
+     	echo "triggerd from ${params.trigger_typy}"
+    }else{
+    	build job: 'Test2', parameters: [string(name: 'trigger_type', value: "master")]
+    }
     // script {
     //     //extract numbers from git tag
     //     num_from_tag = "${GIT_TAG}".findAll(/\d+/)
