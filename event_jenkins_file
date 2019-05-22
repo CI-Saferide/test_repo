@@ -17,11 +17,11 @@ node('Build'){
 
     }
 
-    if ("${params.trigger_type}" != "null" && "${params.trigger_type}" != ""){
-        echo "triggerd from ${params.trigger_type}"
-    }else{
-        build job: 'testA', parameters: [string(name: 'trigger_type', value: "tag")]
-    }
+   // if ("${params.trigger_type}" != "null" && "${params.trigger_type}" != ""){
+   //     echo "triggerd from ${params.trigger_type}"
+   // }else{
+   //     build job: 'testA', parameters: [string(name: 'trigger_type', value: "tag")]
+   // }
  
     // script {
     //     //extract numbers from git tag
