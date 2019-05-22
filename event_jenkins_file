@@ -35,7 +35,6 @@ node('Build'){
     //     echo "${VERSION_NAME}"
     // }
     
-    emailExt()
 }// end of node('build')
 
 
