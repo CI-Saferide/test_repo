@@ -35,7 +35,20 @@ node('Build'){
     //     echo "${VERSION_NAME}"
     // }
     
-}
+    emailExt()
+}// end of node('build')
+
+
+//this method send email with build result
+def emailExt () {
+     emailext (body: '''${SCRIPT, template="buildlog.template"}''',
+        mimeType: 'text/html',
+        subject: "[Jenkins] - Build ${currentBuild.currentResult}",
+        to: "${MailRecipients}",
+        replyTo: "${MailRecipients}",
+        recipientProviders: [[$class: 'CulpritsRecipientProvider']])
+
+ } 
 // this method run shell command with ascii plugin
 def runCommand ( command ) {
     ansiColor('xterm'){
