@@ -1,7 +1,7 @@
 node('Build'){    
     stage('Identify trigger') {
         
-	docker.image("test:tset").inside("--cap-add=NET_ADMIN --entrypoint='' --privileged -u dev") {
+	docker.image("test:tset").inside("--cap-add=NET_ADMIN --entrypoint='' --privileged -u 0:0") {
 echo "heloo"
 sleep 30
 echo "Bye"
