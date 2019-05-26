@@ -19,7 +19,7 @@ echo "Bye"
 //        echo "git branch = ${GIT_BRANCH}"
 //        
 //
-//    }
+    }
 
    // if ("${params.trigger_type}" != "null" && "${params.trigger_type}" != ""){
    //     echo "triggerd from ${params.trigger_type}"
