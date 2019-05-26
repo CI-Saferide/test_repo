@@ -1,21 +1,25 @@
 node('Build'){    
     stage('Identify trigger') {
         
-	
-	checkout([$class: 'GitSCM', branches: [[name: '*/tags/*']], doGenerateSubmoduleConfigurations: false, extensions: [],
-         submoduleCfg: [], userRemoteConfigs: [
-         [credentialsId: 'CI_user', refspec: '+refs/tags/*:refs/remotes/origin/tags/*', url: 'https://github.com/CI-Saferide/test_repo.git']
-         ]])
-
-		
-	env.GIT_TAG = sh(returnStdout: true, script: 'git describe --tags --abbrev=0' ).trim()
-        echo GIT_TAG
-
-        env.GIT_BRANCH = sh(returnStdout: true, script: "git branch --contains ${GIT_TAG} " ).trim()
-        echo "git branch = ${GIT_BRANCH}"
-        
-
-    }
+	docker.image("test:test").inside("--cap-add=NET_ADMIN --entrypoint='' --privileged -u dev") {
+echo "heloo"
+sleep 30
+echo "Bye"
+}	
+//	checkout([$class: 'GitSCM', branches: [[name: '*/tags/*']], doGenerateSubmoduleConfigurations: false, extensions: [],
+//         submoduleCfg: [], userRemoteConfigs: [
+//         [credentialsId: 'CI_user', refspec: '+refs/tags/*:refs/remotes/origin/tags/*', url: 'https://github.com/CI-Saferide/test_repo.git']
+//         ]])
+//
+//		
+//	env.GIT_TAG = sh(returnStdout: true, script: 'git describe --tags --abbrev=0' ).trim()
+//        echo GIT_TAG
+//
+//        env.GIT_BRANCH = sh(returnStdout: true, script: "git branch --contains ${GIT_TAG} " ).trim()
+//        echo "git branch = ${GIT_BRANCH}"
+//        
+//
+//    }
 
    // if ("${params.trigger_type}" != "null" && "${params.trigger_type}" != ""){
    //     echo "triggerd from ${params.trigger_type}"
