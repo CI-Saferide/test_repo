@@ -26,18 +26,6 @@ echo "Bye"
    // }else{
    //     build job: 'testA', parameters: [string(name: 'trigger_type', value: "tag")]
    // }
- 
-    // script {
-    //     //extract numbers from git tag
-    //     num_from_tag = "${GIT_TAG}".findAll(/\d+/)
-    //     def RES_VERSION = num_from_tag[0]+ " " + num_from_tag[1] + " " +num_from_tag[2]
-    //     echo "${RES_VERSION}"
-    //     //extract vobs version from latest docker image name
-    //     vobs_version = ("${Docker_image}" =~ /vobs(.+)_AP/)[0][1]
-    //     //final version name
-    //     def VERSION_NAME =num_from_tag[0]+ "." + num_from_tag[1] + "." +num_from_tag[2]+"_"+"${vobs_version}"
-    //     echo "${VERSION_NAME}"
-    // }
     
 }// end of node('build')
 
