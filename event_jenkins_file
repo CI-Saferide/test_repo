@@ -1,12 +1,13 @@
 node('Build'){    
     stage('Identify trigger') {
         
-	checkout([$class: 'GitSCM', branches: [[name: '**/pull-requests/**']],
+	checkout([$class: 'GitSCM', branches: [[name: '**']],
     doGenerateSubmoduleConfigurations: false,
     extensions: [],
     submoduleCfg: [],
     userRemoteConfigs: [[credentialsId: 'CI_user',
-    refspec: '+refs/pull-requests/*:refs/remotes/origin/*',
+    refspec: '+refs/pull/*:refs/remotes/origin/pull/*',
+//    refspec: '+refs/pull-requests/*:refs/remotes/origin/*',
     url: 'https://github.com/CI-Saferide/test_repo.git']]])
 
     echo 'triggerd'
