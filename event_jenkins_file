@@ -1,7 +1,7 @@
 node('Build'){    
     stage('Identify trigger') {
         
-	checkout([$class: 'GitSCM', branches: [[name: '**']],
+	checkout([$class: 'GitSCM', branches: [[name: '**/pull/**']],
     doGenerateSubmoduleConfigurations: false,
     extensions: [],
     submoduleCfg: [],
