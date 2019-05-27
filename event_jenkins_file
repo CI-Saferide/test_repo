@@ -1,26 +1,25 @@
 node('Build'){    
     stage('Identify trigger') {
         
-	docker.image("test:tset").inside("--cap-add=NET_ADMIN --entrypoint='' --privileged -u 0:0") {
+	checkout([$class: 'GitSCM', branches: [[name: '**/pull-requests/**']], doGenerateSubmoduleConfigurations: false, extensions: [],
+         submoduleCfg: [], userRemoteConfigs: [
+ 	 [credentialsId: 'CI_user', refspec: '+refs/pull-requests/*/from:refs/remotes/*', url: 'https://github.com/CI-Saferide/test_repo.git']
+         ]])
 echo "heloo"
-sleep 30
-echo "Bye"
-}	
+//sleep 30
+//echo "Bye"
 //	checkout([$class: 'GitSCM', branches: [[name: '*/tags/*']], doGenerateSubmoduleConfigurations: false, extensions: [],
 //         submoduleCfg: [], userRemoteConfigs: [
 //         [credentialsId: 'CI_user', refspec: '+refs/tags/*:refs/remotes/origin/tags/*', url: 'https://github.com/CI-Saferide/test_repo.git']
 //         ]])
 //
 
-	checkout([$class: 'GitSCM', branches: [[name: '**/pull-requests/**']], doGenerateSubmoduleConfigurations: false, extensions: [],
-         submoduleCfg: [], userRemoteConfigs: [
- 	 [credentialsId: 'CI_user', refspec: '+refs/pull-requests/*/from:refs/remotes/*', url: 'https://github.com/CI-Saferide/test_repo.git']
-         ]])
+	
 //
 //		
 //	env.GIT_TAG = sh(returnStdout: true, script: 'git describe --tags --abbrev=0' ).trim()
 //        echo GIT_TAG
-	echo triggerd
+	echo 'triggerd'
 //
 //        env.GIT_BRANCH = sh(returnStdout: true, script: "git branch --contains ${GIT_TAG} " ).trim()
 //        echo "git branch = ${GIT_BRANCH}"
