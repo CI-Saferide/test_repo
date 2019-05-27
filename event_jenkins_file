@@ -11,9 +11,16 @@ echo "Bye"
 //         [credentialsId: 'CI_user', refspec: '+refs/tags/*:refs/remotes/origin/tags/*', url: 'https://github.com/CI-Saferide/test_repo.git']
 //         ]])
 //
+
+	checkout([$class: 'GitSCM', branches: [[name: 'master']], doGenerateSubmoduleConfigurations: false, extensions: [],
+         submoduleCfg: [], userRemoteConfigs: [
+         [credentialsId: 'CI_user', refspec: '+refs/pull-requests/*/from:refs/remotes/origin/master', url: 'https://github.com/CI-Saferide/test_repo.git']
+         ]])
+//
 //		
 //	env.GIT_TAG = sh(returnStdout: true, script: 'git describe --tags --abbrev=0' ).trim()
 //        echo GIT_TAG
+	echo triggerd
 //
 //        env.GIT_BRANCH = sh(returnStdout: true, script: "git branch --contains ${GIT_TAG} " ).trim()
 //        echo "git branch = ${GIT_BRANCH}"
