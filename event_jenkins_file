@@ -12,7 +12,7 @@ echo "Bye"
 //         ]])
 //
 
-	checkout([$class: 'GitSCM', branches: [[name: 'master']], doGenerateSubmoduleConfigurations: false, extensions: [],
+	checkout([$class: 'GitSCM', branches: [[name: '**/pull-requests/**']], doGenerateSubmoduleConfigurations: false, extensions: [],
          submoduleCfg: [], userRemoteConfigs: [
          [credentialsId: 'CI_user', refspec: '+refs/pull-requests/*/from:refs/remotes/origin/master', url: 'https://github.com/CI-Saferide/test_repo.git']
          ]])
