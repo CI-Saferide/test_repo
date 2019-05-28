@@ -1,50 +1,29 @@
 node('Build'){    
     stage('Identify trigger') {
         
-	docker.image("test:tset").inside("--cap-add=NET_ADMIN --entrypoint='' --privileged -u 0:0") {
-echo "heloo"
-sleep 30
-echo "Bye"
-}	
+	checkout([$class: 'GitSCM', branches: [[name: '**/pull/**']],
+    doGenerateSubmoduleConfigurations: false,
+    extensions: [],
+    submoduleCfg: [],
+    userRemoteConfigs: [[credentialsId: 'CI_user',
+    refspec: '+refs/pull/*:refs/remotes/origin/pull/*',
+//    refspec: '+refs/pull-requests/*:refs/remotes/origin/*',
+    url: 'https://github.com/CI-Saferide/test_repo.git']]])
+
+    echo 'triggerd'
 //	checkout([$class: 'GitSCM', branches: [[name: '*/tags/*']], doGenerateSubmoduleConfigurations: false, extensions: [],
 //         submoduleCfg: [], userRemoteConfigs: [
 //         [credentialsId: 'CI_user', refspec: '+refs/tags/*:refs/remotes/origin/tags/*', url: 'https://github.com/CI-Saferide/test_repo.git']
 //         ]])
-//
 
-	checkout([$class: 'GitSCM', branches: [[name: '**/pull-requests/**']], doGenerateSubmoduleConfigurations: false, extensions: [],
-         submoduleCfg: [], userRemoteConfigs: [
-         [credentialsId: 'CI_user', refspec: '+refs/pull-requests/*/from:refs/remotes/origin/master', url: 'https://github.com/CI-Saferide/test_repo.git']
-         ]])
-//
 //		
-//	env.GIT_TAG = sh(returnStdout: true, script: 'git describe --tags --abbrev=0' ).trim()
+//	      env.GIT_TAG = sh(returnStdout: true, script: 'git describe --tags --abbrev=0' ).trim()
 //        echo GIT_TAG
-	echo triggerd
-//
+
 //        env.GIT_BRANCH = sh(returnStdout: true, script: "git branch --contains ${GIT_TAG} " ).trim()
 //        echo "git branch = ${GIT_BRANCH}"
-//        
-//
     }
 
-   // if ("${params.trigger_type}" != "null" && "${params.trigger_type}" != ""){
-   //     echo "triggerd from ${params.trigger_type}"
-   // }else{
-   //     build job: 'testA', parameters: [string(name: 'trigger_type', value: "tag")]
-   // }
- 
-    // script {
-    //     //extract numbers from git tag
-    //     num_from_tag = "${GIT_TAG}".findAll(/\d+/)
-    //     def RES_VERSION = num_from_tag[0]+ " " + num_from_tag[1] + " " +num_from_tag[2]
-    //     echo "${RES_VERSION}"
-    //     //extract vobs version from latest docker image name
-    //     vobs_version = ("${Docker_image}" =~ /vobs(.+)_AP/)[0][1]
-    //     //final version name
-    //     def VERSION_NAME =num_from_tag[0]+ "." + num_from_tag[1] + "." +num_from_tag[2]+"_"+"${vobs_version}"
-    //     echo "${VERSION_NAME}"
-    // }
     
 }// end of node('build')
 
