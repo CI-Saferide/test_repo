@@ -1,2 +1,2 @@
 # test_repo
-DevOps repo - Dont use
+DevOps repo - Dont use it
