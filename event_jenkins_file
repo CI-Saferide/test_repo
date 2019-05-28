@@ -17,8 +17,8 @@ node('Build'){
 //         ]])
 
 //		
-//	      env.GIT_TAG = sh(returnStdout: true, script: 'git describe --tags --abbrev=0' ).trim()
-//        echo GIT_TAG
+	 env.GIT_TAG = sh(returnStdout: true, script: 'git describe --tags --abbrev=0' ).trim()
+        echo GIT_TAG
 
 //        env.GIT_BRANCH = sh(returnStdout: true, script: "git branch --contains ${GIT_TAG} " ).trim()
 //        echo "git branch = ${GIT_BRANCH}"
