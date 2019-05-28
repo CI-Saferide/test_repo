@@ -17,11 +17,9 @@ node('Build'){
 //         ]])
 
 //		
-	 env.GIT_TAG = sh(returnStdout: true, script: 'git describe --tags --abbrev=0' ).trim()
-        echo GIT_TAG
-
-//        env.GIT_BRANCH = sh(returnStdout: true, script: "git branch --contains ${GIT_TAG} " ).trim()
-//        echo "git branch = ${GIT_BRANCH}"
+	env.GIT_BRANCH = sh(returnStdout: true, script: "git rev-parse HEAD " ).trim()
+        echo "git rev-parse HEAD = ${GIT_BRANCH}"
+	build job: 'Test1', parameters: [string(name: 'SHA', value: "${GIT_BRANCH}")]
     }
     
 }// end of node('build')
